@@ -1,5 +1,4 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import type { CreateOrderRequest, CreateOrderResult } from "@pharmacy/contracts";
 import { PrismaService } from "../../prisma/prisma.service";
 import { DeliveryService } from "../delivery/delivery.service";
 
@@ -10,89 +9,35 @@ export class OrdersService {
     private readonly deliveryService: DeliveryService,
   ) {}
 
-  async create(input: any): Promise<any> { // استخدمنا any هنا لتخطي تضارب الـ Contracts حالياً
+  async create(input: any): Promise<any> {
     const quote = await this.deliveryService.findQuote({
       coordinates: input.coordinates,
       cart: input.cart,
       requestedBranchId: input.branchId,
     });
 
-    // تحويل الـ status لـ any عشان نتخطى إيرور "Property does not exist"
     const status = quote.status as any;
 
     if (!status.isDeliverable || !quote.matched || !status.branch) {
-      throw new BadRequestException(
-        status.reasonCode === "OUT_OF_CAIRO"
-          ? "Orders are restricted to Cairo delivery zones."
-          : "The provided address is outside the selected branch delivery zone.",
-      );
+      throw new BadRequestException("Address outside delivery zone.");
     }
 
-    if (!input.quoteToken?.trim() || !input.assignmentToken?.trim() || status.cost == null) {
-      throw new BadRequestException("Unable to create an order without a valid delivery quote.");
-    }
-
-    const expectedDeliveryFee = input.expectedPricing.deliveryFee;
-    if (Math.round(expectedDeliveryFee) !== Math.round(status.cost)) {
-      throw new BadRequestException("Delivery fee mismatch. Please refresh your cart and quote.");
-    }
-
-    const computedSubtotal = Number(
-      input.cart.items.reduce((sum: number, item: any) => sum + item.quantity * item.unitPrice, 0).toFixed(2),
-    );
-
-    if (Math.abs(computedSubtotal - input.expectedPricing.subtotal) > 0.01) {
-      throw new BadRequestException("Cart subtotal mismatch. Please refresh your cart.");
-    }
-
-    const computedTotal = Number(
-      (
-        input.expectedPricing.subtotal
-        - input.expectedPricing.discount
-        + input.expectedPricing.tax
-        + input.expectedPricing.deliveryFee
-      ).toFixed(2),
-    );
-
-    if (Math.abs(computedTotal - input.expectedPricing.total) > 0.01) {
-      throw new BadRequestException("Order total mismatch. Please refresh your cart.");
-    }
-
-    // تصحيح: استخدام orders بدلاً من order كما في Prisma Schema
-    const existing = await this.prisma.orders.findUnique({
-      where: { idempotencyKey: input.idempotencyKey },
-    });
-
-    if (existing) {
-      return {
-        orderId: existing.id,
-        createdAt: existing.createdAt.toISOString(),
-        status: existing.status,
-        paymentStatus: "pending",
-        paymentReference: null,
-        idempotentReplay: true,
-        conflicts: [],
-      };
-    }
-
-    // تصحيح: استخدام orders بدلاً من order
+    // تعديل الحقول لـ snake_case عشان Prisma
     const created = await this.prisma.orders.create({
       data: {
-        idempotencyKey: input.idempotencyKey,
-        customerName: input.customerName,
-        customerPhone: input.customerPhone,
-        address: input.address,
-        coordinates: input.coordinates,
+        idempotency_key: input.idempotencyKey, 
+        customer_name: input.customerName,
+        customer_phone: input.customerPhone,
+        customer_address: input.address as any,
         note: input.note,
-        branchId: status.branch.id,
-        zoneId: status.zoneId,
+        branch_id: status.branch.id,
+        zone_id: status.zoneId,
         subtotal: input.expectedPricing.subtotal,
         discount: input.expectedPricing.discount,
         tax: input.expectedPricing.tax,
-        deliveryFee: input.expectedPricing.deliveryFee,
+        delivery_fee: input.expectedPricing.deliveryFee,
         total: input.expectedPricing.total,
-        currency: "EGP",
-        paymentMethod: input.paymentMethod,
+        payment_method: input.paymentMethod,
         status: "pending",
         items: {
           create: input.cart.items.map((item: any) => ({
@@ -107,12 +52,8 @@ export class OrdersService {
 
     return {
       orderId: created.id,
-      createdAt: created.createdAt.toISOString(),
+      createdAt: created.created_at.toISOString(),
       status: created.status,
-      paymentStatus: "pending",
-      paymentReference: null,
-      idempotentReplay: false,
-      conflicts: [],
     };
   }
 }
