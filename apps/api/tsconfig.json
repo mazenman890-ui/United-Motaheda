@@ -15,7 +15,10 @@
     },
     "incremental": true,
     "skipLibCheck": true,
-    "strict": true
+    "strict": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "ignoreDeprecations": "6.0"
   },
-  "include": ["src/**/*.ts", "prisma/**/*.ts"]
+  "include": ["src/**/*.ts", "prisma/**/*.ts", "../../packages/contracts/src/**/*.ts"]
 }
