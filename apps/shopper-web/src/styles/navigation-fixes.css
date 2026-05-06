@@ -1,0 +1,289 @@
+/* ═══════════════════════════════════════════════════════════════
+   NAVIGATION SYSTEM FIXES - PROFESSIONAL ORGANIZATION
+   Fixes for overlapping navigation bars across all devices
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────────────────────
+   GLOBAL NAVIGATION RULES
+   ───────────────────────────────────────────────────────────── */
+
+/* Ensure proper z-index hierarchy */
+:root {
+  --z-mobile-menu: 100;
+  --z-mobile-bottom-nav: 60;
+  --z-header: 40;
+  --z-dropdown: 50;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   DESKTOP NAVIGATION (1280px and above)
+   ───────────────────────────────────────────────────────────── */
+
+@media (min-width: 1280px) {
+  /* Hide mobile bottom navigation on desktop */
+  .mobile-bottom-nav {
+    display: none !important;
+  }
+  
+  /* Ensure main content has no bottom padding on desktop */
+  main {
+    padding-bottom: 0 !important;
+  }
+  
+  /* Reset footer margin on desktop */
+  footer {
+    margin-bottom: 0 !important;
+  }
+  
+  /* Ensure header is properly positioned */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-header);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   TABLET NAVIGATION (768px to 1279px)
+   ───────────────────────────────────────────────────────────── */
+
+@media (min-width: 768px) and (max-width: 1279px) {
+  /* Show mobile bottom navigation on tablet */
+  .mobile-bottom-nav {
+    display: flex !important;
+    z-index: var(--z-mobile-bottom-nav);
+  }
+  
+  /* Add bottom padding to main content */
+  main {
+    padding-bottom: 5.5rem !important;
+    min-height: calc(100vh - 5.5rem);
+  }
+  
+  /* Ensure footer is visible above bottom nav */
+  footer {
+    margin-bottom: 5rem !important;
+  }
+  
+  /* Optimize header for tablet */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-header);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   MOBILE NAVIGATION (below 768px)
+   ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  /* Show mobile bottom navigation */
+  .mobile-bottom-nav {
+    display: flex !important;
+    z-index: var(--z-mobile-bottom-nav);
+  }
+  
+  /* Add bottom padding to main content */
+  main {
+    padding-bottom: 6rem !important;
+    min-height: calc(100vh - 6rem);
+  }
+  
+  /* Ensure footer is visible above bottom nav */
+  footer {
+    margin-bottom: 5.5rem !important;
+  }
+  
+  /* Optimize header for mobile */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-header);
+  }
+  
+  /* Ensure mobile menu overlay is above everything except modals */
+  .mobile-menu-overlay {
+    z-index: calc(var(--z-mobile-menu) - 1);
+  }
+  
+  .mobile-menu {
+    z-index: var(--z-mobile-menu);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SAFE AREA INSETS (for notched devices)
+   ───────────────────────────────────────────────────────────── */
+
+@supports (padding: max(0px)) {
+  @media (max-width: 1279px) {
+    .mobile-bottom-nav {
+      padding-bottom: max(0.6rem, env(safe-area-inset-bottom, 0px));
+    }
+    
+    body {
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PREVENT CONTENT OVERLAP
+   ───────────────────────────────────────────────────────────── */
+
+/* Ensure no content is hidden behind fixed navigation */
+@media (max-width: 1279px) {
+  /* Add safe spacing for all page sections */
+  .page-section:last-child,
+  section:last-of-type {
+    padding-bottom: 2rem;
+  }
+  
+  /* Ensure buttons and CTAs are visible */
+  .cta-section,
+  .action-buttons {
+    margin-bottom: 2rem;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SCROLL BEHAVIOR OPTIMIZATION
+   ───────────────────────────────────────────────────────────── */
+
+/* Smooth scrolling with proper offset for fixed headers */
+html {
+  scroll-padding-top: 80px;
+}
+
+@media (max-width: 1279px) {
+  html {
+    scroll-padding-top: 70px;
+    scroll-padding-bottom: 90px;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   ACCESSIBILITY IMPROVEMENTS
+   ───────────────────────────────────────────────────────────── */
+
+/* Skip to main content link */
+.skip-to-main {
+  position: absolute;
+  top: -100px;
+  left: 1rem;
+  z-index: 1000;
+  padding: 0.75rem 1.5rem;
+  background-color: var(--primary);
+  color: white;
+  border-radius: 0.5rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: top 0.3s ease;
+}
+
+.skip-to-main:focus {
+  top: 1rem;
+}
+
+/* Focus visible for keyboard navigation */
+.mobile-bottom-nav__item:focus-visible,
+header button:focus-visible,
+header a:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PERFORMANCE OPTIMIZATIONS
+   ───────────────────────────────────────────────────────────── */
+
+/* GPU acceleration for fixed elements */
+.mobile-bottom-nav,
+header {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Optimize backdrop blur performance */
+@supports (backdrop-filter: blur(20px)) {
+  .mobile-bottom-nav,
+  header {
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+  }
+}
+
+/* Fallback for browsers without backdrop-filter support */
+@supports not (backdrop-filter: blur(20px)) {
+  .mobile-bottom-nav {
+    background: rgba(255, 255, 255, 0.98);
+  }
+  
+  header {
+    background: rgba(255, 255, 255, 0.96);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   REDUCED MOTION SUPPORT
+   ───────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-bottom-nav,
+  .mobile-bottom-nav__item,
+  header {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   LANDSCAPE ORIENTATION FIXES
+   ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 1279px) and (orientation: landscape) {
+  /* Reduce bottom nav size in landscape */
+  .mobile-bottom-nav {
+    padding: 0.5rem 0.5rem;
+  }
+  
+  .mobile-bottom-nav__item {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.5rem;
+  }
+  
+  .mobile-bottom-nav__item svg {
+    width: 1.2rem;
+    height: 1.2rem;
+  }
+  
+  /* Adjust main content padding */
+  main {
+    padding-bottom: 4.5rem !important;
+  }
+  
+  footer {
+    margin-bottom: 4rem !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PRINT STYLES
+   ───────────────────────────────────────────────────────────── */
+
+@media print {
+  .mobile-bottom-nav,
+  header .mobile-menu-button {
+    display: none !important;
+  }
+  
+  main {
+    padding-bottom: 0 !important;
+  }
+  
+  footer {
+    margin-bottom: 0 !important;
+  }
+}

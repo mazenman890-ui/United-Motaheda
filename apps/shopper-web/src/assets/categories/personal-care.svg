@@ -1,0 +1,41 @@
+<svg width="960" height="1080" viewBox="0 0 960 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="130" y1="92" x2="828" y2="986" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FCFDFE"/>
+      <stop offset="0.52" stop-color="#F4F7FB"/>
+      <stop offset="1" stop-color="#EEF5F8"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="256" y1="212" x2="708" y2="906" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F5F8FC"/>
+    </linearGradient>
+    <linearGradient id="navy" x1="286" y1="334" x2="510" y2="792" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1E293B"/>
+      <stop offset="1" stop-color="#0F172A"/>
+    </linearGradient>
+    <filter id="shadow" x="168" y="138" width="624" height="824" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="30" stdDeviation="36" flood-color="#0F172A" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+  <rect width="960" height="1080" rx="72" fill="url(#bg)"/>
+  <circle cx="770" cy="192" r="152" fill="#E2E8F0"/>
+  <circle cx="212" cy="858" r="184" fill="#EDF2F7"/>
+  <g filter="url(#shadow)">
+    <rect x="210" y="176" width="540" height="748" rx="58" fill="url(#panel)"/>
+    <rect x="252" y="216" width="456" height="664" rx="44" fill="#F7F9FC" stroke="#E2E8F0" stroke-width="6"/>
+    <ellipse cx="480" cy="808" rx="220" ry="46" fill="#E5EBF1"/>
+    <rect x="302" y="292" width="164" height="366" rx="46" fill="url(#navy)"/>
+    <rect x="334" y="248" width="100" height="74" rx="20" fill="#CBD5E1"/>
+    <rect x="326" y="408" width="116" height="128" rx="26" fill="#F8FAFC"/>
+    <rect x="564" y="320" width="100" height="310" rx="26" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="6"/>
+    <rect x="586" y="268" width="56" height="76" rx="18" fill="#E2E8F0"/>
+    <rect x="550" y="676" width="132" height="100" rx="30" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="6"/>
+    <path d="M616 608V708" stroke="#CBD5E1" stroke-width="16" stroke-linecap="round"/>
+    <path d="M616 608C640.301 608 660 588.301 660 564V538" stroke="#CBD5E1" stroke-width="16" stroke-linecap="round"/>
+    <path d="M660 538C660 496.026 625.974 462 584 462C542.026 462 508 496.026 508 538" stroke="#E2E8F0" stroke-width="14" stroke-linecap="round"/>
+    <path d="M292 756C338 694 404 682 474 736" stroke="#CBD5E1" stroke-width="14" stroke-linecap="round"/>
+    <path d="M514 742C558 702 612 700 658 736" stroke="#E2E8F0" stroke-width="14" stroke-linecap="round"/>
+    <circle cx="598" cy="726" r="18" fill="#F8FAFC"/>
+    <circle cx="634" cy="726" r="18" fill="#E2E8F0"/>
+  </g>
+</svg>

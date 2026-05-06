@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+.DS_Store
+*.log
+# تجاهل أي ملفات build تانية
+apps/api/dist/
+apps/shopper-web/dist/
