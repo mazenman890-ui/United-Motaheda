@@ -356,6 +356,10 @@ export default function Checkout() {
 
   // ── Cairo lock + branch selection ───────────────────────────────────────
   const deliveryBranches = useMemo(() => deliveryLocations, []);
+  const primaryDeliveryBranch = useMemo(
+    () => deliveryBranches.find((branch) => branch.isPrimary) ?? deliveryBranches[0],
+    [deliveryBranches],
+  );
   const selectedArea = useLocationState((state) => state.selectedArea);
   const selectedBranchId = useLocationState((state) => state.selectedBranchId);
   const locationPermission = useLocationState((state) => state.permission);
@@ -386,12 +390,25 @@ export default function Checkout() {
     setForm((current) => ({ ...current, city: GOVERNORATE_LOCK }));
   }, []);
 
-  // Set a default branch/area once.
+  // Set / repair branch + area selection (handles stale persisted IDs too).
   useEffect(() => {
-    if (!deliveryBranches.length) return;
-    if (!selectedArea) setSelectedArea(deliveryBranches[0].area);
-    if (!selectedBranchId) setSelectedBranchId(deliveryBranches[0].id);
-  }, [deliveryBranches, selectedArea, selectedBranchId]);
+    if (!primaryDeliveryBranch) return;
+
+    const areaSet = new Set(deliveryBranches.map((branch) => branch.area));
+    const hasValidArea = Boolean(selectedArea) && areaSet.has(selectedArea);
+    const hasValidBranch = Boolean(selectedBranchId)
+      && deliveryBranches.some((branch) => branch.id === selectedBranchId);
+
+    if (!hasValidArea) setSelectedArea(primaryDeliveryBranch.area);
+    if (!hasValidBranch) setSelectedBranchId(primaryDeliveryBranch.id);
+  }, [
+    deliveryBranches,
+    primaryDeliveryBranch,
+    selectedArea,
+    selectedBranchId,
+    setSelectedArea,
+    setSelectedBranchId,
+  ]);
 
   // Ensure selected branch stays valid when area changes.
   useEffect(() => {
