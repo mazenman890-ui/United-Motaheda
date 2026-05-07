@@ -15,6 +15,9 @@ import { CatalogProvider } from "./contexts/CatalogContext";
 import { CartProvider } from "./contexts/CartContext";
 import { FavoritesProvider } from "./contexts/FavoritesContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
+import { AppReadinessProvider } from "./contexts/AppReadinessContext";
+import { LoadingOverlayContainer } from "./components/LoadingOverlayContainer";
+import { AppReadinessBridge } from "./components/AppReadinessBridge";
 import { Toaster } from "./app/components/ui/sonner";
 import "./styles/index.css";
 
@@ -46,10 +49,14 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <FavoritesProvider>
               <CatalogProvider>
                 <CartProvider>
-                  <LocationBootstrap />
-                  <AutoContrastTextGuard />
-                  <App />
-                  <Toaster richColors position="top-right" />
+                  <AppReadinessProvider>
+                    <LocationBootstrap />
+                    <AutoContrastTextGuard />
+                    <AppReadinessBridge />
+                    <LoadingOverlayContainer />
+                    <App />
+                    <Toaster richColors position="top-right" />
+                  </AppReadinessProvider>
                 </CartProvider>
               </CatalogProvider>
             </FavoritesProvider>

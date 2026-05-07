@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import type { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth, type UserRole } from "../contexts/AuthContext";
+import { useBootstrapBlocking } from "../app/components/BootstrapBlockingContext";
 
 type ProtectedRouteProps = {
   children: ReactNode;
@@ -73,8 +74,12 @@ export function AuthLoadingShell() {
 export default function ProtectedRoute({ children, requireRole }: ProtectedRouteProps) {
   const { loading, user } = useAuth();
   const location = useLocation();
+  const bootstrapBlocking = useBootstrapBlocking();
 
   if (loading) {
+    if (bootstrapBlocking) {
+      return null;
+    }
     return <AuthLoadingShell />;
   }
 
