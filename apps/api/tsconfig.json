@@ -8,7 +8,8 @@
     "allowSyntheticDefaultImports": true,
     "target": "ES2021",
     "sourceMap": true,
-    "outDir": "./dist",
+    "outDir": "../../dist",
+    "rootDir": "../../",
     "baseUrl": "./",
     "paths": {
       "@pharmacy/contracts": ["../../packages/contracts/src/index.ts"]
@@ -20,5 +21,10 @@
     "strictNullChecks": false,
     "ignoreDeprecations": "6.0"
   },
-  "include": ["src/**/*.ts", "prisma/**/*.ts", "../../packages/contracts/src/**/*.ts"]
+  "include": [
+    "src/**/*.ts", 
+    "prisma/**/*.ts", 
+    "../../packages/contracts/src/**/*.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
 }
