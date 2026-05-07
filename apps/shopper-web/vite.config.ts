@@ -14,23 +14,40 @@ export default defineConfig({
     alias: {
       // Alias @ to the src directory
       "@": path.resolve(__dirname, "./src"),
-      "@pharmacy/types": path.resolve(__dirname, "../../packages/types/src"),
-      "@pharmacy/api-client": path.resolve(__dirname, "../../packages/api-client/src"),
-      "@pharmacy/domain-core": path.resolve(__dirname, "../../packages/domain-core/src"),
-      "@pharmacy/domain-search": path.resolve(__dirname, "../../packages/domain-search/src"),
-      "@pharmacy/domain-catalog": path.resolve(__dirname, "../../packages/domain-catalog/src"),
-      "@pharmacy/domain-location": path.resolve(__dirname, "../../packages/domain-location/src"),
-      "@pharmacy/domain-cart": path.resolve(__dirname, "../../packages/domain-cart/src"),
-      "@pharmacy/domain-checkout": path.resolve(__dirname, "../../packages/domain-checkout/src"),
-      "@pharmacy/domain-orders": path.resolve(__dirname, "../../packages/domain-orders/src"),
-      "@pharmacy/domain-prescriptions": path.resolve(__dirname, "../../packages/domain-prescriptions/src"),
-      "@pharmacy/domain-account": path.resolve(__dirname, "../../packages/domain-account/src"),
-      "@pharmacy/domain-ops": path.resolve(__dirname, "../../packages/domain-ops/src"),
-      "@pharmacy/domain-courier": path.resolve(__dirname, "../../packages/domain-courier/src"),
-      "@pharmacy/ui-web": path.resolve(__dirname, "../../packages/ui-web/src"),
-      "@pharmacy/ui-native": path.resolve(__dirname, "../../packages/ui-native/src"),
-      "@pharmacy/design-tokens": path.resolve(__dirname, "../../packages/design-tokens/src"),
+      "@pharmacy/types": path.resolve(__dirname, "../../packages/types/src/index.ts"),
+      "@pharmacy/contracts": path.resolve(__dirname, "../../packages/contracts/src/index.ts"),
+      "@pharmacy/contracts/": path.resolve(__dirname, "../../packages/contracts/src/"),
+      "@pharmacy/api-client": path.resolve(__dirname, "../../packages/api-client/src/index.ts"),
+      "@pharmacy/domain-core": path.resolve(__dirname, "../../packages/domain-core/src/index.ts"),
+      "@pharmacy/domain-search": path.resolve(__dirname, "../../packages/domain-search/src/index.ts"),
+      "@pharmacy/domain-catalog": path.resolve(__dirname, "../../packages/domain-catalog/src/index.ts"),
+      "@pharmacy/domain-location": path.resolve(__dirname, "../../packages/domain-location/src/index.ts"),
+      "@pharmacy/domain-cart": path.resolve(__dirname, "../../packages/domain-cart/src/index.ts"),
+      "@pharmacy/domain-checkout": path.resolve(__dirname, "../../packages/domain-checkout/src/index.ts"),
+      "@pharmacy/domain-orders": path.resolve(__dirname, "../../packages/domain-orders/src/index.ts"),
+      "@pharmacy/domain-prescriptions": path.resolve(__dirname, "../../packages/domain-prescriptions/src/index.ts"),
+      "@pharmacy/domain-account": path.resolve(__dirname, "../../packages/domain-account/src/index.ts"),
+      "@pharmacy/domain-ops": path.resolve(__dirname, "../../packages/domain-ops/src/index.ts"),
+      "@pharmacy/domain-courier": path.resolve(__dirname, "../../packages/domain-courier/src/index.ts"),
+      "@pharmacy/ui-web": path.resolve(__dirname, "../../packages/ui-web/src/index.ts"),
+      "@pharmacy/ui-native": path.resolve(__dirname, "../../packages/ui-native/src/index.ts"),
+      "@pharmacy/design-tokens": path.resolve(__dirname, "../../packages/design-tokens/src/index.ts"),
     },
+  },
+  server: {
+    fs: {
+      allow: [
+        path.resolve(__dirname),
+        path.resolve(__dirname, "../../"),
+        path.resolve(__dirname, "../../packages"),
+      ],
+    },
+  },
+  optimizeDeps: {
+    include: [
+      "@pharmacy/contracts",
+      "@pharmacy/api-client"
+    ]
   },
   build: {
     rollupOptions: {

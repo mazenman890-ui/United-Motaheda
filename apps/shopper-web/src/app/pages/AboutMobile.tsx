@@ -16,8 +16,10 @@ export function AboutMobile() {
   const [searchParams] = useSearchParams();
   const isArabic = lang === "ar";
   const brandName = isArabic ? "صيدليات المتحدة" : "United Pharmacies";
-  const selectedBranchId = searchParams.get("branch") ?? locations[0]?.id ?? "gardenia";
-  const selectedBranch = locations.find((location) => location.id === selectedBranchId) ?? locations[0];
+  const defaultBranchId = locations.find((branch) => branch.isPrimary)?.id ?? locations[0]?.id ?? "gardenia";
+  const selectedBranchId = searchParams.get("branch") ?? defaultBranchId;
+  const defaultBranch = locations.find((branch) => branch.id === defaultBranchId) ?? locations[0];
+  const selectedBranch = locations.find((location) => location.id === selectedBranchId) ?? defaultBranch;
   const branchDetailHref = (branchId: string) => `/about?branch=${branchId}#branch-details`;
 
   const storyCards = [
