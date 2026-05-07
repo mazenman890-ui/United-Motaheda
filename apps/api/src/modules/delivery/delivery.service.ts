@@ -59,8 +59,8 @@ export class DeliveryService {
     matched:
       | {
           branch: Awaited<ReturnType<PrismaService["branch"]["findMany"]>>[number];
-          zone: Awaited<ReturnType<PrismaService["branch"]["findMany"]>>[number]["zones"][number];
-        }
+          zone: any;
+      }
       | null;
   }> {
     const now = new Date();
