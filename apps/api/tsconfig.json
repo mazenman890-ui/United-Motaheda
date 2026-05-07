@@ -1,13 +1,13 @@
 {
   "compilerOptions": {
     "module": "CommonJS",
-    "declaration": true,
+    "declaration": false,
     "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
     "target": "ES2021",
-    "sourceMap": true,
+    "sourceMap": false,
     "outDir": "../../dist",
     "rootDir": "../../",
     "baseUrl": "./",
@@ -15,14 +15,11 @@
     "paths": {
       "@pharmacy/contracts": ["../../packages/contracts/src/index.ts"]
     },
-    "incremental": true,
     "skipLibCheck": true,
     "strict": false,
     "noImplicitAny": false,
-    "strictNullChecks": false,
     "noEmitOnError": false,
     "ignoreDeprecations": "6.0"
   },
-  "include": ["src/**/*.ts", "prisma/**/*.ts", "../../packages/contracts/src/**/*.ts"],
-  "exclude": ["node_modules", "../../dist"]
+  "include": ["src/**/*.ts", "prisma/**/*.ts", "../../packages/contracts/src/**/*.ts"]
 }
