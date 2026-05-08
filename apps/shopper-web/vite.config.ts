@@ -50,17 +50,60 @@ export default defineConfig({
     ]
   },
   build: {
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
-          if (id.includes("react-router")) return "router";
-          if (id.includes("@heroicons")) return "heroicons";
-          if (id.includes("recharts")) return "charts";
-          if (id.includes("@radix-ui")) return "radix";
+          // React ecosystem (core only, no deps that import React)
+          if (id.includes("react") || id.includes("scheduler") || id.includes("use-sync-external-store")) {
+            return "react-core";
+          }
+          // React DOM - separate to avoid circular
+          if (id.includes("react-dom") || id.includes("react-refresh")) {
+            return "react-dom";
+          }
+          // Routing (may import React, but not vice versa in circular way)
+          if (id.includes("react-router") || id.includes("@remix-run") || id.includes("history")) {
+            return "router";
+          }
+          // Animation (imports React)
+          if (id.includes("framer-motion") || id.includes("motion")) {
+            return "motion";
+          }
+          // UI libraries
+          if (id.includes("@radix-ui")) return "ui-libs";
           if (id.includes("@mui")) return "mui";
-          if (id.includes("lucide-react")) return "icons";
-          if (id.includes("motion")) return "motion";
+          // Icons (should be standalone)
+          if (id.includes("lucide-react") || id.includes("@heroicons") || id.includes("lucide")) {
+            return "icons";
+          }
+          // Charts (large, standalone)
+          if (id.includes("recharts") || id.includes("d3") || id.includes("victory")) {
+            return "charts";
+          }
+          // Utilities (small, standalone)
+          if (id.includes("lodash") || id.includes("date-fns") || id.includes("dayjs") || id.includes("clsx") || id.includes("tailwind-merge")) {
+            return "utils";
+          }
+          // Data layer (may import React context)
+          if (id.includes("@supabase") || id.includes("@tanstack") || id.includes("swr")) {
+            return "data";
+          }
+          // State management
+          if (id.includes("zustand") || id.includes("jotai") || id.includes("zustand/vanilla")) {
+            return "state";
+          }
+          // Forms (imports React)
+          if (id.includes("react-hook-form") || id.includes("zod") || id.includes("@hookform")) {
+            return "forms";
+          }
+          // Large standalone libs
+          if (id.includes("pdf-lib")) return "pdf";
+          if (id.includes("xlsx")) return "excel";
+          if (id.includes("jsqr")) return "qr";
+          if (id.includes("leaflet") || id.includes("react-leaflet")) return "maps";
+          // Let remaining deps be bundled with their consumers (no catch-all)
           return undefined;
         },
       },
