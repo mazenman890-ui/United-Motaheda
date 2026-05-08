@@ -18,13 +18,11 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 
 export type OrderLifecycleStatus =
   | "pending"
-  | "verified"
-  | "packed"
-  | "ready_for_dispatch"
-  | "out_for_delivery"
+  | "confirmed"
+  | "preparing"
+  | "ready"
+  | "picked_up"
   | "delivered"
-  | "failed_delivery"
-  | "returned"
   | "cancelled";
 
 export type OrderSource = "remote" | "local_pending" | "queued_mutation";
@@ -179,33 +177,38 @@ export function normalizeOrderStatus(value: unknown): OrderLifecycleStatus {
     .toLowerCase()
     .replace(/\s+/g, "_");
 
+  // Database enum values: pending, confirmed, preparing, ready, picked_up, delivered, cancelled
   if (
-    normalized === "verified"
-    || normalized === "packed"
-    || normalized === "ready_for_dispatch"
-    || normalized === "out_for_delivery"
+    normalized === "pending"
+    || normalized === "confirmed"
+    || normalized === "preparing"
+    || normalized === "ready"
+    || normalized === "picked_up"
     || normalized === "delivered"
-    || normalized === "failed_delivery"
-    || normalized === "returned"
     || normalized === "cancelled"
   ) {
     return normalized;
   }
 
-  if (normalized === "processing") {
-    return "verified";
+  // Legacy mappings for backward compatibility
+  if (normalized === "processing" || normalized === "verified") {
+    return "preparing";
   }
 
-  if (normalized === "readyfordispatch") {
-    return "ready_for_dispatch";
+  if (normalized === "packed" || normalized === "ready_for_dispatch") {
+    return "ready";
   }
 
-  if (normalized === "outfordelivery") {
-    return "out_for_delivery";
+  if (normalized === "out_for_delivery" || normalized === "outfordelivery") {
+    return "picked_up";
   }
 
-  if (normalized === "faileddelivery") {
-    return "failed_delivery";
+  if (normalized === "failed_delivery" || normalized === "faileddelivery") {
+    return "delivered"; // or could be cancelled depending on business logic
+  }
+
+  if (normalized === "returned") {
+    return "cancelled";
   }
 
   if (normalized === "canceled") {

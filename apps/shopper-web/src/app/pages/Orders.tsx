@@ -57,32 +57,32 @@ const STATUS_MAP: Record<string, StatusCfg> = {
     border: "border-amber-200",
     Icon: Clock,
   },
-  verified: {
+  confirmed: {
     labelAr: "تم التحقق",
-    labelEn: "Verified",
+    labelEn: "Confirmed",
     color: "text-blue-700",
     bg: "bg-blue-50",
     border: "border-blue-200",
     Icon: CheckCircle2,
   },
-  packed: {
-    labelAr: "تم التعبئة",
-    labelEn: "Packed",
+  preparing: {
+    labelAr: "قيد التجهيز",
+    labelEn: "Preparing",
     color: "text-violet-700",
     bg: "bg-violet-50",
     border: "border-violet-200",
     Icon: Package,
   },
-  ready_for_dispatch: {
+  ready: {
     labelAr: "جاهز للإرسال",
-    labelEn: "Ready for dispatch",
+    labelEn: "Ready",
     color: "text-orange-700",
     bg: "bg-orange-50",
     border: "border-orange-200",
     Icon: ShoppingBag,
   },
-  out_for_delivery: {
-    labelAr: "في الطريق إليك",
+  picked_up: {
+    labelAr: "خارج للتسليم",
     labelEn: "Out for delivery",
     color: "text-teal-700",
     bg: "bg-teal-50",
@@ -121,7 +121,7 @@ function getStatusCfg(status: string): StatusCfg {
 }
 
 function isLiveStatus(status: string) {
-  return status === "out_for_delivery" || status === "ready_for_dispatch";
+  return status === "picked_up" || status === "ready";
 }
 
 function formatDate(iso: string, lang: "ar" | "en"): string {

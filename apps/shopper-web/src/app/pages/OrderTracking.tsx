@@ -34,25 +34,25 @@ const STATUS_TIMELINE = [
     color: "slate",
   },
   {
-    key: "verified",
-    labelEn: "Order verified",
-    labelAr: "تم التحقق من الطلب",
+    key: "confirmed",
+    labelEn: "Order confirmed",
+    labelAr: "تم تأكيد الطلب",
     descEn: "Items confirmed and available",
     descAr: "تم التأكد من توفر الأصناف",
     Icon: CheckCircle2,
     color: "blue",
   },
   {
-    key: "packed",
-    labelEn: "Packed",
-    labelAr: "تم التعبئة",
-    descEn: "Order has been carefully packed",
-    descAr: "تم تعبئة الطلب بعناية",
+    key: "preparing",
+    labelEn: "Preparing",
+    labelAr: "قيد التجهيز",
+    descEn: "Order is being prepared",
+    descAr: "جاري تجهيز الطلب",
     Icon: Package,
     color: "violet",
   },
   {
-    key: "ready_for_dispatch",
+    key: "ready",
     labelEn: "Ready for dispatch",
     labelAr: "جاهز للإرسال",
     descEn: "Waiting for driver pickup",
@@ -61,9 +61,9 @@ const STATUS_TIMELINE = [
     color: "amber",
   },
   {
-    key: "out_for_delivery",
+    key: "picked_up",
     labelEn: "Out for delivery",
-    labelAr: "في طريقه إليك",
+    labelAr: "خارج للتسليم",
     descEn: "Driver is on the way",
     descAr: "السائق في الطريق",
     Icon: Truck,
@@ -497,7 +497,7 @@ export default function OrderTracking() {
 
   const currentStatus = snapshot?.order.status ?? "";
   const isDelivered = currentStatus === "delivered";
-  const isOutForDelivery = currentStatus === "out_for_delivery";
+  const isOutForDelivery = currentStatus === "picked_up";
   const connectionState = snapshot?.connection.state ?? "order_lookup_fallback";
   const liveEnabled = !offline && connectionState === "token_live";
   const showLiveBadge = liveEnabled && !loading && !error;

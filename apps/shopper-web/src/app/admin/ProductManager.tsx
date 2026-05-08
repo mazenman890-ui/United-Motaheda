@@ -45,12 +45,19 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import { useCatalog } from "../../contexts/CatalogContext";
 import type { CatalogProduct } from "../../app/catalog";
 import {
-  bulkAddProducts,
   lookupBarcode,
-  addProduct,
-  updateProduct,
   type ProductMutationPayload,
 } from "../../services/googleSheetsApi";
+import {
+  fetchAdminProducts,
+  updateAdminProduct,
+  createAdminProduct,
+  deleteAdminProduct,
+  handleApiError,
+  showSuccessToast,
+  showErrorToast,
+  type AdminProduct,
+} from "../../services/adminSupabaseApi";
 import { cn } from "../components/UI";
 import {
   AdminEmptyState,
@@ -337,7 +344,10 @@ const ProductTableRow = memo(function ProductTableRow({
 export default function ProductManager() {
   const { user } = useAuth();
   const { lang } = useLanguage();
-  const { products, categories, isLoading, error: catalogError, refreshCatalog } = useCatalog();
+  const { categories, isLoading, error: catalogError, refreshCatalog } = useCatalog();
+  const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productsError, setProductsError] = useState("");
 
   const userRole = (user?.role ?? "customer") as AdminRole;
 
@@ -365,9 +375,9 @@ export default function ProductManager() {
     setDialogOpen(true);
   }, []);
 
-  const openEditDialog = useCallback((product: Product) => {
+  const openEditDialog = useCallback((product: AdminProduct) => {
     setForm({
-      id: product.id,
+      id: product.code,
       barcode: product.barcode ?? "",
       name: product.name,
       nameAr: product.nameAr ?? "",
@@ -378,6 +388,26 @@ export default function ProductManager() {
     });
     setFormError("");
     setDialogOpen(true);
+  }, []);
+
+  // Load products from Supabase
+  useEffect(() => {
+    const loadProducts = async () => {
+      setProductsLoading(true);
+      setProductsError("");
+      try {
+        const adminProducts = await fetchAdminProducts();
+        setProducts(adminProducts);
+      } catch (error) {
+        const errorMessage = handleApiError(error, "Failed to load products");
+        setProductsError(errorMessage);
+        showErrorToast(error, "Failed to load products");
+      } finally {
+        setProductsLoading(false);
+      }
+    };
+
+    loadProducts();
   }, []);
 
   const filteredProducts = useMemo(() => {
@@ -423,7 +453,7 @@ export default function ProductManager() {
     setFormError("");
     try {
       const payload = {
-        Code: form.id || "",
+        Code: form.id || form.code || `PROD-${Date.now()}`,
         Barcode: form.barcode || "",
         Name: form.name,
         Name_Ar: form.nameAr || "",
@@ -435,27 +465,34 @@ export default function ProductManager() {
         Category_Name_En: categories.find((c) => c.id === form.categoryId)?.nameEn || "",
       } satisfies ProductMutationPayload;
 
+      let updatedProduct: AdminProduct;
+      
       if (form.id) {
-        await updateProduct(payload);
+        // Update existing product
+        updatedProduct = await updateAdminProduct(payload);
+        showSuccessToast(lang === "ar" ? "تم تحديث المنتج بنجاح." : "Product updated successfully.");
       } else {
-        await addProduct(payload);
+        // Create new product
+        updatedProduct = await createAdminProduct(payload);
+        showSuccessToast(lang === "ar" ? "تم إضافة المنتج بنجاح." : "Product added successfully.");
       }
 
-      toast.success(
-        lang === "ar"
-          ? form.id ? "تم تحديث المنتج بنجاح." : "تم إضافة المنتج بنجاح."
-          : form.id ? "Product updated successfully." : "Product added successfully.",
-      );
+      // Update local state
+      setProducts(prev => {
+        const updated = prev.filter(p => p.id !== updatedProduct.id);
+        return [updatedProduct, ...updated];
+      });
+
       setDialogOpen(false);
-      await refreshCatalog();
+      
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Save failed.";
+      const msg = handleApiError(err, "Save failed");
       setFormError(msg);
-      toast.error(msg);
+      showErrorToast(err, "Save failed");
     } finally {
       setSubmitting(false);
     }
-  }, [form, lang, refreshCatalog, categories]);
+  }, [form, lang, categories]);
 
   const handleCsvImport = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -514,7 +551,7 @@ export default function ProductManager() {
         />
       </div>
 
-      <AdminErrorBanner message={error || catalogError || ""} />
+      <AdminErrorBanner message={error || catalogError || productsError || ""} />
 
       <AdminSectionCard
         eyebrow={lang === "ar" ? "كتالوج المنتجات" : "Product catalog"}
@@ -554,11 +591,19 @@ export default function ProductManager() {
             )}
             <button
               type="button"
-              onClick={() => refreshCatalog()}
-              disabled={isLoading}
+              onClick={async () => {
+                try {
+                  const adminProducts = await fetchAdminProducts();
+                  setProducts(adminProducts);
+                  showSuccessToast(lang === "ar" ? "تم تحديث المنتجات" : "Products refreshed");
+                } catch (error) {
+                  showErrorToast(error, "Failed to refresh products");
+                }
+              }}
+              disabled={isLoading || productsLoading}
               className="inline-flex h-9 items-center justify-center gap-1 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-60"
             >
-              <ArrowPathIcon className={cn("h-4 w-4", isLoading && "animate-spin")} />
+              <ArrowPathIcon className={cn("h-4 w-4", (isLoading || productsLoading) && "animate-spin")} />
               {lang === "ar" ? "تحديث" : "Refresh"}
             </button>
             <button
@@ -610,7 +655,7 @@ export default function ProductManager() {
 
         {/* Content */}
         <div className="px-4 pb-2 pt-3">
-          {isLoading ? (
+          {isLoading || productsLoading ? (
             <AdminTableSkeleton rows={8} />
           ) : paginatedProducts.length === 0 ? (
             <AdminEmptyState

@@ -74,8 +74,8 @@ export default function DriverApp() {
 
   const summary = useMemo(
     () => ({
-      ready: orders.filter((order) => order.status === "ready_for_dispatch").length,
-      out: orders.filter((order) => order.status === "out_for_delivery").length,
+      ready: orders.filter((order) => order.status === "ready").length,
+      out: orders.filter((order) => order.status === "picked_up").length,
       queued: queuedScans.length,
     }),
     [orders, queuedScans.length],

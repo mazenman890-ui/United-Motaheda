@@ -7,6 +7,7 @@ interface SkeletonProps {
   aspectRatio?: number;
   className?: string;
   count?: number;
+  style?: React.CSSProperties;
 }
 
 /**
@@ -57,6 +58,58 @@ export function ProductCardSkeleton() {
   );
 }
 
+/** Enhanced product grid skeleton with responsive layout */
+export function ProductGridSkeleton({ 
+  count = 24, 
+  showHeader = true,
+  showFilters = true 
+}: { 
+  count?: number; 
+  showHeader?: boolean;
+  showFilters?: boolean;
+}) {
+  return (
+    <div className={styles.pageLayoutSkeleton}>
+      {showHeader && <HeaderSkeleton />}
+      
+      <div className={styles.pageContent}>
+        {showFilters && (
+          <div className={styles.sidebar}>
+            <div className={styles.filterSection}>
+              <Skeleton variant="text" height={20} width="60%" />
+              <div style={{ marginTop: '12px' }}>
+                <ListItemSkeleton count={8} />
+              </div>
+            </div>
+            
+            <div className={styles.filterSection}>
+              <Skeleton variant="text" height={20} width="50%" />
+              <div style={{ marginTop: '12px' }}>
+                <Skeleton variant="text" height={32} width="100%" className={styles.roundedSkeleton} />
+                <Skeleton variant="text" height={32} width="100%" className={`${styles.roundedSkeleton} ${styles.marginTop}`} />
+                <Skeleton variant="text" height={32} width="100%" className={`${styles.roundedSkeleton} ${styles.marginTop}`} />
+              </div>
+            </div>
+          </div>
+        )}
+        
+        <div className={styles.mainContent}>
+          <div className={styles.productGridHeader}>
+            <Skeleton variant="text" height={28} width="40%" />
+            <Skeleton variant="text" height={32} width="120px" className={styles.roundedSkeleton} />
+          </div>
+          
+          <div className={styles.productGrid}>
+            {Array.from({ length: count }).map((_, i) => (
+              <ProductCardSkeleton key={i} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Category card placeholder */
 export function CategoryCardSkeleton() {
   return (
@@ -69,16 +122,6 @@ export function CategoryCardSkeleton() {
   );
 }
 
-/** Responsive product grid of skeletons */
-export function ProductGridSkeleton({ count = 6 }: { count?: number }) {
-  return (
-    <div className={styles.productGrid}>
-      {Array.from({ length: count }).map((_, i) => (
-        <ProductCardSkeleton key={i} />
-      ))}
-    </div>
-  );
-}
 
 /** Cart line-item skeleton */
 export function CartItemSkeleton() {
@@ -133,16 +176,45 @@ export function ListItemSkeleton({ count = 6 }: { count?: number }) {
 /** Full page layout skeleton — header + sidebar + grid */
 export function PageLayoutSkeleton() {
   return (
-    <div className={styles.pageLayoutSkeleton}>
-      <HeaderSkeleton />
-      <SearchBarSkeleton />
-      <div className={styles.pageContent}>
-        <div className={styles.sidebar}>
-          <ListItemSkeleton count={8} />
+    <ProductGridSkeleton count={24} showHeader={true} showFilters={true} />
+  );
+}
+
+/** Search results skeleton */
+export function SearchResultsSkeleton({ count = 12 }: { count?: number }) {
+  return (
+    <div className={styles.searchResultsSkeleton}>
+      <div className={styles.searchHeader}>
+        <Skeleton variant="text" height={32} width="60%" />
+        <Skeleton variant="text" height={16} width="30%" />
+      </div>
+      
+      <div className={styles.productGrid}>
+        {Array.from({ length: count }).map((_, i) => (
+          <ProductCardSkeleton key={i} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Category page skeleton */
+export function CategoryPageSkeleton({ productCount = 18 }: { productCount?: number }) {
+  return (
+    <div className={styles.categoryPageSkeleton}>
+      <div className={styles.categoryHeader}>
+        <Skeleton variant="circle" width={64} height={64} />
+        <div className={styles.categoryInfo}>
+          <Skeleton variant="text" height={32} width="40%" />
+          <Skeleton variant="text" height={16} width="60%" />
+          <Skeleton variant="text" height={14} width="30%" />
         </div>
-        <div className={styles.mainContent}>
-          <ProductGridSkeleton count={6} />
-        </div>
+      </div>
+      
+      <div className={styles.productGrid}>
+        {Array.from({ length: productCount }).map((_, i) => (
+          <ProductCardSkeleton key={i} />
+        ))}
       </div>
     </div>
   );

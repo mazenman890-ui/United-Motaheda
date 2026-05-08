@@ -154,11 +154,7 @@ async function fetchFromNetwork(): Promise<RemoteOrderSnapshot[]> {
       created_at,
       status,
       qr_token,
-      order_items (
-        product_id,
-        quantity,
-        product_snapshot
-      )
+      order_items
     `)
     .order("created_at", { ascending: false });
 

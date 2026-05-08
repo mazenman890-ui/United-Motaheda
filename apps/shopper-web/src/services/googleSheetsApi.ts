@@ -684,7 +684,8 @@ function normalizeOrderStatus(value: string): OrderStatus {
 }
 
 function mapCanonicalToLegacyOrderStatus(status: OrderLifecycleStatus): OrderStatus {
-  if (status === "out_for_delivery") {
+  // Map database status to UI OrderStatus
+  if (status === "picked_up") {
     return "Out for Delivery";
   }
 
@@ -696,7 +697,7 @@ function mapCanonicalToLegacyOrderStatus(status: OrderLifecycleStatus): OrderSta
     return "Cancelled";
   }
 
-  if (status === "verified" || status === "packed" || status === "ready_for_dispatch") {
+  if (status === "confirmed" || status === "preparing" || status === "ready") {
     return "Processing";
   }
 
@@ -704,8 +705,10 @@ function mapCanonicalToLegacyOrderStatus(status: OrderLifecycleStatus): OrderSta
 }
 
 function mapLegacyToCanonicalOrderStatus(status: OrderStatus): OrderLifecycleStatus {
+  // Map UI status to database order_status enum values:
+  // pending, confirmed, preparing, ready, picked_up, delivered, cancelled
   if (status === "Out for Delivery") {
-    return "out_for_delivery";
+    return "picked_up";
   }
 
   if (status === "Delivered") {
@@ -717,7 +720,7 @@ function mapLegacyToCanonicalOrderStatus(status: OrderStatus): OrderLifecycleSta
   }
 
   if (status === "Processing") {
-    return "verified";
+    return "preparing";
   }
 
   return "pending";

@@ -354,25 +354,39 @@ export async function updateManagedOrderStatus(
   nextStatus: LogisticsOrderStatus,
 ): Promise<ManagedOrder> {
   const supabase = getSupabaseClient();
-  const { data, error } = await supabase
+
+  // Step 1: Update without select (PostgREST doesn't support embedded relations on PATCH)
+  const { error: updateError } = await supabase
     .from("orders")
     .update({
       status: normalizeOrderStatus(nextStatus),
       updated_at: new Date().toISOString(),
     })
-    .eq("id", orderId)
+    .eq("id", orderId);
+
+  if (updateError) {
+    throw new Error(updateError.message || "Unable to update the order status.");
+  }
+
+  // Step 2: Fetch the updated order with embedded order_items separately
+  const { data, error: fetchError } = await supabase
+    .from("orders")
     .select(
       "id, external_ref, customer_name, customer_phone, customer_address, customer_lat, customer_lng, status, assigned_driver_id, updated_at, created_at, note, total, qr_token, order_items(product_id, quantity, product_snapshot)",
     )
-    .single();
+    .eq("id", orderId);
 
-  if (error) {
-    throw new Error(error.message || "Unable to update the order status.");
+  if (fetchError) {
+    throw new Error(fetchError.message || "Unable to fetch the updated order.");
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error("Order not found after update.");
   }
 
   const drivers = await listDrivers();
   const driversById = new Map(drivers.map((driver) => [driver.id, driver]));
-  return mapToManagedOrder(mapRawOrderRow(data as RawOpsOrderRow), driversById);
+  return mapToManagedOrder(mapRawOrderRow(data[0] as RawOpsOrderRow), driversById);
 }
 
 export async function listDriverManifest(driverId: string) {
@@ -381,7 +395,7 @@ export async function listDriverManifest(driverId: string) {
     .from("orders")
     .select("id, external_ref, customer_name, customer_phone, customer_address, customer_lat, customer_lng, status, assigned_driver_id, updated_at, created_at, note, total, qr_token, order_items(product_id, quantity, product_snapshot)")
     .eq("assigned_driver_id", driverId)
-    .in("status", ["ready_for_dispatch", "out_for_delivery", "failed_delivery"])
+    .in("status", ["ready", "picked_up", "delivered"])
     .order("updated_at", { ascending: false });
 
   if (error) {

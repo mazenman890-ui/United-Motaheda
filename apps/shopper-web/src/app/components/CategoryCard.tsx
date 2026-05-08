@@ -9,8 +9,7 @@ import {
   Stethoscope,
   type LucideIcon,
 } from "lucide-react";
-import { motion } from "framer-motion";
-import { type CSSProperties } from "react";
+import { memo, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { useLanguage } from "../../contexts/LanguageContext";
 import type { CatalogCategory } from "../catalog";
@@ -66,7 +65,7 @@ function getCategoryStyles(category: CatalogCategory) {
 }
 
 /* ─── Category Card ───────────────────────────────────────────── */
-export function CategoryCard({
+export const CategoryCard = memo(function CategoryCard({
   category,
   className,
 }: {
@@ -186,12 +185,12 @@ export function CategoryCard({
                 <span style={{ color: category.theme.color }}>{stockPct}%</span>
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200/80">
-                <motion.div
-                  className="h-full rounded-full"
-                  style={styles.progressBar}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${stockPct}%` }}
-                  transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
+                <div
+                  className="h-full rounded-full transition-all duration-800 ease-out"
+                  style={{
+                    ...styles.progressBar,
+                    width: `${stockPct}%`,
+                  }}
                 />
               </div>
             </div>
@@ -237,10 +236,10 @@ export function CategoryCard({
       </Link>
     </Reveal>
   );
-}
+});
 
 /* ─── Category Pill ───────────────────────────────────────────── */
-export function CategoryPill({ category }: { category: CatalogCategory }) {
+export const CategoryPill = memo(function CategoryPill({ category }: { category: CatalogCategory }) {
   const { lang } = useLanguage();
   const IconComponent = getCategoryIcon(category.icon);
   const displayName = getLocalizedCategoryName(category, lang);
@@ -287,4 +286,4 @@ export function CategoryPill({ category }: { category: CatalogCategory }) {
       </div>
     </Link>
   );
-}
+});

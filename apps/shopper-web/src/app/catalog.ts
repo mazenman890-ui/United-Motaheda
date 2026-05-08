@@ -33,6 +33,22 @@ export type CatalogCategory = {
   imagePosition?: string;
 };
 
+export type CategorySeed = {
+  id: string;
+  names: { ar: string; en: string };
+  icon: string;
+  emoji: string;
+  imageUrl: string;
+  imagePosition?: string;
+  desc: {
+    ar: string;
+    en: string;
+  };
+  theme: CategoryTheme;
+  aliases: string[];
+  keywords: string[];
+};
+
 export type CatalogCategorySearchMetadata = {
   aliases: string[];
   keywords: string[];
@@ -64,19 +80,6 @@ export type CatalogSnapshot = {
 type CachedCatalogSnapshot = {
   cachedAt: number;
   snapshot: CatalogSnapshot;
-};
-
-type CategorySeed = {
-  id: string;
-  names: Record<CatalogLanguage, string>;
-  icon: string;
-  emoji: string;
-  desc: Record<CatalogLanguage, string>;
-  theme: CategoryTheme;
-  imageUrl: string;
-  imagePosition?: string;
-  keywords: string[];
-  aliases: string[];
 };
 
 type CsvRecord = Record<string, string>;
@@ -667,7 +670,7 @@ function writeSnapshotToStorage(snapshot: CatalogSnapshot) {
 
 // ─── Supabase product normalizer ──────────────────────────────────────────────
 
-function normalizeSupabaseProduct(row: Record<string, unknown>, sourceRow: number): CatalogProduct | null {
+export function normalizeSupabaseProduct(row: Record<string, unknown>, sourceRow: number): CatalogProduct | null {
   const nameAr = sanitizeText(row.Name_Ar);
   const nameEnRaw = sanitizeText(row.Name_En);
   const legacyName = sanitizeText(row.Name);
@@ -840,11 +843,16 @@ function scoreSeedMatch(seed: CategorySeed, searchText: string) {
   return bestScore;
 }
 
-function resolveCategory(rawCategoryAr: string, rawCategoryEn: string, productNameAr: string, productNameEn: string) {
+export function resolveCategory(rawCategoryAr: string, rawCategoryEn: string, productNameAr: string, productNameEn: string) {
   const explicitCandidates = [rawCategoryEn, rawCategoryAr]
     .map((value) => normalizeForMatch(value))
     .filter(Boolean);
 
+  const productNameCandidates = [productNameEn, productNameAr]
+    .map((value) => normalizeForMatch(value))
+    .filter(Boolean);
+
+  // Try exact matches first
   for (const candidate of explicitCandidates) {
     const explicitMatch = CATEGORY_ALIAS_TO_ID[candidate];
     if (explicitMatch) {
