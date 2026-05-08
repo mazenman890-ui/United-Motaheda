@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { BranchSchema } from "./branch";
-import { CoordinatesSchema } from "./geo";
+import { BranchSchema } from "./branch.ts";
+import { CoordinatesSchema } from "./geo.ts";
 
 export const CartSnapshotItemSchema = z.object({
   productId: z.string().min(1),

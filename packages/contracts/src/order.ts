@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { CoordinatesSchema } from "./geo";
-import { CartSnapshotSchema } from "./delivery";
+import { CoordinatesSchema } from "./geo.ts";
+import { CartSnapshotSchema } from "./delivery.ts";
 
 export const CheckoutConflictSchema = z.object({
   productId: z.string().min(1),

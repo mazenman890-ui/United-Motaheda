@@ -54,6 +54,46 @@ export function getCachedShopperCatalogSnapshot(): CatalogSnapshot | null {
  *
  * Delegates to `fetchCatalogSnapshot` from `catalog.ts`.
  */
+export async function fetchProductsPage(
+  pageNumber: number,
+  filters?: any,
+): Promise<{
+  products: any[];
+  totalCount: number;
+  hasNextPage: boolean;
+}> {
+  // TODO: implement
+  return { products: [], totalCount: 0, hasNextPage: false };
+}
+
+export async function fetchCategoriesQuick(): Promise<any[]> {
+  // TODO: implement
+  return [];
+}
+
+export function getCachedCategoriesQuick(): any[] | null {
+  // TODO: implement
+  return null;
+}
+
+export async function prefetchProductsPage(pageNumber: number, filters?: any): Promise<void> {
+  // TODO: implement
+}
+
+export function invalidatePageCache(): void {
+  // TODO: implement
+}
+
+/**
+ * Fetches the full product catalog from Supabase with 1 000-row pagination,
+ * normalises every row via `normalizeSupabaseProduct` (which handles NULL
+ * `is_active`, resolves category slugs, deduplicates, and sorts), then caches
+ * the result in both memory and localStorage.
+ *
+ * Pass `forceRefresh = true` to bypass both caches and re-fetch from the DB.
+ *
+ * Delegates to `fetchCatalogSnapshot` from `catalog.ts`.
+ */
 export async function fetchShopperCatalogSnapshot(
   forceRefresh = false,
 ): Promise<CatalogSnapshot> {

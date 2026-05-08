@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CoordinatesSchema } from "./geo";
+import { CoordinatesSchema } from "./geo.ts";
 
 export const GovernorateSchema = z.literal("Cairo");
 export type Governorate = z.infer<typeof GovernorateSchema>;
