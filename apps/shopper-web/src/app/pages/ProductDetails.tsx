@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useLanguage }           from "../../contexts/LanguageContext";
 import { useCart }               from "../../contexts/CartContext";
-import { useCatalog }            from "../../contexts/CatalogContext";
+import { useCatalog, useFullCatalog } from "../../contexts/CatalogContext";
 import { ProductGrid }           from "../components/ProductGrid";
 import { useAlternativeProducts } from "../hooks/useAlternativeProducts";
 import { cn }                    from "../components/UI";
@@ -36,14 +36,18 @@ function ProductDetailsDesktop() {
   const { id }                                          = useParams();
   const { lang, t }                                     = useLanguage();
   const { addToCart }                                   = useCart();
-  const { productsById, featuredProducts, products }     = useCatalog();
+  const { productsById, featuredProducts }               = useCatalog();
+  const { allProducts, allProductsById }                 = useFullCatalog();
   const [added, setAdded]                               = useState(false);
   const [activeImageZoom, setActiveImageZoom]           = useState(false);
 
-  const product = id ? productsById[id] : undefined;
+  const product = id ? (allProductsById[id] ?? productsById[id]) : undefined;
 
+  // allProducts is the stable full-catalog reference — prevents worker re-init
+  // thrash when the display-layer products slice changes (e.g. due to filters on
+  // another route).
   const { alternatives: alternativeProducts } =
-    useAlternativeProducts(product, products, productsById, 4);
+    useAlternativeProducts(product, allProducts, allProductsById, 4);
 
   const medicalInfo = useMemo(
     () =>

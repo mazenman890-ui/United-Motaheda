@@ -14,7 +14,7 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import { useSearchInput } from "../../contexts/SearchContext";
 import { CategoryGrid } from "../components/CategoryGrid";
 import { CatalogSkeletonGrid } from "../components/CatalogPrimitives";
-import { useDebouncedValue } from "../hooks/useDebouncedValue";
+import { useCatalogCategorySearch } from "../hooks/useCatalogCategorySearch";
 import { useIsShopperShell } from "../components/ui/use-mobile";
 import { MobileCategoriesView } from "./ShopperMobileViews";
 import { cn } from "../components/UI";
@@ -113,10 +113,9 @@ export default function Categories() {
 
 /* ─── Desktop View ──────────────────────────────────────────── */
 function CategoriesDesktop() {
-  const { categories, isLoading, categorySearchIndex } = useCatalog(); // ✅ consume the index
+  const { categories, isLoading } = useCatalog();
   const { lang } = useLanguage();
   const { searchQuery, setSearchQuery } = useSearchInput();
-  const debouncedSearch = useDebouncedValue(searchQuery, 180);
 
   const isInitialLoading = isLoading && categories.length === 0;
   const totalAvailable = useMemo(
@@ -124,18 +123,8 @@ function CategoriesDesktop() {
     [categories],
   );
 
-  /* ── Replace the external hook with inline index filtering ── */
-  const filteredCategories = useMemo(() => {
-    const query = debouncedSearch.trim();
-    if (!query) return categories;
-
-    const tokens = query.toLowerCase().split(/\s+/);
-
-    return categories.filter((category) => {
-      const searchable = (categorySearchIndex[category.id] ?? "").toLowerCase();
-      return tokens.every((token) => searchable.includes(token));
-    });
-  }, [categories, debouncedSearch, categorySearchIndex]);
+  // Fuzzy-ranked, non-blocking via useDeferredValue inside the hook
+  const filteredCategories = useCatalogCategorySearch(categories, searchQuery);
 
   return (
     <div className="categories-page min-h-screen bg-[linear-gradient(165deg,#f0fafa_0%,#f7fafb_50%,#fafafa_100%)]">
@@ -183,7 +172,7 @@ function CategoriesDesktop() {
                 </Link>
 
                 <AnimatePresence>
-                  {debouncedSearch.trim() && (
+                  {searchQuery.trim() && (
                     <motion.button
                       initial={{ opacity: 0, scale: 0.85 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -234,7 +223,7 @@ function CategoriesDesktop() {
               </span>
 
               <AnimatePresence>
-                {debouncedSearch.trim() && (
+                {searchQuery.trim() && (
                   <motion.span
                     initial={{ opacity: 0, scale: 0.85 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -247,7 +236,7 @@ function CategoriesDesktop() {
                 )}
               </AnimatePresence>
 
-              {!debouncedSearch.trim() && (
+              {!searchQuery.trim() && (
                 <span className="inline-flex h-7 items-center rounded-lg border border-slate-200/60 bg-slate-50 px-3 text-[11px] font-semibold text-slate-400">
                   {lang === "ar" ? "شبكة موحّدة" : "Unified grid"}
                 </span>
@@ -272,7 +261,7 @@ function CategoriesDesktop() {
         ) : (
           <CategoryEmptyState
             lang={lang}
-            hasSearch={debouncedSearch.trim().length > 0}
+            hasSearch={searchQuery.trim().length > 0}
             onClear={() => setSearchQuery("")}
           />
         )}
