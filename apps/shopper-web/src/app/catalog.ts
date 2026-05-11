@@ -82,8 +82,6 @@ type CachedCatalogSnapshot = {
   snapshot: CatalogSnapshot;
 };
 
-type CsvRecord = Record<string, string>;
-
 const CACHE_KEY = "united-pharmacies-catalog-v8";
 const CACHE_TTL_MS = 1000 * 60 * 15;
 const FALLBACK_CATEGORY_ID = "general-healthcare";
@@ -565,17 +563,6 @@ function sanitizeBarcode(value: string) {
   return sanitizeText(value).replace(/[^\p{Letter}\p{Number}-]+/gu, "");
 }
 
-function pickFirstNonEmpty(...values: Array<unknown>) {
-  for (const value of values) {
-    const sanitized = sanitizeText(value);
-    if (sanitized) {
-      return sanitized;
-    }
-  }
-
-  return "";
-}
-
 function parseNumber(value: string) {
   const numericText = sanitizeText(value).replace(/,/g, "");
   const parsed = Number(numericText);
@@ -760,76 +747,6 @@ async function fetchAllProductRows(): Promise<Record<string, unknown>[]> {
   return allRows;
 }
 
-// ─── Legacy CSV helpers (kept as fallback only) ───────────────────────────────
-
-function parseCsv(text: string) {
-  const rows: string[][] = [];
-  let currentRow: string[] = [];
-  let currentField = "";
-  let inQuotes = false;
-
-  for (let index = 0; index < text.length; index += 1) {
-    const character = text[index];
-    const nextCharacter = text[index + 1];
-
-    if (character === '"') {
-      if (inQuotes && nextCharacter === '"') {
-        currentField += '"';
-        index += 1;
-        continue;
-      }
-
-      inQuotes = !inQuotes;
-      continue;
-    }
-
-    if (!inQuotes && character === ",") {
-      currentRow.push(currentField);
-      currentField = "";
-      continue;
-    }
-
-    if (!inQuotes && (character === "\n" || character === "\r")) {
-      if (character === "\r" && nextCharacter === "\n") {
-        index += 1;
-      }
-
-      currentRow.push(currentField);
-      rows.push(currentRow);
-      currentRow = [];
-      currentField = "";
-      continue;
-    }
-
-    currentField += character;
-  }
-
-  currentRow.push(currentField);
-
-  if (currentRow.some((value) => value.length > 0)) {
-    rows.push(currentRow);
-  }
-
-  return rows;
-}
-
-function normalizeHeaders(headers: string[]) {
-  return headers.map((header) =>
-    sanitizeText(header)
-      .toLowerCase()
-      .replace(/\(.*?\)/g, "")
-      .replace(/[^\p{Letter}\p{Number}]+/gu, "_")
-      .replace(/^_+|_+$/g, ""),
-  );
-}
-
-function createCsvRecord(headers: string[], values: string[]) {
-  return headers.reduce<CsvRecord>((accumulator, header, index) => {
-    accumulator[header] = sanitizeText(values[index] ?? "");
-    return accumulator;
-  }, {});
-}
-
 function scoreSeedMatch(seed: CategorySeed, searchText: string) {
   let bestScore = 0;
 
@@ -865,10 +782,6 @@ export function resolveCategory(rawCategoryAr: string, rawCategoryEn: string, pr
     .map((value) => normalizeForMatch(value))
     .filter(Boolean);
 
-  const productNameCandidates = [productNameEn, productNameAr]
-    .map((value) => normalizeForMatch(value))
-    .filter(Boolean);
-
   // Try exact matches first
   for (const candidate of explicitCandidates) {
     const explicitMatch = CATEGORY_ALIAS_TO_ID[candidate];
@@ -899,120 +812,6 @@ export function resolveCategory(rawCategoryAr: string, rawCategoryEn: string, pr
   return bestSeed;
 }
 
-function resolveStockFromRecord(record: CsvRecord) {
-  const rawStockCell = sanitizeText(
-    record.stock || record.stock_quantity || record.quantity || record.qty || "",
-  );
-  const parsedNumeric = parseNumber(rawStockCell);
-  const stock = Math.max(parsedNumeric ?? 0, 0);
-  const hasExplicitQuantity = rawStockCell !== "" && parsedNumeric !== null;
-
-  if (hasExplicitQuantity) {
-    return { stock, inStock: stock > 0.01 };
-  }
-
-  const status = normalizeForMatch(
-    record.stock_status ||
-      record.availability ||
-      record.availability_status ||
-      record.status ||
-      "",
-  );
-
-  if (!status) {
-    return { stock, inStock: stock > 0.01 };
-  }
-
-  const looksOut =
-    status.includes("out of stock") ||
-    status.includes("unavailable") ||
-    status.includes("sold out") ||
-    status.includes("غير متوفر");
-
-  if (looksOut) {
-    return { stock: 0, inStock: false };
-  }
-
-  const looksIn =
-    status.includes("in stock") ||
-    status.includes("available") ||
-    status.includes("low stock") ||
-    status.includes("متوفر");
-
-  if (looksIn) {
-    return { stock: stock > 0.01 ? stock : 1, inStock: true };
-  }
-
-  return { stock: stock > 0.01 ? stock : 1, inStock: true };
-}
-
-function normalizeCatalogProduct(record: CsvRecord, sourceRow: number) {
-  const nameAr = pickFirstNonEmpty(
-    record.name_ar,
-    record.name_arabic,
-    record.arabic_name,
-    record.namear,
-  );
-  const nameEnRaw = pickFirstNonEmpty(
-    record.name_en,
-    record.name_english,
-    record.english_name,
-    record.nameen,
-  );
-  const legacyName = pickFirstNonEmpty(
-    record.product_name,
-    record.name,
-    record.product,
-    record.item_name,
-  );
-  const name = nameAr || nameEnRaw || legacyName;
-  const nameEn = nameEnRaw && nameEnRaw !== name ? nameEnRaw : undefined;
-
-  const price = parseNumber(
-    pickFirstNonEmpty(record.price_egp, record.price, record.unit_price, record.selling_price),
-  );
-
-  if (!name || price === null || price <= 0) {
-    return null;
-  }
-
-  const { stock, inStock } = resolveStockFromRecord(record);
-  const rawCategoryAr = pickFirstNonEmpty(
-    record.category_ar,
-    record.category_arabic,
-    record.category_name_ar,
-    record.category_name_arabic,
-  );
-  const rawCategoryEn = pickFirstNonEmpty(
-    record.category_name_en,
-    record.category_en,
-    record.category_english,
-    record.category_name,
-    record.category,
-  );
-  const categorySeed = resolveCategory(rawCategoryAr, rawCategoryEn, nameAr || name, nameEnRaw || name);
-  const code = pickFirstNonEmpty(record.code, record.product_code, record.sku);
-  const barcode = sanitizeBarcode(pickFirstNonEmpty(record.barcode, record.ean, record.upc));
-  const imageUrl = pickFirstNonEmpty(record.image_url, record.image, record.image_link, record.photo);
-  const idSeed = code || barcode || `${categorySeed.id}-${name}`;
-
-  return {
-    id: `${slugify(idSeed)}-${sourceRow}`,
-    code,
-    barcode,
-    name,
-    nameAr: nameAr || undefined,
-    nameEn,
-    price: Number(price.toFixed(2)),
-    stock: Number(stock.toFixed(2)),
-    inStock,
-    category: categorySeed.id,
-    categoryName: categorySeed.names.ar,
-    categoryNameEn: categorySeed.names.en,
-    imageUrl: isValidHttpUrl(imageUrl) ? imageUrl : undefined,
-    sourceRow,
-  } satisfies CatalogProduct;
-}
 
 function buildCategoryFromSeed(seed: CategorySeed, count: number, inStockCount: number) {
   return {

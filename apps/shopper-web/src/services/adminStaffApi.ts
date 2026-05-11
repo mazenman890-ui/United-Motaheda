@@ -3,7 +3,6 @@
 // The solution: Create user profiles directly + provide clear instructions to admins
 
 import { getSupabaseClient } from "../lib/supabaseClient";
-import { toast } from "sonner";
 
 export async function createStaffUserViaSuperAdmin(staffData: {
   fullName: string;

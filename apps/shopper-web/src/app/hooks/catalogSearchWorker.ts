@@ -160,7 +160,6 @@ const pendingRequests = new Map<number, {
 }>();
 
 let lastInitProducts:    CatalogProduct[] | null = null;
-let lastInitProductCount = 0;
 
 // ─── Worker factory ───────────────────────────────────────────────────────────
 
@@ -271,8 +270,7 @@ export function ensureCatalogSearchWorkerInit(
   if (products.length === 0) return;
   if (!options.force && products === lastInitProducts) return;
 
-  lastInitProducts     = products;
-  lastInitProductCount = products.length;
+  lastInitProducts = products;
 
   ensurePool();
 
@@ -298,8 +296,7 @@ export function terminateCatalogSearchWorker(): void {
   }
   pendingRequests.clear();
 
-  lastInitProducts     = null;
-  lastInitProductCount = 0;
+  lastInitProducts = null;
 }
 
 // ─── Request dispatch ─────────────────────────────────────────────────────────

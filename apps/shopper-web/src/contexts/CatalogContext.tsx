@@ -125,8 +125,6 @@ const CatalogContext = createContext<CatalogContextType | null>(null);
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
-const PAGE_SIZE_DISPLAY = 24;
-
 export function CatalogProvider({ children }: { children: ReactNode }) {
   // ── Display-layer state (what the grid shows) ──────────────────────────────
   const [products, setProducts] = useState<CatalogProduct[]>(
@@ -446,15 +444,15 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
         id:             p.id,
         code:           p.code,
         barcode:        p.barcode,
-        nameAr:         p.nameAr,
-        nameEn:         p.nameEn,
+        nameAr:         p.nameAr ?? "",
+        nameEn:         p.nameEn ?? "",
         category:       p.category,
         categoryName:   p.categoryName,
         categoryNameEn: p.categoryNameEn,
         price:          p.price,
         stock:          p.stock,
         inStock:        p.inStock,
-        imageUrl:       p.imageUrl,
+        imageUrl:       p.imageUrl ?? "",
       })),
     [allProductsMap, productMap],
   );

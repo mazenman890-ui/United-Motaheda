@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   ArrowUpDown,
   CheckCircle2,
-  ChevronDown,
   LayoutGrid,
   PackageSearch,
   SlidersHorizontal,
@@ -26,7 +25,6 @@ import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { CatalogSkeletonGrid } from "../components/CatalogPrimitives";
 import { getLocalizedCategoryName } from "../localization";
 import { useCatalogProductSearch, type CatalogProductSort } from "../hooks/useCatalogProductSearch";
-import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { MobileCategoryDetailsView } from "./ShopperMobileViews";
 import { FilterSidebar } from "../components/FilterSidebar";
 
@@ -105,28 +103,6 @@ function MetricTile({
   );
 }
 
-/* ─── Filter Chip ────────────────────────────────────────────── */
-function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return (
-    <motion.span
-      initial={{ opacity: 0, scale: 0.85 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.85 }}
-      className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 pl-2.5 pr-1.5 text-[11px] font-black text-teal-700"
-    >
-      {label}
-      <button
-        type="button"
-        onClick={onRemove}
-        className="flex h-4 w-4 items-center justify-center rounded-md bg-teal-100 text-teal-600 transition-colors hover:bg-teal-200"
-        aria-label="Remove filter"
-      >
-        <X className="h-2.5 w-2.5" />
-      </button>
-    </motion.span>
-  );
-}
-
 /* ─── Sort Segment ───────────────────────────────────────────── */
 function SortSegment({
   options,
@@ -163,56 +139,6 @@ function SortSegment({
         );
       })}
     </div>
-  );
-}
-
-/* ─── Stock Toggle ───────────────────────────────────────────── */
-function StockToggle({
-  checked,
-  label,
-  onChange,
-}: {
-  checked: boolean;
-  label: string;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <motion.button
-      whileTap={{ scale: 0.98 }}
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={cn(
-        "flex items-center justify-between gap-3 rounded-xl border px-4 py-2.5 text-sm font-black transition-all duration-200",
-        checked
-          ? "border-teal-200 bg-teal-50 text-slate-900 shadow-[0_4px_14px_rgba(20,184,166,0.10)]"
-          : "border-slate-200/70 bg-white/80 text-slate-600 hover:bg-white",
-      )}
-    >
-      <div className="flex items-center gap-2">
-        <motion.div
-          animate={{ backgroundColor: checked ? "rgb(20,184,166)" : "rgb(241,245,249)" }}
-          className="flex h-6 w-6 items-center justify-center rounded-lg"
-        >
-          {checked
-            ? <CheckCircle2 className="h-3.5 w-3.5 text-white" />
-            : <Tag className="h-3.5 w-3.5 text-slate-400" />
-          }
-        </motion.div>
-        <span className="whitespace-nowrap">{label}</span>
-      </div>
-      <span className={cn(
-        "relative inline-flex h-5 w-9 items-center rounded-full border-2 transition-all duration-300",
-        checked ? "border-teal-400 bg-teal-500" : "border-slate-300 bg-slate-200",
-      )}>
-        <motion.span
-          animate={{ x: checked ? 16 : 2 }}
-          transition={{ type: "spring", stiffness: 500, damping: 30 }}
-          className="inline-block h-3 w-3 rounded-full bg-white shadow-sm"
-        />
-      </span>
-    </motion.button>
   );
 }
 
@@ -295,19 +221,6 @@ function CategoryDetailsDesktop() {
   const description = lang === "ar" ? category.descAr : category.descEn;
   const hasFilters = onlyInStock || searchQuery.trim().length > 0;
   const stockPct = category.count > 0 ? Math.round((category.inStockCount / category.count) * 100) : 0;
-
-  const activeFilterTags = [
-    searchQuery.trim()
-      ? { key: "q", label: `"${searchQuery.trim()}"`, onRemove: () => setSearchQuery("") }
-      : null,
-    onlyInStock
-      ? {
-          key: "stock",
-          label: lang === "ar" ? "المتاح فقط" : "In stock only",
-          onRemove: () => setOnlyInStock(false),
-        }
-      : null,
-  ].filter(Boolean) as { key: string; label: string; onRemove: () => void }[];
 
   return (
     <div className="category-details-page min-h-screen bg-[linear-gradient(165deg,#f0fafa_0%,#f7fafb_50%,#fafafa_100%)]">

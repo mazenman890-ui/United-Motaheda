@@ -16,7 +16,6 @@ import {
 import {
   ArrowPathIcon,
   CheckCircleIcon,
-  ClipboardDocumentCheckIcon,
   ClipboardDocumentListIcon,
   MagnifyingGlassIcon,
   TruckIcon,

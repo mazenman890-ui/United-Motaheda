@@ -29,7 +29,6 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import { useSearchInput } from "../../contexts/SearchContext";
 import {
   getCatalogProductImage,
-  type CatalogCategory,
   type CatalogProduct,
 } from "../catalog";
 import {

@@ -106,10 +106,6 @@ interface WorkerResponse {
   error?:     string;
 }
 
-interface ReadyMessage {
-  type: "READY";
-}
-
 interface InitProgressMessage {
   type: "INIT_PROGRESS";
   status: "building" | "ready";
@@ -284,18 +280,13 @@ function executeSearch(msg: SearchMessage): string[] {
   // When the index returns an empty set (query too unusual) we fall back to
   // the full linear scan so no results are ever missed.
   let candidateIds: ReadonlySet<string> | null = null;
-  let useFallback = false;
 
   if (searchIndex && searchIndex.productCount > 0) {
     const candidates = queryIndexCandidates(searchIndex, query);
     if (candidates.size > 0) {
       candidateIds = candidates;
-    } else {
-      // Index miss — possible for very unusual queries; fall back to linear
-      useFallback = true;
     }
-  } else {
-    useFallback = true;
+    // else: index miss — fall back to linear scan below
   }
 
   // ── Step 2: Score candidates ──────────────────────────────────────────────
@@ -444,7 +435,7 @@ function handleInit(data: InitMessage): void {
 
 // ─── Message router ───────────────────────────────────────────────────────────
 
-function processSearchMessage(data: SearchMessage, event: MessageEvent): void {
+function processSearchMessage(data: SearchMessage, _event: MessageEvent): void {
   // Update local generation counter (SharedArrayBuffer is the authoritative
   // source when available; this is the fallback)
   if (typeof data.generation === "number") {

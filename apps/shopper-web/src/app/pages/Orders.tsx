@@ -205,39 +205,6 @@ function OrderSkeleton() {
   );
 }
 
-// ─── Empty state ──────────────────────────────────────────────────────────────
-
-function EmptyOrders({ lang }: { lang: "ar" | "en" }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="rounded-[2rem] border border-slate-200/80 bg-white p-16 text-center shadow-sm"
-    >
-      <div className="mx-auto flex max-w-sm flex-col items-center">
-        <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-teal-50 to-slate-50 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
-          <ClipboardList className="h-9 w-9 text-teal-400" />
-        </div>
-        <h2 className="mt-6 text-xl font-black tracking-tight text-slate-900">
-          {lang === "ar" ? "لا توجد طلبات بعد" : "No orders yet"}
-        </h2>
-        <p className="mt-2 text-sm font-semibold leading-7 text-slate-500">
-          {lang === "ar"
-            ? "بمجرد تقديم طلبك الأول ستجده هنا مع تفاصيله الكاملة."
-            : "Once you place your first order, it will appear here with full details."}
-        </p>
-        <Link
-          to="/products"
-          className="mt-6 inline-flex h-11 items-center gap-2 rounded-2xl bg-slate-900 px-6 text-sm font-black text-white shadow-[0_8px_20px_rgba(15,23,42,0.2)] transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.22)]"
-        >
-          <ShoppingBag className="h-4 w-4" />
-          {lang === "ar" ? "تسوق الآن" : "Shop now"}
-        </Link>
-      </div>
-    </motion.div>
-  );
-}
-
 // ─── Order Card ───────────────────────────────────────────────────────────────
 
 function OrderCard({ order, lang }: { order: RemoteOrderSnapshot; lang: "ar" | "en" }) {

@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import {
   AlertTriangle,
-  ArrowUpRight,
   CheckCircle2,
   ClipboardList,
   Home,
@@ -131,7 +129,7 @@ export default function SpecialOrders() {
 
     try {
       const formData = new FormData();
-      formData.append("access_key", WEB3FORMS_ACCESS_KEY);
+      formData.append("access_key", WEB3FORMS_ACCESS_KEY ?? "");
       formData.append("subject", `طلب توفير دواء: ${form.medicationName}`);
       formData.append("from_name", "United Pharmacy Shortages");
       formData.append("Patient Name", form.patientName);

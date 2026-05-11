@@ -1,7 +1,7 @@
 // config.ts – updated for cascading address selects and dynamic fee
 
 import { publicEnv } from "./env";
-import { calculateShipping, type ShippingAddressInput } from "./shippingConfig";
+import { calculateShipping } from "./shippingConfig";
 
 type Language = "ar" | "en";
 

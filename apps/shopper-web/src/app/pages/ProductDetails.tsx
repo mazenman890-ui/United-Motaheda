@@ -26,8 +26,6 @@ import { getDeliveryWindowSentence } from "../config";
 import { getLocalizedProductName } from "../localization";
 import { FavoriteHeartButton }   from "../components/FavoriteHeartButton";
 import { MobileProductDetailsView } from "./ShopperMobileViews";
-import type { CatalogProduct }   from "../catalog";
-
 export default function ProductDetails() {
   const isShopperShell = useIsShopperShell();
   if (isShopperShell) return <MobileProductDetailsView />;
@@ -44,7 +42,7 @@ function ProductDetailsDesktop() {
 
   const product = id ? productsById[id] : undefined;
 
-  const { alternatives: alternativeProducts, isLoading: alternativeLoading } =
+  const { alternatives: alternativeProducts } =
     useAlternativeProducts(product, products, productsById, 4);
 
   const medicalInfo = useMemo(

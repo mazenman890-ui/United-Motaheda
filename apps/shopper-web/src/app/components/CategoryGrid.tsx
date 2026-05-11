@@ -34,7 +34,7 @@ export const CategoryGrid = memo(function CategoryGrid({
         className,
       )}
     >
-      {categories.map((category, index) => (
+      {categories.map((category) => (
         <CategoryCard key={category.id} category={category} />
       ))}
     </motion.div>

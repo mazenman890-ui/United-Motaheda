@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import {
   ArrowUpDown,
   CheckCircle2,
@@ -136,55 +136,6 @@ function SortSegment({
   );
 }
 
-/* ─── Category Rail ──────────────────────────────────────────── */
-function CategoryRail({
-  options,
-  value,
-  onChange,
-}: {
-  options: { id: string; label: string; count?: number }[];
-  value: string;
-  onChange: (id: string) => void;
-}) {
-  const railRef = useRef<HTMLDivElement>(null);
-  return (
-    <div
-      ref={railRef}
-      className="flex gap-1.5 overflow-x-auto pb-0.5"
-      style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-    >
-      {options.map((opt) => {
-        const active = value === opt.id;
-        return (
-          <button
-            key={opt.id}
-            type="button"
-            onClick={() => onChange(opt.id)}
-            className={cn(
-              "inline-flex h-8 shrink-0 items-center gap-2 rounded-xl px-3.5 text-[11px] font-black transition-all duration-200 whitespace-nowrap",
-              active
-                ? "bg-slate-900 text-white shadow-[0_4px_14px_rgba(15,23,42,0.22)]"
-                : "border border-slate-200/80 bg-white/80 text-slate-600 hover:border-slate-300 hover:bg-white hover:text-slate-900",
-            )}
-          >
-            {opt.label}
-            {opt.count !== undefined && (
-              <span
-                className={cn(
-                  "inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full px-1 text-[9px] font-black",
-                  active ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500",
-                )}
-              >
-                {opt.count}
-              </span>
-            )}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 /* ─── Inline Search ──────────────────────────────────────────── */
 function OffersSearch({
   value,
@@ -220,29 +171,6 @@ function OffersSearch({
         </button>
       )}
     </div>
-  );
-}
-
-/* ─── Filter Chip ────────────────────────────────────────────── */
-function FilterChip({
-  label,
-  onRemove,
-}: {
-  label: string;
-  onRemove: () => void;
-}) {
-  return (
-    <span className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 pl-2.5 pr-1.5 text-[11px] font-black text-amber-700 transition-all">
-      {label}
-      <button
-        type="button"
-        onClick={onRemove}
-        className="flex h-4 w-4 items-center justify-center rounded-md bg-amber-100 text-amber-600 transition-colors hover:bg-amber-200"
-        aria-label="Remove filter"
-      >
-        <X className="h-2.5 w-2.5" />
-      </button>
-    </span>
   );
 }
 
@@ -359,30 +287,10 @@ function OffersDesktop() {
     ];
   }, [categories, featuredProducts, lang]);
 
-  const activeCategoryLabel = categoryOptions.find((c) => c.id === activeCategory)?.label;
   const hasFilters =
     activeCategory !== "all" ||
     searchInput.trim().length > 0 ||
     sortBy !== "relevant";
-
-  const activeFilterTags = [
-    activeCategory !== "all" && activeCategoryLabel
-      ? { key: "cat", label: activeCategoryLabel, onRemove: () => setActiveCategory("all") }
-      : null,
-    searchInput.trim()
-      ? { key: "q", label: `"${searchInput.trim()}"`, onRemove: () => setSearchInput("") }
-      : null,
-    sortBy !== "relevant"
-      ? {
-          key: "sort",
-          label:
-            lang === "ar"
-              ? SORT_OPTIONS.find((o) => o.value === sortBy)?.labelAr ?? ""
-              : SORT_OPTIONS.find((o) => o.value === sortBy)?.labelEn ?? "",
-          onRemove: () => setSortBy("relevant"),
-        }
-      : null,
-  ].filter(Boolean) as { key: string; label: string; onRemove: () => void }[];
 
   const clearFilters = () => {
     setActiveCategory("all");
