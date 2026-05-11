@@ -32,7 +32,6 @@ export const publicEnv = {
   catalogCsvUrl,
   googleSheetsApiUrl,
   apiBase: readStringEnv("VITE_API_BASE") || "https://pharmacyapi-production-e30d.up.railway.app",
-  deliveryFee: readNumberEnv("VITE_DELIVERY_FEE_EGP", 10),
   deliveryMinMinutes: readNumberEnv("VITE_DELIVERY_MIN_MINUTES", 15),
   deliveryMaxMinutes: readNumberEnv("VITE_DELIVERY_MAX_MINUTES", 30),
   shippingMatrixJson: readStringEnv("VITE_SHIPPING_MATRIX_JSON"),

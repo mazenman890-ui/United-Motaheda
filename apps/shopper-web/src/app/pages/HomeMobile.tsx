@@ -20,7 +20,6 @@ import {
 import { useCatalog } from "../../contexts/CatalogContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import {
-  getDeliveryFeeLabel,
   getDeliveryWindowCompactLabel,
   getServiceHoursSentence,
 } from "../config";
@@ -76,7 +75,6 @@ export function HomeMobile() {
   const visibleOfferProducts = featuredProducts.slice(0, visibleOffers);
 
   const deliveryWindowLabel = getDeliveryWindowCompactLabel(lang);
-  const deliveryFeeLabel = getDeliveryFeeLabel(lang);
   const serviceHoursLabel = getServiceHoursSentence(lang);
   const branchAddress = lang === "ar" ? primaryLocation.addressAr : primaryLocation.addressEn;
   const isRTL = lang === "ar";
@@ -317,7 +315,9 @@ export function HomeMobile() {
                 <Zap className="h-4 w-4 text-emerald-600" />
               </div>
               <div className="space-y-0.5 text-center">
-                <p className="text-[11.5px] font-black leading-tight text-slate-900">{deliveryFeeLabel}</p>
+                <p className="text-[11.5px] font-black leading-tight text-slate-900">
+                  {isRTL ? "تنافسية" : "Competitive"}
+                </p>
                 <p className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">
                   {isRTL ? "رسوم التوصيل" : "Delivery fee"}
                 </p>

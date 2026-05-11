@@ -53,7 +53,6 @@ import { cn } from "./components/UI";
 import { useIsShopperShell } from "./components/ui/use-mobile";
 import { getLocalizedCategoryName } from "./localization";
 import {
-  getDeliveryFeeLabel,
   getDeliveryWindowCompactLabel,
   getServiceHoursLabel,
 } from "./config";
@@ -348,7 +347,6 @@ export default function Layout() {
   const locationLabelEn      = primaryLocation.nameEn;
   const cartItemsCount       = cart.reduce((total, item) => total + item.quantity, 0);
   const deliveryWindowCompact = getDeliveryWindowCompactLabel(lang);
-  const deliveryFeeLabel     = getDeliveryFeeLabel(lang);
   const serviceHoursLabel    = getServiceHoursLabel(lang);
   const whatsappUrl          = siteContact.whatsappUrl;
   const overlayOpen          = mobileMenuOpen || cartDrawerOpen;
@@ -449,8 +447,8 @@ export default function Layout() {
         name: lang === "ar" ? "سياسة التوصيل" : "Delivery policy",
         path: "/shipping",
         icon: Truck,
-        helperAr: `رسوم ثابتة ${deliveryFeeLabel}`,
-        helperEn: `Fixed fee ${deliveryFeeLabel}`,
+        helperAr: "رسوم توصيل داخل القاهرة",
+        helperEn: "Delivery fee in Cairo",
       },
       {
         name: lang === "ar" ? "الإرجاع" : "Returns",
@@ -460,7 +458,7 @@ export default function Layout() {
         helperEn: "Return requests and terms",
       },
     ],
-    [lang, deliveryFeeLabel],
+    [lang],
   );
 
   const navLinks = useMemo(() => [...browseLinks, ...supportLinks], [browseLinks, supportLinks]);

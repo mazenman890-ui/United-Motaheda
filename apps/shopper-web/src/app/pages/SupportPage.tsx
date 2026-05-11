@@ -18,7 +18,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { useLanguage } from "../../contexts/LanguageContext";
-import { DELIVERY_FEE_EGP, getDeliveryFeeLabel, getDeliveryWindowCompactLabel, getDeliveryWindowLabel } from "../config";
+import { getDeliveryWindowCompactLabel, getDeliveryWindowLabel } from "../config";
 import { PageHero, SectionIntro, StatTile } from "../components/BrandPrimitives";
 import { Reveal } from "../components/Reveal";
 import { cn } from "../components/UI";
@@ -76,13 +76,13 @@ const DELIVERY_WINDOW_COMPACT_TEXT = {
 } satisfies LocalizedText;
 
 const DELIVERY_FEE_TEXT = {
-  ar: `${DELIVERY_FEE_EGP} جنيه`,
-  en: `${DELIVERY_FEE_EGP} EGP`,
+  ar: "رسوم تنافسية",
+  en: "Competitive fee",
 } satisfies LocalizedText;
 
 const DELIVERY_FEE_CURRENCY_TEXT = {
-  ar: getDeliveryFeeLabel("ar"),
-  en: getDeliveryFeeLabel("en"),
+  ar: "رسوم توصيل تنافسية",
+  en: "Competitive delivery fee",
 } satisfies LocalizedText;
 
 const SUPPORT_LINKS: Array<{

@@ -25,7 +25,6 @@ import { images, locations } from "../data";
 import { useCatalogCategorySearch } from "../hooks/useCatalogCategorySearch";
 import { getLocalizedCategoryName, getLocalizedProductName } from "../localization";
 import {
-  getDeliveryFeeLabel,
   getDeliveryWindowLabel,
   getServiceHoursSentence,
 } from "../config";
@@ -88,7 +87,6 @@ function HomeDesktop() {
   const heroProducts = featuredProducts.slice(0, 4);
   const offerProducts = featuredProducts.slice(4, 10);
   const deliveryWindowLabel = getDeliveryWindowLabel(lang);
-  const deliveryFeeLabel = getDeliveryFeeLabel(lang);
   const serviceHoursText = getServiceHoursSentence(lang);
   const spotlightProduct =
     heroProducts.find((product) => product.inStock) ?? heroProducts[0] ?? null;
@@ -202,8 +200,8 @@ function HomeDesktop() {
       Icon: Truck,
       titleAr: "توصيل واضح وثابت",
       titleEn: "Clear fixed delivery",
-      descriptionAr: `رسوم التوصيل ${deliveryFeeLabel} داخل القاهرة خلال ${deliveryWindowLabel}.`,
-      descriptionEn: `A fixed ${deliveryFeeLabel} fee in Cairo within ${deliveryWindowLabel}.`,
+      descriptionAr: `رسوم توصيل تنافسية داخل القاهرة خلال ${deliveryWindowLabel}.`,
+      descriptionEn: `Competitive delivery fee in Cairo within ${deliveryWindowLabel}.`,
     },
     {
       Icon: MapPin,

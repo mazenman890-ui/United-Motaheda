@@ -1,4 +1,3 @@
-import { publicEnv } from "./env";
 
 export type ShippingAddressInput = {
   city?: string;
@@ -51,13 +50,13 @@ export function calculateShipping(address: ShippingAddressInput | null | undefin
   const normalizedCity = normalizeCity(address?.city);
 
   if (!normalizedCity) {
-    return publicEnv.deliveryFee;
+    return 0;
   }
 
   const matchedZone = SHIPPING_ZONES.find((zone) => normalizeCity(zone.city) === normalizedCity);
 
   if (!matchedZone) {
-    return publicEnv.deliveryFee;
+    return 0;
   }
 
   return matchedZone.fee;

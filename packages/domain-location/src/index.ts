@@ -35,7 +35,7 @@ const useLocationStore = create<LocationState>()(
       storage:
         typeof window === "undefined"
           ? undefined
-          : createJSONStorage(() => sessionStorage),
+          : createJSONStorage(() => localStorage),
       partialize: (state) => ({
         coordinates: state.coordinates,
         permission: state.permission,
@@ -79,7 +79,7 @@ export function useBrowserLocation(enabled = true) {
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
+    const watchId = navigator.geolocation.watchPosition(
       (position) => {
         setCoordinates({
           lat: position.coords.latitude,
@@ -93,15 +93,16 @@ export function useBrowserLocation(enabled = true) {
         });
       },
       () => {
-        setCoordinates(null);
         setPermission("denied");
       },
       {
         enableHighAccuracy: true,
-        maximumAge: 30_000,
+        maximumAge: 0,
         timeout: 8_000,
       },
     );
+
+    return () => navigator.geolocation.clearWatch(watchId);
   }, [enabled, setCoordinates, setPermission]);
 }
 

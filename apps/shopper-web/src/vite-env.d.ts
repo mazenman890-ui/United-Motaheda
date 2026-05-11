@@ -7,7 +7,6 @@ interface ImportMetaEnv {
   readonly VITE_CATALOG_CSV_URL?: string;
 
   // ── Delivery configuration ───────────────────────────────────────────────
-  readonly VITE_DELIVERY_FEE_EGP?: string;
   readonly VITE_DELIVERY_MIN_MINUTES?: string;
   readonly VITE_DELIVERY_MAX_MINUTES?: string;
 

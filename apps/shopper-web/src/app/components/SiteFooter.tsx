@@ -13,7 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Reveal } from "./Reveal";
-import { getDeliveryFeeLabel, getDeliveryWindowLabel } from "../config";
+import { getDeliveryWindowLabel } from "../config";
 import { images, locations } from "../data";
 import { useState } from "react";
 
@@ -57,7 +57,6 @@ export function SiteFooter({
   const isArabic = lang === "ar";
   const brandName = isArabic ? brandNameAr : brandNameEn;
   const deliveryWindow = getDeliveryWindowLabel(lang);
-  const deliveryFee = getDeliveryFeeLabel(lang);
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [newsletterStatus, setNewsletterStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
 
@@ -72,7 +71,7 @@ export function SiteFooter({
   const footerSignals = [
     { Icon: ShieldCheck, labelAr: "صرف آمن ومنظم", labelEn: "Safe and regulated service" },
     { Icon: Truck, labelAr: `${deliveryWindow} داخل القاهرة`, labelEn: `${deliveryWindow} in Cairo` },
-    { Icon: Sparkles, labelAr: `رسوم ثابتة ${deliveryFee}`, labelEn: `Fixed fee ${deliveryFee}` },
+    { Icon: Sparkles, labelAr: "رسوم توصيل تنافسية", labelEn: "Competitive delivery fee" },
     { Icon: HeartPulse, labelAr: "خدمة أقرب للاحتياج", labelEn: "Care closer to the need" },
   ];
 
@@ -143,7 +142,7 @@ export function SiteFooter({
                 </div>
                 <p className="text-sm font-black text-slate-950">{deliveryWindow}</p>
                 <p className="mt-1 text-xs font-semibold text-slate-500">
-                  {isArabic ? `رسوم توصيل ثابتة ${deliveryFee}` : `Fixed delivery fee ${deliveryFee}`}
+                  {isArabic ? "رسوم توصيل متاحة داخل القاهرة" : "Delivery fee available in Cairo"}
                 </p>
               </div>
             </div>

@@ -1,4 +1,4 @@
-// Checkout.tsx – with cascading address dropdowns and dynamic delivery fee
+﻿// Checkout.tsx – with cascading address dropdowns and dynamic delivery fee
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useDeliveryQuote, useLocationState } from "@pharmacy/domain-location";
@@ -46,7 +46,6 @@ import {
   validateCheckoutInput,
 } from "../checkout/validation";
 import { EmptyState, PageHero, SectionIntro } from "../components/BrandPrimitives";
-import { BranchMapEmbed } from "../components/BranchMapEmbed";
 import { BranchSelector } from "../components/BranchSelector";
 import { GeofenceStatusBanner } from "../components/GeofenceStatusBanner";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
@@ -57,11 +56,11 @@ import { appendOrder } from "../orders";
 import { getCatalogProductImage } from "../catalog";
 import { getLocalizedProductName } from "../localization";
 import { GOVERNORATE_LOCK } from "../constants/location";
-import { deliveryLocations } from "../data";
+import { useBranches } from "../hooks/useBranches";
 
-// ─── Egypt Address Hierarchy + Delivery Fee Dictionary ────────────────────────
+// ─── Egypt Address Hierarchy ──────────────────────────────────────────────────
 
-type SubRegionEntry = { name: string; fee: number };
+type SubRegionEntry = { name: string };
 
 const CITIES = ["القاهرة", "الجيزة", "الإسكندرية"] as const;
 
@@ -96,109 +95,103 @@ const REGIONS: Record<string, string[]> = {
 
 const SUB_REGIONS: Record<string, SubRegionEntry[]> = {
   "مدينة نصر": [
-    { name: "جاردينيا سيتي", fee: 15 },
-    { name: "تاكسي سلطان", fee: 25 },
-    { name: "الحرس الجمهوري", fee: 20 },
-    { name: "عباس العقاد", fee: 18 },
-    { name: "ميدان التجمع", fee: 20 },
-    { name: "الهايكستب", fee: 22 },
-    { name: "مكرم عبيد", fee: 18 },
+    { name: "جاردينيا سيتي" },
+    { name: "تاكسي سلطان" },
+    { name: "الحرس الجمهوري" },
+    { name: "عباس العقاد" },
+    { name: "ميدان التجمع" },
+    { name: "الهايكستب" },
+    { name: "مكرم عبيد" },
   ],
   "المعادي": [
-    { name: "المعادي القديمة", fee: 20 },
-    { name: "المعادي الجديدة", fee: 22 },
-    { name: "دجلة", fee: 25 },
-    { name: "زهراء المعادي", fee: 28 },
-    { name: "ثروت", fee: 22 },
+    { name: "المعادي القديمة" },
+    { name: "المعادي الجديدة" },
+    { name: "دجلة" },
+    { name: "زهراء المعادي" },
+    { name: "ثروت" },
   ],
   "مصر الجديدة": [
-    { name: "هليوبوليس", fee: 18 },
-    { name: "المرج", fee: 22 },
-    { name: "كليوباترا", fee: 18 },
-    { name: "مصطفى النحاس", fee: 20 },
+    { name: "هليوبوليس" },
+    { name: "المرج" },
+    { name: "كليوباترا" },
+    { name: "مصطفى النحاس" },
   ],
   "الزيتون": [
-    { name: "الزيتون", fee: 15 },
-    { name: "المطرية", fee: 18 },
-    { name: "السواح", fee: 17 },
+    { name: "الزيتون" },
+    { name: "المطرية" },
+    { name: "السواح" },
   ],
   "شبرا": [
-    { name: "شبرا مصر", fee: 15 },
-    { name: "النزهة", fee: 18 },
-    { name: "شبرا الخيمة", fee: 20 },
+    { name: "شبرا مصر" },
+    { name: "النزهة" },
+    { name: "شبرا الخيمة" },
   ],
   "عين شمس": [
-    { name: "عين شمس", fee: 18 },
-    { name: "عزبة النخل", fee: 22 },
-    { name: "المرج الجديدة", fee: 22 },
+    { name: "عين شمس" },
+    { name: "عزبة النخل" },
+    { name: "المرج الجديدة" },
   ],
   "التجمع الخامس": [
-    { name: "التجمع الأول", fee: 25 },
-    { name: "القرنفل", fee: 28 },
-    { name: "النرجس", fee: 28 },
-    { name: "الرحاب", fee: 22 },
-    { name: "المستثمرين الجنوبية", fee: 30 },
+    { name: "التجمع الأول" },
+    { name: "القرنفل" },
+    { name: "النرجس" },
+    { name: "الرحاب" },
+    { name: "المستثمرين الجنوبية" },
   ],
   "وسط البلد": [
-    { name: "وسط البلد", fee: 20 },
-    { name: "العتبة", fee: 20 },
-    { name: "باب الشعرية", fee: 18 },
+    { name: "وسط البلد" },
+    { name: "العتبة" },
+    { name: "باب الشعرية" },
   ],
   "القطامية": [
-    { name: "القطامية", fee: 30 },
-    { name: "الشروق", fee: 32 },
+    { name: "القطامية" },
+    { name: "الشروق" },
   ],
   "المهندسين": [
-    { name: "المهندسين", fee: 18 },
-    { name: "العقبة", fee: 20 },
+    { name: "المهندسين" },
+    { name: "العقبة" },
   ],
   "الدقي": [
-    { name: "الدقي", fee: 20 },
-    { name: "إمبابة", fee: 18 },
+    { name: "الدقي" },
+    { name: "إمبابة" },
   ],
   "الزمالك": [
-    { name: "الزمالك", fee: 22 },
+    { name: "الزمالك" },
   ],
   "العجوزة": [
-    { name: "العجوزة", fee: 18 },
-    { name: "بولاق الدكرور", fee: 20 },
+    { name: "العجوزة" },
+    { name: "بولاق الدكرور" },
   ],
   "6 أكتوبر": [
-    { name: "المدينة الرياضية", fee: 28 },
-    { name: "الحي السادس", fee: 28 },
-    { name: "الحي العاشر", fee: 30 },
+    { name: "المدينة الرياضية" },
+    { name: "الحي السادس" },
+    { name: "الحي العاشر" },
   ],
   "الشيخ زايد": [
-    { name: "الشيخ زايد", fee: 30 },
-    { name: "حدائق الأهرام", fee: 28 },
+    { name: "الشيخ زايد" },
+    { name: "حدائق الأهرام" },
   ],
   "محطة الرمل": [
-    { name: "محطة الرمل", fee: 20 },
-    { name: "سيدي جابر", fee: 22 },
+    { name: "محطة الرمل" },
+    { name: "سيدي جابر" },
   ],
   "سيدي بشر": [
-    { name: "سيدي بشر", fee: 25 },
-    { name: "الإبراهيمية", fee: 22 },
+    { name: "سيدي بشر" },
+    { name: "الإبراهيمية" },
   ],
   "العجمي": [
-    { name: "العجمي", fee: 30 },
-    { name: "الهانوفيل", fee: 32 },
+    { name: "العجمي" },
+    { name: "الهانوفيل" },
   ],
   "المنتزه": [
-    { name: "المنتزه", fee: 28 },
-    { name: "الأنفوشي", fee: 25 },
+    { name: "المنتزه" },
+    { name: "الأنفوشي" },
   ],
   "ميامي": [
-    { name: "ميامي", fee: 22 },
-    { name: "فلمنج", fee: 24 },
+    { name: "ميامي" },
+    { name: "فلمنج" },
   ],
 };
-
-const DEFAULT_DELIVERY_FEE = 10;
-
-function getSubRegionFee(region: string, subRegion: string): number {
-  return SUB_REGIONS[region]?.find((s) => s.name === subRegion)?.fee ?? DEFAULT_DELIVERY_FEE;
-}
 
 // ─── Field Components ─────────────────────────────────────────────────────────
 
@@ -355,11 +348,8 @@ export default function Checkout() {
   type PaymentMethodId = "cod" | "instapay" | "vodafone" | "online" | "banquemisr";
 
   // ── Cairo lock + branch selection ───────────────────────────────────────
-  const deliveryBranches = useMemo(() => deliveryLocations, []);
-  const primaryDeliveryBranch = useMemo(
-    () => deliveryBranches.find((branch) => branch.isPrimary) ?? deliveryBranches[0],
-    [deliveryBranches],
-  );
+  const { data: deliveryBranches = [] } = useBranches();
+  const primaryDeliveryBranch = deliveryBranches[0] ?? null;
   const selectedArea = useLocationState((state) => state.selectedArea);
   const selectedBranchId = useLocationState((state) => state.selectedBranchId);
   const locationPermission = useLocationState((state) => state.permission);
@@ -466,7 +456,7 @@ export default function Checkout() {
   );
   const deliveryQuote = useDeliveryQuote(cartSnapshot, form.streetName.trim(), selectedBranchId || undefined);
 
-  const dynamicDeliveryFee = deliveryQuote.data?.cost ?? DEFAULT_DELIVERY_FEE;
+  const dynamicDeliveryFee = deliveryQuote.data?.cost ?? 0;
   const dynamicFeeLabel = lang === "ar" ? `${dynamicDeliveryFee} ج.م` : `${dynamicDeliveryFee} EGP`;
 
   const pricing = useMemo(
@@ -1067,14 +1057,6 @@ export default function Checkout() {
         ) : null}
       </div>
 
-      {selectedBranch?.mapEmbedSrc ? (
-        <div className="sm:col-span-2">
-          <BranchMapEmbed
-            src={selectedBranch.mapEmbedSrc}
-            title={lang === "ar" ? selectedBranch.fullNameAr : selectedBranch.fullNameEn}
-          />
-        </div>
-      ) : null}
 
       {/* Street name */}
       <Field

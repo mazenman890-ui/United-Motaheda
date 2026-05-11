@@ -22,7 +22,7 @@ import { cn }                    from "../components/UI";
 import { useIsShopperShell }     from "../components/ui/use-mobile";
 import { ImageWithFallback }     from "../components/figma/ImageWithFallback";
 import { getCatalogProductImage } from "../catalog";
-import { getDeliveryFeeLabel, getDeliveryWindowSentence } from "../config";
+import { getDeliveryWindowSentence } from "../config";
 import { getLocalizedProductName } from "../localization";
 import { FavoriteHeartButton }   from "../components/FavoriteHeartButton";
 import { MobileProductDetailsView } from "./ShopperMobileViews";
@@ -107,7 +107,6 @@ function ProductDetailsDesktop() {
     ? lang === "ar" ? "متاح للطلب"    : "Ready to order"
     : lang === "ar" ? "غير متاح حاليا" : "Currently unavailable";
   const deliveryWindowSentence = getDeliveryWindowSentence(lang);
-  const deliveryFeeLabel       = getDeliveryFeeLabel(lang);
 
   const metaCards = [
     {
@@ -133,7 +132,7 @@ function ProductDetailsDesktop() {
   const highlights = [
     { Icon: ShieldCheck, label: lang === "ar" ? "بيانات مباشرة من الكتالوج" : "Direct live-catalog data" },
     { Icon: Barcode,     label: lang === "ar" ? "مرجع واضح وسريع"           : "Clear quick reference" },
-    { Icon: Truck,       label: lang === "ar" ? `${deliveryFeeLabel}`        : `${deliveryFeeLabel}` },
+    { Icon: Truck,       label: lang === "ar" ? "رسوم توصيل تنافسية" : "Competitive delivery fee" },
   ];
 
   const handleAdd = async () => {
@@ -290,7 +289,9 @@ function ProductDetailsDesktop() {
                   <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
                     {lang === "ar" ? "الرسوم" : "Fee"}
                   </p>
-                  <p className="mt-1 text-sm font-black text-slate-800">{deliveryFeeLabel}</p>
+                  <p className="mt-1 text-sm font-black text-slate-800">
+                    {lang === "ar" ? "رسوم تنافسية" : "Competitive"}
+                  </p>
                 </div>
               </div>
               <div className="mt-5 flex gap-3">
