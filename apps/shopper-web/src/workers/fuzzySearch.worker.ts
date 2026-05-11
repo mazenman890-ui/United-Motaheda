@@ -77,13 +77,27 @@ import {
   normalise,
   LRUCache,
 } from "../utils/fuzzySearch";
-import type { CatalogProduct } from "../app/catalog";
+// ─── Slim product type (must match WorkerSearchProduct in catalogSearchWorker.ts) ──
+
+interface WorkerProduct {
+  id:             string;
+  code:           string;
+  barcode:        string;
+  name:           string;
+  nameAr?:        string;
+  nameEn?:        string;
+  price:          number;
+  inStock:        boolean;
+  category:       string;
+  categoryName:   string;
+  categoryNameEn: string;
+}
 
 // ─── Message types ────────────────────────────────────────────────────────────
 
 interface InitMessage {
   type:          "INIT";
-  products:      CatalogProduct[];
+  products:      WorkerProduct[];
   /** Optional SharedArrayBuffer for cross-thread cancellation signaling. */
   sharedBuffer?: SharedArrayBuffer;
 }
@@ -397,13 +411,6 @@ function handleInit(data: InitMessage): void {
   // Notify main thread that we're building the index
   self.postMessage({ type: "INIT_PROGRESS", status: "building" } satisfies InitProgressMessage);
 
-  // Build index asynchronously in the next macrotask. Use requestIdleCallback if
-  // available for true non-blocking behavior, otherwise setTimeout as fallback.
-  //
-  // WHY this timing: We want to ensure any SEARCH messages in the current event
-  // loop turn get queued (not executed on a stale/null index). Once the index is
-  // built, we flush the queue and notify the main thread so the UI can hide the
-  // loading spinner.
   const buildIndex = () => {
     // Build the index (this may take 200-800ms for 52K products)
     searchIndex = buildSearchIndexImpl(indexableItems);
@@ -419,13 +426,9 @@ function handleInit(data: InitMessage): void {
     }
   };
 
-  // Try to use requestIdleCallback for true non-blocking behavior
-  if (typeof requestIdleCallback !== "undefined") {
-    requestIdleCallback(buildIndex, { timeout: 2000 });
-  } else {
-    // Fallback to setTimeout(0) if requestIdleCallback not available
-    setTimeout(buildIndex, 0);
-  }
+  // Build in next macrotask so queued SEARCH messages are processed first,
+  // but without the up-to-2s idle wait that requestIdleCallback can introduce.
+  setTimeout(buildIndex, 0);
 
   // SharedArrayBuffer for cancellation signaling
   if (data.sharedBuffer) {

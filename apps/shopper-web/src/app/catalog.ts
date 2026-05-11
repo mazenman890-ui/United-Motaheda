@@ -831,40 +831,32 @@ function buildCategoryFromSeed(seed: CategorySeed, count: number, inStockCount: 
 }
 
 export function deriveCatalogCategories(products: CatalogProduct[], _previousCategories: CatalogCategory[] = []) {
-  const counts = new Map<string, { count: number; inStockCount: number }>();
+  // Single pass: count + capture a sample product per category (eliminates O(N) find() calls later)
+  const counts = new Map<string, { count: number; inStockCount: number; sample: CatalogProduct }>();
 
-  products.forEach((product) => {
-    const current = counts.get(product.category) ?? { count: 0, inStockCount: 0 };
-    current.count += 1;
-    if (product.inStock) {
-      current.inStockCount += 1;
+  for (const product of products) {
+    const current = counts.get(product.category);
+    if (current) {
+      current.count += 1;
+      if (product.inStock) current.inStockCount += 1;
+    } else {
+      counts.set(product.category, { count: 1, inStockCount: product.inStock ? 1 : 0, sample: product });
     }
-    counts.set(product.category, current);
-  });
+  }
 
   const knownCategories = (CATEGORY_SEEDS
     .map((seed) => {
       const stats = counts.get(seed.id);
-      if (!stats || stats.count === 0) {
-        return null;
-      }
-
+      if (!stats || stats.count === 0) return null;
       return buildCategoryFromSeed(seed, stats.count, stats.inStockCount);
     })
     .filter(Boolean) as CatalogCategory[]);
 
   const knownIds = new Set(knownCategories.map((category) => category.id));
   const fallbackCategories = Array.from(counts.entries()).flatMap(([categoryId, stats]) => {
-    if (knownIds.has(categoryId)) {
-      return [];
-    }
+    if (knownIds.has(categoryId)) return [];
 
-    const sample = products.find((product) => product.category === categoryId);
-
-    if (!sample) {
-      return [];
-    }
-
+    const { sample } = stats; // already captured — no O(N) find needed
     return [
       {
         id: categoryId,
@@ -883,12 +875,9 @@ export function deriveCatalogCategories(products: CatalogProduct[], _previousCat
   });
 
   return [...knownCategories, ...fallbackCategories].sort((left, right) => {
-    if (right.count !== left.count) {
-      return right.count - left.count;
-    }
-
-      return left.nameEn.localeCompare(right.nameEn, "en");
-    });
+    if (right.count !== left.count) return right.count - left.count;
+    return left.nameEn.localeCompare(right.nameEn, "en");
+  });
 }
 
 export function getCatalogCategorySearchMetadata(categoryId: string): CatalogCategorySearchMetadata {
@@ -1095,22 +1084,28 @@ export function getCatalogProductImage(product: CatalogProduct) {
 }
 
 export function buildSpotlightProducts(products: CatalogProduct[], categories: CatalogCategory[], limit = 12) {
-  const categoryBuckets = categories.map((category) => ({
-    id: category.id,
-    items: products
-      .filter((product) => product.category === category.id && product.inStock)
-      .sort((left, right) => {
-        if (right.stock !== left.stock) {
-          return right.stock - left.stock;
-        }
+  // Single pass: group in-stock products by category (O(N))
+  const bucketMap = new Map<string, CatalogProduct[]>();
+  for (const product of products) {
+    if (!product.inStock) continue;
+    const bucket = bucketMap.get(product.category);
+    if (bucket) {
+      bucket.push(product);
+    } else {
+      bucketMap.set(product.category, [product]);
+    }
+  }
 
-        if (left.price !== right.price) {
-          return left.price - right.price;
-        }
+  const comparator = (left: CatalogProduct, right: CatalogProduct) => {
+    if (right.stock !== left.stock) return right.stock - left.stock;
+    if (left.price !== right.price) return left.price - right.price;
+    return left.name.localeCompare(right.name, "en");
+  };
 
-        return left.name.localeCompare(right.name, "en");
-      }),
-  }));
+  // Sort each bucket once, preserving category order from the categories list
+  const categoryBuckets = categories
+    .map((category) => ({ id: category.id, items: (bucketMap.get(category.id) ?? []).sort(comparator) }))
+    .filter((b) => b.items.length > 0);
 
   const selected: CatalogProduct[] = [];
   const selectedIds = new Set<string>();
@@ -1119,31 +1114,26 @@ export function buildSpotlightProducts(products: CatalogProduct[], categories: C
   while (selected.length < limit) {
     let addedOnCycle = false;
 
-    categoryBuckets.forEach((bucket) => {
+    for (const bucket of categoryBuckets) {
+      if (selected.length >= limit) break;
       const candidate = bucket.items[depth];
-
-      if (!candidate || selectedIds.has(candidate.id) || selected.length >= limit) {
-        return;
-      }
-
+      if (!candidate || selectedIds.has(candidate.id)) continue;
       selected.push(candidate);
       selectedIds.add(candidate.id);
       addedOnCycle = true;
-    });
-
-    if (!addedOnCycle) {
-      break;
     }
 
+    if (!addedOnCycle) break;
     depth += 1;
   }
 
-  if (selected.length >= limit) {
-    return selected;
+  if (selected.length >= limit) return selected;
+
+  // Fill remaining slots with any in-stock product not already selected (O(N), no allocation)
+  for (const product of products) {
+    if (selected.length >= limit) break;
+    if (product.inStock && !selectedIds.has(product.id)) selected.push(product);
   }
 
-  return [
-    ...selected,
-    ...products.filter((product) => product.inStock && !selectedIds.has(product.id)),
-  ].slice(0, limit);
+  return selected;
 }

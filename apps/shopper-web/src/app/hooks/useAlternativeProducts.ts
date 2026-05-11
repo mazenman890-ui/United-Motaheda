@@ -35,8 +35,22 @@ function getAlternativesWorker(): Worker {
 function ensureInit(products: CatalogProduct[]) {
   if (products === _lastInitProducts) return; // same reference → already loaded
   const worker = getAlternativesWorker();
-  // Worker maps the objects itself; we only pay structuredClone once ever
-  worker.postMessage({ type: "INIT", products });
+  // Slim to the fields ProductShape needs — strips name, sourceRow, etc.
+  const slimProducts = products.map((p) => ({
+    id:             p.id,
+    code:           p.code,
+    barcode:        p.barcode,
+    nameAr:         p.nameAr ?? p.name,
+    nameEn:         p.nameEn ?? p.name,
+    category:       p.category,
+    categoryName:   p.categoryName,
+    categoryNameEn: p.categoryNameEn,
+    price:          p.price,
+    stock:          p.stock,
+    inStock:        p.inStock,
+    imageUrl:       p.imageUrl,
+  }));
+  worker.postMessage({ type: "INIT", products: slimProducts });
   _lastInitProducts = products;
 }
 

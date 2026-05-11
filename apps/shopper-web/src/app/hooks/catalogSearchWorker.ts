@@ -64,6 +64,25 @@ import type { CatalogProduct } from "../catalog";
 export const CATALOG_SEARCH_WORKER_THRESHOLD = 160;
 export const MAX_POOL_SIZE                   = 4;
 
+/**
+ * Slim product shape sent to fuzzy-search workers.
+ * Excludes imageUrl, stock, and sourceRow — fields the worker never reads —
+ * cutting ~20–30% off each structuredClone across all 4 pool workers.
+ */
+export interface WorkerSearchProduct {
+  id:             string;
+  code:           string;
+  barcode:        string;
+  name:           string;
+  nameAr?:        string;
+  nameEn?:        string;
+  price:          number;
+  inStock:        boolean;
+  category:       string;
+  categoryName:   string;
+  categoryNameEn: string;
+}
+
 export interface CatalogSearchRequest {
   query:        string;
   requestId:    number;
@@ -246,11 +265,30 @@ function leastBusyWorker(): { pw: PoolWorker; idx: number } {
 
 // ─── Worker initialisation ────────────────────────────────────────────────────
 
+/** Slim products once (shared across all pool workers). */
+let lastSlimProducts: WorkerSearchProduct[] | null = null;
+
 function initWorker(pw: PoolWorker): void {
   if (!lastInitProducts) return;
+  // Build slim array lazily; reuse if the source reference hasn't changed
+  if (!lastSlimProducts) {
+    lastSlimProducts = lastInitProducts.map((p) => ({
+      id:             p.id,
+      code:           p.code,
+      barcode:        p.barcode,
+      name:           p.name,
+      nameAr:         p.nameAr,
+      nameEn:         p.nameEn,
+      price:          p.price,
+      inStock:        p.inStock,
+      category:       p.category,
+      categoryName:   p.categoryName,
+      categoryNameEn: p.categoryNameEn,
+    }));
+  }
   const msg: Record<string, unknown> = {
     type:     "INIT",
-    products: lastInitProducts,
+    products: lastSlimProducts,
   };
   if (sharedBuffer) msg["sharedBuffer"] = sharedBuffer;
   pw.worker.postMessage(msg);
@@ -271,6 +309,7 @@ export function ensureCatalogSearchWorkerInit(
   if (!options.force && products === lastInitProducts) return;
 
   lastInitProducts = products;
+  lastSlimProducts  = null; // invalidate slim cache; rebuilt on next initWorker call
 
   ensurePool();
 
@@ -297,6 +336,7 @@ export function terminateCatalogSearchWorker(): void {
   pendingRequests.clear();
 
   lastInitProducts = null;
+  lastSlimProducts  = null;
 }
 
 // ─── Request dispatch ─────────────────────────────────────────────────────────

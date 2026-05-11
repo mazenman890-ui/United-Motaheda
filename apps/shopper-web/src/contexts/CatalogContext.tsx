@@ -54,22 +54,6 @@ type CatalogMetrics = {
   lowStockProducts: number;
 };
 
-/** Lightweight descriptor used by `rankAlternativeProducts`. */
-export type ProductRecommendationDescriptor = {
-  id:             string;
-  code:           string;
-  barcode:        string;
-  nameAr:         string;
-  nameEn:         string;
-  category:       string;
-  categoryName:   string;
-  categoryNameEn: string;
-  price:          number;
-  stock:          number;
-  inStock:        boolean;
-  imageUrl:       string;
-};
-
 export type SearchFilters = Omit<ProductFilters, "searchQuery">;
 
 type CatalogContextType = {
@@ -108,9 +92,6 @@ type CatalogContextType = {
   upsertProduct: (product: CatalogProduct) => void;
   removeProduct: (identifier: string) => void;
 
-  // ── Legacy compatibility ──────────────────────────────────────────────────
-  categorySearchIndex: Record<string, string>;
-  alternativeProductPool: ProductRecommendationDescriptor[];
 };
 
 // ─── Seed from cache ──────────────────────────────────────────────────────────
@@ -427,36 +408,6 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     [allProducts, products, derivedCategories],
   );
 
-  const categorySearchIndex = useMemo<Record<string, string>>(
-    () =>
-      derivedCategories.reduce<Record<string, string>>((acc, cat) => {
-        acc[cat.id] = `${cat.name} ${cat.nameEn}`.trim().toLowerCase();
-        return acc;
-      }, {}),
-    [derivedCategories],
-  );
-
-  const alternativeProductPool = useMemo<ProductRecommendationDescriptor[]>(
-    () =>
-      Object.values(
-        Object.keys(allProductsMap).length > 0 ? allProductsMap : productMap,
-      ).map((p) => ({
-        id:             p.id,
-        code:           p.code,
-        barcode:        p.barcode,
-        nameAr:         p.nameAr ?? "",
-        nameEn:         p.nameEn ?? "",
-        category:       p.category,
-        categoryName:   p.categoryName,
-        categoryNameEn: p.categoryNameEn,
-        price:          p.price,
-        stock:          p.stock,
-        inStock:        p.inStock,
-        imageUrl:       p.imageUrl ?? "",
-      })),
-    [allProductsMap, productMap],
-  );
-
   const metrics = useMemo<CatalogMetrics>(() => {
     return {
       totalProducts: totalProductCount > 0 ? totalProductCount : catalogSource.length,
@@ -498,8 +449,6 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
         refreshCategories,
         upsertProduct,
         removeProduct,
-        categorySearchIndex,
-        alternativeProductPool,
       }}
     >
       {children}
