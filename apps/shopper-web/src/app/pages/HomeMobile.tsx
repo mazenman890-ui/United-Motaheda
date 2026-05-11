@@ -316,7 +316,7 @@ export function HomeMobile() {
               </div>
               <div className="space-y-0.5 text-center">
                 <p className="text-[11.5px] font-black leading-tight text-slate-900">
-                  {isRTL ? "تنافسية" : "Competitive"}
+                  {isRTL ? "حسب المنطقة" : "By area"}
                 </p>
                 <p className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">
                   {isRTL ? "رسوم التوصيل" : "Delivery fee"}

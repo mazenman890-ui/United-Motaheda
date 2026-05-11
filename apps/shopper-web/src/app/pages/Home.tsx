@@ -198,17 +198,17 @@ function HomeDesktop() {
   const serviceHighlights = [
     {
       Icon: Truck,
-      titleAr: "توصيل واضح وثابت",
-      titleEn: "Clear fixed delivery",
-      descriptionAr: `رسوم توصيل تنافسية داخل القاهرة خلال ${deliveryWindowLabel}.`,
-      descriptionEn: `Competitive delivery fee in Cairo within ${deliveryWindowLabel}.`,
+      titleAr: "توصيل داخل القاهرة",
+      titleEn: "Delivery across Cairo",
+      descriptionAr: "رسوم التوصيل حسب منطقتك وتُعرض قبل تأكيد الطلب.",
+      descriptionEn: "Delivery fee based on your area, shown before order confirmation.",
     },
     {
       Icon: MapPin,
-      titleAr: "الفرع الرئيسي واضح",
-      titleEn: "Primary branch clearly surfaced",
-      descriptionAr: `${primaryLocation.fullNameAr} - ${primaryLocation.addressAr}`,
-      descriptionEn: `${primaryLocation.fullNameEn} - ${primaryLocation.addressEn}`,
+      titleAr: "نخدم كل القاهرة",
+      titleEn: "Serving all of Cairo",
+      descriptionAr: `${primaryLocation.fullNameAr}`,
+      descriptionEn: `${primaryLocation.fullNameEn}`,
     },
     {
       Icon: Clock3,

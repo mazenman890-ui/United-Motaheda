@@ -38,7 +38,7 @@ export default function Contact() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const branchesSorted = [...locations].sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary));
-  const selectedBranchId = searchParams.get("branch") ?? branchesSorted[0]?.id ?? "gardenia";
+  const selectedBranchId = searchParams.get("branch") ?? branchesSorted[0]?.id ?? "cairo";
   const selectedBranch = branchesSorted.find((branch) => branch.id === selectedBranchId) ?? branchesSorted[0];
   const branchDetailHref = (branchId: string) => `/contact?branch=${branchId}#branch-details`;
 

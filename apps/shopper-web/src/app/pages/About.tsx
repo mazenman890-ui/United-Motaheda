@@ -154,7 +154,7 @@ export default function About() {
   }
   const isArabic = lang === "ar";
   const brandName = isArabic ? "صيدليات المتحدة" : "United Pharmacies";
-  const defaultBranchId = locations.find((branch) => branch.isPrimary)?.id ?? locations[0]?.id ?? "gardenia";
+  const defaultBranchId = locations.find((branch) => branch.isPrimary)?.id ?? locations[0]?.id ?? "cairo";
   const selectedBranchMapId = searchParams.get("branch") ?? defaultBranchId;
   const defaultBranch = locations.find((branch) => branch.id === defaultBranchId) ?? locations[0];
   const selectedBranch = locations.find((branch) => branch.id === selectedBranchMapId) ?? defaultBranch;

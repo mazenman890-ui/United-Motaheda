@@ -76,8 +76,8 @@ const DELIVERY_WINDOW_COMPACT_TEXT = {
 } satisfies LocalizedText;
 
 const DELIVERY_FEE_CURRENCY_TEXT = {
-  ar: "رسوم توصيل تنافسية",
-  en: "Competitive delivery fee",
+  ar: "رسوم التوصيل حسب المنطقة",
+  en: "Delivery fee by area",
 } satisfies LocalizedText;
 
 const SUPPORT_LINKS: Array<{
@@ -134,8 +134,8 @@ const FAQ_ITEMS: FaqItem[] = [
       en: "What is the delivery fee?",
     },
     answer: {
-      ar: "رسوم التوصيل تنافسية وتُحسب بناءً على موقعك عند الإتمام، وتُعرض بوضوح قبل التأكيد النهائي.",
-      en: "Delivery fees are competitive and calculated based on your location at checkout, shown clearly before final confirmation.",
+      ar: "رسوم التوصيل تُحسب بناءً على منطقتك وتُعرض بوضوح قبل التأكيد النهائي.",
+      en: "Delivery fees are calculated based on your area and shown clearly before final confirmation.",
     },
   },
   {
@@ -242,8 +242,8 @@ const PAGE_CONFIG: Record<SupportPageType, PageConfig> = {
         icon: Wallet,
         title: { ar: "رسوم الشحن", en: "Shipping Fees" },
         body: {
-          ar: "رسوم التوصيل تنافسية وتُحسب بناءً على موقعك، وتُعرض بوضوح قبل تأكيد الطلب.",
-          en: "Delivery fees are competitive, calculated based on your location, and shown clearly before order confirmation.",
+          ar: "رسوم التوصيل تُحسب بناءً على منطقتك وتُعرض بوضوح قبل تأكيد الطلب.",
+          en: "Delivery fees are calculated based on your area and shown clearly before order confirmation.",
         },
       },
       {

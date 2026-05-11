@@ -70,8 +70,8 @@ export function SiteFooter({
 
   const footerSignals = [
     { Icon: ShieldCheck, labelAr: "صرف آمن ومنظم", labelEn: "Safe and regulated service" },
-    { Icon: Truck, labelAr: `${deliveryWindow} داخل القاهرة`, labelEn: `${deliveryWindow} in Cairo` },
-    { Icon: Sparkles, labelAr: "رسوم توصيل تنافسية", labelEn: "Competitive delivery fee" },
+    { Icon: Truck, labelAr: "توصيل داخل القاهرة", labelEn: "Delivery across Cairo" },
+    { Icon: Sparkles, labelAr: "رسوم التوصيل حسب المنطقة", labelEn: "Delivery fee by area" },
     { Icon: HeartPulse, labelAr: "خدمة أقرب للاحتياج", labelEn: "Care closer to the need" },
   ];
 

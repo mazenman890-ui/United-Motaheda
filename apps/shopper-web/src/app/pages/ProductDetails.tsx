@@ -134,7 +134,7 @@ function ProductDetailsDesktop() {
   const highlights = [
     { Icon: ShieldCheck, label: lang === "ar" ? "بيانات مباشرة من الكتالوج" : "Direct live-catalog data" },
     { Icon: Barcode,     label: lang === "ar" ? "مرجع واضح وسريع"           : "Clear quick reference" },
-    { Icon: Truck,       label: lang === "ar" ? "رسوم توصيل تنافسية" : "Competitive delivery fee" },
+    { Icon: Truck,       label: lang === "ar" ? "توصيل داخل القاهرة" : "Delivery across Cairo" },
   ];
 
   const handleAdd = async () => {
@@ -292,7 +292,7 @@ function ProductDetailsDesktop() {
                     {lang === "ar" ? "الرسوم" : "Fee"}
                   </p>
                   <p className="mt-1 text-sm font-black text-slate-800">
-                    {lang === "ar" ? "رسوم تنافسية" : "Competitive"}
+                    {lang === "ar" ? "حسب المنطقة" : "By area"}
                   </p>
                 </div>
               </div>
