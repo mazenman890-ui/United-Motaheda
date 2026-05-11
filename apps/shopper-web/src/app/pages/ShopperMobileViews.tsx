@@ -65,6 +65,7 @@ import { cn } from "../components/UI";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useCatalogCategorySearch } from "../hooks/useCatalogCategorySearch";
 import { useCatalogProductSearch } from "../hooks/useCatalogProductSearch";
+import { getMaxPriceCeiled } from "../hooks/useCatalogFilters";
 
 const SORT_OPTIONS = [
   { value: "relevant", labelAr: "الأكثر صلة", labelEn: "Most relevant" },
@@ -319,7 +320,15 @@ export function MobileCategoriesView() {
 
 export function MobileProductsView() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { categories, products, isLoading } = useCatalog();
+  const {
+    categories,
+    products,
+    isLoading,
+    isLoadingMore,
+    loadNextPage,
+    hasNextPage,
+    totalProductCount,
+  } = useCatalog();
   const { lang } = useLanguage();
   const { searchQuery, setSearchQuery } = useSearchInput();
   const [priceRange, setPriceRange] = useState(0);
@@ -328,16 +337,14 @@ export function MobileProductsView() {
   const [onlyInStock, setOnlyInStock] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const activeCategory = searchParams.get("category") || "all";
   const syncedSearch = (searchParams.get("search") || "").trim();
   const debouncedSearch = useDebouncedValue(searchQuery, 180);
-  const maxPrice = useMemo(() => {
-    if (products.length === 0) {
-      return 0;
-    }
-    return Math.ceil(Math.max(...products.map((product) => product.price)) / 50) * 50;
-  }, [products]);
+  // getMaxPriceCeiled avoids the V8 spread-limit crash on 65K+ args
+  const maxPrice = useMemo(
+    () => getMaxPriceCeiled(products, 50),
+    [products],
+  );
   useEffect(() => {
     if (maxPrice > 0) {
       setPriceRange((current) => (current > 0 ? Math.min(current, maxPrice) : maxPrice));
@@ -365,9 +372,6 @@ export function MobileProductsView() {
     setSearchParams(next, { replace: true });
   }, [debouncedSearch, searchParams, setSearchParams, syncedSearch]);
 
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [activeCategory, onlyInStock, priceRange, searchQuery, sortBy]);
   const categoryOptions = useMemo(
     () => [
       { id: "all", label: lang === "ar" ? "كل المنتجات" : "All products" },
@@ -389,7 +393,6 @@ export function MobileProductsView() {
     sortBy,
     lang,
   );
-  const visibleProducts = sortedProducts.slice(0, visibleCount);
   const hasFilters =
     activeCategory !== "all"
     || onlyInStock
@@ -507,7 +510,7 @@ export function MobileProductsView() {
         </div>
         {isLoading && products.length === 0 ? (
           <CatalogSkeletonGrid count={6} />
-        ) : visibleProducts.length > 0 ? (
+        ) : sortedProducts.length > 0 ? (
           <>
             <div className="flex items-center justify-between gap-3 px-1">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
@@ -515,12 +518,12 @@ export function MobileProductsView() {
               </p>
               <p className="text-xs font-semibold text-slate-500">
                 {lang === "ar"
-                  ? `عرض ${visibleProducts.length} من ${sortedProducts.length}`
-                  : `Showing ${visibleProducts.length} of ${sortedProducts.length}`}
+                  ? `${sortedProducts.length} من ${totalProductCount || resultCount}`
+                  : `${sortedProducts.length} of ${totalProductCount || resultCount}`}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
-              {visibleProducts.map((product) => (
+              {sortedProducts.map((product) => (
                 <ShopperProductTile
                   key={product.id}
                   product={product}
@@ -528,13 +531,16 @@ export function MobileProductsView() {
                 />
               ))}
             </div>
-            {sortedProducts.length > visibleCount ? (
+            {hasNextPage ? (
               <button
                 type="button"
-                onClick={() => setVisibleCount((current) => current + PAGE_SIZE)}
-                className="inline-flex h-12 w-full items-center justify-center rounded-[1.35rem] border border-slate-200 bg-white text-sm font-black text-slate-700 shadow-[0_14px_28px_rgba(15,23,42,0.05)]"
+                onClick={() => void loadNextPage()}
+                disabled={isLoadingMore}
+                className="inline-flex h-12 w-full items-center justify-center rounded-[1.35rem] border border-slate-200 bg-white text-sm font-black text-slate-700 shadow-[0_14px_28px_rgba(15,23,42,0.05)] disabled:opacity-60"
               >
-                {lang === "ar" ? "عرض المزيد" : "Load more"}
+                {isLoadingMore
+                  ? (lang === "ar" ? "جارٍ التحميل..." : "Loading…")
+                  : (lang === "ar" ? "عرض المزيد" : "Load more")}
               </button>
             ) : null}
           </>
@@ -862,22 +868,29 @@ export function MobileCategoryDetailsView() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { lang } = useLanguage();
-  const { categories, categoriesById, products, isLoading } = useCatalog();
+  const {
+    categories,
+    categoriesById,
+    products,
+    isLoading,
+    isLoadingMore,
+    filterByCategory,
+    loadNextPage,
+    hasNextPage,
+  } = useCatalog();
   const { searchQuery, setSearchQuery } = useSearchInput();
   const [sortBy, setSortBy] =
     useState<(typeof SORT_OPTIONS)[number]["value"]>("relevant");
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [sortOpen, setSortOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [onlyInStock, setOnlyInStock] = useState(false);
   const category = id ? categoriesById[id] : undefined;
-  const categoryProducts = useMemo(
-    () => products.filter((product) => product.category === id),
-    [id, products],
-  );
+
+  // Trigger server-side category filter whenever id changes
   useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [id, onlyInStock, searchQuery, sortBy]);
+    if (id) void filterByCategory(id);
+  }, [id, filterByCategory]);
+
   if (!category) {
     return (
       <ShopperPage docked={false} className="w-full">
@@ -903,8 +916,9 @@ export function MobileCategoryDetailsView() {
     );
   }
   const displayName = getLocalizedCategoryName(category, lang);
+  // products is already server-filtered to this category by the effect above
   const { products: sortedProducts, resultCount, isSearching } = useCatalogProductSearch(
-    categoryProducts,
+    products,
     {
       query: searchQuery,
       onlyInStock,
@@ -912,7 +926,6 @@ export function MobileCategoryDetailsView() {
     sortBy,
     lang,
   );
-  const visibleProducts = sortedProducts.slice(0, visibleCount);
   const relatedCategories = categories.filter((entry) => entry.id !== category.id).slice(0, 5);
   return (
     <ShopperPage className="w-full">
@@ -1037,9 +1050,9 @@ export function MobileCategoryDetailsView() {
             ) : null}
           </div>
         </div>
-        {isLoading && categoryProducts.length === 0 ? (
+        {isLoading && products.length === 0 ? (
           <CatalogSkeletonGrid count={6} />
-        ) : visibleProducts.length > 0 ? (
+        ) : sortedProducts.length > 0 ? (
           <>
             <ShopperSurface className="border-slate-200 bg-white">
               <div className="grid grid-cols-3 gap-3">
@@ -1066,7 +1079,7 @@ export function MobileCategoryDetailsView() {
               </div>
             </ShopperSurface>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {visibleProducts.map((product) => (
+              {sortedProducts.map((product) => (
                 <ShopperProductTile
                   key={product.id}
                   product={product}
@@ -1074,13 +1087,16 @@ export function MobileCategoryDetailsView() {
                 />
               ))}
             </div>
-            {resultCount > visibleCount ? (
+            {hasNextPage ? (
               <button
                 type="button"
-                onClick={() => setVisibleCount((current) => current + PAGE_SIZE)}
-                className="inline-flex h-12 w-full items-center justify-center rounded-[1.35rem] border border-slate-200 bg-white text-sm font-black text-slate-700 shadow-[0_14px_28px_rgba(15,23,42,0.05)]"
+                onClick={() => void loadNextPage()}
+                disabled={isLoadingMore}
+                className="inline-flex h-12 w-full items-center justify-center rounded-[1.35rem] border border-slate-200 bg-white text-sm font-black text-slate-700 shadow-[0_14px_28px_rgba(15,23,42,0.05)] disabled:opacity-60"
               >
-                {lang === "ar" ? "عرض المزيد" : "Load more"}
+                {isLoadingMore
+                  ? (lang === "ar" ? "جارٍ التحميل..." : "Loading…")
+                  : (lang === "ar" ? "عرض المزيد" : "Load more")}
               </button>
             ) : null}
           </>

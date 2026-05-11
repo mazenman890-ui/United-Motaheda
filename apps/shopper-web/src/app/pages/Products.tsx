@@ -373,12 +373,21 @@ export default function Products() {
 function ProductsDesktop() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { lang, t } = useLanguage();
-  const { categories, products, isLoading, error } = useCatalog();
+  const {
+    categories,
+    products,
+    inStockProducts,
+    isLoading,
+    isLoadingMore,
+    error,
+    loadNextPage,
+    hasNextPage,
+    totalProductCount,
+  } = useCatalog();
   const { searchQuery, setSearchQuery } = useSearchInput();
   const [sortBy, setSortBy] = useState<CatalogProductSort>("relevant");
   const [onlyInStock, setOnlyInStock] = useState(false);
   const [priceRange, setPriceRange] = useState(0);
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -400,7 +409,7 @@ function ProductsDesktop() {
       {
         id: "all",
         label: lang === "ar" ? "الكل" : "All",
-        count: products.length,
+        count: totalProductCount || products.length,
       },
       ...categories.map((c) => ({
         id: c.id,
@@ -408,7 +417,7 @@ function ProductsDesktop() {
         count: c.count,
       })),
     ],
-    [categories, products.length, lang],
+    [categories, products.length, totalProductCount, lang],
   );
 
   /* ✅ Destructure activeQuery and pass it to the grid */
@@ -429,17 +438,8 @@ function ProductsDesktop() {
     lang,
   );
 
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [activeCategory, onlyInStock, priceRange, searchQuery, sortBy]);
-
-  const visibleProducts = useMemo(
-    () => filteredProducts.slice(0, visibleCount),
-    [filteredProducts, visibleCount],
-  );
-
   const activeCategoryLabel = categoryOptions.find((c) => c.id === activeCategory)?.label;
-  const availableCount = useMemo(() => products.filter((p) => p.inStock).length, [products]);
+  const availableCount = inStockProducts.length;
   const isPriceFiltered = maxPrice > 0 && priceRange < maxPrice;
   const hasFilters = activeCategory !== "all" || onlyInStock || isPriceFiltered || searchQuery.trim().length > 0;
 
@@ -549,7 +549,7 @@ function ProductsDesktop() {
             <div className="grid grid-cols-3 gap-2 xl:w-64 xl:grid-cols-1 xl:gap-2">
               <StatCard
                 label={lang === "ar" ? "إجمالي المنتجات" : "Catalog size"}
-                value={products.length}
+                value={totalProductCount || products.length}
                 icon={Tag}
               />
               <StatCard
@@ -646,7 +646,7 @@ function ProductsDesktop() {
               </div>
             ) : showLoadingState ? (
               <CatalogSkeletonGrid count={8} />
-            ) : visibleProducts.length > 0 ? (
+            ) : filteredProducts.length > 0 ? (
               <>
                 <div className="mb-4 flex items-center justify-between gap-3 px-1">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
@@ -654,40 +654,35 @@ function ProductsDesktop() {
                   </p>
                   <p className="text-[11px] font-semibold text-slate-400">
                     {lang === "ar"
-                      ? `عرض ${visibleProducts.length} من ${resultCount}`
-                      : `Showing ${visibleProducts.length} of ${resultCount}`}
+                      ? `عرض ${filteredProducts.length} من ${resultCount}`
+                      : `Showing ${filteredProducts.length} of ${resultCount}`}
                   </p>
                 </div>
 
-                {/* ✅ Pass isSearching and activeQuery */}
                 <ProductGrid
-                  products={visibleProducts}
+                  products={filteredProducts}
                   isSearching={isSearching}
                   activeQuery={activeQuery}
                 />
 
-                {resultCount > visibleCount && (
+                {hasNextPage && (
                   <div ref={loadMoreRef} className="mt-10 flex flex-col items-center gap-3">
-                    <div className="h-1.5 w-32 overflow-hidden rounded-full bg-slate-200">
-                      <motion.div
-                        className="h-full rounded-full bg-teal-400"
-                        animate={{ width: `${Math.round((visibleCount / resultCount) * 100)}%` }}
-                        transition={{ duration: 0.4 }}
-                      />
-                    </div>
                     <p className="text-[11px] font-semibold text-slate-400">
                       {lang === "ar"
-                        ? `${visibleCount} من ${resultCount} منتج`
-                        : `${visibleCount} of ${resultCount} items`}
+                        ? `${filteredProducts.length} من ${totalProductCount || resultCount} منتج`
+                        : `${filteredProducts.length} of ${totalProductCount || resultCount} items`}
                     </p>
                     <motion.button
                       whileHover={{ y: -2 }}
                       whileTap={{ scale: 0.97 }}
                       type="button"
-                      onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200/80 bg-white px-8 text-sm font-black text-slate-700 shadow-sm transition-all hover:shadow-md"
+                      onClick={() => void loadNextPage()}
+                      disabled={isLoadingMore}
+                      className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200/80 bg-white px-8 text-sm font-black text-slate-700 shadow-sm transition-all hover:shadow-md disabled:opacity-60"
                     >
-                      {lang === "ar" ? "عرض المزيد" : "Load more"}
+                      {isLoadingMore
+                        ? (lang === "ar" ? "جارٍ التحميل..." : "Loading…")
+                        : (lang === "ar" ? "عرض المزيد" : "Load more")}
                     </motion.button>
                   </div>
                 )}

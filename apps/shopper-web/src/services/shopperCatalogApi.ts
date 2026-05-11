@@ -27,6 +27,7 @@ export interface ProductFilters {
   inStock?: boolean;
   minPrice?: number;
   maxPrice?: number;
+  sortBy?: "price_asc" | "price_desc" | "name" | "relevant";
 }
 
 export interface PageResult {
@@ -232,10 +233,18 @@ function buildSupabaseQuery(
     query = query.lte("Price", filters.maxPrice);
   }
 
-  // Sort: in-stock first, then alphabetically by English name.
-  query = query
-    .order("is_active", { ascending: false })
-    .order("Name_En", { ascending: true });
+  // Sort order — default: in-stock first, then alphabetical by English name.
+  if (filters.sortBy === "price_asc") {
+    query = query.order("Price", { ascending: true });
+  } else if (filters.sortBy === "price_desc") {
+    query = query.order("Price", { ascending: false });
+  } else if (filters.sortBy === "name") {
+    query = query.order("Name_En", { ascending: true });
+  } else {
+    query = query
+      .order("is_active", { ascending: false })
+      .order("Name_En", { ascending: true });
+  }
 
   // Pagination window.
   const from = (page - 1) * pageSize;

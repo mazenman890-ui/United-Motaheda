@@ -30,7 +30,7 @@ import {
   CubeIcon,
   UsersIcon,
 } from "@heroicons/react/24/outline";
-import { useCatalog } from "../../contexts/CatalogContext";
+import { useCatalog, useFullCatalog } from "../../contexts/CatalogContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useAuth } from "../../contexts/AuthContext";
 import {
@@ -227,12 +227,14 @@ export default function DashboardOverview() {
   }, [userRole, navigate]);
 
   const {
-    products,
     metrics,
     lastUpdated,
     isLoading: catalogLoading,
     error: catalogError,
   } = useCatalog();
+
+  // Use full catalog for accurate low-stock alerts (not the paginated view)
+  const { allProducts } = useFullCatalog();
 
   const hasCached =
     Boolean(initialStats) ||
@@ -323,11 +325,11 @@ export default function DashboardOverview() {
 
   const lowStockItems = useMemo(
     () =>
-      products
+      allProducts
         .filter((p) => p.stock < 10)
         .sort((a, b) => a.stock - b.stock || a.name.localeCompare(b.name, lang === "ar" ? "ar" : "en"))
         .slice(0, 5),
-    [lang, products],
+    [lang, allProducts],
   );
 
   const activeEmployees = useMemo(

@@ -30,8 +30,6 @@ import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { MobileCategoryDetailsView } from "./ShopperMobileViews";
 import { FilterSidebar } from "../components/FilterSidebar";
 
-const PAGE_SIZE = 36;
-
 const SORT_OPTIONS = [
   { value: "relevant", labelAr: "الأكثر صلة", labelEn: "Relevant", Icon: Sparkles },
   { value: "price_asc", labelAr: "السعر ↑", labelEn: "Price ↑", Icon: TrendingUp },
@@ -229,13 +227,26 @@ export default function CategoryDetails() {
 function CategoryDetailsDesktop() {
   const { id } = useParams();
   const { lang } = useLanguage();
-  const { categories, categoriesById, products, isLoading } = useCatalog();
+  const {
+    categories,
+    categoriesById,
+    products,
+    isLoading,
+    isLoadingMore,
+    filterByCategory,
+    loadNextPage,
+    hasNextPage,
+  } = useCatalog();
   const { searchQuery, setSearchQuery } = useSearchInput();
   const [sortBy, setSortBy] = useState<CatalogProductSort>("relevant");
   const [onlyInStock, setOnlyInStock] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Trigger server-side category filter whenever the category ID changes
+  useEffect(() => {
+    if (id) void filterByCategory(id);
+  }, [id, filterByCategory]);
 
   const category = id ? categoriesById[id] : undefined;
   const relatedCategories = useMemo(
@@ -243,25 +254,12 @@ function CategoryDetailsDesktop() {
     [categories, id],
   );
 
-  const categoryProducts = useMemo(
-    () => products.filter((product) => product.category === id),
-    [id, products],
-  );
-
+  // products is already server-filtered to this category by the effect above
   const { products: filteredProducts, resultCount, isSearching } = useCatalogProductSearch(
-    categoryProducts,
+    products,
     { query: searchQuery, onlyInStock },
     sortBy,
     lang,
-  );
-
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [id, onlyInStock, searchQuery, sortBy]);
-
-  const visibleProducts = useMemo(
-    () => filteredProducts.slice(0, visibleCount),
-    [filteredProducts, visibleCount],
   );
 
   /* ── Not found ── */
@@ -520,9 +518,9 @@ function CategoryDetailsDesktop() {
           />
 
           <div className="min-w-0 flex-1">
-            {isLoading && categoryProducts.length === 0 ? (
+            {isLoading && products.length === 0 ? (
               <CatalogSkeletonGrid count={8} />
-            ) : visibleProducts.length > 0 ? (
+            ) : filteredProducts.length > 0 ? (
               <>
                 <div className="mb-4 flex items-center justify-between gap-3 px-1">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
@@ -530,33 +528,24 @@ function CategoryDetailsDesktop() {
                   </p>
                   <p className="text-[11px] font-semibold text-slate-400">
                     {lang === "ar"
-                      ? `عرض ${visibleProducts.length} من ${resultCount}`
-                      : `Showing ${visibleProducts.length} of ${resultCount}`}
+                      ? `عرض ${filteredProducts.length} من ${resultCount}`
+                      : `Showing ${filteredProducts.length} of ${resultCount}`}
                   </p>
                 </div>
-                <ProductGrid products={visibleProducts} />
-                {resultCount > visibleCount && (
+                <ProductGrid products={filteredProducts} />
+                {hasNextPage && (
                   <div ref={loadMoreRef} className="mt-10 flex flex-col items-center gap-3">
-                    <div className="h-1.5 w-32 overflow-hidden rounded-full bg-slate-200">
-                      <motion.div
-                        className="h-full rounded-full bg-teal-400"
-                        animate={{ width: `${Math.round((visibleCount / resultCount) * 100)}%` }}
-                        transition={{ duration: 0.4 }}
-                      />
-                    </div>
-                    <p className="text-[11px] font-semibold text-slate-400">
-                      {lang === "ar"
-                        ? `${visibleCount} من ${resultCount} منتج`
-                        : `${visibleCount} of ${resultCount} items`}
-                    </p>
                     <motion.button
                       whileHover={{ y: -2 }}
                       whileTap={{ scale: 0.97 }}
                       type="button"
-                      onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200/80 bg-white px-8 text-sm font-black text-slate-700 shadow-sm transition-all hover:shadow-md"
+                      onClick={() => void loadNextPage()}
+                      disabled={isLoadingMore}
+                      className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200/80 bg-white px-8 text-sm font-black text-slate-700 shadow-sm transition-all hover:shadow-md disabled:opacity-60"
                     >
-                      {lang === "ar" ? "عرض المزيد" : "Load more"}
+                      {isLoadingMore
+                        ? (lang === "ar" ? "جارٍ التحميل..." : "Loading…")
+                        : (lang === "ar" ? "عرض المزيد" : "Load more")}
                     </motion.button>
                   </div>
                 )}
