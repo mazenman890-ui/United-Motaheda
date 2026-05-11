@@ -11,8 +11,6 @@ import { publicEnv } from "./app/env";
 import { AutoContrastTextGuard } from "./app/components/UI";
 import { ErrorBoundary } from "./app/components/ErrorBoundary";
 import { AuthProvider } from "./contexts/AuthContext";
-import { CatalogProvider } from "./contexts/CatalogContext";
-import { CartProvider } from "./contexts/CartContext";
 import { FavoritesProvider } from "./contexts/FavoritesContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { Toaster } from "./app/components/ui/sonner";
@@ -44,14 +42,10 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <LanguageProvider>
           <AuthProvider>
             <FavoritesProvider>
-              <CatalogProvider>
-                <CartProvider>
-                  <LocationBootstrap />
-                  <AutoContrastTextGuard />
-                  <App />
-                  <Toaster richColors position="top-right" />
-                </CartProvider>
-              </CatalogProvider>
+              <LocationBootstrap />
+              <AutoContrastTextGuard />
+              <App />
+              <Toaster richColors position="top-right" />
             </FavoritesProvider>
           </AuthProvider>
         </LanguageProvider>

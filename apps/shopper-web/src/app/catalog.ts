@@ -723,21 +723,38 @@ export function normalizeSupabaseProduct(row: Record<string, unknown>, sourceRow
 async function fetchAllProductRows(): Promise<Record<string, unknown>[]> {
   const supabase = getSupabaseClient();
   const PAGE_SIZE = 1000;
+  // Matches typical HTTP/2 stream limits; prevents 429s on free-tier Supabase.
+  const CONCURRENCY = 6;
+
+  // First, get the exact row count with a lightweight head request.
+  const { count, error: countError } = await supabase
+    .from("products")
+    .select("id", { count: "exact", head: true });
+
+  if (countError) throw new Error(`Supabase count error: ${countError.message}`);
+  if (!count || count === 0) return [];
+
+  // Build page indices and fire them in parallel waves of CONCURRENCY.
+  const pageCount = Math.ceil(count / PAGE_SIZE);
+  const pages = Array.from({ length: pageCount }, (_, i) => i);
   const allRows: Record<string, unknown>[] = [];
-  let from = 0;
 
-  while (true) {
-    const { data, error } = await supabase
-      .from("products")
-      .select("*")
-      .range(from, from + PAGE_SIZE - 1);
-
-    if (error) throw new Error(`Supabase error: ${error.message}`);
-    if (!data || data.length === 0) break;
-
-    allRows.push(...(data as Record<string, unknown>[]));
-    if (data.length < PAGE_SIZE) break;
-    from += PAGE_SIZE;
+  for (let i = 0; i < pages.length; i += CONCURRENCY) {
+    const wave = pages.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(
+      wave.map(async (pageIndex) => {
+        const from = pageIndex * PAGE_SIZE;
+        const { data, error } = await supabase
+          .from("products")
+          .select("*")
+          .range(from, from + PAGE_SIZE - 1);
+        if (error) throw new Error(`Supabase error on page ${pageIndex}: ${error.message}`);
+        return data as Record<string, unknown>[] | null;
+      }),
+    );
+    for (const pageData of results) {
+      if (pageData && pageData.length > 0) allRows.push(...pageData);
+    }
   }
 
   return allRows;
