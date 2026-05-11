@@ -75,11 +75,6 @@ const DELIVERY_WINDOW_COMPACT_TEXT = {
   en: getDeliveryWindowCompactLabel("en"),
 } satisfies LocalizedText;
 
-const DELIVERY_FEE_TEXT = {
-  ar: "رسوم تنافسية",
-  en: "Competitive fee",
-} satisfies LocalizedText;
-
 const DELIVERY_FEE_CURRENCY_TEXT = {
   ar: "رسوم توصيل تنافسية",
   en: "Competitive delivery fee",
@@ -139,8 +134,8 @@ const FAQ_ITEMS: FaqItem[] = [
       en: "What is the delivery fee?",
     },
     answer: {
-      ar: `رسوم التوصيل ثابتة بقيمة ${DELIVERY_FEE_TEXT.ar} لكل طلب، ويتم توضيحها قبل التأكيد النهائي.`,
-      en: `Delivery is fixed at ${DELIVERY_FEE_TEXT.en} per order and is shown clearly before final confirmation.`,
+      ar: "رسوم التوصيل تنافسية وتُحسب بناءً على موقعك عند الإتمام، وتُعرض بوضوح قبل التأكيد النهائي.",
+      en: "Delivery fees are competitive and calculated based on your location at checkout, shown clearly before final confirmation.",
     },
   },
   {
@@ -247,8 +242,8 @@ const PAGE_CONFIG: Record<SupportPageType, PageConfig> = {
         icon: Wallet,
         title: { ar: "رسوم الشحن", en: "Shipping Fees" },
         body: {
-          ar: `رسوم التوصيل ثابتة بقيمة ${DELIVERY_FEE_TEXT.ar} لكل طلب، ويتم إظهارها بوضوح قبل تأكيد الطلب.`,
-          en: `Delivery is fixed at ${DELIVERY_FEE_TEXT.en} per order and is shown clearly before the order is confirmed.`,
+          ar: "رسوم التوصيل تنافسية وتُحسب بناءً على موقعك، وتُعرض بوضوح قبل تأكيد الطلب.",
+          en: "Delivery fees are competitive, calculated based on your location, and shown clearly before order confirmation.",
         },
       },
       {

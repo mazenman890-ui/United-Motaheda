@@ -2012,7 +2012,7 @@ export function MobileProfileView() {
             <ShopperAccountLink
               icon={Truck}
               title={lang === "ar" ? "سياسة التوصيل" : "Delivery policy"}
-              subtitle={lang === "ar" ? "مواعيد ورسوم ثابتة" : "Time windows and fixed fees"}
+              subtitle={lang === "ar" ? "مواعيد ورسوم التوصيل" : "Time windows and delivery fees"}
               to="/shipping"
             />
             <ShopperAccountLink
