@@ -661,28 +661,6 @@ function sanitizeRequestData(record: ApiRecord) {
   return sanitized;
 }
 
-function normalizeOrderStatus(value: string): OrderStatus {
-  const normalized = normalizeText(value).toLowerCase();
-
-  if (normalized === "delivered") {
-    return "Delivered";
-  }
-
-  if (normalized === "processing") {
-    return "Processing";
-  }
-
-  if (normalized === "out for delivery" || normalized === "out_for_delivery") {
-    return "Out for Delivery";
-  }
-
-  if (normalized === "cancelled" || normalized === "canceled") {
-    return "Cancelled";
-  }
-
-  return "Pending";
-}
-
 function mapCanonicalToLegacyOrderStatus(status: OrderLifecycleStatus): OrderStatus {
   // Map database status to UI OrderStatus
   if (status === "picked_up") {
@@ -793,58 +771,6 @@ function normalizeDashboardStats(record: ApiRecord) {
     lowStockItems: pickFirstNumber(record, ["lowStockItems", "Low_Stock_Items", "lowStock"]),
     ordersByDay: points,
   } satisfies DashboardStats;
-}
-
-function normalizeOrder(record: ApiRecord, fallback?: Partial<AdminOrder>) {
-  const codeText = pickFirstString(record, ["productCodes", "Product_Codes", "codes"]) || fallback?.productCodes?.join(", ") || "";
-  const productCodes = codeText
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean);
-  const paymentMethod =
-    pickFirstString(record, ["paymentMethod", "Payment_Method"]) ||
-    fallback?.paymentMethod ||
-    "cod";
-  const paymentLabel =
-    pickFirstString(record, ["paymentLabel", "Payment_Label"]) ||
-    fallback?.paymentLabel ||
-    "";
-  const requestPosMachineRaw =
-    pickFirstString(record, ["requestPosMachine", "POS_Requested", "posRequested"]) ||
-    (typeof record.requestPosMachine === "boolean"
-      ? String(record.requestPosMachine)
-      : typeof record.POS_Requested === "boolean"
-        ? String(record.POS_Requested)
-        : "");
-  const requestPosMachine =
-    requestPosMachineRaw
-      ? ["true", "1", "yes"].includes(normalizeText(requestPosMachineRaw).toLowerCase())
-      : fallback?.requestPosMachine || false;
-
-  return {
-    id: pickFirstString(record, ["id", "orderId", "Order_ID"]) || fallback?.id || createFallbackId("ORD"),
-    customerPhone: pickFirstString(record, ["customerPhone", "Customer_Phone", "phone"]) || fallback?.customerPhone || "",
-    customerName: pickFirstString(record, ["customerName", "Customer_Name", "name", "fullName", "Full_Name"]) || fallback?.customerName || "",
-    productCodes,
-    totalPrice: pickFirstNumber(record, ["totalPrice", "Total_Price", "total"]) || fallback?.totalPrice || 0,
-    address: pickFirstString(record, ["address", "Address"]) || fallback?.address || "",
-    customerAddress:
-      pickFirstString(record, ["customerAddress", "Customer_Address", "address", "Address"]) ||
-      fallback?.customerAddress ||
-      fallback?.address ||
-      "",
-    note: pickFirstString(record, ["note", "Note"]) || fallback?.note || "",
-    orderDate: pickFirstString(record, ["orderDate", "Order_Date", "createdAt", "Created_At"]) || fallback?.orderDate || new Date().toISOString(),
-    status: normalizeOrderStatus(pickFirstString(record, ["status", "Status"]) || fallback?.status || "Pending"),
-    paymentMethod,
-    paymentLabel,
-    requestPosMachine,
-    assignedDriver: pickFirstString(record, ["assignedDriver", "Assigned_Driver", "driverName", "Driver_Name"]) || fallback?.assignedDriver || "",
-    assignedDriverId:
-      pickFirstString(record, ["assignedDriverId", "Assigned_Driver_Id", "assigned_driver_id"]) ||
-      fallback?.assignedDriverId ||
-      "",
-  } satisfies AdminOrder;
 }
 
 function mapManagedOrderToAdminOrder(order: ManagedOrder): AdminOrder {
@@ -1235,7 +1161,7 @@ export function getCachedDashboardStats() {
   return envelope ? normalizeDashboardStats(unwrapRecord(envelope)) : null;
 }
 
-export async function getCatalog(force = false) {
+export async function getCatalog(_force = false) {
   const envelope = await postRequest("get_catalog", {});
   return normalizeCatalogResponse(unwrapRecord(envelope));
 }
@@ -1248,7 +1174,7 @@ export function getCachedCatalog() {
   return envelope ? normalizeCatalogResponse(unwrapRecord(envelope)) : null;
 }
 
-export async function getAdminOrders(force = false) {
+export async function getAdminOrders(_force = false) {
   const orders = await listManagedOrders();
   compatibilityAdminOrdersCache = orders.map(mapManagedOrderToAdminOrder);
   return compatibilityAdminOrdersCache;

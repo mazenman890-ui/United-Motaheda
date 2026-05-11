@@ -113,10 +113,6 @@ function formatDateOnly(value: string, lang: Language): string {
   }).format(date);
 }
 
-function getDateKey(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
 function getPresetRange(preset: Exclude<DatePreset, "custom" | "all">) {
   const now = new Date();
   const end = new Date(now);

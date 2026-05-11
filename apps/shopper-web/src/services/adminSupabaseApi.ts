@@ -25,6 +25,7 @@ export interface AdminProduct {
   categoryNameEn: string;
   inStock: boolean;
   is_active: boolean;
+  imageUrl?: string;
   created_at?: string;
   updated_at?: string;
 }

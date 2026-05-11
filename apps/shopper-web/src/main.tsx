@@ -6,13 +6,10 @@ import { getSharedQueryClient } from "@pharmacy/domain-core";
 import { useBrowserLocation } from "@pharmacy/domain-location";
 import "./i18n";
 import App from "./app/App";
-import { locations } from "./app/data";
 import { publicEnv } from "./app/env";
 import { AutoContrastTextGuard } from "./app/components/UI";
 import { ErrorBoundary } from "./app/components/ErrorBoundary";
 import { AuthProvider } from "./contexts/AuthContext";
-import { CatalogProvider } from "./contexts/CatalogContext";
-import { CartProvider } from "./contexts/CartContext";
 import { FavoritesProvider } from "./contexts/FavoritesContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { Toaster } from "./app/components/ui/sonner";
@@ -21,15 +18,6 @@ import "./styles/index.css";
 configureApiClient({
   baseUrl: publicEnv.apiBase,
   searchApiBase: publicEnv.searchApiBase,
-  defaultDeliveryFee: publicEnv.deliveryFee,
-  branches: locations.map((location) => ({
-    id: location.id,
-    nameAr: location.fullNameAr,
-    nameEn: location.fullNameEn,
-    lat: location.lat,
-    lng: location.lng,
-    loadFactor: location.isPrimary ? 1 : 1.1,
-  })),
 });
 
 function LocationBootstrap() {
@@ -44,14 +32,10 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <LanguageProvider>
           <AuthProvider>
             <FavoritesProvider>
-              <CatalogProvider>
-                <CartProvider>
-                  <LocationBootstrap />
-                  <AutoContrastTextGuard />
-                  <App />
-                  <Toaster richColors position="top-right" />
-                </CartProvider>
-              </CatalogProvider>
+              <LocationBootstrap />
+              <AutoContrastTextGuard />
+              <App />
+              <Toaster richColors position="top-right" />
             </FavoritesProvider>
           </AuthProvider>
         </LanguageProvider>

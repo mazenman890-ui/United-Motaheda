@@ -21,9 +21,6 @@ import {
 } from "../app/orders";
 import { getSupabaseClient } from "../lib/supabaseClient";
 
-/** Cache remains fresh for 5 minutes */
-const CACHE_TTL_MS = 5 * 60 * 1000;
-
 /** Maximum retry attempts for transient failures */
 const MAX_RETRIES = 3;
 

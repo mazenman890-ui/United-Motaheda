@@ -184,47 +184,12 @@ export function tokenise(s: string): string[] {
 
 // ─── 3. Transliteration ──────────────────────────────────────────────────────
 
-const DIGRAPHS_TO_AR: readonly [string, string][] = [
-  ["sh", "ش"], ["ch", "تش"], ["ph", "ف"], ["th", "ث"],
-  ["kh", "خ"], ["gh", "غ"], ["dh", "ذ"], ["oo", "و"],
-  ["ee", "ي"], ["ou", "و"], ["aa", "ا"],
-];
-
-const LATIN_TO_AR: Readonly<Record<string, string>> = {
-  a:"ا", b:"ب", c:"ك", d:"د", e:"ا", f:"ف", g:"ج",
-  h:"ه", i:"ي", j:"ج", k:"ك", l:"ل", m:"م", n:"ن",
-  o:"و", p:"ب", q:"ق", r:"ر", s:"س", t:"ت", u:"و",
-  v:"ف", w:"و", x:"كس", y:"ي", z:"ز",
-};
-
 const AR_TO_LATIN: Readonly<Record<string, string>> = {
   ا:"a", ب:"b", ت:"t", ث:"th", ج:"j", ح:"h", خ:"kh",
   د:"d", ذ:"dh", ر:"r", ز:"z", س:"s", ش:"sh", ص:"s",
   ض:"d", ط:"t", ظ:"z", ع:"a",  غ:"gh", ف:"f", ق:"q",
   ك:"k", ل:"l", م:"m", ن:"n",  ه:"h",  و:"o", ي:"y",
 };
-
-function latinToArabic(s: string): string {
-  const lower = s.toLowerCase();
-  let out = "";
-  let i = 0;
-  while (i < lower.length) {
-    let hit = false;
-    for (const [dig, ar] of DIGRAPHS_TO_AR) {
-      if (lower.startsWith(dig, i)) {
-        out += ar;
-        i += dig.length;
-        hit = true;
-        break;
-      }
-    }
-    if (!hit) {
-      out += LATIN_TO_AR[lower[i]] ?? lower[i];
-      i++;
-    }
-  }
-  return out;
-}
 
 function arabicToLatin(s: string): string {
   return [...normalise(s)].map((ch) => AR_TO_LATIN[ch] ?? ch).join("");

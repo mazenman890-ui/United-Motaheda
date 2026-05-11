@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   ArrowUpDown,
   CheckCircle2,
-  ChevronDown,
   LayoutGrid,
   PackageSearch,
   SlidersHorizontal,
@@ -26,11 +25,8 @@ import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { CatalogSkeletonGrid } from "../components/CatalogPrimitives";
 import { getLocalizedCategoryName } from "../localization";
 import { useCatalogProductSearch, type CatalogProductSort } from "../hooks/useCatalogProductSearch";
-import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { MobileCategoryDetailsView } from "./ShopperMobileViews";
 import { FilterSidebar } from "../components/FilterSidebar";
-
-const PAGE_SIZE = 36;
 
 const SORT_OPTIONS = [
   { value: "relevant", labelAr: "الأكثر صلة", labelEn: "Relevant", Icon: Sparkles },
@@ -107,28 +103,6 @@ function MetricTile({
   );
 }
 
-/* ─── Filter Chip ────────────────────────────────────────────── */
-function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return (
-    <motion.span
-      initial={{ opacity: 0, scale: 0.85 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.85 }}
-      className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 pl-2.5 pr-1.5 text-[11px] font-black text-teal-700"
-    >
-      {label}
-      <button
-        type="button"
-        onClick={onRemove}
-        className="flex h-4 w-4 items-center justify-center rounded-md bg-teal-100 text-teal-600 transition-colors hover:bg-teal-200"
-        aria-label="Remove filter"
-      >
-        <X className="h-2.5 w-2.5" />
-      </button>
-    </motion.span>
-  );
-}
-
 /* ─── Sort Segment ───────────────────────────────────────────── */
 function SortSegment({
   options,
@@ -168,56 +142,6 @@ function SortSegment({
   );
 }
 
-/* ─── Stock Toggle ───────────────────────────────────────────── */
-function StockToggle({
-  checked,
-  label,
-  onChange,
-}: {
-  checked: boolean;
-  label: string;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <motion.button
-      whileTap={{ scale: 0.98 }}
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={cn(
-        "flex items-center justify-between gap-3 rounded-xl border px-4 py-2.5 text-sm font-black transition-all duration-200",
-        checked
-          ? "border-teal-200 bg-teal-50 text-slate-900 shadow-[0_4px_14px_rgba(20,184,166,0.10)]"
-          : "border-slate-200/70 bg-white/80 text-slate-600 hover:bg-white",
-      )}
-    >
-      <div className="flex items-center gap-2">
-        <motion.div
-          animate={{ backgroundColor: checked ? "rgb(20,184,166)" : "rgb(241,245,249)" }}
-          className="flex h-6 w-6 items-center justify-center rounded-lg"
-        >
-          {checked
-            ? <CheckCircle2 className="h-3.5 w-3.5 text-white" />
-            : <Tag className="h-3.5 w-3.5 text-slate-400" />
-          }
-        </motion.div>
-        <span className="whitespace-nowrap">{label}</span>
-      </div>
-      <span className={cn(
-        "relative inline-flex h-5 w-9 items-center rounded-full border-2 transition-all duration-300",
-        checked ? "border-teal-400 bg-teal-500" : "border-slate-300 bg-slate-200",
-      )}>
-        <motion.span
-          animate={{ x: checked ? 16 : 2 }}
-          transition={{ type: "spring", stiffness: 500, damping: 30 }}
-          className="inline-block h-3 w-3 rounded-full bg-white shadow-sm"
-        />
-      </span>
-    </motion.button>
-  );
-}
-
 /* ─── Main Export ──────────────────────────────────────────── */
 export default function CategoryDetails() {
   const isShopperShell = useIsShopperShell();
@@ -229,13 +153,28 @@ export default function CategoryDetails() {
 function CategoryDetailsDesktop() {
   const { id } = useParams();
   const { lang } = useLanguage();
-  const { categories, categoriesById, products, isLoading } = useCatalog();
+  const {
+    categories,
+    categoriesById,
+    products,
+    isLoading,
+    isLoadingMore,
+    isFullCatalogReady,
+    filterByCategory,
+    loadNextPage,
+    hasNextPage,
+  } = useCatalog();
   const { searchQuery, setSearchQuery } = useSearchInput();
   const [sortBy, setSortBy] = useState<CatalogProductSort>("relevant");
   const [onlyInStock, setOnlyInStock] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Server-side filter only needed before full catalog loads; afterwards the
+  // hook derives the category slice directly from the in-memory allProducts.
+  useEffect(() => {
+    if (id && !isFullCatalogReady) void filterByCategory(id);
+  }, [id, isFullCatalogReady, filterByCategory]);
 
   const category = id ? categoriesById[id] : undefined;
   const relatedCategories = useMemo(
@@ -243,25 +182,12 @@ function CategoryDetailsDesktop() {
     [categories, id],
   );
 
-  const categoryProducts = useMemo(
-    () => products.filter((product) => product.category === id),
-    [id, products],
-  );
-
+  // products is already server-filtered to this category by the effect above
   const { products: filteredProducts, resultCount, isSearching } = useCatalogProductSearch(
-    categoryProducts,
+    products,
     { query: searchQuery, onlyInStock },
     sortBy,
     lang,
-  );
-
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [id, onlyInStock, searchQuery, sortBy]);
-
-  const visibleProducts = useMemo(
-    () => filteredProducts.slice(0, visibleCount),
-    [filteredProducts, visibleCount],
   );
 
   /* ── Not found ── */
@@ -295,19 +221,6 @@ function CategoryDetailsDesktop() {
   const description = lang === "ar" ? category.descAr : category.descEn;
   const hasFilters = onlyInStock || searchQuery.trim().length > 0;
   const stockPct = category.count > 0 ? Math.round((category.inStockCount / category.count) * 100) : 0;
-
-  const activeFilterTags = [
-    searchQuery.trim()
-      ? { key: "q", label: `"${searchQuery.trim()}"`, onRemove: () => setSearchQuery("") }
-      : null,
-    onlyInStock
-      ? {
-          key: "stock",
-          label: lang === "ar" ? "المتاح فقط" : "In stock only",
-          onRemove: () => setOnlyInStock(false),
-        }
-      : null,
-  ].filter(Boolean) as { key: string; label: string; onRemove: () => void }[];
 
   return (
     <div className="category-details-page min-h-screen bg-[linear-gradient(165deg,#f0fafa_0%,#f7fafb_50%,#fafafa_100%)]">
@@ -520,9 +433,9 @@ function CategoryDetailsDesktop() {
           />
 
           <div className="min-w-0 flex-1">
-            {isLoading && categoryProducts.length === 0 ? (
+            {isLoading && products.length === 0 ? (
               <CatalogSkeletonGrid count={8} />
-            ) : visibleProducts.length > 0 ? (
+            ) : filteredProducts.length > 0 ? (
               <>
                 <div className="mb-4 flex items-center justify-between gap-3 px-1">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
@@ -530,33 +443,24 @@ function CategoryDetailsDesktop() {
                   </p>
                   <p className="text-[11px] font-semibold text-slate-400">
                     {lang === "ar"
-                      ? `عرض ${visibleProducts.length} من ${resultCount}`
-                      : `Showing ${visibleProducts.length} of ${resultCount}`}
+                      ? `عرض ${filteredProducts.length} من ${resultCount}`
+                      : `Showing ${filteredProducts.length} of ${resultCount}`}
                   </p>
                 </div>
-                <ProductGrid products={visibleProducts} />
-                {resultCount > visibleCount && (
+                <ProductGrid products={filteredProducts} />
+                {hasNextPage && (
                   <div ref={loadMoreRef} className="mt-10 flex flex-col items-center gap-3">
-                    <div className="h-1.5 w-32 overflow-hidden rounded-full bg-slate-200">
-                      <motion.div
-                        className="h-full rounded-full bg-teal-400"
-                        animate={{ width: `${Math.round((visibleCount / resultCount) * 100)}%` }}
-                        transition={{ duration: 0.4 }}
-                      />
-                    </div>
-                    <p className="text-[11px] font-semibold text-slate-400">
-                      {lang === "ar"
-                        ? `${visibleCount} من ${resultCount} منتج`
-                        : `${visibleCount} of ${resultCount} items`}
-                    </p>
                     <motion.button
                       whileHover={{ y: -2 }}
                       whileTap={{ scale: 0.97 }}
                       type="button"
-                      onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200/80 bg-white px-8 text-sm font-black text-slate-700 shadow-sm transition-all hover:shadow-md"
+                      onClick={() => void loadNextPage()}
+                      disabled={isLoadingMore}
+                      className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200/80 bg-white px-8 text-sm font-black text-slate-700 shadow-sm transition-all hover:shadow-md disabled:opacity-60"
                     >
-                      {lang === "ar" ? "عرض المزيد" : "Load more"}
+                      {isLoadingMore
+                        ? (lang === "ar" ? "جارٍ التحميل..." : "Loading…")
+                        : (lang === "ar" ? "عرض المزيد" : "Load more")}
                     </motion.button>
                   </div>
                 )}

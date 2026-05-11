@@ -14,7 +14,7 @@ export function FavoriteHeartButton({
   size?: "sm" | "md";
 }) {
   const { user } = useAuth();
-  const { t, lang } = useLanguage();
+  const { t } = useLanguage();
   const { isFavorite, toggleFavorite } = useFavorites();
   const active = isFavorite(productId);
   const canUse = Boolean(user?.id && user.role === "customer");

@@ -1,7 +1,7 @@
 // config.ts – updated for cascading address selects and dynamic fee
 
 import { publicEnv } from "./env";
-import { calculateShipping, type ShippingAddressInput } from "./shippingConfig";
+import { calculateShipping } from "./shippingConfig";
 
 type Language = "ar" | "en";
 
@@ -49,7 +49,6 @@ const DELIVERY_RANGE_SEPARATOR = "\u2013";
 const EGYPTIAN_PHONE_REGEX = /^01[0125]\d{8}$/;
 const PROMO_CODE = "UNITED10";
 
-export const DELIVERY_FEE_EGP = publicEnv.deliveryFee;
 export const DELIVERY_MIN_MINUTES = publicEnv.deliveryMinMinutes;
 export const DELIVERY_MAX_MINUTES = publicEnv.deliveryMaxMinutes;
 /** @deprecated Tax removed from checkout — kept for sheet/API backward compatibility at zero. */
@@ -100,14 +99,6 @@ export function getServiceHoursSentence(lang: Language) {
     : "Service available 24/7";
 }
 
-export function getDeliveryFeeLabel(lang: Language) {
-  return new Intl.NumberFormat(lang === "ar" ? "ar-EG" : "en-EG", {
-    style: "currency",
-    currency: "EGP",
-    maximumFractionDigits: 0,
-  }).format(DELIVERY_FEE_EGP);
-}
-
 export function getProductsEmptyDescription(lang: Language) {
   return lang === "ar"
     ? "سيظهر هذا القسم بمجرد وصول منتجات جديدة من المصدر المباشر."
@@ -118,8 +109,8 @@ export function getProductsEmptyDescription(lang: Language) {
  * Calculate order pricing.
  * @param subtotal - Cart subtotal before discounts and fees.
  * @param promoApplied - Whether a valid promo code was applied.
- * @param shippingFeeOverride - Optional explicit shipping fee (used by cascading address).
- *   If not provided, falls back to `calculateShipping` or the default `DELIVERY_FEE_EGP`.
+ * @param shippingFeeOverride - Optional explicit shipping fee (from delivery quote).
+ *   If not provided, falls back to `calculateShipping` (returns 0 when no zone match).
  */
 export function getOrderPricing(
   subtotal: number,

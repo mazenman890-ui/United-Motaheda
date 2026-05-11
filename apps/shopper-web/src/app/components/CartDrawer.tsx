@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useCart } from "../../contexts/CartContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { getCatalogProductImage } from "../catalog";
-import { getDeliveryFeeLabel, getDeliveryWindowSentence, getOrderPricing } from "../config";
+import { getDeliveryWindowSentence, getOrderPricing } from "../config";
 import { getLocalizedProductName } from "../localization";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { cn } from "./UI";
@@ -186,7 +186,9 @@ export function CartDrawer({
               </div>
               <div className="flex items-center justify-between text-sm font-semibold text-slate-500">
                 <span>{t("shipping")}</span>
-                <span className="font-black text-slate-950">{getDeliveryFeeLabel(lang)}</span>
+                <span className="font-black text-slate-950">
+                  {lang === "ar" ? "يُحسب عند الإتمام" : "Calculated at checkout"}
+                </span>
               </div>
               <div className="flex items-center justify-between border-t border-slate-200 pt-3">
                 <span className="text-base font-black text-slate-950">{t("total")}</span>

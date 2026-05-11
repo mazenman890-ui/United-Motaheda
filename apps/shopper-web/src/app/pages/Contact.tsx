@@ -1,5 +1,5 @@
 ﻿import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowUpRight,
   CheckCircle2,
@@ -67,7 +67,7 @@ export default function Contact() {
 
     try {
       const formData = new FormData();
-      formData.append("access_key", WEB3FORMS_ACCESS_KEY);
+      formData.append("access_key", WEB3FORMS_ACCESS_KEY ?? "");
       formData.append("name", form.name);
       formData.append("email", form.email);
       formData.append("phone", form.phone || "Not provided");

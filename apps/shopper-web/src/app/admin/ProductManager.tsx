@@ -11,7 +11,6 @@
 
 import {
   memo,
-  startTransition,
   useCallback,
   useEffect,
   useMemo,
@@ -25,7 +24,6 @@ import {
   CheckIcon,
   CubeIcon,
   ExclamationTriangleIcon,
-  MagnifyingGlassIcon,
   PencilIcon,
   PlusIcon,
   XMarkIcon,
@@ -43,7 +41,6 @@ import { Skeleton } from "../components/ui/skeleton";
 import { useAuth } from "../../contexts/AuthContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCatalog } from "../../contexts/CatalogContext";
-import type { CatalogProduct } from "../../app/catalog";
 import {
   lookupBarcode,
   type ProductMutationPayload,
@@ -52,7 +49,6 @@ import {
   fetchAdminProducts,
   updateAdminProduct,
   createAdminProduct,
-  deleteAdminProduct,
   handleApiError,
   showSuccessToast,
   showErrorToast,
@@ -76,7 +72,7 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Language = "ar" | "en";
-type Product = CatalogProduct;
+type Product = AdminProduct;
 
 interface ProductFormState {
   id: string;
@@ -344,7 +340,7 @@ const ProductTableRow = memo(function ProductTableRow({
 export default function ProductManager() {
   const { user } = useAuth();
   const { lang } = useLanguage();
-  const { categories, isLoading, error: catalogError, refreshCatalog } = useCatalog();
+  const { categories, isLoading, error: catalogError } = useCatalog();
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState("");
@@ -453,7 +449,7 @@ export default function ProductManager() {
     setFormError("");
     try {
       const payload = {
-        Code: form.id || form.code || `PROD-${Date.now()}`,
+        Code: form.id || `PROD-${Date.now()}`,
         Barcode: form.barcode || "",
         Name: form.name,
         Name_Ar: form.nameAr || "",
@@ -501,8 +497,7 @@ export default function ProductManager() {
     setError("");
     try {
       // TODO: Parse CSV file and convert to BulkProductPayload[]
-      const text = await file.text();
-      const lines = text.split("\n").filter(Boolean);
+      await file.text();
       toast.info(
         lang === "ar"
           ? "ميزة استيراد CSV قيد الإنشاء."

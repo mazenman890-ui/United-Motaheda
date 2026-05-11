@@ -62,12 +62,14 @@ import { getLocalizedProductName } from "../localization";
 import { fuzzyMatch, fuzzyScore } from "../../utils/fuzzySearch";
 import {
   CATALOG_SEARCH_WORKER_THRESHOLD,
+  clearPrefetchCache,
   ensureCatalogSearchWorkerInit,
   generateSearchRequestId,
   getPrefetchedResult,
   postCatalogSearchRequest,
   postPrefetchRequests,
 } from "./catalogSearchWorker";
+import { useFullCatalog } from "../../contexts/CatalogContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -177,8 +179,15 @@ export function useCatalogProductSearch(
 ) {
   const rawQuery = (filters.query ?? "").trim();
 
-  // deferredProducts: shell paints before the 52K filter+sort runs
-  const deferredProducts = useDeferredValue(products);
+  // Full catalog for worker init and search result resolution (stable reference)
+  const { allProducts, allProductsById } = useFullCatalog();
+
+  // When full catalog is ready, use it as the filter base to avoid stale
+  // category-filtered slices left behind by CategoryDetails navigations.
+  const stableBase = allProducts.length > 0 ? allProducts : products;
+
+  // deferredProducts: shell paints before the filter+sort runs
+  const deferredProducts = useDeferredValue(stableBase);
 
   // Track the latest dispatched request to discard stale responses
   const latestRequestId = useRef(0);
@@ -221,10 +230,17 @@ export function useCatalogProductSearch(
     };
   }, []);
 
-  // ── O(1) product lookup map ──────────────────────────────────────────────
+  // ── O(1) product lookup: prefer full catalog so worker results always resolve ──
   const productsMap = useMemo(
-    () => new Map<string, CatalogProduct>(deferredProducts.map((p) => [p.id, p])),
-    [deferredProducts],
+    () => {
+      const source = Object.keys(allProductsById).length > 0
+        ? Object.entries(allProductsById)
+        : deferredProducts.map((p) => [p.id, p] as [string, CatalogProduct]);
+      return new Map<string, CatalogProduct>(
+        source as Iterable<readonly [string, CatalogProduct]>,
+      );
+    },
+    [allProductsById, deferredProducts],
   );
 
   // ── Filtered base (no-query path) ────────────────────────────────────────
@@ -237,11 +253,16 @@ export function useCatalogProductSearch(
     });
   }, [filters.category, filters.onlyInStock, filters.priceCap, deferredProducts]);
 
-  // ── INIT: send catalog to worker once per snapshot ───────────────────────
+  // ── Stale prefetch results are invalid after filter context changes ──────
   useEffect(() => {
-    if (products.length === 0) return;
-    ensureCatalogSearchWorkerInit(products);
-  }, [products]);
+    clearPrefetchCache();
+  }, [filters.category, filters.onlyInStock, filters.priceCap]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── INIT: send full catalog to worker once (stable reference, not per-page) ──
+  useEffect(() => {
+    if (allProducts.length === 0) return;
+    ensureCatalogSearchWorkerInit(allProducts);
+  }, [allProducts]);
 
   // ── SEARCH: fires on debounced query + filter changes ────────────────────
   useEffect(() => {
@@ -281,8 +302,8 @@ export function useCatalogProductSearch(
     const requestId = generateSearchRequestId();
     latestRequestId.current = requestId;
 
-    // ── Inline path for tiny catalogs ──────────────────────────────────────
-    if (products.length < CATALOG_SEARCH_WORKER_THRESHOLD) {
+    // ── Inline path (full catalog not yet loaded) ──────────────────────────
+    if (allProducts.length < CATALOG_SEARCH_WORKER_THRESHOLD) {
       startTransition(() => {
         if (signal.aborted) return;
         setRankedIds(rankInline(filteredBase, query));
@@ -343,7 +364,7 @@ export function useCatalogProductSearch(
     filters.onlyInStock,
     filters.priceCap,
     filteredBase,
-    products,
+    allProducts,
   ]);
 
   // ── Resolve ids → full objects (O(matches), not O(52K)) ──────────────────
@@ -368,7 +389,7 @@ export function useCatalogProductSearch(
     return sortExplicit(matchedProducts, sortBy, lang);
   }, [debouncedQuery, lang, matchedProducts, sortBy]);
 
-  const isTransitioning = products !== deferredProducts;
+  const isTransitioning = stableBase !== deferredProducts;
 
   return {
     products:    sortedProducts,

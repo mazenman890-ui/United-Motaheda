@@ -1,4 +1,4 @@
-// Checkout.tsx – with cascading address dropdowns and dynamic delivery fee
+﻿// Checkout.tsx – with cascading address dropdowns and dynamic delivery fee
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useDeliveryQuote, useLocationState } from "@pharmacy/domain-location";
@@ -46,7 +46,6 @@ import {
   validateCheckoutInput,
 } from "../checkout/validation";
 import { EmptyState, PageHero, SectionIntro } from "../components/BrandPrimitives";
-import { BranchMapEmbed } from "../components/BranchMapEmbed";
 import { BranchSelector } from "../components/BranchSelector";
 import { GeofenceStatusBanner } from "../components/GeofenceStatusBanner";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
@@ -57,148 +56,7 @@ import { appendOrder } from "../orders";
 import { getCatalogProductImage } from "../catalog";
 import { getLocalizedProductName } from "../localization";
 import { GOVERNORATE_LOCK } from "../constants/location";
-import { deliveryLocations } from "../data";
-
-// ─── Egypt Address Hierarchy + Delivery Fee Dictionary ────────────────────────
-
-type SubRegionEntry = { name: string; fee: number };
-
-const CITIES = ["القاهرة", "الجيزة", "الإسكندرية"] as const;
-
-const REGIONS: Record<string, string[]> = {
-  "القاهرة": [
-    "مدينة نصر",
-    "المعادي",
-    "مصر الجديدة",
-    "الزيتون",
-    "شبرا",
-    "عين شمس",
-    "التجمع الخامس",
-    "وسط البلد",
-    "القطامية",
-  ],
-  "الجيزة": [
-    "المهندسين",
-    "الدقي",
-    "الزمالك",
-    "العجوزة",
-    "6 أكتوبر",
-    "الشيخ زايد",
-  ],
-  "الإسكندرية": [
-    "محطة الرمل",
-    "سيدي بشر",
-    "العجمي",
-    "المنتزه",
-    "ميامي",
-  ],
-};
-
-const SUB_REGIONS: Record<string, SubRegionEntry[]> = {
-  "مدينة نصر": [
-    { name: "جاردينيا سيتي", fee: 15 },
-    { name: "تاكسي سلطان", fee: 25 },
-    { name: "الحرس الجمهوري", fee: 20 },
-    { name: "عباس العقاد", fee: 18 },
-    { name: "ميدان التجمع", fee: 20 },
-    { name: "الهايكستب", fee: 22 },
-    { name: "مكرم عبيد", fee: 18 },
-  ],
-  "المعادي": [
-    { name: "المعادي القديمة", fee: 20 },
-    { name: "المعادي الجديدة", fee: 22 },
-    { name: "دجلة", fee: 25 },
-    { name: "زهراء المعادي", fee: 28 },
-    { name: "ثروت", fee: 22 },
-  ],
-  "مصر الجديدة": [
-    { name: "هليوبوليس", fee: 18 },
-    { name: "المرج", fee: 22 },
-    { name: "كليوباترا", fee: 18 },
-    { name: "مصطفى النحاس", fee: 20 },
-  ],
-  "الزيتون": [
-    { name: "الزيتون", fee: 15 },
-    { name: "المطرية", fee: 18 },
-    { name: "السواح", fee: 17 },
-  ],
-  "شبرا": [
-    { name: "شبرا مصر", fee: 15 },
-    { name: "النزهة", fee: 18 },
-    { name: "شبرا الخيمة", fee: 20 },
-  ],
-  "عين شمس": [
-    { name: "عين شمس", fee: 18 },
-    { name: "عزبة النخل", fee: 22 },
-    { name: "المرج الجديدة", fee: 22 },
-  ],
-  "التجمع الخامس": [
-    { name: "التجمع الأول", fee: 25 },
-    { name: "القرنفل", fee: 28 },
-    { name: "النرجس", fee: 28 },
-    { name: "الرحاب", fee: 22 },
-    { name: "المستثمرين الجنوبية", fee: 30 },
-  ],
-  "وسط البلد": [
-    { name: "وسط البلد", fee: 20 },
-    { name: "العتبة", fee: 20 },
-    { name: "باب الشعرية", fee: 18 },
-  ],
-  "القطامية": [
-    { name: "القطامية", fee: 30 },
-    { name: "الشروق", fee: 32 },
-  ],
-  "المهندسين": [
-    { name: "المهندسين", fee: 18 },
-    { name: "العقبة", fee: 20 },
-  ],
-  "الدقي": [
-    { name: "الدقي", fee: 20 },
-    { name: "إمبابة", fee: 18 },
-  ],
-  "الزمالك": [
-    { name: "الزمالك", fee: 22 },
-  ],
-  "العجوزة": [
-    { name: "العجوزة", fee: 18 },
-    { name: "بولاق الدكرور", fee: 20 },
-  ],
-  "6 أكتوبر": [
-    { name: "المدينة الرياضية", fee: 28 },
-    { name: "الحي السادس", fee: 28 },
-    { name: "الحي العاشر", fee: 30 },
-  ],
-  "الشيخ زايد": [
-    { name: "الشيخ زايد", fee: 30 },
-    { name: "حدائق الأهرام", fee: 28 },
-  ],
-  "محطة الرمل": [
-    { name: "محطة الرمل", fee: 20 },
-    { name: "سيدي جابر", fee: 22 },
-  ],
-  "سيدي بشر": [
-    { name: "سيدي بشر", fee: 25 },
-    { name: "الإبراهيمية", fee: 22 },
-  ],
-  "العجمي": [
-    { name: "العجمي", fee: 30 },
-    { name: "الهانوفيل", fee: 32 },
-  ],
-  "المنتزه": [
-    { name: "المنتزه", fee: 28 },
-    { name: "الأنفوشي", fee: 25 },
-  ],
-  "ميامي": [
-    { name: "ميامي", fee: 22 },
-    { name: "فلمنج", fee: 24 },
-  ],
-};
-
-const DEFAULT_DELIVERY_FEE = 10;
-
-function getSubRegionFee(region: string, subRegion: string): number {
-  return SUB_REGIONS[region]?.find((s) => s.name === subRegion)?.fee ?? DEFAULT_DELIVERY_FEE;
-}
+import { useBranches } from "../hooks/useBranches";
 
 // ─── Field Components ─────────────────────────────────────────────────────────
 
@@ -239,67 +97,6 @@ function Field({
               : "border-slate-200 focus:border-teal-400",
           )}
         />
-      </div>
-      {error ? <p className="mt-2 text-xs font-bold text-rose-600">{error}</p> : null}
-    </div>
-  );
-}
-
-function SelectField({
-  icon: Icon,
-  label,
-  value,
-  onChange,
-  onBlur,
-  options,
-  placeholder,
-  error,
-  disabled = false,
-  badge,
-}: {
-  icon: typeof User;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  onBlur?: () => void;
-  options: string[];
-  placeholder: string;
-  error?: string;
-  disabled?: boolean;
-  badge?: string;
-}) {
-  return (
-    <div>
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <label className="text-sm font-black text-slate-700">{label}</label>
-        {badge ? (
-          <span className="inline-flex items-center gap-1 rounded-full border border-teal-200 bg-teal-50 px-2.5 py-0.5 text-xs font-black text-teal-700">
-            <Truck className="h-3 w-3" />
-            {badge}
-          </span>
-        ) : null}
-      </div>
-      <div className="relative">
-        <Icon className="pointer-events-none absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2 text-teal-500" />
-        <select
-          value={value}
-          onBlur={onBlur}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={disabled}
-          className={cn(
-            "h-12 w-full appearance-none rounded-2xl border bg-slate-50 ps-11 pe-4 text-sm font-semibold text-slate-700 outline-none transition-colors focus:bg-white focus:ring-2 focus:ring-teal-500/15 disabled:cursor-not-allowed disabled:opacity-50",
-            error
-              ? "border-rose-300 focus:border-rose-400"
-              : "border-slate-200 focus:border-teal-400",
-          )}
-        >
-          <option value="">{placeholder}</option>
-          {options.map((opt) => (
-            <option key={opt} value={opt}>
-              {opt}
-            </option>
-          ))}
-        </select>
       </div>
       {error ? <p className="mt-2 text-xs font-bold text-rose-600">{error}</p> : null}
     </div>
@@ -355,11 +152,8 @@ export default function Checkout() {
   type PaymentMethodId = "cod" | "instapay" | "vodafone" | "online" | "banquemisr";
 
   // ── Cairo lock + branch selection ───────────────────────────────────────
-  const deliveryBranches = useMemo(() => deliveryLocations, []);
-  const primaryDeliveryBranch = useMemo(
-    () => deliveryBranches.find((branch) => branch.isPrimary) ?? deliveryBranches[0],
-    [deliveryBranches],
-  );
+  const { data: deliveryBranches = [] } = useBranches();
+  const primaryDeliveryBranch = deliveryBranches[0] ?? null;
   const selectedArea = useLocationState((state) => state.selectedArea);
   const selectedBranchId = useLocationState((state) => state.selectedBranchId);
   const locationPermission = useLocationState((state) => state.permission);
@@ -466,7 +260,7 @@ export default function Checkout() {
   );
   const deliveryQuote = useDeliveryQuote(cartSnapshot, form.streetName.trim(), selectedBranchId || undefined);
 
-  const dynamicDeliveryFee = deliveryQuote.data?.cost ?? DEFAULT_DELIVERY_FEE;
+  const dynamicDeliveryFee = deliveryQuote.data?.cost ?? 0;
   const dynamicFeeLabel = lang === "ar" ? `${dynamicDeliveryFee} ج.م` : `${dynamicDeliveryFee} EGP`;
 
   const pricing = useMemo(
@@ -1067,14 +861,6 @@ export default function Checkout() {
         ) : null}
       </div>
 
-      {selectedBranch?.mapEmbedSrc ? (
-        <div className="sm:col-span-2">
-          <BranchMapEmbed
-            src={selectedBranch.mapEmbedSrc}
-            title={lang === "ar" ? selectedBranch.fullNameAr : selectedBranch.fullNameEn}
-          />
-        </div>
-      ) : null}
 
       {/* Street name */}
       <Field

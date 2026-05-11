@@ -1,12 +1,18 @@
 import { useMemo } from "react";
 import { MapPin } from "lucide-react";
 import { GOVERNORATE_LOCK } from "../constants/location";
-import type { SiteLocation } from "../data";
 import { cn } from "./UI";
+
+type BranchItem = {
+  id: string;
+  nameAr: string;
+  nameEn: string;
+  area: string;
+};
 
 type BranchSelectorProps = {
   lang: "ar" | "en";
-  locations: readonly SiteLocation[];
+  locations: readonly BranchItem[];
   selectedArea: string;
   selectedBranchId: string;
   onChangeArea: (value: string) => void;
@@ -81,8 +87,8 @@ export function BranchSelector({
             {branchesInArea.map((branch) => (
               <option key={branch.id} value={branch.id}>
                 {lang === "ar"
-                  ? `${branch.fullNameAr} — ${branch.area}`
-                  : `${branch.fullNameEn} — ${branch.area}`}
+                  ? `${branch.nameAr} — ${branch.area}`
+                  : `${branch.nameEn} — ${branch.area}`}
               </option>
             ))}
           </select>

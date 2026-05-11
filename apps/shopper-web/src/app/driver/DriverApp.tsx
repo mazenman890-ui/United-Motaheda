@@ -51,7 +51,7 @@ export default function DriverApp() {
 
     async function load() {
       try {
-        const manifest = await listDriverManifest(user.id);
+        const manifest = await listDriverManifest(user!.id);
 
         if (active) {
           setOrders(manifest);

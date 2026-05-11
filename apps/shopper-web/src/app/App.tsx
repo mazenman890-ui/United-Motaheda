@@ -1,11 +1,17 @@
-import { Suspense, lazy, type ReactNode } from "react";
+import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from "react";
 import { MotionConfig } from "framer-motion";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Layout from "./layout";
+import { CatalogProvider, useCatalog } from "../contexts/CatalogContext";
+import { CartProvider } from "../contexts/CartContext";
 import { SearchProvider } from "../contexts/SearchContext";
 import { ManagerAndAbove } from "./admin/AdminRouteProtection";
-import { PageLayoutSkeleton } from "../components/Skeleton";
+import { useAuth } from "../contexts/AuthContext";
+import AppBootstrapOverlay from "./components/AppBootstrapOverlay";
+import { BootstrapBlockingProvider } from "./components/BootstrapBlockingContext";
+import TopProgressBar from "./components/TopProgressBar";
+import RouteLoadingSkeleton from "./components/RouteLoadingSkeleton";
 
 const AdminLayout          = lazy(() => import("./admin/AdminLayout"));
 const DriverApp            = lazy(() => import("./driver/DriverApp"));
@@ -37,105 +43,126 @@ const SpecialOrders        = lazy(() => import("./pages/SpecialOrders"));
 const SupportPage          = lazy(() => import("./pages/SupportPage"));
 
 function withSuspense(element: ReactNode) {
-  return <Suspense fallback={<PageLayoutSkeleton />}>{element}</Suspense>;
+  return <Suspense fallback={<RouteLoadingSkeleton />}>{element}</Suspense>;
+}
+
+/**
+ * Reads catalog + auth state from inside CatalogProvider and drives the
+ * full-screen bootstrap overlay.  Separated so useCatalog() is called only
+ * where CatalogProvider is mounted.
+ */
+function CatalogBootstrapOverlay() {
+  const { isLoading, products, error, refreshCatalog } = useCatalog();
+  const { loading: authLoading } = useAuth();
+  const active = authLoading || (isLoading && products.length === 0);
+  return (
+    <AppBootstrapOverlay
+      active={active}
+      error={error}
+      onRetry={() => void refreshCatalog(true)}
+    />
+  );
+}
+
+/** Mounts CatalogProvider + CartProvider for all catalog-requiring routes. */
+function CatalogShell() {
+  return (
+    <CatalogProvider>
+      <CartProvider>
+        <CatalogBootstrapOverlay />
+        <Outlet />
+      </CartProvider>
+    </CatalogProvider>
+  );
 }
 
 function AppShell() {
-  // Non-blocking app shell - no loading states, just render routes immediately
-  return (
-    <Routes>
-      {/* ── Auth ── */}
-      <Route path="/login"    element={withSuspense(<Login />)} />
-      <Route path="/register" element={withSuspense(<Register />)} />
+  const { loading: authLoading } = useAuth();
+  const location = useLocation();
+  const [navigationActive, setNavigationActive] = useState(false);
+  const prevKeyRef = useRef(location.key);
 
-      {/* ── Internal roles ── */}
-      <Route
-        path="/ops"
-        element={withSuspense(
+  useEffect(() => {
+    if (location.key === prevKeyRef.current) return;
+    prevKeyRef.current = location.key;
+    setNavigationActive(true);
+    const t = setTimeout(() => setNavigationActive(false), 350);
+    return () => clearTimeout(t);
+  }, [location.key]);
+
+  return (
+    <BootstrapBlockingProvider isBlocking={authLoading}>
+      <TopProgressBar navigationActive={navigationActive} disabled={authLoading} />
+      <Routes>
+        {/* ── Catalog-independent routes (no product fetch) ── */}
+        <Route path="/login"    element={withSuspense(<Login />)} />
+        <Route path="/register" element={withSuspense(<Register />)} />
+        <Route path="/ops" element={withSuspense(
           <ProtectedRoute requireRole={["admin", "manager"]}>
             <OperationsHub />
           </ProtectedRoute>,
-        )}
-      />
-      <Route
-        path="/driver"
-        element={withSuspense(
-          <ProtectedRoute requireRole={["driver"]}>
-            <DriverApp />
-          </ProtectedRoute>,
-        )}
-      />
+        )} />
+        <Route path="/track/:orderId" element={withSuspense(<OrderTracking />)} />
 
-      {/* ── Public order tracking (linked from confirmation e-mails) ── */}
-      <Route path="/track/:orderId" element={withSuspense(<OrderTracking />)} />
+        {/* ── Catalog-requiring routes — CatalogProvider mounted here ── */}
+        <Route element={<CatalogShell />}>
 
-      {/* ── Admin ── */}
-      <Route
-        path="/admin"
-        element={withSuspense(
-          <ProtectedRoute requireRole={["admin", "manager", "pharmacist"]}>
-            <AdminLayout />
-          </ProtectedRoute>,
-        )}
-      >
-        <Route index element={withSuspense(<DashboardOverview />)} />
-        <Route path="orders"         element={withSuspense(<ManagerAndAbove><OrdersManager /></ManagerAndAbove>)} />
-        <Route path="special-orders" element={withSuspense(<SpecialOrdersManager />)} />
-        <Route path="products/fast-entry" element={withSuspense(<FastProductEntry />)} />
-        <Route path="products"       element={withSuspense(<ProductManager />)} />
-        <Route path="operations"    element={withSuspense(<ManagerAndAbove><OperationsHub /></ManagerAndAbove>)} />
-        <Route path="staff"          element={withSuspense(<StaffManager />)} />
-        <Route path="*"              element={<Navigate to="/admin" replace />} />
-      </Route>
+          {/* ── Driver ── */}
+          <Route path="/driver" element={withSuspense(
+            <ProtectedRoute requireRole={["driver"]}>
+              <DriverApp />
+            </ProtectedRoute>,
+          )} />
 
-      {/* ── Shopper shell (main layout) — SearchProvider scoped here only ── */}
-      <Route path="/" element={<SearchProvider><Layout /></SearchProvider>}>
-        <Route index                         element={withSuspense(<Home />)} />
-        <Route path="products"               element={withSuspense(<Products />)} />
-        <Route path="products/:id"           element={withSuspense(<ProductDetails />)} />
-        <Route path="categories"             element={withSuspense(<Categories />)} />
-        <Route path="categories/:id"         element={withSuspense(<CategoryDetails />)} />
-        <Route path="offers"                 element={withSuspense(<Offers />)} />
-        <Route path="about"                  element={withSuspense(<About />)} />
-        <Route path="contact"                element={withSuspense(<Contact />)} />
-        <Route path="cart"                   element={withSuspense(<Cart />)} />
-        <Route path="checkout"               element={withSuspense(<Checkout />)} />
-        <Route path="shipping"               element={withSuspense(<SupportPage type="shipping" />)} />
-        <Route path="returns"                element={withSuspense(<Returns />)} />
-        <Route path="faq"                    element={withSuspense(<SupportPage type="faq" />)} />
-        <Route path="terms"                  element={withSuspense(<SupportPage type="terms" />)} />
-        <Route path="privacy"                element={withSuspense(<SupportPage type="privacy" />)} />
-        <Route path="special-orders"         element={withSuspense(<SpecialOrders />)} />
+          {/* ── Admin ── */}
+          <Route
+            path="/admin"
+            element={withSuspense(
+              <ProtectedRoute requireRole={["admin", "manager", "pharmacist"]}>
+                <AdminLayout />
+              </ProtectedRoute>,
+            )}
+          >
+            <Route index element={withSuspense(<DashboardOverview />)} />
+            <Route path="orders"              element={withSuspense(<ManagerAndAbove><OrdersManager /></ManagerAndAbove>)} />
+            <Route path="special-orders"      element={withSuspense(<SpecialOrdersManager />)} />
+            <Route path="products/fast-entry" element={withSuspense(<FastProductEntry />)} />
+            <Route path="products"            element={withSuspense(<ProductManager />)} />
+            <Route path="operations"          element={withSuspense(<ManagerAndAbove><OperationsHub /></ManagerAndAbove>)} />
+            <Route path="staff"               element={withSuspense(<StaffManager />)} />
+            <Route path="*"                   element={<Navigate to="/admin" replace />} />
+          </Route>
 
-        {/* Protected shopper routes */}
-        <Route
-          path="profile"
-          element={withSuspense(
-            <ProtectedRoute><Profile /></ProtectedRoute>,
-          )}
-        />
-        <Route
-          path="orders"
-          element={withSuspense(
-            <ProtectedRoute><Orders /></ProtectedRoute>,
-          )}
-        />
-        <Route
-          path="favorites"
-          element={withSuspense(
-            <ProtectedRoute><Favorites /></ProtectedRoute>,
-          )}
-        />
-        <Route
-          path="wishlist"
-          element={withSuspense(
-            <ProtectedRoute><Favorites /></ProtectedRoute>,
-          )}
-        />
+          {/* ── Shopper shell — SearchProvider scoped here only ── */}
+          <Route path="/" element={<SearchProvider><Layout /></SearchProvider>}>
+            <Route index                         element={withSuspense(<Home />)} />
+            <Route path="products"               element={withSuspense(<Products />)} />
+            <Route path="products/:id"           element={withSuspense(<ProductDetails />)} />
+            <Route path="categories"             element={withSuspense(<Categories />)} />
+            <Route path="categories/:id"         element={withSuspense(<CategoryDetails />)} />
+            <Route path="offers"                 element={withSuspense(<Offers />)} />
+            <Route path="about"                  element={withSuspense(<About />)} />
+            <Route path="contact"                element={withSuspense(<Contact />)} />
+            <Route path="cart"                   element={withSuspense(<Cart />)} />
+            <Route path="checkout"               element={withSuspense(<Checkout />)} />
+            <Route path="shipping"               element={withSuspense(<SupportPage type="shipping" />)} />
+            <Route path="returns"                element={withSuspense(<Returns />)} />
+            <Route path="faq"                    element={withSuspense(<SupportPage type="faq" />)} />
+            <Route path="terms"                  element={withSuspense(<SupportPage type="terms" />)} />
+            <Route path="privacy"                element={withSuspense(<SupportPage type="privacy" />)} />
+            <Route path="special-orders"         element={withSuspense(<SpecialOrders />)} />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
-    </Routes>
+            <Route path="profile"  element={withSuspense(<ProtectedRoute><Profile /></ProtectedRoute>)} />
+            <Route path="orders"   element={withSuspense(<ProtectedRoute><Orders /></ProtectedRoute>)} />
+            <Route path="favorites" element={withSuspense(<ProtectedRoute><Favorites /></ProtectedRoute>)} />
+            <Route path="wishlist"  element={withSuspense(<ProtectedRoute><Favorites /></ProtectedRoute>)} />
+
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+
+        </Route>{/* end CatalogShell */}
+      </Routes>
+    </BootstrapBlockingProvider>
   );
 }
 

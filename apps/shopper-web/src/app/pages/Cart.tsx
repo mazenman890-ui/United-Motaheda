@@ -12,15 +12,16 @@ import {
 import { useCart } from "../../contexts/CartContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import {
-  DELIVERY_FEE_EGP,
   getDeliveryWindowLabel,
   getOrderPricing,
 } from "../config";
 import { EmptyState, PageHero, StatTile } from "../components/BrandPrimitives";
+import { GeofenceStatusBanner } from "../components/GeofenceStatusBanner";
 import { getCatalogProductImage } from "../catalog";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { cn } from "../components/UI";
 import { useIsShopperShell } from "../components/ui/use-mobile";
+import { useDeliveryContext } from "../hooks/useDeliveryContext";
 import { getLocalizedProductName } from "../localization";
 import { MobileCartView } from "./ShopperMobileViews";
 
@@ -38,10 +39,18 @@ function CartDesktop() {
   const { cart, removeFromCart, updateQuantity } = useCart();
   const { t, lang } = useLanguage();
   const navigate = useNavigate();
+  const delivery = useDeliveryContext();
 
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = cart.reduce((sum, item) => sum + (item.product?.price || 0) * item.quantity, 0);
-  const pricing = getOrderPricing(subtotal);
+  const dynamicFee = delivery.fee ?? 0;
+  const pricing = getOrderPricing(subtotal, false, dynamicFee);
+
+  const feeDisplay = delivery.isLoading
+    ? (lang === "ar" ? "جارٍ الحساب…" : "Calculating…")
+    : delivery.fee !== null
+    ? `${delivery.fee} ${t("currency")}`
+    : (lang === "ar" ? "يُحسب عند الإتمام" : "Calculated at checkout");
 
   if (cart.length === 0) {
     return (
@@ -87,7 +96,7 @@ function CartDesktop() {
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <StatTile value={itemCount} label={lang === "ar" ? "إجمالي القطع" : "Total items"} />
             <StatTile value={`${pricing.subtotal.toFixed(2)} ${t("currency")}`} label={t("subtotal")} />
-            <StatTile value={`${DELIVERY_FEE_EGP} ${t("currency")}`} label={lang === "ar" ? "رسوم التوصيل" : "Delivery fee"} />
+            <StatTile value={feeDisplay} label={lang === "ar" ? "رسوم التوصيل" : "Delivery fee"} />
             <StatTile value={getDeliveryWindowLabel(lang)} label={lang === "ar" ? "الوقت المتوقع" : "Delivery window"} />
           </div>
         }
@@ -214,12 +223,12 @@ function CartDesktop() {
                     </div>
                     <div>
                       <p className="text-sm font-black">
-                        {lang === "ar" ? "توصيل ثابت وواضح" : "Clear fixed delivery"}
+                        {lang === "ar" ? "توصيل سريع داخل القاهرة" : "Fast delivery in Cairo"}
                       </p>
                       <p className="mt-2 text-sm font-semibold leading-7 text-slate-600">
                         {lang === "ar"
-                          ? `رسوم التوصيل ثابتة ${DELIVERY_FEE_EGP} جنيه، والوقت المتوقع ${getDeliveryWindowLabel(lang)} داخل القاهرة.`
-                          : `Delivery is fixed at ${DELIVERY_FEE_EGP} EGP with an expected window of ${getDeliveryWindowLabel(lang)} inside Cairo.`}
+                          ? `رسوم التوصيل ${feeDisplay}، والوقت المتوقع ${getDeliveryWindowLabel(lang)} داخل القاهرة.`
+                          : `Delivery fee ${feeDisplay} with an expected window of ${getDeliveryWindowLabel(lang)} inside Cairo.`}
                       </p>
                     </div>
                   </div>
@@ -293,7 +302,7 @@ function CartDesktop() {
 
                 <div className="mt-6 space-y-3 border-t border-slate-100 pt-5">
                   <SummaryRow label={t("subtotal")} value={`${pricing.subtotal.toFixed(2)} ${t("currency")}`} />
-                  <SummaryRow label={t("shipping")} value={`${pricing.shipping.toFixed(2)} ${t("currency")}`} accent />
+                  <SummaryRow label={t("shipping")} value={feeDisplay} accent />
                   <SummaryRow label={lang === "ar" ? "الوقت المتوقع" : "Delivery window"} value={getDeliveryWindowLabel(lang)} />
                   <div className="flex items-center justify-between border-t border-slate-100 pt-4">
                     <span className="text-lg font-black text-slate-950">{t("total")}</span>
@@ -303,10 +312,15 @@ function CartDesktop() {
                   </div>
                 </div>
 
+                {delivery.status !== null && (
+                  <GeofenceStatusBanner status={delivery.status} lang={lang} />
+                )}
+
                 <button
                   type="button"
                   onClick={() => navigate("/checkout")}
-                  className="mt-6 flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--primary)] text-sm font-black text-white shadow-[0_18px_38px_rgba(25,56,68,0.22)] transition-colors hover:bg-[var(--primary-strong)]"
+                  disabled={delivery.isAvailable === false}
+                  className="mt-6 flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--primary)] text-sm font-black text-white shadow-[0_18px_38px_rgba(25,56,68,0.22)] transition-colors hover:bg-[var(--primary-strong)] disabled:cursor-not-allowed disabled:opacity-50"
                   style={{ height: "3.25rem" }}
                 >
                   {t("checkout_btn")}

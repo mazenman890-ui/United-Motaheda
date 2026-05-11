@@ -5,7 +5,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type FormEvent,
 } from "react";
@@ -49,7 +48,6 @@ import {
   AdminSectionCard,
   AdminTableSkeleton,
   useDebouncedValue,
-  type AdminRole,
 } from "./adminShared";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -414,7 +412,7 @@ function FormField({
 
 export default function StaffManager() {
   const { lang } = useLanguage();
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
 
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);

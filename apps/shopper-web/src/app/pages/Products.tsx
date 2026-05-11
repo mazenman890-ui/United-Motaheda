@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   ArrowUpDown,
   CheckCircle2,
@@ -47,8 +47,6 @@ const SORT_OPTIONS: readonly SortOption[] = [
   { value: "price_desc", labelAr: "السعر ↓", labelEn: "Price ↓", Icon: TrendingDown },
   { value: "name", labelAr: "الاسم أ–ي", labelEn: "Name A–Z", Icon: ArrowUpDown },
 ];
-
-const PAGE_SIZE = 36;
 
 /* ─── Stat Card ──────────────────────────────────────────────── */
 function StatCard({
@@ -128,197 +126,6 @@ function SortSegment({
   );
 }
 
-/* ─── Category Rail ─────────────────────────────────────────── */
-function CategoryRail({
-  options,
-  value,
-  onChange,
-}: {
-  options: { id: string; label: string; count?: number }[];
-  value: string;
-  onChange: (id: string) => void;
-}) {
-  const railRef = useRef<HTMLDivElement>(null);
-
-  return (
-    <div
-      ref={railRef}
-      className="flex gap-1.5 overflow-x-auto pb-0.5"
-      style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-    >
-      {options.map((opt) => {
-        const active = value === opt.id;
-        return (
-          <motion.button
-            key={opt.id}
-            whileTap={{ scale: 0.96 }}
-            type="button"
-            onClick={() => onChange(opt.id)}
-            className={cn(
-              "inline-flex h-8 shrink-0 items-center gap-2 rounded-xl px-3.5 text-[11px] font-black transition-all duration-200 whitespace-nowrap",
-              active
-                ? "bg-slate-900 text-white shadow-[0_4px_14px_rgba(15,23,42,0.22)]"
-                : "border border-slate-200/80 bg-white/82 text-slate-600 hover:border-slate-300 hover:bg-white hover:text-slate-900",
-            )}
-          >
-            {opt.label}
-            {opt.count !== undefined && (
-              <span className={cn(
-                "inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full px-1 text-[9px] font-black",
-                active ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500",
-              )}>
-                {opt.count}
-              </span>
-            )}
-          </motion.button>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ─── Stock Toggle ───────────────────────────────────────────── */
-function StockToggle({
-  checked,
-  label,
-  onChange,
-}: {
-  checked: boolean;
-  label: string;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <motion.button
-      whileTap={{ scale: 0.98 }}
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={cn(
-        "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-sm font-black transition-all duration-200",
-        checked
-          ? "border-teal-200 bg-teal-50 text-slate-900 shadow-[0_4px_14px_rgba(20,184,166,0.12)]"
-          : "border-slate-200/70 bg-white/82 text-slate-600 hover:bg-white",
-      )}
-    >
-      <div className="flex items-center gap-2.5">
-        <motion.div
-          animate={{ backgroundColor: checked ? "rgb(20,184,166)" : "rgb(241,245,249)" }}
-          className="flex h-6 w-6 items-center justify-center rounded-lg"
-        >
-          <CheckCircle2 className={cn("h-3.5 w-3.5 transition-colors", checked ? "text-white" : "text-slate-400")} />
-        </motion.div>
-        <span>{label}</span>
-      </div>
-      <span
-        className={cn(
-          "relative inline-flex h-5 w-9 items-center rounded-full border-2 transition-all duration-300",
-          checked ? "border-teal-400 bg-teal-500" : "border-slate-300 bg-slate-200",
-        )}
-      >
-        <motion.span
-          animate={{ x: checked ? 16 : 2 }}
-          transition={{ type: "spring", stiffness: 500, damping: 30 }}
-          className="inline-block h-3 w-3 rounded-full bg-white shadow-sm"
-        />
-      </span>
-    </motion.button>
-  );
-}
-
-/* ─── Price Slider ───────────────────────────────────────────── */
-function PriceSlider({
-  value,
-  max,
-  onChange,
-  currency,
-  label,
-}: {
-  value: number;
-  max: number;
-  onChange: (v: number) => void;
-  currency: string;
-  label: string;
-}) {
-  const pct = max > 0 ? (value / max) * 100 : 100;
-  const isFiltered = value < max;
-
-  return (
-    <div className={cn(
-      "rounded-xl border px-4 py-3 transition-all duration-200",
-      isFiltered
-        ? "border-amber-200 bg-amber-50/60 shadow-[0_4px_14px_rgba(245,158,11,0.10)]"
-        : "border-slate-200/70 bg-white/82",
-    )}>
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <SlidersHorizontal className={cn("h-3.5 w-3.5", isFiltered ? "text-amber-500" : "text-slate-400")} />
-          <p className="text-[11px] font-black text-slate-700">{label}</p>
-        </div>
-        <span className={cn(
-          "rounded-lg border px-2.5 py-1 text-[11px] font-black",
-          isFiltered ? "border-amber-200 bg-amber-100/60 text-amber-700" : "border-slate-200 bg-slate-100 text-slate-600",
-        )}>
-          {value.toFixed(0)} {currency}
-        </span>
-      </div>
-
-      <div className="relative h-5 w-full">
-        <div className="absolute top-1/2 h-1.5 w-full -translate-y-1/2 overflow-hidden rounded-full bg-slate-200">
-          <motion.div
-            className={cn("h-full rounded-full", isFiltered ? "bg-amber-400" : "bg-teal-400")}
-            animate={{ width: `${pct}%` }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          />
-        </div>
-        <input
-          type="range"
-          min="0"
-          max={max}
-          step="25"
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
-        />
-        <div
-          className={cn(
-            "pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border-2 bg-white shadow-md transition-colors",
-            isFiltered ? "border-amber-500" : "border-teal-500",
-          )}
-          style={{ left: `calc(${pct}% - 8px)` }}
-        />
-      </div>
-
-      <div className="mt-2 flex items-center justify-between text-[10px] font-bold text-slate-400">
-        <span>0</span>
-        <span>{max.toFixed(0)} {currency}</span>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Filter Chip ────────────────────────────────────────────── */
-function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return (
-    <motion.span
-      initial={{ opacity: 0, scale: 0.85 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.85 }}
-      className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-teal-200 bg-teal-50 pl-2.5 pr-1.5 text-[11px] font-black text-teal-700 transition-all"
-    >
-      {label}
-      <button
-        type="button"
-        onClick={onRemove}
-        className="flex h-4 w-4 items-center justify-center rounded-md bg-teal-100 text-teal-600 transition-colors hover:bg-teal-200"
-        aria-label="Remove filter"
-      >
-        <X className="h-2.5 w-2.5" />
-      </button>
-    </motion.span>
-  );
-}
-
 /* ─── Empty State ───────────────────────────────────────────── */
 function ProductEmptyState({
   lang,
@@ -373,12 +180,21 @@ export default function Products() {
 function ProductsDesktop() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { lang, t } = useLanguage();
-  const { categories, products, isLoading, error } = useCatalog();
+  const {
+    categories,
+    products,
+    inStockProducts,
+    isLoading,
+    isLoadingMore,
+    error,
+    loadNextPage,
+    hasNextPage,
+    totalProductCount,
+  } = useCatalog();
   const { searchQuery, setSearchQuery } = useSearchInput();
   const [sortBy, setSortBy] = useState<CatalogProductSort>("relevant");
   const [onlyInStock, setOnlyInStock] = useState(false);
   const [priceRange, setPriceRange] = useState(0);
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -400,7 +216,7 @@ function ProductsDesktop() {
       {
         id: "all",
         label: lang === "ar" ? "الكل" : "All",
-        count: products.length,
+        count: totalProductCount || products.length,
       },
       ...categories.map((c) => ({
         id: c.id,
@@ -408,7 +224,7 @@ function ProductsDesktop() {
         count: c.count,
       })),
     ],
-    [categories, products.length, lang],
+    [categories, products.length, totalProductCount, lang],
   );
 
   /* ✅ Destructure activeQuery and pass it to the grid */
@@ -429,17 +245,8 @@ function ProductsDesktop() {
     lang,
   );
 
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [activeCategory, onlyInStock, priceRange, searchQuery, sortBy]);
-
-  const visibleProducts = useMemo(
-    () => filteredProducts.slice(0, visibleCount),
-    [filteredProducts, visibleCount],
-  );
-
   const activeCategoryLabel = categoryOptions.find((c) => c.id === activeCategory)?.label;
-  const availableCount = useMemo(() => products.filter((p) => p.inStock).length, [products]);
+  const availableCount = inStockProducts.length;
   const isPriceFiltered = maxPrice > 0 && priceRange < maxPrice;
   const hasFilters = activeCategory !== "all" || onlyInStock || isPriceFiltered || searchQuery.trim().length > 0;
 
@@ -549,7 +356,7 @@ function ProductsDesktop() {
             <div className="grid grid-cols-3 gap-2 xl:w-64 xl:grid-cols-1 xl:gap-2">
               <StatCard
                 label={lang === "ar" ? "إجمالي المنتجات" : "Catalog size"}
-                value={products.length}
+                value={totalProductCount || products.length}
                 icon={Tag}
               />
               <StatCard
@@ -646,7 +453,7 @@ function ProductsDesktop() {
               </div>
             ) : showLoadingState ? (
               <CatalogSkeletonGrid count={8} />
-            ) : visibleProducts.length > 0 ? (
+            ) : filteredProducts.length > 0 ? (
               <>
                 <div className="mb-4 flex items-center justify-between gap-3 px-1">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
@@ -654,40 +461,35 @@ function ProductsDesktop() {
                   </p>
                   <p className="text-[11px] font-semibold text-slate-400">
                     {lang === "ar"
-                      ? `عرض ${visibleProducts.length} من ${resultCount}`
-                      : `Showing ${visibleProducts.length} of ${resultCount}`}
+                      ? `عرض ${filteredProducts.length} من ${resultCount}`
+                      : `Showing ${filteredProducts.length} of ${resultCount}`}
                   </p>
                 </div>
 
-                {/* ✅ Pass isSearching and activeQuery */}
                 <ProductGrid
-                  products={visibleProducts}
+                  products={filteredProducts}
                   isSearching={isSearching}
                   activeQuery={activeQuery}
                 />
 
-                {resultCount > visibleCount && (
+                {hasNextPage && (
                   <div ref={loadMoreRef} className="mt-10 flex flex-col items-center gap-3">
-                    <div className="h-1.5 w-32 overflow-hidden rounded-full bg-slate-200">
-                      <motion.div
-                        className="h-full rounded-full bg-teal-400"
-                        animate={{ width: `${Math.round((visibleCount / resultCount) * 100)}%` }}
-                        transition={{ duration: 0.4 }}
-                      />
-                    </div>
                     <p className="text-[11px] font-semibold text-slate-400">
                       {lang === "ar"
-                        ? `${visibleCount} من ${resultCount} منتج`
-                        : `${visibleCount} of ${resultCount} items`}
+                        ? `${filteredProducts.length} من ${totalProductCount || resultCount} منتج`
+                        : `${filteredProducts.length} of ${totalProductCount || resultCount} items`}
                     </p>
                     <motion.button
                       whileHover={{ y: -2 }}
                       whileTap={{ scale: 0.97 }}
                       type="button"
-                      onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200/80 bg-white px-8 text-sm font-black text-slate-700 shadow-sm transition-all hover:shadow-md"
+                      onClick={() => void loadNextPage()}
+                      disabled={isLoadingMore}
+                      className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200/80 bg-white px-8 text-sm font-black text-slate-700 shadow-sm transition-all hover:shadow-md disabled:opacity-60"
                     >
-                      {lang === "ar" ? "عرض المزيد" : "Load more"}
+                      {isLoadingMore
+                        ? (lang === "ar" ? "جارٍ التحميل..." : "Loading…")
+                        : (lang === "ar" ? "عرض المزيد" : "Load more")}
                     </motion.button>
                   </div>
                 )}

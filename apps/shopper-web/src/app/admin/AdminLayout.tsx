@@ -13,7 +13,6 @@ import {
 import { useAuth } from "../../contexts/AuthContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { prefetchAdminData } from "../../services/googleSheetsApi";
-import { cn } from "../components/UI";
 import AdminSidebar from "./AdminSidebar";
 
 const SIDEBAR_STORAGE_KEY = "united_admin_sidebar_collapsed";

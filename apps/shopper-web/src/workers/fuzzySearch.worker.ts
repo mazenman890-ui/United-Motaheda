@@ -77,13 +77,27 @@ import {
   normalise,
   LRUCache,
 } from "../utils/fuzzySearch";
-import type { CatalogProduct } from "../app/catalog";
+// ─── Slim product type (must match WorkerSearchProduct in catalogSearchWorker.ts) ──
+
+interface WorkerProduct {
+  id:             string;
+  code:           string;
+  barcode:        string;
+  name:           string;
+  nameAr?:        string;
+  nameEn?:        string;
+  price:          number;
+  inStock:        boolean;
+  category:       string;
+  categoryName:   string;
+  categoryNameEn: string;
+}
 
 // ─── Message types ────────────────────────────────────────────────────────────
 
 interface InitMessage {
   type:          "INIT";
-  products:      CatalogProduct[];
+  products:      WorkerProduct[];
   /** Optional SharedArrayBuffer for cross-thread cancellation signaling. */
   sharedBuffer?: SharedArrayBuffer;
 }
@@ -104,10 +118,6 @@ interface WorkerResponse {
   rankedIds:  string[];
   requestId:  number;
   error?:     string;
-}
-
-interface ReadyMessage {
-  type: "READY";
 }
 
 interface InitProgressMessage {
@@ -284,18 +294,13 @@ function executeSearch(msg: SearchMessage): string[] {
   // When the index returns an empty set (query too unusual) we fall back to
   // the full linear scan so no results are ever missed.
   let candidateIds: ReadonlySet<string> | null = null;
-  let useFallback = false;
 
   if (searchIndex && searchIndex.productCount > 0) {
     const candidates = queryIndexCandidates(searchIndex, query);
     if (candidates.size > 0) {
       candidateIds = candidates;
-    } else {
-      // Index miss — possible for very unusual queries; fall back to linear
-      useFallback = true;
     }
-  } else {
-    useFallback = true;
+    // else: index miss — fall back to linear scan below
   }
 
   // ── Step 2: Score candidates ──────────────────────────────────────────────
@@ -406,13 +411,6 @@ function handleInit(data: InitMessage): void {
   // Notify main thread that we're building the index
   self.postMessage({ type: "INIT_PROGRESS", status: "building" } satisfies InitProgressMessage);
 
-  // Build index asynchronously in the next macrotask. Use requestIdleCallback if
-  // available for true non-blocking behavior, otherwise setTimeout as fallback.
-  //
-  // WHY this timing: We want to ensure any SEARCH messages in the current event
-  // loop turn get queued (not executed on a stale/null index). Once the index is
-  // built, we flush the queue and notify the main thread so the UI can hide the
-  // loading spinner.
   const buildIndex = () => {
     // Build the index (this may take 200-800ms for 52K products)
     searchIndex = buildSearchIndexImpl(indexableItems);
@@ -428,13 +426,9 @@ function handleInit(data: InitMessage): void {
     }
   };
 
-  // Try to use requestIdleCallback for non-blocking behavior with shorter timeout
-  if (typeof requestIdleCallback !== "undefined") {
-    requestIdleCallback(buildIndex, { timeout: 500 });
-  } else {
-    // Fallback to setTimeout(0) if requestIdleCallback not available
-    setTimeout(buildIndex, 0);
-  }
+  // Build in next macrotask so queued SEARCH messages are processed first,
+  // but without the up-to-2s idle wait that requestIdleCallback can introduce.
+  setTimeout(buildIndex, 0);
 
   // SharedArrayBuffer for cancellation signaling
   if (data.sharedBuffer) {
@@ -444,7 +438,7 @@ function handleInit(data: InitMessage): void {
 
 // ─── Message router ───────────────────────────────────────────────────────────
 
-function processSearchMessage(data: SearchMessage, event: MessageEvent): void {
+function processSearchMessage(data: SearchMessage, _event: MessageEvent): void {
   // Update local generation counter (SharedArrayBuffer is the authoritative
   // source when available; this is the fallback)
   if (typeof data.generation === "number") {

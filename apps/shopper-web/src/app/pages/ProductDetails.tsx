@@ -15,19 +15,17 @@ import {
 } from "lucide-react";
 import { useLanguage }           from "../../contexts/LanguageContext";
 import { useCart }               from "../../contexts/CartContext";
-import { useCatalog }            from "../../contexts/CatalogContext";
+import { useCatalog, useFullCatalog } from "../../contexts/CatalogContext";
 import { ProductGrid }           from "../components/ProductGrid";
 import { useAlternativeProducts } from "../hooks/useAlternativeProducts";
 import { cn }                    from "../components/UI";
 import { useIsShopperShell }     from "../components/ui/use-mobile";
 import { ImageWithFallback }     from "../components/figma/ImageWithFallback";
 import { getCatalogProductImage } from "../catalog";
-import { getDeliveryFeeLabel, getDeliveryWindowSentence } from "../config";
+import { getDeliveryWindowSentence } from "../config";
 import { getLocalizedProductName } from "../localization";
 import { FavoriteHeartButton }   from "../components/FavoriteHeartButton";
 import { MobileProductDetailsView } from "./ShopperMobileViews";
-import type { CatalogProduct }   from "../catalog";
-
 export default function ProductDetails() {
   const isShopperShell = useIsShopperShell();
   if (isShopperShell) return <MobileProductDetailsView />;
@@ -38,14 +36,18 @@ function ProductDetailsDesktop() {
   const { id }                                          = useParams();
   const { lang, t }                                     = useLanguage();
   const { addToCart }                                   = useCart();
-  const { productsById, featuredProducts, products }     = useCatalog();
+  const { productsById, featuredProducts }               = useCatalog();
+  const { allProducts, allProductsById }                 = useFullCatalog();
   const [added, setAdded]                               = useState(false);
   const [activeImageZoom, setActiveImageZoom]           = useState(false);
 
-  const product = id ? productsById[id] : undefined;
+  const product = id ? (allProductsById[id] ?? productsById[id]) : undefined;
 
-  const { alternatives: alternativeProducts, isLoading: alternativeLoading } =
-    useAlternativeProducts(product, products, productsById, 4);
+  // allProducts is the stable full-catalog reference — prevents worker re-init
+  // thrash when the display-layer products slice changes (e.g. due to filters on
+  // another route).
+  const { alternatives: alternativeProducts } =
+    useAlternativeProducts(product, allProducts, allProductsById, 4);
 
   const medicalInfo = useMemo(
     () =>
@@ -107,7 +109,6 @@ function ProductDetailsDesktop() {
     ? lang === "ar" ? "متاح للطلب"    : "Ready to order"
     : lang === "ar" ? "غير متاح حاليا" : "Currently unavailable";
   const deliveryWindowSentence = getDeliveryWindowSentence(lang);
-  const deliveryFeeLabel       = getDeliveryFeeLabel(lang);
 
   const metaCards = [
     {
@@ -133,7 +134,7 @@ function ProductDetailsDesktop() {
   const highlights = [
     { Icon: ShieldCheck, label: lang === "ar" ? "بيانات مباشرة من الكتالوج" : "Direct live-catalog data" },
     { Icon: Barcode,     label: lang === "ar" ? "مرجع واضح وسريع"           : "Clear quick reference" },
-    { Icon: Truck,       label: lang === "ar" ? `${deliveryFeeLabel}`        : `${deliveryFeeLabel}` },
+    { Icon: Truck,       label: lang === "ar" ? "رسوم توصيل تنافسية" : "Competitive delivery fee" },
   ];
 
   const handleAdd = async () => {
@@ -290,7 +291,9 @@ function ProductDetailsDesktop() {
                   <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
                     {lang === "ar" ? "الرسوم" : "Fee"}
                   </p>
-                  <p className="mt-1 text-sm font-black text-slate-800">{deliveryFeeLabel}</p>
+                  <p className="mt-1 text-sm font-black text-slate-800">
+                    {lang === "ar" ? "رسوم تنافسية" : "Competitive"}
+                  </p>
                 </div>
               </div>
               <div className="mt-5 flex gap-3">

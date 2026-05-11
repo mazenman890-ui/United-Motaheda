@@ -82,8 +82,6 @@ type CachedCatalogSnapshot = {
   snapshot: CatalogSnapshot;
 };
 
-type CsvRecord = Record<string, string>;
-
 const CACHE_KEY = "united-pharmacies-catalog-v8";
 const CACHE_TTL_MS = 1000 * 60 * 15;
 const FALLBACK_CATEGORY_ID = "general-healthcare";
@@ -565,17 +563,6 @@ function sanitizeBarcode(value: string) {
   return sanitizeText(value).replace(/[^\p{Letter}\p{Number}-]+/gu, "");
 }
 
-function pickFirstNonEmpty(...values: Array<unknown>) {
-  for (const value of values) {
-    const sanitized = sanitizeText(value);
-    if (sanitized) {
-      return sanitized;
-    }
-  }
-
-  return "";
-}
-
 function parseNumber(value: string) {
   const numericText = sanitizeText(value).replace(/,/g, "");
   const parsed = Number(numericText);
@@ -723,94 +710,41 @@ export function normalizeSupabaseProduct(row: Record<string, unknown>, sourceRow
 async function fetchAllProductRows(): Promise<Record<string, unknown>[]> {
   const supabase = getSupabaseClient();
   const PAGE_SIZE = 1000;
+  // Matches typical HTTP/2 stream limits; prevents 429s on free-tier Supabase.
+  const CONCURRENCY = 6;
+
+  // First, get the exact row count with a lightweight head request.
+  const { count, error: countError } = await supabase
+    .from("products")
+    .select("id", { count: "exact", head: true });
+
+  if (countError) throw new Error(`Supabase count error: ${countError.message}`);
+  if (!count || count === 0) return [];
+
+  // Build page indices and fire them in parallel waves of CONCURRENCY.
+  const pageCount = Math.ceil(count / PAGE_SIZE);
+  const pages = Array.from({ length: pageCount }, (_, i) => i);
   const allRows: Record<string, unknown>[] = [];
-  let from = 0;
 
-  while (true) {
-    const { data, error } = await supabase
-      .from("products")
-      .select("*")
-      .range(from, from + PAGE_SIZE - 1);
-
-    if (error) throw new Error(`Supabase error: ${error.message}`);
-    if (!data || data.length === 0) break;
-
-    allRows.push(...(data as Record<string, unknown>[]));
-    if (data.length < PAGE_SIZE) break;
-    from += PAGE_SIZE;
+  for (let i = 0; i < pages.length; i += CONCURRENCY) {
+    const wave = pages.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(
+      wave.map(async (pageIndex) => {
+        const from = pageIndex * PAGE_SIZE;
+        const { data, error } = await supabase
+          .from("products")
+          .select("*")
+          .range(from, from + PAGE_SIZE - 1);
+        if (error) throw new Error(`Supabase error on page ${pageIndex}: ${error.message}`);
+        return data as Record<string, unknown>[] | null;
+      }),
+    );
+    for (const pageData of results) {
+      if (pageData && pageData.length > 0) allRows.push(...pageData);
+    }
   }
 
   return allRows;
-}
-
-// ─── Legacy CSV helpers (kept as fallback only) ───────────────────────────────
-
-function parseCsv(text: string) {
-  const rows: string[][] = [];
-  let currentRow: string[] = [];
-  let currentField = "";
-  let inQuotes = false;
-
-  for (let index = 0; index < text.length; index += 1) {
-    const character = text[index];
-    const nextCharacter = text[index + 1];
-
-    if (character === '"') {
-      if (inQuotes && nextCharacter === '"') {
-        currentField += '"';
-        index += 1;
-        continue;
-      }
-
-      inQuotes = !inQuotes;
-      continue;
-    }
-
-    if (!inQuotes && character === ",") {
-      currentRow.push(currentField);
-      currentField = "";
-      continue;
-    }
-
-    if (!inQuotes && (character === "\n" || character === "\r")) {
-      if (character === "\r" && nextCharacter === "\n") {
-        index += 1;
-      }
-
-      currentRow.push(currentField);
-      rows.push(currentRow);
-      currentRow = [];
-      currentField = "";
-      continue;
-    }
-
-    currentField += character;
-  }
-
-  currentRow.push(currentField);
-
-  if (currentRow.some((value) => value.length > 0)) {
-    rows.push(currentRow);
-  }
-
-  return rows;
-}
-
-function normalizeHeaders(headers: string[]) {
-  return headers.map((header) =>
-    sanitizeText(header)
-      .toLowerCase()
-      .replace(/\(.*?\)/g, "")
-      .replace(/[^\p{Letter}\p{Number}]+/gu, "_")
-      .replace(/^_+|_+$/g, ""),
-  );
-}
-
-function createCsvRecord(headers: string[], values: string[]) {
-  return headers.reduce<CsvRecord>((accumulator, header, index) => {
-    accumulator[header] = sanitizeText(values[index] ?? "");
-    return accumulator;
-  }, {});
 }
 
 function scoreSeedMatch(seed: CategorySeed, searchText: string) {
@@ -848,10 +782,6 @@ export function resolveCategory(rawCategoryAr: string, rawCategoryEn: string, pr
     .map((value) => normalizeForMatch(value))
     .filter(Boolean);
 
-  const productNameCandidates = [productNameEn, productNameAr]
-    .map((value) => normalizeForMatch(value))
-    .filter(Boolean);
-
   // Try exact matches first
   for (const candidate of explicitCandidates) {
     const explicitMatch = CATEGORY_ALIAS_TO_ID[candidate];
@@ -882,120 +812,6 @@ export function resolveCategory(rawCategoryAr: string, rawCategoryEn: string, pr
   return bestSeed;
 }
 
-function resolveStockFromRecord(record: CsvRecord) {
-  const rawStockCell = sanitizeText(
-    record.stock || record.stock_quantity || record.quantity || record.qty || "",
-  );
-  const parsedNumeric = parseNumber(rawStockCell);
-  const stock = Math.max(parsedNumeric ?? 0, 0);
-  const hasExplicitQuantity = rawStockCell !== "" && parsedNumeric !== null;
-
-  if (hasExplicitQuantity) {
-    return { stock, inStock: stock > 0.01 };
-  }
-
-  const status = normalizeForMatch(
-    record.stock_status ||
-      record.availability ||
-      record.availability_status ||
-      record.status ||
-      "",
-  );
-
-  if (!status) {
-    return { stock, inStock: stock > 0.01 };
-  }
-
-  const looksOut =
-    status.includes("out of stock") ||
-    status.includes("unavailable") ||
-    status.includes("sold out") ||
-    status.includes("غير متوفر");
-
-  if (looksOut) {
-    return { stock: 0, inStock: false };
-  }
-
-  const looksIn =
-    status.includes("in stock") ||
-    status.includes("available") ||
-    status.includes("low stock") ||
-    status.includes("متوفر");
-
-  if (looksIn) {
-    return { stock: stock > 0.01 ? stock : 1, inStock: true };
-  }
-
-  return { stock: stock > 0.01 ? stock : 1, inStock: true };
-}
-
-function normalizeCatalogProduct(record: CsvRecord, sourceRow: number) {
-  const nameAr = pickFirstNonEmpty(
-    record.name_ar,
-    record.name_arabic,
-    record.arabic_name,
-    record.namear,
-  );
-  const nameEnRaw = pickFirstNonEmpty(
-    record.name_en,
-    record.name_english,
-    record.english_name,
-    record.nameen,
-  );
-  const legacyName = pickFirstNonEmpty(
-    record.product_name,
-    record.name,
-    record.product,
-    record.item_name,
-  );
-  const name = nameAr || nameEnRaw || legacyName;
-  const nameEn = nameEnRaw && nameEnRaw !== name ? nameEnRaw : undefined;
-
-  const price = parseNumber(
-    pickFirstNonEmpty(record.price_egp, record.price, record.unit_price, record.selling_price),
-  );
-
-  if (!name || price === null || price <= 0) {
-    return null;
-  }
-
-  const { stock, inStock } = resolveStockFromRecord(record);
-  const rawCategoryAr = pickFirstNonEmpty(
-    record.category_ar,
-    record.category_arabic,
-    record.category_name_ar,
-    record.category_name_arabic,
-  );
-  const rawCategoryEn = pickFirstNonEmpty(
-    record.category_name_en,
-    record.category_en,
-    record.category_english,
-    record.category_name,
-    record.category,
-  );
-  const categorySeed = resolveCategory(rawCategoryAr, rawCategoryEn, nameAr || name, nameEnRaw || name);
-  const code = pickFirstNonEmpty(record.code, record.product_code, record.sku);
-  const barcode = sanitizeBarcode(pickFirstNonEmpty(record.barcode, record.ean, record.upc));
-  const imageUrl = pickFirstNonEmpty(record.image_url, record.image, record.image_link, record.photo);
-  const idSeed = code || barcode || `${categorySeed.id}-${name}`;
-
-  return {
-    id: `${slugify(idSeed)}-${sourceRow}`,
-    code,
-    barcode,
-    name,
-    nameAr: nameAr || undefined,
-    nameEn,
-    price: Number(price.toFixed(2)),
-    stock: Number(stock.toFixed(2)),
-    inStock,
-    category: categorySeed.id,
-    categoryName: categorySeed.names.ar,
-    categoryNameEn: categorySeed.names.en,
-    imageUrl: isValidHttpUrl(imageUrl) ? imageUrl : undefined,
-    sourceRow,
-  } satisfies CatalogProduct;
-}
 
 function buildCategoryFromSeed(seed: CategorySeed, count: number, inStockCount: number) {
   return {
@@ -1015,40 +831,32 @@ function buildCategoryFromSeed(seed: CategorySeed, count: number, inStockCount: 
 }
 
 export function deriveCatalogCategories(products: CatalogProduct[], _previousCategories: CatalogCategory[] = []) {
-  const counts = new Map<string, { count: number; inStockCount: number }>();
+  // Single pass: count + capture a sample product per category (eliminates O(N) find() calls later)
+  const counts = new Map<string, { count: number; inStockCount: number; sample: CatalogProduct }>();
 
-  products.forEach((product) => {
-    const current = counts.get(product.category) ?? { count: 0, inStockCount: 0 };
-    current.count += 1;
-    if (product.inStock) {
-      current.inStockCount += 1;
+  for (const product of products) {
+    const current = counts.get(product.category);
+    if (current) {
+      current.count += 1;
+      if (product.inStock) current.inStockCount += 1;
+    } else {
+      counts.set(product.category, { count: 1, inStockCount: product.inStock ? 1 : 0, sample: product });
     }
-    counts.set(product.category, current);
-  });
+  }
 
   const knownCategories = (CATEGORY_SEEDS
     .map((seed) => {
       const stats = counts.get(seed.id);
-      if (!stats || stats.count === 0) {
-        return null;
-      }
-
+      if (!stats || stats.count === 0) return null;
       return buildCategoryFromSeed(seed, stats.count, stats.inStockCount);
     })
     .filter(Boolean) as CatalogCategory[]);
 
   const knownIds = new Set(knownCategories.map((category) => category.id));
   const fallbackCategories = Array.from(counts.entries()).flatMap(([categoryId, stats]) => {
-    if (knownIds.has(categoryId)) {
-      return [];
-    }
+    if (knownIds.has(categoryId)) return [];
 
-    const sample = products.find((product) => product.category === categoryId);
-
-    if (!sample) {
-      return [];
-    }
-
+    const { sample } = stats; // already captured — no O(N) find needed
     return [
       {
         id: categoryId,
@@ -1067,12 +875,9 @@ export function deriveCatalogCategories(products: CatalogProduct[], _previousCat
   });
 
   return [...knownCategories, ...fallbackCategories].sort((left, right) => {
-    if (right.count !== left.count) {
-      return right.count - left.count;
-    }
-
-      return left.nameEn.localeCompare(right.nameEn, "en");
-    });
+    if (right.count !== left.count) return right.count - left.count;
+    return left.nameEn.localeCompare(right.nameEn, "en");
+  });
 }
 
 export function getCatalogCategorySearchMetadata(categoryId: string): CatalogCategorySearchMetadata {
@@ -1279,22 +1084,28 @@ export function getCatalogProductImage(product: CatalogProduct) {
 }
 
 export function buildSpotlightProducts(products: CatalogProduct[], categories: CatalogCategory[], limit = 12) {
-  const categoryBuckets = categories.map((category) => ({
-    id: category.id,
-    items: products
-      .filter((product) => product.category === category.id && product.inStock)
-      .sort((left, right) => {
-        if (right.stock !== left.stock) {
-          return right.stock - left.stock;
-        }
+  // Single pass: group in-stock products by category (O(N))
+  const bucketMap = new Map<string, CatalogProduct[]>();
+  for (const product of products) {
+    if (!product.inStock) continue;
+    const bucket = bucketMap.get(product.category);
+    if (bucket) {
+      bucket.push(product);
+    } else {
+      bucketMap.set(product.category, [product]);
+    }
+  }
 
-        if (left.price !== right.price) {
-          return left.price - right.price;
-        }
+  const comparator = (left: CatalogProduct, right: CatalogProduct) => {
+    if (right.stock !== left.stock) return right.stock - left.stock;
+    if (left.price !== right.price) return left.price - right.price;
+    return left.name.localeCompare(right.name, "en");
+  };
 
-        return left.name.localeCompare(right.name, "en");
-      }),
-  }));
+  // Sort each bucket once, preserving category order from the categories list
+  const categoryBuckets = categories
+    .map((category) => ({ id: category.id, items: (bucketMap.get(category.id) ?? []).sort(comparator) }))
+    .filter((b) => b.items.length > 0);
 
   const selected: CatalogProduct[] = [];
   const selectedIds = new Set<string>();
@@ -1303,31 +1114,26 @@ export function buildSpotlightProducts(products: CatalogProduct[], categories: C
   while (selected.length < limit) {
     let addedOnCycle = false;
 
-    categoryBuckets.forEach((bucket) => {
+    for (const bucket of categoryBuckets) {
+      if (selected.length >= limit) break;
       const candidate = bucket.items[depth];
-
-      if (!candidate || selectedIds.has(candidate.id) || selected.length >= limit) {
-        return;
-      }
-
+      if (!candidate || selectedIds.has(candidate.id)) continue;
       selected.push(candidate);
       selectedIds.add(candidate.id);
       addedOnCycle = true;
-    });
-
-    if (!addedOnCycle) {
-      break;
     }
 
+    if (!addedOnCycle) break;
     depth += 1;
   }
 
-  if (selected.length >= limit) {
-    return selected;
+  if (selected.length >= limit) return selected;
+
+  // Fill remaining slots with any in-stock product not already selected (O(N), no allocation)
+  for (const product of products) {
+    if (selected.length >= limit) break;
+    if (product.inStock && !selectedIds.has(product.id)) selected.push(product);
   }
 
-  return [
-    ...selected,
-    ...products.filter((product) => product.inStock && !selectedIds.has(product.id)),
-  ].slice(0, limit);
+  return selected;
 }

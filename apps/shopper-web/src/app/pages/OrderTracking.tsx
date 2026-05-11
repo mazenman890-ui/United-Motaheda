@@ -416,7 +416,7 @@ export default function OrderTracking() {
   const [reconnecting, setReconnecting] = useState(false);
   const intervalRef = useRef<number | null>(null);
   const tickRef = useRef<number | null>(null);
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = useReducedMotion() ?? false;
 
   const token = searchParams.get("token") ?? "";
 

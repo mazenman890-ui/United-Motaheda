@@ -1,65 +1,19 @@
 /**
- * CatalogContext — owner of the full catalog snapshot.
+ * M3 — Server-paginated catalog reads
  *
- * ═══════════════════════════════════════════════════════════════════════════════
- * RESPONSIBILITY (single, narrow)
- * ═══════════════════════════════════════════════════════════════════════════════
+ * Boot path:
+ *  1. Page-1 fetch (24 products) gives a fast first paint.
+ *  2. requestIdleCallback triggers a full-catalog load in the background.
+ *  3. Once the full catalog arrives, `products` is upgraded to the complete
+ *     52K list and `isFullCatalogReady` flips to true.
  *
- * Load the full product catalog ONCE per session, expose it as a stable
- * read-only snapshot to consumers, and provide narrow mutation actions for
- * admin write paths (`upsertProduct`, `removeProduct`) and explicit refresh.
+ * Worker init:
+ *  The fuzzy-search worker is initialized from `allProducts` (the stable
+ *  full-catalog reference) rather than the transient paginated `products`.
+ *  This prevents the worker from reinitialising on every `loadNextPage()`.
  *
- * This context is the **source of truth** — not a derived/filtered view.
- * Filtering, sorting, and search are computed downstream by:
- *
- *   - `useCatalogProductSearch`  (worker-backed full-grid search)
- *   - `useCatalogCategorySearch` (category list filter)
- *   - `useCatalogFilters`        (category + stock + price + sort)
- *   - `SearchContext`            (suggestion dropdown)
- *
- * Each of those hooks consumes the snapshot from `useCatalog()` and produces
- * its own derived view. The snapshot itself never mutates in response to a
- * user search/filter — only on explicit refresh or admin write.
- *
- * ═══════════════════════════════════════════════════════════════════════════════
- * WHAT THIS REPLACES
- * ═══════════════════════════════════════════════════════════════════════════════
- *
- * The previous version had:
- *
- *   - `search(query)` and `filterByCategory(id)` actions that **replaced**
- *     `products` state with the filtered subset. Subsequent searches then ran
- *     against the already-filtered set — clearing the search did not bring
- *     products back. Both actions had zero call sites in the codebase but
- *     were silently corrupting the catalog any time something accidentally
- *     invoked them.
- *
- *   - A `searchIndex` memo whose code did UNION (OR) while its comment said
- *     INTERSECTION (AND), and that rebuilt on every state mutation.
- *
- *   - A `debouncedQuery` ref initialized to a hardcoded empty string, against
- *     which the search short-circuited and never ran.
- *
- *   - Dead pagination state (`currentPage`, `hasNextPage`, `totalProductCount`,
- *     `applyPageResult`) that the all-at-once load path never updated.
- *
- *   - An `alternativeProductPool` memo that allocated a 52K-element copy of
- *     each product on every `productMap` change — and had zero consumers.
- *
- * All of the above is removed. The surviving surface is exactly what real
- * call sites consume.
- *
- * ═══════════════════════════════════════════════════════════════════════════════
- * NOTE ON DATA SCALE / FUTURE WORK
- * ═══════════════════════════════════════════════════════════════════════════════
- *
- * The catalog currently loads as a single snapshot via `fetchShopperCatalogSnapshot`,
- * which paginates Supabase 1000 rows at a time. For ~52K products this is the
- * dominant boot cost. A future migration to server-paginated reads via
- * `fetchProductsPage` is desirable but is a multi-file change that also
- * requires re-architecting the worker init flow (`ensureCatalogSearchWorkerInit`
- * currently expects the full product set to build its inverted index). That
- * migration is not in scope for this pass.
+ * `useFullCatalog()` gives admin pages and the search hook access to the
+ *  full dataset without exposing it in the default catalog context shape.
  */
 
 import {
@@ -74,250 +28,364 @@ import {
   type ReactNode,
 } from "react";
 import {
-  buildSpotlightProducts,
   deriveCatalogCategories,
+  buildSpotlightProducts,
   type CatalogCategory,
   type CatalogProduct,
 } from "../app/catalog";
 import {
+  fetchProductsPage,
   fetchCategoriesQuick,
-  fetchShopperCatalogSnapshot,
   getCachedCategoriesQuick,
+  invalidatePageCache,
+  fetchShopperCatalogSnapshot,
   getCachedShopperCatalogSnapshot,
+  type ProductFilters,
+  type PageResult,
 } from "../services/shopperCatalogApi";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type CatalogMetrics = {
-  totalProducts:    number;
-  totalCategories:  number;
-  inStockProducts:  number;
+type CatalogMetrics = {
+  totalProducts: number;
+  totalCategories: number;
+  inStockProducts: number;
   barcodedProducts: number;
   lowStockProducts: number;
 };
 
-export type CatalogContextType = {
-  // ── Core data (read-only snapshot) ─────────────────────────────────────────
-  products:         CatalogProduct[];
-  categories:       CatalogCategory[];
-  productsById:     Record<string, CatalogProduct>;
-  categoriesById:   Record<string, CatalogCategory>;
+export type SearchFilters = Omit<ProductFilters, "searchQuery">;
+
+type CatalogContextType = {
+  // ── Core data ─────────────────────────────────────────────────────────────
+  products: CatalogProduct[];
+  categories: CatalogCategory[];
+  productsById: Record<string, CatalogProduct>;
+  categoriesById: Record<string, CatalogCategory>;
   featuredProducts: CatalogProduct[];
-  inStockProducts:  CatalogProduct[];
-  metrics:          CatalogMetrics;
-  lastUpdated:      string | null;
+  inStockProducts: CatalogProduct[];
+  metrics: CatalogMetrics;
+  lastUpdated: string | null;
 
-  // ── Loading / error state ──────────────────────────────────────────────────
+  // ── Full catalog (background-loaded) ──────────────────────────────────────
+  allProducts: CatalogProduct[];
+  allProductsById: Record<string, CatalogProduct>;
+  isFullCatalogReady: boolean;
+
+  // ── Loading states ────────────────────────────────────────────────────────
   isLoading: boolean;
-  error:     string | null;
+  isLoadingMore: boolean;
+  error: string | null;
 
-  // ── Mutation actions (refresh + admin writes) ──────────────────────────────
-  refreshCatalog:    (forceRefresh?: boolean) => Promise<void>;
+  // ── Pagination ────────────────────────────────────────────────────────────
+  totalProductCount: number;
+  hasNextPage: boolean;
+  currentPage: number;
+  activeFilters: ProductFilters;
+
+  // ── Actions ───────────────────────────────────────────────────────────────
+  loadNextPage: () => Promise<void>;
+  search: (query: string, filters?: SearchFilters) => Promise<void>;
+  filterByCategory: (categoryId: string | null) => Promise<void>;
+  refreshCatalog: (forceRefresh?: boolean) => Promise<void>;
   refreshCategories: () => Promise<void>;
-  upsertProduct:     (product: CatalogProduct) => void;
-  removeProduct:     (identifier: string) => void;
+  upsertProduct: (product: CatalogProduct) => void;
+  removeProduct: (identifier: string) => void;
 
-  // ── Derived helpers consumed by other hooks ────────────────────────────────
-  /** id → "name nameEn" lowercased — used by Categories.tsx for substring search. */
-  categorySearchIndex: Record<string, string>;
 };
 
-// ─── Initial seed (sync, from cache) ──────────────────────────────────────────
+// ─── Seed from cache ──────────────────────────────────────────────────────────
 
-const initialSnapshot  = getCachedShopperCatalogSnapshot();
-const seedProducts     = initialSnapshot?.products  ?? [];
-const seedCategories   = getCachedCategoriesQuick() ?? [];
+const initialSnapshot = getCachedShopperCatalogSnapshot();
+const seedProducts = initialSnapshot?.products ?? [];
+const seedCategories = getCachedCategoriesQuick() ?? [];
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 
-const EMPTY_METRICS: CatalogMetrics = {
-  totalProducts:    0,
-  totalCategories:  0,
-  inStockProducts:  0,
-  barcodedProducts: 0,
-  lowStockProducts: 0,
-};
-
-const CatalogContext = createContext<CatalogContextType>({
-  products:            seedProducts,
-  categories:          seedCategories,
-  productsById:        {},
-  categoriesById:      {},
-  featuredProducts:    [],
-  inStockProducts:     [],
-  metrics:             EMPTY_METRICS,
-  lastUpdated:         initialSnapshot?.lastUpdated ?? null,
-  isLoading:           false,
-  error:               null,
-  refreshCatalog:      async () => {},
-  refreshCategories:   async () => {},
-  upsertProduct:       () => {},
-  removeProduct:       () => {},
-  categorySearchIndex: {},
-});
+const CatalogContext = createContext<CatalogContextType | null>(null);
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function CatalogProvider({ children }: { children: ReactNode }) {
-  // ── Core snapshot state (immutable from the user's perspective) ────────────
-  const [products,    setProducts]    = useState<CatalogProduct[]>(seedProducts);
-  const [categories,  setCategories]  = useState<CatalogCategory[]>(seedCategories);
-  const [productMap,  setProductMap]  = useState<Record<string, CatalogProduct>>(
+  // ── Display-layer state (what the grid shows) ──────────────────────────────
+  const [products, setProducts] = useState<CatalogProduct[]>(
+    seedProducts.length > 0 ? seedProducts : [],
+  );
+  const [productMap, setProductMap] = useState<Record<string, CatalogProduct>>(
     () => Object.fromEntries(seedProducts.map((p) => [p.id, p])),
   );
-  const [isLoading,   setIsLoading]   = useState(false);
-  const [error,       setError]       = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(seedProducts.length === 0);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(
     initialSnapshot?.lastUpdated ?? null,
   );
+  const [totalProductCount, setTotalCount] = useState(seedProducts.length);
+  const [currentPage, setCurrentPage] = useState(1);
+  // hasNextPage is true only in the pre-full-catalog window (server pagination)
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<ProductFilters>({});
 
-  // ── Track mounted state to avoid setState on unmount ─────────────────────────
-  const mountedRef = useRef(true);
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
+  // ── Full-catalog state (background, stable for worker init) ───────────────
+  const [allProducts, setAllProducts] = useState<CatalogProduct[]>(seedProducts);
+  const [allProductsMap, setAllProductsMap] = useState<Record<string, CatalogProduct>>(
+    () => Object.fromEntries(seedProducts.map((p) => [p.id, p])),
+  );
+  const [isFullCatalogReady, setIsFullCatalogReady] = useState(seedProducts.length > 0);
 
-  // ── Apply a fresh snapshot to all derived state in one transition ──────────
-  const applySnapshot = useCallback(
-    (snapshotProducts: CatalogProduct[], snapshotCategories: CatalogCategory[]) => {
-      if (!mountedRef.current) return;
+  // ── Categories ────────────────────────────────────────────────────────────
+  const [categories, setCategories] = useState<CatalogCategory[]>(seedCategories);
+
+  // ── Ref guards ────────────────────────────────────────────────────────────
+  const isLoadingMoreRef = useRef(false);
+  const fullCatalogScheduled = useRef(false);
+
+  // ── applyPageResult ───────────────────────────────────────────────────────
+
+  const applyPageResult = useCallback(
+    (result: PageResult, page: number, append: boolean) => {
       startTransition(() => {
-        setProducts(snapshotProducts);
-        setCategories(snapshotCategories);
-        setProductMap(Object.fromEntries(snapshotProducts.map((p) => [p.id, p])));
+        setProductMap((prev) => {
+          const next = append ? { ...prev } : {};
+          result.products.forEach((p) => { next[p.id] = p; });
+          return next;
+        });
+        setProducts((prev) =>
+          append ? [...prev, ...result.products] : result.products,
+        );
+        if (result.totalCount >= 0) setTotalCount(result.totalCount);
+        setCurrentPage(page);
+        setHasNextPage(result.hasNextPage);
+        setIsLoading(false);
+        setIsLoadingMore(false);
         setLastUpdated(new Date().toISOString());
         setError(null);
-        setIsLoading(false);
       });
+      isLoadingMoreRef.current = false;
     },
     [],
   );
 
-  // ── Initial fetch (skipped if a fresh in-memory snapshot is already present) ──
+  // ── Full-catalog loader (idle-callback) ───────────────────────────────────
+
+  const scheduleFullCatalogLoad = useCallback(
+    (delayMs = 0) => {
+      if (fullCatalogScheduled.current) return;
+      fullCatalogScheduled.current = true;
+
+      const doLoad = async () => {
+        try {
+          const snapshot = await fetchShopperCatalogSnapshot(false);
+          startTransition(() => {
+            setAllProducts(snapshot.products);
+            setAllProductsMap(
+              Object.fromEntries(snapshot.products.map((p) => [p.id, p])),
+            );
+            setIsFullCatalogReady(true);
+            setCategories(snapshot.categories);
+            // Upgrade the display layer to the full catalog
+            setProducts(snapshot.products);
+            setProductMap(
+              Object.fromEntries(snapshot.products.map((p) => [p.id, p])),
+            );
+            setTotalCount(snapshot.products.length);
+            setHasNextPage(false);
+            setIsLoading(false);
+            setLastUpdated(new Date().toISOString());
+          });
+        } catch (err) {
+          console.error("[CatalogContext] Background full-catalog load failed:", err);
+          fullCatalogScheduled.current = false; // allow retry
+        }
+      };
+
+      if (delayMs > 0) {
+        setTimeout(() => void doLoad(), delayMs);
+      } else if (typeof requestIdleCallback !== "undefined") {
+        requestIdleCallback(() => void doLoad(), { timeout: 8000 });
+      } else {
+        setTimeout(() => void doLoad(), 200);
+      }
+    },
+    [],
+  );
+
+  // ── Mount: page-1 fetch if cold-start, then idle full-catalog ─────────────
+
   useEffect(() => {
     if (seedProducts.length > 0) {
-      // Cached seed is already wired into state; still refresh in background so
-      // the user eventually sees fresh data without blocking the first paint.
-      void fetchShopperCatalogSnapshot(false)
-        .then((snap) => {
-          if (snap.products !== seedProducts) {
-            applySnapshot(snap.products, snap.categories);
-          }
-        })
-        .catch((err) => {
-          console.warn("[CatalogContext] background refresh failed:", err);
-        });
+      // Cache warm — schedule a silent background refresh to pick up new data
+      scheduleFullCatalogLoad();
       return;
     }
 
-    let cancelled = false;
-    setIsLoading(true);
-    setError(null);
-
-    fetchShopperCatalogSnapshot(false)
-      .then((snap) => {
-        if (cancelled) return;
-        applySnapshot(snap.products, snap.categories);
-      })
-      .catch((err) => {
-        if (cancelled || !mountedRef.current) return;
-        const message = err instanceof Error ? err.message : "Failed to load catalog";
-        console.error("[CatalogContext] initial load failed:", err);
-        setError(message);
+    // Cold start — fetch page 1 immediately for first paint
+    void (async () => {
+      try {
+        const result = await fetchProductsPage(1, {});
+        applyPageResult(result, 1, false);
+        scheduleFullCatalogLoad(150);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load catalog");
         setIsLoading(false);
-      });
+        scheduleFullCatalogLoad(5000);
+      }
+    })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    return () => {
-      cancelled = true;
-    };
-    // applySnapshot is stable (useCallback with empty deps), so a one-shot effect
-    // is safe; deliberately not depending on it to avoid re-runs.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // ── Categories: load if missing ───────────────────────────────────────────
 
-  // ── Categories may resolve from a separate cache ahead of full snapshot ────
   const refreshCategories = useCallback(async () => {
     try {
       const cats = await fetchCategoriesQuick();
-      if (!mountedRef.current) return;
-      startTransition(() => {
-        setCategories(cats);
-      });
+      startTransition(() => setCategories(cats));
     } catch (err) {
-      console.error("[CatalogContext] refreshCategories failed:", err);
+      console.error("[CatalogContext] fetchCategoriesQuick failed:", err);
     }
   }, []);
 
   useEffect(() => {
-    if (categories.length === 0) {
-      void refreshCategories();
+    if (categories.length === 0) void refreshCategories();
+  }, [categories.length, refreshCategories]);
+
+  // ── loadNextPage ──────────────────────────────────────────────────────────
+
+  const loadNextPage = useCallback(async () => {
+    if (isLoadingMoreRef.current || !hasNextPage || isFullCatalogReady) return;
+    isLoadingMoreRef.current = true;
+    setIsLoadingMore(true);
+
+    try {
+      const nextPage = currentPage + 1;
+      const result = await fetchProductsPage(nextPage, activeFilters);
+      applyPageResult(result, nextPage, true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load more");
+      setIsLoadingMore(false);
+      isLoadingMoreRef.current = false;
     }
-    // Run once if no seed; refreshCategories is stable.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, hasNextPage, activeFilters, applyPageResult, isFullCatalogReady]);
+
+  // ── search (server-side) ──────────────────────────────────────────────────
+
+  const search = useCallback(async (query: string, extraFilters?: SearchFilters) => {
+    const filters: ProductFilters = { ...extraFilters, searchQuery: query };
+    setActiveFilters(filters);
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const result = await fetchProductsPage(1, filters);
+      applyPageResult(result, 1, false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Search failed");
+      setIsLoading(false);
+    }
+  }, [applyPageResult]);
+
+  // ── filterByCategory (server-side) ───────────────────────────────────────
+
+  const filterByCategory = useCallback(async (categoryId: string | null) => {
+    const filters: ProductFilters = categoryId ? { categoryId } : {};
+    setActiveFilters(filters);
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const result = await fetchProductsPage(1, filters);
+      applyPageResult(result, 1, false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Filter failed");
+      setIsLoading(false);
+    }
+  }, [applyPageResult]);
+
+  // ── refreshCatalog ────────────────────────────────────────────────────────
+
+  const refreshCatalog = useCallback(async (forceRefresh = false) => {
+    setIsLoading(true);
+    setError(null);
+    fullCatalogScheduled.current = false;
+
+    try {
+      const snapshot = await fetchShopperCatalogSnapshot(forceRefresh);
+      startTransition(() => {
+        setAllProducts(snapshot.products);
+        setAllProductsMap(
+          Object.fromEntries(snapshot.products.map((p) => [p.id, p])),
+        );
+        setIsFullCatalogReady(true);
+        setCategories(snapshot.categories);
+        setProducts(snapshot.products);
+        setProductMap(
+          Object.fromEntries(snapshot.products.map((p) => [p.id, p])),
+        );
+        setTotalCount(snapshot.products.length);
+        setHasNextPage(false);
+        setCurrentPage(1);
+        setIsLoading(false);
+        setIsLoadingMore(false);
+        setLastUpdated(new Date().toISOString());
+        setError(null);
+        setActiveFilters({});
+      });
+      invalidatePageCache();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Refresh failed");
+      setIsLoading(false);
+    }
   }, []);
 
-  // ── Explicit refresh (admin "reload" / post-mutation) ──────────────────────
-  const refreshCatalog = useCallback(
-    async (forceRefresh = false) => {
-      if (mountedRef.current) {
-        setIsLoading(true);
-        setError(null);
-      }
-      try {
-        const snap = await fetchShopperCatalogSnapshot(forceRefresh);
-        applySnapshot(snap.products, snap.categories);
-      } catch (err) {
-        if (!mountedRef.current) return;
-        const message = err instanceof Error ? err.message : "Refresh failed";
-        console.error("[CatalogContext] refreshCatalog failed:", err);
-        setError(message);
-        setIsLoading(false);
-      }
-    },
-    [applySnapshot],
-  );
+  // ── upsertProduct / removeProduct (optimistic mutations) ─────────────────
 
-  // ── Optimistic admin writes (single product, no full reload) ───────────────
   const upsertProduct = useCallback((product: CatalogProduct) => {
-    if (!mountedRef.current) return;
+    const merge = (prev: CatalogProduct[]) => {
+      const idx = prev.findIndex(
+        (p) => p.id === product.id || p.code === product.code,
+      );
+      if (idx === -1) return [product, ...prev];
+      return prev.map((p, i) => (i === idx ? product : p));
+    };
     startTransition(() => {
       setProductMap((prev) => ({ ...prev, [product.id]: product }));
-      setProducts((prev) => {
-        const idx = prev.findIndex((p) => p.id === product.id || p.code === product.code);
-        if (idx === -1) return [product, ...prev];
-        return prev.map((p, i) => (i === idx ? product : p));
-      });
+      setProducts(merge);
+      setAllProductsMap((prev) => ({ ...prev, [product.id]: product }));
+      setAllProducts(merge);
       setLastUpdated(new Date().toISOString());
     });
   }, []);
 
   const removeProduct = useCallback((identifier: string) => {
-    if (!mountedRef.current) return;
+    const exclude = (prev: CatalogProduct[]) =>
+      prev.filter((p) => p.id !== identifier && p.code !== identifier);
     startTransition(() => {
       setProductMap((prev) => {
-        if (!(identifier in prev)) return prev;
         const next = { ...prev };
         delete next[identifier];
         return next;
       });
-      setProducts((prev) =>
-        prev.filter((p) => p.id !== identifier && p.code !== identifier),
-      );
+      setProducts(exclude);
+      setAllProductsMap((prev) => {
+        const next = { ...prev };
+        delete next[identifier];
+        return next;
+      });
+      setAllProducts(exclude);
       setLastUpdated(new Date().toISOString());
     });
   }, []);
 
-  // ── Derived projections (cheap; recomputed only when products/categories change) ──
+  // ── Derived values (prefer full catalog for accuracy) ─────────────────────
+
+  const catalogSource = allProducts.length > 0 ? allProducts : products;
 
   const derivedCategories = useMemo(
-    () => deriveCatalogCategories(products, categories),
-    [products, categories],
+    () => deriveCatalogCategories(catalogSource, categories),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allProducts, products, categories],
   );
 
-  const productsById = productMap;
+  const productsById = useMemo(() => productMap, [productMap]);
 
   const categoriesById = useMemo(
     () =>
@@ -329,77 +397,92 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   );
 
   const inStockProducts = useMemo(
-    () => products.filter((p) => p.inStock),
-    [products],
+    () => catalogSource.filter((p) => p.inStock),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allProducts, products],
   );
 
   const featuredProducts = useMemo(
-    () => buildSpotlightProducts(products, derivedCategories, 180),
-    [products, derivedCategories],
+    () => buildSpotlightProducts(catalogSource, derivedCategories, 180),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allProducts, products, derivedCategories],
   );
 
-  const categorySearchIndex = useMemo<Record<string, string>>(
-    () =>
-      derivedCategories.reduce<Record<string, string>>((acc, cat) => {
-        acc[cat.id] = `${cat.name} ${cat.nameEn}`.trim().toLowerCase();
-        return acc;
-      }, {}),
-    [derivedCategories],
-  );
+  const metrics = useMemo<CatalogMetrics>(() => {
+    return {
+      totalProducts: totalProductCount > 0 ? totalProductCount : catalogSource.length,
+      totalCategories: derivedCategories.length,
+      inStockProducts: inStockProducts.length,
+      barcodedProducts: catalogSource.filter((p) => Boolean(p.barcode)).length,
+      lowStockProducts: inStockProducts.filter((p) => p.stock <= 5).length,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allProducts, products, derivedCategories, inStockProducts, totalProductCount]);
 
-  const metrics = useMemo<CatalogMetrics>(
-    () => ({
-      totalProducts:    products.length,
-      totalCategories:  derivedCategories.length,
-      inStockProducts:  inStockProducts.length,
-      // Single-pass count rather than a second .filter() allocation.
-      barcodedProducts: products.reduce((n, p) => (p.barcode ? n + 1 : n), 0),
-      lowStockProducts: inStockProducts.reduce((n, p) => (p.stock <= 5 ? n + 1 : n), 0),
-    }),
-    [products, derivedCategories.length, inStockProducts],
-  );
+  // ── Context value ─────────────────────────────────────────────────────────
 
-  // ── Memoize the context value so consumers don't re-render on identity churn ──
-  const value = useMemo<CatalogContextType>(
-    () => ({
-      products,
-      categories: derivedCategories,
-      productsById,
-      categoriesById,
-      featuredProducts,
-      inStockProducts,
-      metrics,
-      lastUpdated,
-      isLoading,
-      error,
-      refreshCatalog,
-      refreshCategories,
-      upsertProduct,
-      removeProduct,
-      categorySearchIndex,
-    }),
-    [
-      products,
-      derivedCategories,
-      productsById,
-      categoriesById,
-      featuredProducts,
-      inStockProducts,
-      metrics,
-      lastUpdated,
-      isLoading,
-      error,
-      refreshCatalog,
-      refreshCategories,
-      upsertProduct,
-      removeProduct,
-      categorySearchIndex,
-    ],
+  return (
+    <CatalogContext.Provider
+      value={{
+        products,
+        categories: derivedCategories,
+        productsById,
+        categoriesById,
+        featuredProducts,
+        inStockProducts,
+        metrics,
+        lastUpdated,
+        allProducts,
+        allProductsById: allProductsMap,
+        isFullCatalogReady,
+        isLoading,
+        isLoadingMore,
+        error,
+        totalProductCount,
+        hasNextPage,
+        currentPage,
+        activeFilters,
+        loadNextPage,
+        search,
+        filterByCategory,
+        refreshCatalog,
+        refreshCategories,
+        upsertProduct,
+        removeProduct,
+      }}
+    >
+      {children}
+    </CatalogContext.Provider>
   );
-
-  return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>;
 }
 
-export function useCatalog() {
-  return useContext(CatalogContext);
+// ─── useCatalog ───────────────────────────────────────────────────────────────
+
+export function useCatalog(): CatalogContextType {
+  const ctx = useContext(CatalogContext);
+  if (process.env.NODE_ENV !== "production" && ctx === null) {
+    throw new Error(
+      "[CatalogContext] useCatalog() was called outside <CatalogProvider>. " +
+      "Wrap the route tree in <CatalogShell> (see App.tsx).",
+    );
+  }
+  return ctx as CatalogContextType;
+}
+
+// ─── useFullCatalog ───────────────────────────────────────────────────────────
+
+/** Returns the stable full-catalog dataset for worker init and admin pages. */
+export function useFullCatalog() {
+  const ctx = useContext(CatalogContext);
+  if (process.env.NODE_ENV !== "production" && ctx === null) {
+    throw new Error(
+      "[CatalogContext] useFullCatalog() was called outside <CatalogProvider>.",
+    );
+  }
+  const c = ctx as CatalogContextType;
+  return {
+    allProducts:       c.allProducts,
+    allProductsById:   c.allProductsById,
+    isFullCatalogReady: c.isFullCatalogReady,
+  };
 }
