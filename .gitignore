@@ -6,4 +6,5 @@ dist/
 # تجاهل أي ملفات build تانية
 apps/api/dist/
 apps/shopper-web/dist/
+.claude/
 
