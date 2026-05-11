@@ -45,7 +45,6 @@ export type CheckoutFieldName = keyof Pick<
 
 export type CheckoutFieldErrors = Partial<Record<CheckoutFieldName, string>>;
 
-const DELIVERY_RANGE_SEPARATOR = "\u2013";
 const EGYPTIAN_PHONE_REGEX = /^01[0125]\d{8}$/;
 const PROMO_CODE = "UNITED10";
 
@@ -72,21 +71,17 @@ export function isPromoCodeValid(value: string) {
 }
 
 export function getDeliveryWindowLabel(lang: Language) {
-  return lang === "ar"
-    ? `${DELIVERY_MIN_MINUTES}${DELIVERY_RANGE_SEPARATOR}${DELIVERY_MAX_MINUTES} دقيقة`
-    : `${DELIVERY_MIN_MINUTES}${DELIVERY_RANGE_SEPARATOR}${DELIVERY_MAX_MINUTES} minutes`;
+  return lang === "ar" ? "توصيل سريع" : "Fast delivery";
 }
 
 export function getDeliveryWindowCompactLabel(lang: Language) {
-  return lang === "ar"
-    ? `${DELIVERY_MIN_MINUTES}${DELIVERY_RANGE_SEPARATOR}${DELIVERY_MAX_MINUTES} د`
-    : `${DELIVERY_MIN_MINUTES}${DELIVERY_RANGE_SEPARATOR}${DELIVERY_MAX_MINUTES} min`;
+  return lang === "ar" ? "توصيل سريع" : "Fast delivery";
 }
 
 export function getDeliveryWindowSentence(lang: Language) {
   return lang === "ar"
-    ? `التوصيل داخل القاهرة خلال ${getDeliveryWindowLabel(lang)}`
-    : `Delivery in Cairo within ${getDeliveryWindowLabel(lang)}`;
+    ? "توصيل داخل القاهرة"
+    : "Delivery across Cairo";
 }
 
 export function getServiceHoursLabel(_lang: Language) {

@@ -18,7 +18,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { useLanguage } from "../../contexts/LanguageContext";
-import { getDeliveryWindowCompactLabel, getDeliveryWindowLabel } from "../config";
+import { getDeliveryWindowCompactLabel } from "../config";
 import { PageHero, SectionIntro, StatTile } from "../components/BrandPrimitives";
 import { Reveal } from "../components/Reveal";
 import { cn } from "../components/UI";
@@ -64,11 +64,6 @@ type FaqItem = {
   question: LocalizedText;
   answer: LocalizedText;
 };
-
-const DELIVERY_WINDOW_TEXT = {
-  ar: getDeliveryWindowLabel("ar"),
-  en: getDeliveryWindowLabel("en"),
-} satisfies LocalizedText;
 
 const DELIVERY_WINDOW_COMPACT_TEXT = {
   ar: getDeliveryWindowCompactLabel("ar"),
@@ -123,8 +118,8 @@ const FAQ_ITEMS: FaqItem[] = [
       en: "What is the expected delivery time?",
     },
     answer: {
-      ar: `داخل القاهرة يكون التوصيل عادة خلال ${DELIVERY_WINDOW_TEXT.ar}، وقد تختلف المدة بحسب المنطقة وحالة توفر المنتج ووقت تأكيد الطلب.`,
-      en: `Inside Cairo, delivery usually takes ${DELIVERY_WINDOW_TEXT.en}, although timing may vary depending on area, product availability, and order confirmation time.`,
+      ar: "داخل القاهرة يتم التوصيل في أسرع وقت ممكن، وقد تختلف المدة بحسب المنطقة وحالة توفر المنتج ووقت تأكيد الطلب.",
+      en: "Inside Cairo, delivery is as fast as possible, although timing may vary depending on area, product availability, and order confirmation time.",
     },
   },
   {
@@ -234,8 +229,8 @@ const PAGE_CONFIG: Record<SupportPageType, PageConfig> = {
         icon: Clock,
         title: { ar: "مدة التوصيل المتوقعة", en: "Expected Delivery Window" },
         body: {
-          ar: `الطلبات داخل القاهرة يتم توصيلها عادة خلال ${DELIVERY_WINDOW_TEXT.ar}. وقد تزيد المدة في أوقات الذروة أو عند الحاجة لتأكيد بيانات إضافية.`,
-          en: `Orders inside Cairo are typically delivered within ${DELIVERY_WINDOW_TEXT.en}. Timing can increase during peak periods or when additional order confirmation is required.`,
+          ar: "الطلبات داخل القاهرة يتم توصيلها في أسرع وقت ممكن. وقد تزيد المدة في أوقات الذروة أو عند الحاجة لتأكيد بيانات إضافية.",
+          en: "Orders inside Cairo are delivered as quickly as possible. Timing can increase during peak periods or when additional order confirmation is required.",
         },
       },
       {
