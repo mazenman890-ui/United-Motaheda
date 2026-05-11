@@ -26,7 +26,7 @@ import {
   getCustomerOrdersWithMeta,
 } from "../../services/shopperOrdersApi";
 import type { RemoteOrderSnapshot } from "../../app/orders";
-import { ActionBand, BrandActionGroup, EmptyState, StatusPanel } from "../components/BrandPrimitives";
+import { BrandActionGroup, EmptyState, StatusPanel } from "../components/BrandPrimitives";
 import {
   ShopperActionCluster,
   ShopperPage,
@@ -803,7 +803,14 @@ export default function Orders() {
       tone="error"
       title={lang === "ar" ? "تعذر تحميل الطلبات" : "Could Not Load Orders"}
       description={error}
-      actions={<BrandActionGroup actions={emptyActions} />}
+      actions={
+        <button
+          onClick={() => load(true)}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[1.1rem] bg-[#0d9488] px-5 text-sm font-black text-white shadow-[0_12px_28px_rgba(13,148,136,0.25)] transition-all hover:bg-[#0f766e] active:scale-[0.98]"
+        >
+          {lang === "ar" ? "إعادة المحاولة" : "Retry"}
+        </button>
+      }
     />
   ) : orders.length === 0 ? (
     isShopperShell ? (
@@ -852,21 +859,12 @@ export default function Orders() {
 
       {pastOrders.length > 0 ? (
         <section>
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="mb-3">
             <h2 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">
               {liveOrders.length > 0
                 ? (lang === "ar" ? "الطلبات السابقة" : "Past Orders")
                 : (lang === "ar" ? "كل الطلبات" : "All Orders")}
             </h2>
-            {!isShopperShell ? (
-              <Link
-                to="/special-orders"
-                className="inline-flex items-center gap-2 text-sm font-black text-teal-700 transition-colors hover:text-teal-800"
-              >
-                <ClipboardList className="h-4 w-4" />
-                {t("request_unavailable_medicine")}
-              </Link>
-            ) : null}
           </div>
           <div className="space-y-4">
             {pastOrders.map((order) => <OrderCard key={order.id} order={order} lang={lang} />)}
@@ -908,28 +906,6 @@ export default function Orders() {
             </motion.div>
           ) : null}
         </AnimatePresence>
-
-        {orders.length > 0 && !loading ? (
-          <div className="mt-6">
-            <ActionBand
-              eyebrow={
-                <span className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-teal-700">
-                  <ShoppingBag className="h-3.5 w-3.5" />
-                  {lang === "ar" ? "واصل رحلتك" : "Keep Your Journey Moving"}
-                </span>
-              }
-              title={lang === "ar" ? "أكمل التسوق أو اطلب صنفاً غير متوفر" : "Continue Shopping Or Request Something Missing"}
-              description={
-                lang === "ar"
-                  ? "ارجع بسرعة إلى المنتجات أو الأقسام، وإذا لم تجد ما تحتاجه أرسل طلب توفير وسنتابع معك."
-                  : "Jump back into products or categories, and if you cannot find what you need, send a special request and we will follow up."
-              }
-              action={<BrandActionGroup actions={mainActions.slice(0, 2)} />}
-              secondaryAction={<BrandActionGroup actions={mainActions.slice(2)} />}
-              className="mt-8"
-            />
-          </div>
-        ) : null}
 
         <div className="mt-6">{contentBlock}</div>
       </div>

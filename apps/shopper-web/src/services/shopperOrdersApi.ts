@@ -153,13 +153,25 @@ async function fetchFromNetwork(): Promise<RemoteOrderSnapshot[]> {
       total,
       created_at,
       status,
-      qr_token,
-      order_items
+      qr_token
     `)
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
-  return ((data ?? []) as RawOrderRow[]).map(mapRow);
+
+  // Fetch order items separately for each order
+  const orders = (data ?? []) as RawOrderRow[];
+  const ordersWithItems = await Promise.all(
+    orders.map(async (order) => {
+      const { data: items } = await supabase
+        .from("order_items")
+        .select("product_id, quantity, product_snapshot")
+        .eq("order_id", order.id);
+      return { ...order, order_items: items ?? [] };
+    }),
+  );
+
+  return ordersWithItems.map(mapRow);
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────

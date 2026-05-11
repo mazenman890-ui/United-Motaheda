@@ -304,7 +304,7 @@ export function terminateCatalogSearchWorker(): void {
 
 // ─── Request dispatch ─────────────────────────────────────────────────────────
 
-const REQUEST_TIMEOUT_MS = 10_000;
+const REQUEST_TIMEOUT_MS = 3_000; // 3 second timeout - fail fast and fallback to inline
 
 export function postCatalogSearchRequest(
   request: CatalogSearchRequest,

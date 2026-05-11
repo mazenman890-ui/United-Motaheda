@@ -428,9 +428,9 @@ function handleInit(data: InitMessage): void {
     }
   };
 
-  // Try to use requestIdleCallback for true non-blocking behavior
+  // Try to use requestIdleCallback for non-blocking behavior with shorter timeout
   if (typeof requestIdleCallback !== "undefined") {
-    requestIdleCallback(buildIndex, { timeout: 2000 });
+    requestIdleCallback(buildIndex, { timeout: 500 });
   } else {
     // Fallback to setTimeout(0) if requestIdleCallback not available
     setTimeout(buildIndex, 0);

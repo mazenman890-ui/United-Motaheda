@@ -32,6 +32,7 @@ import {
   type CatalogCategory,
   type CatalogProduct,
 } from "../catalog";
+import { getMaxPriceCeiled } from "../hooks/useCatalogFilters";
 import {
   getDeliveryWindowCompactLabel,
   getDeliveryWindowLabel,
@@ -332,12 +333,11 @@ export function MobileProductsView() {
   const activeCategory = searchParams.get("category") || "all";
   const syncedSearch = (searchParams.get("search") || "").trim();
   const debouncedSearch = useDebouncedValue(searchQuery, 180);
-  const maxPrice = useMemo(() => {
-    if (products.length === 0) {
-      return 0;
-    }
-    return Math.ceil(Math.max(...products.map((product) => product.price)) / 50) * 50;
-  }, [products]);
+  // `Math.max(...arr)` with 50K+ elements blows V8's variadic argument limit
+  // ("Maximum call stack size exceeded"). `getMaxPriceCeiled` does the same
+  // computation as an O(n) for-loop with O(1) memory. See the docstring on
+  // `useCatalogFilters.ts` for the original investigation.
+  const maxPrice = useMemo(() => getMaxPriceCeiled(products, 50), [products]);
   useEffect(() => {
     if (maxPrice > 0) {
       setPriceRange((current) => (current > 0 ? Math.min(current, maxPrice) : maxPrice));

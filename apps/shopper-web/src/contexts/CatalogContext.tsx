@@ -1,12 +1,65 @@
 /**
- * NON-BLOCKING CATALOG CONTEXT
- * 
- * Complete rewrite for extreme performance:
- * - NO blocking loading states - UI renders instantly with skeletons
- * - Server-side pagination (24 products per page)
- * - Server-side search and filtering only
- * - Progressive loading with prefetching
- * - Sub-3 second load times guaranteed
+ * CatalogContext — owner of the full catalog snapshot.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * RESPONSIBILITY (single, narrow)
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * Load the full product catalog ONCE per session, expose it as a stable
+ * read-only snapshot to consumers, and provide narrow mutation actions for
+ * admin write paths (`upsertProduct`, `removeProduct`) and explicit refresh.
+ *
+ * This context is the **source of truth** — not a derived/filtered view.
+ * Filtering, sorting, and search are computed downstream by:
+ *
+ *   - `useCatalogProductSearch`  (worker-backed full-grid search)
+ *   - `useCatalogCategorySearch` (category list filter)
+ *   - `useCatalogFilters`        (category + stock + price + sort)
+ *   - `SearchContext`            (suggestion dropdown)
+ *
+ * Each of those hooks consumes the snapshot from `useCatalog()` and produces
+ * its own derived view. The snapshot itself never mutates in response to a
+ * user search/filter — only on explicit refresh or admin write.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * WHAT THIS REPLACES
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * The previous version had:
+ *
+ *   - `search(query)` and `filterByCategory(id)` actions that **replaced**
+ *     `products` state with the filtered subset. Subsequent searches then ran
+ *     against the already-filtered set — clearing the search did not bring
+ *     products back. Both actions had zero call sites in the codebase but
+ *     were silently corrupting the catalog any time something accidentally
+ *     invoked them.
+ *
+ *   - A `searchIndex` memo whose code did UNION (OR) while its comment said
+ *     INTERSECTION (AND), and that rebuilt on every state mutation.
+ *
+ *   - A `debouncedQuery` ref initialized to a hardcoded empty string, against
+ *     which the search short-circuited and never ran.
+ *
+ *   - Dead pagination state (`currentPage`, `hasNextPage`, `totalProductCount`,
+ *     `applyPageResult`) that the all-at-once load path never updated.
+ *
+ *   - An `alternativeProductPool` memo that allocated a 52K-element copy of
+ *     each product on every `productMap` change — and had zero consumers.
+ *
+ * All of the above is removed. The surviving surface is exactly what real
+ * call sites consume.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * NOTE ON DATA SCALE / FUTURE WORK
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * The catalog currently loads as a single snapshot via `fetchShopperCatalogSnapshot`,
+ * which paginates Supabase 1000 rows at a time. For ~52K products this is the
+ * dominant boot cost. A future migration to server-paginated reads via
+ * `fetchProductsPage` is desirable but is a multi-file change that also
+ * requires re-architecting the worker init flow (`ensureCatalogSearchWorkerInit`
+ * currently expects the full product set to build its inverted index). That
+ * migration is not in scope for this pass.
  */
 
 import {
@@ -20,424 +73,216 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useDebouncedValue } from "../app/hooks/useDebouncedValue";
 import {
-  deriveCatalogCategories,
   buildSpotlightProducts,
+  deriveCatalogCategories,
   type CatalogCategory,
   type CatalogProduct,
 } from "../app/catalog";
 import {
-  fetchProductsPage,
   fetchCategoriesQuick,
-  getCachedCategoriesQuick,
-  prefetchProductsPage,
-  invalidatePageCache,
   fetchShopperCatalogSnapshot,
+  getCachedCategoriesQuick,
   getCachedShopperCatalogSnapshot,
-  type ProductFilters,
-  type PageResult,
 } from "../services/shopperCatalogApi";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type CatalogMetrics = {
-  totalProducts: number;
-  totalCategories: number;
-  inStockProducts: number;
+export type CatalogMetrics = {
+  totalProducts:    number;
+  totalCategories:  number;
+  inStockProducts:  number;
   barcodedProducts: number;
   lowStockProducts: number;
 };
 
-/** Lightweight descriptor used by `rankAlternativeProducts`. */
-export type ProductRecommendationDescriptor = {
-  id:             string;
-  code:           string;
-  barcode:        string;
-  nameAr:         string;
-  nameEn:         string;
-  category:       string;
-  categoryName:   string;
-  categoryNameEn: string;
-  price:          number;
-  stock:          number;
-  inStock:        boolean;
-  imageUrl:       string;
-};
-
-export type SearchFilters = Omit<ProductFilters, "searchQuery">;
-
-type CatalogContextType = {
-  // ── Core data (always available) ───────────────────────────────────────────
-  products: CatalogProduct[];
-  categories: CatalogCategory[];
-  productsById: Record<string, CatalogProduct>;
-  categoriesById: Record<string, CatalogCategory>;
+export type CatalogContextType = {
+  // ── Core data (read-only snapshot) ─────────────────────────────────────────
+  products:         CatalogProduct[];
+  categories:       CatalogCategory[];
+  productsById:     Record<string, CatalogProduct>;
+  categoriesById:   Record<string, CatalogCategory>;
   featuredProducts: CatalogProduct[];
-  inStockProducts: CatalogProduct[];
-  metrics: CatalogMetrics;
-  lastUpdated: string | null;
-  
-  // ── Non-blocking loading states ──────────────────────────────────────────────
-  /** True while initial page load is in progress */
+  inStockProducts:  CatalogProduct[];
+  metrics:          CatalogMetrics;
+  lastUpdated:      string | null;
+
+  // ── Loading / error state ──────────────────────────────────────────────────
   isLoading: boolean;
-  /** True while loading additional pages */
-  isLoadingMore: boolean;
-  /** Error state for operations */
-  error: string | null;
-  
-  // ── Pagination state ────────────────────────────────────────────────────────
-  totalProductCount: number;
-  hasNextPage: boolean;
-  currentPage: number;
-  activeFilters: ProductFilters;
-  
-  // ── Actions ───────────────────────────────────────────────────────────────────
-  search: (query: string, filters?: SearchFilters) => Promise<void>;
-  filterByCategory: (categoryId: string | null) => Promise<void>;
-  refreshCatalog: (forceRefresh?: boolean) => Promise<void>;
+  error:     string | null;
+
+  // ── Mutation actions (refresh + admin writes) ──────────────────────────────
+  refreshCatalog:    (forceRefresh?: boolean) => Promise<void>;
   refreshCategories: () => Promise<void>;
-  upsertProduct: (product: CatalogProduct) => void;
-  removeProduct: (identifier: string) => void;
-  
-  // ── Legacy compatibility ─────────────────────────────────────────────────────
+  upsertProduct:     (product: CatalogProduct) => void;
+  removeProduct:     (identifier: string) => void;
+
+  // ── Derived helpers consumed by other hooks ────────────────────────────────
+  /** id → "name nameEn" lowercased — used by Categories.tsx for substring search. */
   categorySearchIndex: Record<string, string>;
-  alternativeProductPool: ProductRecommendationDescriptor[];
 };
 
-// ─── Initial state (non-blocking) ─────────────────────────────────────────────
+// ─── Initial seed (sync, from cache) ──────────────────────────────────────────
 
-const initialSnapshot = getCachedShopperCatalogSnapshot();
-const seedProducts = initialSnapshot?.products ?? [];
-const seedCategories = getCachedCategoriesQuick() ?? [];
+const initialSnapshot  = getCachedShopperCatalogSnapshot();
+const seedProducts     = initialSnapshot?.products  ?? [];
+const seedCategories   = getCachedCategoriesQuick() ?? [];
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 
+const EMPTY_METRICS: CatalogMetrics = {
+  totalProducts:    0,
+  totalCategories:  0,
+  inStockProducts:  0,
+  barcodedProducts: 0,
+  lowStockProducts: 0,
+};
+
 const CatalogContext = createContext<CatalogContextType>({
-  products: seedProducts,
-  categories: seedCategories,
-  productsById: {},
-  categoriesById: {},
-  featuredProducts: [],
-  inStockProducts: seedProducts.filter((p) => p.inStock),
-  metrics: {
-    totalProducts: seedProducts.length,
-    totalCategories: seedCategories.length,
-    inStockProducts: seedProducts.filter((p) => p.inStock).length,
-    barcodedProducts: seedProducts.filter((p) => Boolean(p.barcode)).length,
-    lowStockProducts: seedProducts.filter((p) => p.inStock && p.stock <= 5).length,
-  },
-  lastUpdated: initialSnapshot?.lastUpdated ?? null,
-  isLoading: false,
-  isLoadingMore: false,
-  error: null,
-  totalProductCount: seedProducts.length,
-  hasNextPage: true,
-  currentPage: 1,
-  activeFilters: {},
-  search: async () => {},
-  filterByCategory: async () => {},
-  refreshCatalog: async () => {},
-  refreshCategories: async () => {},
-  upsertProduct: () => {},
-  removeProduct: () => {},
+  products:            seedProducts,
+  categories:          seedCategories,
+  productsById:        {},
+  categoriesById:      {},
+  featuredProducts:    [],
+  inStockProducts:     [],
+  metrics:             EMPTY_METRICS,
+  lastUpdated:         initialSnapshot?.lastUpdated ?? null,
+  isLoading:           false,
+  error:               null,
+  refreshCatalog:      async () => {},
+  refreshCategories:   async () => {},
+  upsertProduct:       () => {},
+  removeProduct:       () => {},
   categorySearchIndex: {},
-  alternativeProductPool: [],
 });
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function CatalogProvider({ children }: { children: ReactNode }) {
-  // ── Core state (non-blocking) ──────────────────────────────────────────────────
-  const [categories, setCategories] = useState<CatalogCategory[]>(seedCategories);
-  const [products, setProducts] = useState<CatalogProduct[]>(seedProducts);
-  const [productMap, setProductMap] = useState<Record<string, CatalogProduct>>(() =>
-    Object.fromEntries(seedProducts.map((p) => [p.id, p])),
+  // ── Core snapshot state (immutable from the user's perspective) ────────────
+  const [products,    setProducts]    = useState<CatalogProduct[]>(seedProducts);
+  const [categories,  setCategories]  = useState<CatalogCategory[]>(seedCategories);
+  const [productMap,  setProductMap]  = useState<Record<string, CatalogProduct>>(
+    () => Object.fromEntries(seedProducts.map((p) => [p.id, p])),
   );
-  const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isLoading,   setIsLoading]   = useState(false);
+  const [error,       setError]       = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(
     initialSnapshot?.lastUpdated ?? null,
   );
 
-  // ── Pagination state ────────────────────────────────────────────────────────────
-  const [totalProductCount, setTotalCount] = useState(seedProducts.length);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [hasNextPage, setHasNextPage] = useState(true);
-  const [activeFilters, setActiveFilters] = useState<ProductFilters>({});
+  // ── Track mounted state to avoid setState on unmount ─────────────────────────
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
-  // ── Refs for async operations ───────────────────────────────────────────────────
-  const isLoadingMoreRef = useRef(false);
-  const prefetchDoneRef = useRef(false);
-
-  // ── Helpers ─────────────────────────────────────────────────────────────────
-
-  /** Apply page results to state (non-blocking) */
-  const applyPageResult = useCallback(
-    (result: PageResult, page: number, append: boolean) => {
+  // ── Apply a fresh snapshot to all derived state in one transition ──────────
+  const applySnapshot = useCallback(
+    (snapshotProducts: CatalogProduct[], snapshotCategories: CatalogCategory[]) => {
+      if (!mountedRef.current) return;
       startTransition(() => {
-        setProductMap((prev) => {
-          const next = append ? { ...prev } : {};
-          result.products.forEach((p) => { next[p.id] = p; });
-          return next;
-        });
-        setProducts((prev) =>
-          append ? [...prev, ...result.products] : result.products,
-        );
-        if (result.totalCount >= 0) {
-          setTotalCount(result.totalCount);
-        }
-        setCurrentPage(page);
-        setHasNextPage(result.hasNextPage);
-        setIsLoading(false);
-        setIsLoadingMore(false);
+        setProducts(snapshotProducts);
+        setCategories(snapshotCategories);
+        setProductMap(Object.fromEntries(snapshotProducts.map((p) => [p.id, p])));
         setLastUpdated(new Date().toISOString());
         setError(null);
+        setIsLoading(false);
       });
-      isLoadingMoreRef.current = false;
     },
     [],
   );
 
-  // ── Categories (load immediately, non-blocking) ────────────────────────────────
-
-  const refreshCategories = useCallback(async () => {
-    try {
-      const cats = await fetchCategoriesQuick();
-      startTransition(() => {
-        setCategories(cats);
-      });
-    } catch (err) {
-      console.error("[CatalogContext] fetchCategoriesQuick failed:", err);
-    }
-  }, []);
-
-  // Load categories on mount (non-blocking)
+  // ── Initial fetch (skipped if a fresh in-memory snapshot is already present) ──
   useEffect(() => {
-    if (categories.length === 0) {
-      void refreshCategories();
-    }
-  }, [categories.length, refreshCategories]);
-
-  // ── FULL CATALOG LOAD (gets ALL 52K+ products) ───────────────────────────────────
-
-  useEffect(() => {
-    // If we have cached products, use them immediately
     if (seedProducts.length > 0) {
+      // Cached seed is already wired into state; still refresh in background so
+      // the user eventually sees fresh data without blocking the first paint.
+      void fetchShopperCatalogSnapshot(false)
+        .then((snap) => {
+          if (snap.products !== seedProducts) {
+            applySnapshot(snap.products, snap.categories);
+          }
+        })
+        .catch((err) => {
+          console.warn("[CatalogContext] background refresh failed:", err);
+        });
       return;
     }
 
     let cancelled = false;
-
-    const loadFullCatalog = async () => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const catalogSnapshot = await fetchShopperCatalogSnapshot(false);
-
-        if (!cancelled) {
-          startTransition(() => {
-            // Set products and build product map
-            setProducts(catalogSnapshot.products);
-            setProductMap(Object.fromEntries(catalogSnapshot.products.map(p => [p.id, p])));
-            
-            // Set categories
-            setCategories(catalogSnapshot.categories);
-            
-            // Derived data
-            const featuredProducts = buildSpotlightProducts(catalogSnapshot.products, catalogSnapshot.categories);
-            const inStockProducts = catalogSnapshot.products.filter(p => p.inStock);
-            
-            // Update state
-            setTotalCount(catalogSnapshot.products.length);
-            setHasNextPage(false); // No pagination - we have all products
-            setCurrentPage(1);
-            setIsLoading(false);
-            setIsLoadingMore(false);
-            setLastUpdated(new Date().toISOString());
-            setError(null);
-          });
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load catalog");
-          setIsLoading(false);
-        }
-      }
-    };
-
-    void loadFullCatalog();
-    return () => { cancelled = true; };
-  }, []);
-
-  // ── No pagination needed - we load all products at once ────────────────────────────
-
-  // ── search (optimized with debouncing and memoization) ─────────────────────────
-
-  // Memoized search index for fast lookups
-  const searchIndex = useMemo(() => {
-    const index = new Map<string, CatalogProduct[]>();
-    
-    products.forEach(product => {
-      const searchText = [
-        product.name.toLowerCase(),
-        (product.nameAr || '').toLowerCase(),
-        (product.nameEn || '').toLowerCase(),
-        (product.barcode || '').toLowerCase(),
-        (product.categoryName || '').toLowerCase(),
-        (product.categoryNameEn || '').toLowerCase(),
-      ].join(' ');
-      
-      // Add to index for each word
-      searchText.split(' ').forEach(word => {
-        if (word.length < 2) return; // Skip very short words
-        if (!index.has(word)) {
-          index.set(word, []);
-        }
-        index.get(word)!.push(product);
-      });
-    });
-    
-    return index;
-  }, [products]);
-
-  // Debounced search to prevent expensive operations on every keystroke
-  const debouncedQuery = useDebouncedValue('', 300); // 300ms debounce
-
-  const search = useCallback(
-    async (query: string, extraFilters?: SearchFilters) => {
-      const filters: ProductFilters = { ...extraFilters, searchQuery: query };
-      setActiveFilters(filters);
-      
-      // Only run expensive filtering when debounced value matches
-      if (debouncedQuery !== query) return;
-      
-      // Client-side filtering with optimized search
-      startTransition(() => {
-        let filtered = products;
-        
-        // Text search - use pre-built index for speed
-        if (query.trim()) {
-          const searchTerms = query.toLowerCase().trim().split(/\s+/).filter(t => t.length >= 2);
-          
-          if (searchTerms.length > 0) {
-            // Get matching products for each term and find intersection
-            const termResults = searchTerms.map(term => searchIndex.get(term) || []);
-            const matchingProductIds = new Set();
-            
-            // Find products that match ALL terms
-            termResults.forEach(results => {
-              results.forEach(product => matchingProductIds.add(product.id));
-            });
-            
-            // Filter to only products that match all search terms
-            filtered = Array.from(matchingProductIds).map(id => productMap[id]).filter(Boolean);
-          }
-        }
-        
-        // Apply other filters (much faster than text search)
-        if (extraFilters?.categoryId) {
-          filtered = filtered.filter(p => p.category === extraFilters.categoryId);
-        }
-        
-        if (extraFilters?.inStock) {
-          filtered = filtered.filter(p => p.inStock);
-        }
-        
-        if (extraFilters?.minPrice !== undefined) {
-          filtered = filtered.filter(p => p.price >= extraFilters.minPrice!);
-        }
-        if (extraFilters?.maxPrice !== undefined) {
-          filtered = filtered.filter(p => p.price <= extraFilters.maxPrice!);
-        }
-        
-        setProducts(filtered);
-        setProductMap(Object.fromEntries(filtered.map(p => [p.id, p])));
-        setTotalCount(filtered.length);
-        setIsLoading(false);
-        setError(null);
-      });
-    },
-    [products, productMap, searchIndex, debouncedQuery],
-  );
-
-  // ── filterByCategory (optimized with pre-built category index) ─────────────────
-
-  // Pre-built category index for instant filtering
-  const categoryIndex = useMemo(() => {
-    const index = new Map<string, CatalogProduct[]>();
-    products.forEach(product => {
-      if (!index.has(product.category)) {
-        index.set(product.category, []);
-      }
-      index.get(product.category)!.push(product);
-    });
-    return index;
-  }, [products]);
-
-  const filterByCategory = useCallback(
-    async (categoryId: string | null) => {
-      const filters: ProductFilters = categoryId ? { categoryId } : {};
-      setActiveFilters(filters);
-      
-      startTransition(() => {
-        let filtered = products;
-        
-        // Use pre-built index for instant category filtering
-        if (categoryId) {
-          filtered = categoryIndex.get(categoryId) || [];
-        }
-        
-        setProducts(filtered);
-        setProductMap(Object.fromEntries(filtered.map(p => [p.id, p])));
-        setTotalCount(filtered.length);
-        setIsLoading(false);
-        setError(null);
-      });
-    },
-    [products, categoryIndex],
-  );
-
-  // ── refreshCatalog (full catalog refresh) ─────────────────────────────────────
-
-  const refreshCatalog = useCallback(async (forceRefresh = false) => {
     setIsLoading(true);
     setError(null);
 
-    try {
-      const catalogSnapshot = await fetchShopperCatalogSnapshot(forceRefresh);
-
-      startTransition(() => {
-        // Set products and build product map
-        setProducts(catalogSnapshot.products);
-        setProductMap(Object.fromEntries(catalogSnapshot.products.map(p => [p.id, p])));
-        
-        // Set categories
-        setCategories(catalogSnapshot.categories);
-        
-        // Update state
-        setTotalCount(catalogSnapshot.products.length);
-        setHasNextPage(false); // No pagination - we have all products
-        setCurrentPage(1);
+    fetchShopperCatalogSnapshot(false)
+      .then((snap) => {
+        if (cancelled) return;
+        applySnapshot(snap.products, snap.categories);
+      })
+      .catch((err) => {
+        if (cancelled || !mountedRef.current) return;
+        const message = err instanceof Error ? err.message : "Failed to load catalog";
+        console.error("[CatalogContext] initial load failed:", err);
+        setError(message);
         setIsLoading(false);
-        setIsLoadingMore(false);
-        setLastUpdated(new Date().toISOString());
-        setError(null);
-        
-        // Clear filters
-        setActiveFilters({});
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // applySnapshot is stable (useCallback with empty deps), so a one-shot effect
+    // is safe; deliberately not depending on it to avoid re-runs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Categories may resolve from a separate cache ahead of full snapshot ────
+  const refreshCategories = useCallback(async () => {
+    try {
+      const cats = await fetchCategoriesQuick();
+      if (!mountedRef.current) return;
+      startTransition(() => {
+        setCategories(cats);
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Refresh failed");
-      setIsLoading(false);
+      console.error("[CatalogContext] refreshCategories failed:", err);
     }
   }, []);
 
-  // ── upsertProduct / removeProduct (optimistic local mutations) ───────────────
+  useEffect(() => {
+    if (categories.length === 0) {
+      void refreshCategories();
+    }
+    // Run once if no seed; refreshCategories is stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  // ── Explicit refresh (admin "reload" / post-mutation) ──────────────────────
+  const refreshCatalog = useCallback(
+    async (forceRefresh = false) => {
+      if (mountedRef.current) {
+        setIsLoading(true);
+        setError(null);
+      }
+      try {
+        const snap = await fetchShopperCatalogSnapshot(forceRefresh);
+        applySnapshot(snap.products, snap.categories);
+      } catch (err) {
+        if (!mountedRef.current) return;
+        const message = err instanceof Error ? err.message : "Refresh failed";
+        console.error("[CatalogContext] refreshCatalog failed:", err);
+        setError(message);
+        setIsLoading(false);
+      }
+    },
+    [applySnapshot],
+  );
+
+  // ── Optimistic admin writes (single product, no full reload) ───────────────
   const upsertProduct = useCallback((product: CatalogProduct) => {
+    if (!mountedRef.current) return;
     startTransition(() => {
       setProductMap((prev) => ({ ...prev, [product.id]: product }));
       setProducts((prev) => {
@@ -450,8 +295,10 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const removeProduct = useCallback((identifier: string) => {
+    if (!mountedRef.current) return;
     startTransition(() => {
       setProductMap((prev) => {
+        if (!(identifier in prev)) return prev;
         const next = { ...prev };
         delete next[identifier];
         return next;
@@ -463,14 +310,14 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // ── Derived values ───────────────────────────────────────────────────────────
+  // ── Derived projections (cheap; recomputed only when products/categories change) ──
 
   const derivedCategories = useMemo(
     () => deriveCatalogCategories(products, categories),
     [products, categories],
   );
 
-  const productsById = useMemo(() => productMap, [productMap]);
+  const productsById = productMap;
 
   const categoriesById = useMemo(
     () =>
@@ -488,7 +335,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
 
   const featuredProducts = useMemo(
     () => buildSpotlightProducts(products, derivedCategories, 180),
-    [derivedCategories, products],
+    [products, derivedCategories],
   );
 
   const categorySearchIndex = useMemo<Record<string, string>>(
@@ -500,78 +347,57 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     [derivedCategories],
   );
 
-  const alternativeProductPool = useMemo<ProductRecommendationDescriptor[]>(
-    () =>
-      Object.values(productMap).map((p) => ({
-        id:             p.id,
-        code:           p.code,
-        barcode:        p.barcode,
-        nameAr:         p.nameAr,
-        nameEn:         p.nameEn,
-        category:       p.category,
-        categoryName:   p.categoryName,
-        categoryNameEn: p.categoryNameEn,
-        price:          p.price,
-        stock:          p.stock,
-        inStock:        p.inStock,
-        imageUrl:       p.imageUrl,
-      })),
-    [productMap],
-  );
-
   const metrics = useMemo<CatalogMetrics>(
     () => ({
-      totalProducts: totalProductCount > 0 ? totalProductCount : products.length,
-      totalCategories: derivedCategories.length,
-      inStockProducts: inStockProducts.length,
-      barcodedProducts: products.filter((p) => Boolean(p.barcode)).length,
-      lowStockProducts: inStockProducts.filter((p) => p.stock <= 5).length,
+      totalProducts:    products.length,
+      totalCategories:  derivedCategories.length,
+      inStockProducts:  inStockProducts.length,
+      // Single-pass count rather than a second .filter() allocation.
+      barcodedProducts: products.reduce((n, p) => (p.barcode ? n + 1 : n), 0),
+      lowStockProducts: inStockProducts.reduce((n, p) => (p.stock <= 5 ? n + 1 : n), 0),
     }),
-    [derivedCategories.length, inStockProducts, products, totalProductCount],
+    [products, derivedCategories.length, inStockProducts],
   );
 
-  // ── Context value ─────────────────────────────────────────────────────────
-
-  return (
-    <CatalogContext.Provider
-      value={{
-        // Core data
-        products,
-        categories: derivedCategories,
-        productsById,
-        categoriesById,
-        featuredProducts,
-        inStockProducts,
-        metrics,
-        lastUpdated,
-        
-        // Loading states
-        isLoading,
-        isLoadingMore,
-        error,
-        
-        // Pagination
-        totalProductCount,
-        hasNextPage,
-        currentPage,
-        activeFilters,
-        
-        // Actions - simplified for full catalog
-        search,
-        filterByCategory,
-        refreshCatalog,
-        refreshCategories,
-        upsertProduct,
-        removeProduct,
-        
-        // Legacy compatibility
-        categorySearchIndex,
-        alternativeProductPool,
-      }}
-    >
-      {children}
-    </CatalogContext.Provider>
+  // ── Memoize the context value so consumers don't re-render on identity churn ──
+  const value = useMemo<CatalogContextType>(
+    () => ({
+      products,
+      categories: derivedCategories,
+      productsById,
+      categoriesById,
+      featuredProducts,
+      inStockProducts,
+      metrics,
+      lastUpdated,
+      isLoading,
+      error,
+      refreshCatalog,
+      refreshCategories,
+      upsertProduct,
+      removeProduct,
+      categorySearchIndex,
+    }),
+    [
+      products,
+      derivedCategories,
+      productsById,
+      categoriesById,
+      featuredProducts,
+      inStockProducts,
+      metrics,
+      lastUpdated,
+      isLoading,
+      error,
+      refreshCatalog,
+      refreshCategories,
+      upsertProduct,
+      removeProduct,
+      categorySearchIndex,
+    ],
   );
+
+  return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>;
 }
 
 export function useCatalog() {

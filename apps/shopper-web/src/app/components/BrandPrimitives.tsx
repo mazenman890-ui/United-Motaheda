@@ -393,7 +393,7 @@ export function BrandActionGroup({
           to={to}
           className={cn(
             "inline-flex min-h-11 items-center justify-center gap-2 rounded-[1.1rem] px-5 text-sm font-black transition-all active:scale-[0.98]",
-            variant === "primary" && "bg-slate-950 text-white shadow-[0_12px_28px_rgba(15,23,42,0.2)] hover:-translate-y-0.5",
+            variant === "primary" && "bg-[#0d9488] text-white shadow-[0_12px_28px_rgba(13,148,136,0.25)] hover:-translate-y-0.5 hover:bg-[#0f766e]",
             variant === "secondary" && "border border-slate-200 bg-white text-slate-800 shadow-sm hover:border-slate-300 hover:bg-slate-50",
             variant === "ghost" && "text-[var(--primary)] hover:bg-[var(--primary)]/5",
             itemClassName,

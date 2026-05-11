@@ -82,7 +82,7 @@ export interface ProductSearchFilters {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const SEARCH_DEBOUNCE  = 180;  // ms — balanced between responsiveness and worker load
+const SEARCH_DEBOUNCE  = 400;  // ms — higher delay for large catalogs to reduce lag
 const PREFETCH_IDLE_MS = 50;   // ms of idle before pre-warming next-char expansions
 const NEXT_CHARS       = "abcdefghijklmnopqrstuvwxyzابتثجحخدذرزسشصضطظعغفقكلمنهوي";
 

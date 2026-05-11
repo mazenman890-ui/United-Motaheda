@@ -252,7 +252,7 @@ export async function listOpsOrders() {
   const { data, error } = await supabase
     .from("orders")
     .select(
-      "id, external_ref, customer_name, customer_phone, customer_address, customer_lat, customer_lng, status, assigned_driver_id, updated_at, created_at, note, total, qr_token, order_items(product_id, quantity, product_snapshot)",
+      "id, external_ref, customer_name, customer_phone, customer_address, customer_lat, customer_lng, status, assigned_driver_id, updated_at, created_at, note, total, qr_token",
     )
     .order("updated_at", { ascending: false })
     .limit(120);
@@ -261,7 +261,19 @@ export async function listOpsOrders() {
     throw new Error(error.message);
   }
 
-  return ((data ?? []) as RawOpsOrderRow[]).map(mapRawOrderRow);
+  // Fetch order items separately for each order
+  const orders = (data ?? []) as RawOpsOrderRow[];
+  const ordersWithItems = await Promise.all(
+    orders.map(async (order) => {
+      const { data: items } = await supabase
+        .from("order_items")
+        .select("product_id, quantity, product_snapshot")
+        .eq("order_id", order.id);
+      return { ...order, order_items: items ?? [] };
+    }),
+  );
+
+  return ordersWithItems.map(mapRawOrderRow);
 }
 
 export async function listDrivers() {
@@ -368,13 +380,19 @@ export async function updateManagedOrderStatus(
     throw new Error(updateError.message || "Unable to update the order status.");
   }
 
-  // Step 2: Fetch the updated order with embedded order_items separately
-  const { data, error: fetchError } = await supabase
-    .from("orders")
-    .select(
-      "id, external_ref, customer_name, customer_phone, customer_address, customer_lat, customer_lng, status, assigned_driver_id, updated_at, created_at, note, total, qr_token, order_items(product_id, quantity, product_snapshot)",
-    )
-    .eq("id", orderId);
+  // Step 2: Fetch the updated order and its items separately
+  const [{ data, error: fetchError }, { data: items }] = await Promise.all([
+    supabase
+      .from("orders")
+      .select(
+        "id, external_ref, customer_name, customer_phone, customer_address, customer_lat, customer_lng, status, assigned_driver_id, updated_at, created_at, note, total, qr_token",
+      )
+      .eq("id", orderId),
+    supabase
+      .from("order_items")
+      .select("product_id, quantity, product_snapshot")
+      .eq("order_id", orderId),
+  ]);
 
   if (fetchError) {
     throw new Error(fetchError.message || "Unable to fetch the updated order.");
@@ -384,16 +402,17 @@ export async function updateManagedOrderStatus(
     throw new Error("Order not found after update.");
   }
 
+  const orderWithItems = { ...data[0], order_items: items ?? [] } as RawOpsOrderRow;
   const drivers = await listDrivers();
   const driversById = new Map(drivers.map((driver) => [driver.id, driver]));
-  return mapToManagedOrder(mapRawOrderRow(data[0] as RawOpsOrderRow), driversById);
+  return mapToManagedOrder(mapRawOrderRow(orderWithItems), driversById);
 }
 
 export async function listDriverManifest(driverId: string) {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from("orders")
-    .select("id, external_ref, customer_name, customer_phone, customer_address, customer_lat, customer_lng, status, assigned_driver_id, updated_at, created_at, note, total, qr_token, order_items(product_id, quantity, product_snapshot)")
+    .select("id, external_ref, customer_name, customer_phone, customer_address, customer_lat, customer_lng, status, assigned_driver_id, updated_at, created_at, note, total, qr_token")
     .eq("assigned_driver_id", driverId)
     .in("status", ["ready", "picked_up", "delivered"])
     .order("updated_at", { ascending: false });
@@ -402,7 +421,20 @@ export async function listDriverManifest(driverId: string) {
     throw new Error(error.message);
   }
 
-  return ((data ?? []) as RawOpsOrderRow[]).map((row) => {
+  const orders = (data ?? []) as RawOpsOrderRow[];
+
+  // Fetch order items separately for each order
+  const ordersWithItems = await Promise.all(
+    orders.map(async (order) => {
+      const { data: items } = await supabase
+        .from("order_items")
+        .select("product_id, quantity, product_snapshot")
+        .eq("order_id", order.id);
+      return { ...order, order_items: items ?? [] };
+    }),
+  );
+
+  return ordersWithItems.map((row) => {
     const mapped = mapRawOrderRow(row);
     return {
       ...mapped,

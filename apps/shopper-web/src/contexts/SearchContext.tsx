@@ -1,45 +1,4 @@
-﻿/**
- * SearchContext.tsx — Search input state + inline suggestions
- *
- * ═══════════════════════════════════════════════════════════════════════════════
- * ARCHITECTURE
- * ═══════════════════════════════════════════════════════════════════════════════
- *
- *   Two separate React contexts to prevent cascade re-renders:
- *
- *   SearchInputContext   → raw input string (stable between suggestion updates)
- *   SearchResultsContext → derived async suggestions (re-renders only when the
- *                          suggestion list changes)
- *
- *   The legacy useSearch() hook is preserved for backwards compatibility.
- *
- * ═══════════════════════════════════════════════════════════════════════════════
- * CHANGES IN THIS VERSION
- * ═══════════════════════════════════════════════════════════════════════════════
- *
- * 1. ABORT CONTROLLER FOR SUGGESTIONS
- *    Each suggestions effect run creates a new AbortController.  If a new
- *    character is typed before the worker responds, the stale effect is
- *    immediately aborted.  This replaces the requestId staleness check (which
- *    still works but requires the full response to arrive before discarding).
- *
- * 2. PREFETCH ON IDLE (50ms)
- *    After the user pauses for 50ms with an active query, we pre-warm the worker
- *    LRU cache for the most likely next characters.  When the user resumes
- *    typing, the next keystrokes hit the cache (0ms) instead of the worker.
- *
- * 3. GLOBAL REQUEST IDs (unchanged from previous version)
- *    generateSearchRequestId() from catalogSearchWorker.ts — module-level counter
- *    shared across all callers so IDs are globally unique.
- *
- * 4. PROPER LRU CACHE FLUSH
- *    clearFuzzyCache() called on route change and catalog update (unchanged from
- *    previous version but now flushes both match and score LRU caches).
- *
- * 5. DEBOUNCE CANCEL ON CLEAR
- *    Pending commit is cancelled immediately when the input is cleared (unchanged
- *    from previous version).
- */
+﻿
 
 import {
   createContext,
@@ -74,7 +33,18 @@ export type SearchInputContextValue = {
   searchQuery:    string;
   setSearchQuery: (value: string) => void;
   committedQuery: string;
+  /**
+   * Debounced commit of an explicit value. Used by callers that want to commit
+   * a string different from the current input (e.g. selecting a suggestion).
+   */
   commitQuery:    (value: string) => void;
+  /**
+   * Debounced commit of the **current** input value. Equivalent to
+   * `commitQuery(searchQuery)` but doesn't require the caller to thread the
+   * query through. Preferred for "submit on enter" / route-level handlers
+   * that just want to push whatever the user has typed.
+   */
+  commitSearch:   () => void;
 };
 
 export type SearchResultsContextValue = {
@@ -87,8 +57,8 @@ export type SearchResultsContextValue = {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const SUGGESTIONS_LIMIT  = 20;
-const COMMIT_DEBOUNCE    = 300;  // ms after last keystroke before query commits
-const PREFETCH_IDLE_MS   = 50;   // ms idle before next-char pre-warming
+const COMMIT_DEBOUNCE    = 500;  // ms after last keystroke before query commits
+const PREFETCH_IDLE_MS   = 100;  // ms idle before next-char pre-warming
 
 // ─── Contexts ─────────────────────────────────────────────────────────────────
 
@@ -185,6 +155,19 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       }
     }, COMMIT_DEBOUNCE);
   }, [location.pathname, location.search, navigate]);
+
+  // Latest `searchQuery` mirror used by `commitSearch()` so the callback can
+  // remain referentially stable while still reading the current value. Without
+  // this, `commitSearch` would change identity on every keystroke and force
+  // every consumer of the context to re-render on every input event.
+  const searchQueryRef = useRef(searchQuery);
+  useEffect(() => {
+    searchQueryRef.current = searchQuery;
+  }, [searchQuery]);
+
+  const commitSearch = useCallback(() => {
+    commitQuery(searchQueryRef.current);
+  }, [commitQuery]);
 
   // Cancel pending commit and clear URL search param when input is cleared.
   useEffect(() => {
@@ -404,8 +387,9 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       setSearchQuery,
       committedQuery,
       commitQuery,
+      commitSearch,
     }),
-    [searchQuery, setSearchQuery, committedQuery, commitQuery],
+    [searchQuery, setSearchQuery, committedQuery, commitQuery, commitSearch],
   );
 
   const resultsValue = useMemo(
