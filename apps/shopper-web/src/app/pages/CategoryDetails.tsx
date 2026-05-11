@@ -233,6 +233,7 @@ function CategoryDetailsDesktop() {
     products,
     isLoading,
     isLoadingMore,
+    isFullCatalogReady,
     filterByCategory,
     loadNextPage,
     hasNextPage,
@@ -243,10 +244,11 @@ function CategoryDetailsDesktop() {
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  // Trigger server-side category filter whenever the category ID changes
+  // Server-side filter only needed before full catalog loads; afterwards the
+  // hook derives the category slice directly from the in-memory allProducts.
   useEffect(() => {
-    if (id) void filterByCategory(id);
-  }, [id, filterByCategory]);
+    if (id && !isFullCatalogReady) void filterByCategory(id);
+  }, [id, isFullCatalogReady, filterByCategory]);
 
   const category = id ? categoriesById[id] : undefined;
   const relatedCategories = useMemo(

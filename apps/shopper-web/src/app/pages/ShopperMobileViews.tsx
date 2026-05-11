@@ -874,6 +874,7 @@ export function MobileCategoryDetailsView() {
     products,
     isLoading,
     isLoadingMore,
+    isFullCatalogReady,
     filterByCategory,
     loadNextPage,
     hasNextPage,
@@ -886,10 +887,11 @@ export function MobileCategoryDetailsView() {
   const [onlyInStock, setOnlyInStock] = useState(false);
   const category = id ? categoriesById[id] : undefined;
 
-  // Trigger server-side category filter whenever id changes
+  // Server-side filter only needed before full catalog loads; afterwards the
+  // hook derives the category slice directly from the in-memory allProducts.
   useEffect(() => {
-    if (id) void filterByCategory(id);
-  }, [id, filterByCategory]);
+    if (id && !isFullCatalogReady) void filterByCategory(id);
+  }, [id, isFullCatalogReady, filterByCategory]);
 
   if (!category) {
     return (

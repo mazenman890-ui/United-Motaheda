@@ -62,6 +62,7 @@ import { getLocalizedProductName } from "../localization";
 import { fuzzyMatch, fuzzyScore } from "../../utils/fuzzySearch";
 import {
   CATALOG_SEARCH_WORKER_THRESHOLD,
+  clearPrefetchCache,
   ensureCatalogSearchWorkerInit,
   generateSearchRequestId,
   getPrefetchedResult,
@@ -181,8 +182,12 @@ export function useCatalogProductSearch(
   // Full catalog for worker init and search result resolution (stable reference)
   const { allProducts, allProductsById } = useFullCatalog();
 
+  // When full catalog is ready, use it as the filter base to avoid stale
+  // category-filtered slices left behind by CategoryDetails navigations.
+  const stableBase = allProducts.length > 0 ? allProducts : products;
+
   // deferredProducts: shell paints before the filter+sort runs
-  const deferredProducts = useDeferredValue(products);
+  const deferredProducts = useDeferredValue(stableBase);
 
   // Track the latest dispatched request to discard stale responses
   const latestRequestId = useRef(0);
@@ -247,6 +252,11 @@ export function useCatalogProductSearch(
       return true;
     });
   }, [filters.category, filters.onlyInStock, filters.priceCap, deferredProducts]);
+
+  // ── Stale prefetch results are invalid after filter context changes ──────
+  useEffect(() => {
+    clearPrefetchCache();
+  }, [filters.category, filters.onlyInStock, filters.priceCap]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── INIT: send full catalog to worker once (stable reference, not per-page) ──
   useEffect(() => {
@@ -379,7 +389,7 @@ export function useCatalogProductSearch(
     return sortExplicit(matchedProducts, sortBy, lang);
   }, [debouncedQuery, lang, matchedProducts, sortBy]);
 
-  const isTransitioning = products !== deferredProducts;
+  const isTransitioning = stableBase !== deferredProducts;
 
   return {
     products:    sortedProducts,
