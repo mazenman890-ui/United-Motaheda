@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { EmptyState, PageHero } from "../components/BrandPrimitives";
@@ -6,14 +7,46 @@ import { ProductGrid } from "../components/ProductGrid";
 import { useCatalog } from "../../contexts/CatalogContext";
 import { useFavorites } from "../../contexts/FavoritesContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { fetchProductsByIds } from "../../services/shopperCatalogApi";
+import type { CatalogProduct } from "../catalog";
 
 export default function Favorites() {
   const { t, lang } = useLanguage();
-  const { products } = useCatalog();
+  const { productsById } = useCatalog();
   const { favoriteIds, isBusy, errorMessage } = useFavorites();
 
-  const favoriteProducts = products.filter((product) => favoriteIds.has(product.id));
+  // Products fetched directly from Supabase for favorite IDs not in page-1 cache.
+  const [fetchedProducts, setFetchedProducts] = useState<Record<string, CatalogProduct>>({});
+  const fetchedRef = useRef<Record<string, CatalogProduct>>({});
+  const [isFetchingFavs, setIsFetchingFavs] = useState(false);
+
+  useEffect(() => {
+    if (favoriteIds.size === 0) return;
+
+    const missingIds = Array.from(favoriteIds).filter(
+      (id) => !productsById[id] && !fetchedRef.current[id],
+    );
+
+    if (missingIds.length === 0) return;
+
+    setIsFetchingFavs(true);
+    void fetchProductsByIds(missingIds).then((fetched) => {
+      fetched.forEach((p) => { fetchedRef.current[p.id] = p; });
+      setFetchedProducts({ ...fetchedRef.current });
+      setIsFetchingFavs(false);
+    });
+  }, [favoriteIds, productsById]);
+
+  const favoriteProducts = useMemo(() => {
+    const allById: Record<string, CatalogProduct> = { ...fetchedProducts, ...productsById };
+    return Array.from(favoriteIds)
+      .map((id) => allById[id])
+      .filter((p): p is CatalogProduct => Boolean(p));
+  }, [favoriteIds, productsById, fetchedProducts]);
+
   const availableProducts = favoriteProducts.filter((product) => product.inStock).length;
+
+  const isResolving = isBusy || isFetchingFavs;
 
   return (
     <div className="min-h-screen bg-[#F5FDFC]">
@@ -60,7 +93,7 @@ export default function Favorites() {
             {errorMessage}
           </div>
         ) : null}
-        {isBusy ? (
+        {isResolving ? (
           <CatalogSkeletonGrid count={6} />
         ) : favoriteProducts.length === 0 ? (
           <EmptyState

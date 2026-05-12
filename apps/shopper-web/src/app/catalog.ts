@@ -844,13 +844,14 @@ export function deriveCatalogCategories(products: CatalogProduct[], _previousCat
     }
   }
 
-  const knownCategories = (CATEGORY_SEEDS
-    .map((seed) => {
-      const stats = counts.get(seed.id);
-      if (!stats || stats.count === 0) return null;
-      return buildCategoryFromSeed(seed, stats.count, stats.inStockCount);
-    })
-    .filter(Boolean) as CatalogCategory[]);
+  // Always include every seed category, even when 0 products match the current
+  // page-1 slice. The count will be 0 on cold start and update once the grid
+  // loads more products. Filtering out 0-count seeds was the root cause of the
+  // "empty sidebar on cold start" bug.
+  const knownCategories = CATEGORY_SEEDS.map((seed) => {
+    const stats = counts.get(seed.id);
+    return buildCategoryFromSeed(seed, stats?.count ?? 0, stats?.inStockCount ?? 0);
+  });
 
   const knownIds = new Set(knownCategories.map((category) => category.id));
   const fallbackCategories = Array.from(counts.entries()).flatMap(([categoryId, stats]) => {

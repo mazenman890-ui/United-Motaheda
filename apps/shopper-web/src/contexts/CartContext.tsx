@@ -1,9 +1,9 @@
-// CartContext.tsx – unchanged from original
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { emitWorkflowEvent } from "@pharmacy/domain-core";
 import type { CatalogProduct } from "../app/catalog";
 import { createCheckoutPricing } from "../app/checkout/pricing";
 import { useCatalog } from "./CatalogContext";
+import { fetchProductsByIds } from "../services/shopperCatalogApi";
 
 export type CartItem = {
   id: string;
@@ -154,7 +154,31 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const { productsById } = useCatalog();
   const [entries, setEntries] = useState<StoredCartEntry[]>(() => readLocalCart());
 
-  const cart = useMemo(() => inflateEntries(entries, productsById), [entries, productsById]);
+  // Products fetched from Supabase for cart entries whose IDs are not in the
+  // page-1 cache (e.g. items added from page 2+, then reloaded).
+  const [fetchedProducts, setFetchedProducts] = useState<Record<string, CatalogProduct>>({});
+  const fetchedRef = useRef<Record<string, CatalogProduct>>({});
+
+  useEffect(() => {
+    const missingIds = entries
+      .map((e) => e.product_id)
+      .filter((id) => !productsById[id] && !fetchedRef.current[id]);
+
+    if (missingIds.length === 0) return;
+
+    void fetchProductsByIds(missingIds).then((fetched) => {
+      if (fetched.length === 0) return;
+      fetched.forEach((p) => { fetchedRef.current[p.id] = p; });
+      setFetchedProducts({ ...fetchedRef.current });
+    });
+  }, [entries, productsById]);
+
+  const mergedProductsById = useMemo(
+    () => ({ ...fetchedProducts, ...productsById }),
+    [productsById, fetchedProducts],
+  );
+
+  const cart = useMemo(() => inflateEntries(entries, mergedProductsById), [entries, mergedProductsById]);
 
   useEffect(() => {
     const normalizedCartEntries = cart.map((item) => ({
@@ -198,7 +222,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [cart]);
 
   const addToCart = async (productId: string, quantity = 1) => {
-    const product = productsById[productId];
+    const product = mergedProductsById[productId];
 
     if (!product || !product.inStock) {
       return;
@@ -218,7 +242,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const updateQuantity = async (cartItemId: string, quantity: number) => {
-    const product = productsById[cartItemId];
+    const product = mergedProductsById[cartItemId];
     const nextQuantity = clampQuantity(product, quantity);
     setEntries((current) => replaceEntry(current, cartItemId, nextQuantity));
     emitWorkflowEvent("CartUpdated", { mutation: "update", productId: cartItemId, quantity: nextQuantity });

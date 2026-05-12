@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import {
   ArrowUpDown,
   PackageSearch,
@@ -15,10 +15,7 @@ import { ProductGrid } from "../components/ProductGrid";
 import { cn } from "../components/UI";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCatalog } from "../../contexts/CatalogContext";
-import {
-  useCatalogProductSearch,
-  type CatalogProductSort,
-} from "../hooks/useCatalogProductSearch";
+import { useOffers } from "../hooks/useOffers";
 import { useIsShopperShell } from "../components/ui/use-mobile";
 import { CatalogSkeletonGrid } from "../components/CatalogPrimitives";
 import { getLocalizedCategoryName } from "../localization";
@@ -26,7 +23,6 @@ import { MobileOffersView } from "./ShopperMobileViews";
 import { FilterSidebar } from "../components/FilterSidebar";
 
 /* ─── Constants ─────────────────────────────────────────────── */
-const PAGE_SIZE = 48;
 
 const SORT_OPTIONS = [
   { value: "relevant",   labelAr: "الأكثر صلة",   labelEn: "Relevant",      Icon: Sparkles   },
@@ -168,65 +164,40 @@ export default function Offers() {
 /* ─── Desktop View ─────────────────────────────────────────── */
 function OffersDesktop() {
   const { lang } = useLanguage();
-  const { categories, featuredProducts, isLoading } = useCatalog();
+  const { categories } = useCatalog();
 
   const [activeCategory, setActiveCategory] = useState("all");
   const [sortBy, setSortBy] = useState<SortValue>("relevant");
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [searchInput, setSearchInput] = useState("");
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
-  /* ── Replace manual filter/sort/debounce with the unified hook ── */
   const {
-    products: sortedProducts,
-    resultCount,
-    isSearching,
+    products,
+    isLoading,
+    isFetchingNext,
+    fetchNextPage,
+    hasNextPage,
+    totalCount,
     activeQuery,
-  } = useCatalogProductSearch(
-    featuredProducts,
+  } = useOffers({
+    query: searchInput,
+    categoryId: activeCategory !== "all" ? activeCategory : undefined,
+    sortBy,
+  });
+
+  /* ── Category sidebar options ────────────────────────────── */
+  const categoryOptions = [
     {
-      category: activeCategory === "all" ? undefined : activeCategory,
-      query: searchInput,
-      onlyInStock: false,
-      priceCap: 0,
+      id: "all",
+      label: lang === "ar" ? "كل العروض" : "All offers",
+      count: totalCount,
     },
-    sortBy as CatalogProductSort,
-    lang,
-  );
-
-  const isInitialLoading = isLoading && featuredProducts.length === 0;
-
-  const visibleProducts = useMemo(
-    () => sortedProducts.slice(0, visibleCount),
-    [sortedProducts, visibleCount],
-  );
-
-  /* Reset pagination when filters change */
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [activeCategory, searchInput, sortBy]);
-
-  /* ── Category options for sidebar ───────────────────────── */
-  const categoryOptions = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const p of featuredProducts) {
-      counts[p.category] = (counts[p.category] ?? 0) + 1;
-    }
-    return [
-      {
-        id: "all",
-        label: lang === "ar" ? "كل العروض" : "All offers",
-        count: featuredProducts.length,
-      },
-      ...categories
-        .filter((c) => (counts[c.id] ?? 0) > 0)
-        .map((c) => ({
-          id: c.id,
-          label: getLocalizedCategoryName(c, lang),
-          count: counts[c.id] ?? 0,
-        })),
-    ];
-  }, [categories, featuredProducts, lang]);
+    ...categories.map((c) => ({
+      id: c.id,
+      label: getLocalizedCategoryName(c, lang),
+      count: c.count,
+    })),
+  ];
 
   const hasFilters =
     activeCategory !== "all" ||
@@ -329,15 +300,15 @@ function OffersDesktop() {
             priceRange={[0, 9999]}
             maxPrice={0}
             onPriceRangeChange={() => {}}
-            totalResults={resultCount}
+            totalResults={totalCount}
             hasFilters={hasFilters}
             onClearAll={clearFilters}
           />
 
           <div className="min-w-0 flex-1">
-            {isInitialLoading ? (
+            {isLoading ? (
               <CatalogSkeletonGrid count={8} />
-            ) : visibleProducts.length > 0 ? (
+            ) : products.length > 0 ? (
               <>
                 <div className="mb-4 px-1">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
@@ -345,21 +316,23 @@ function OffersDesktop() {
                   </p>
                 </div>
 
-                {/* ✅ Pass isSearching and activeQuery */}
                 <ProductGrid
-                  products={visibleProducts}
-                  isSearching={isSearching}
+                  products={products}
+                  isSearching={isFetchingNext}
                   activeQuery={activeQuery}
                 />
 
-                {resultCount > visibleCount && (
+                {hasNextPage && (
                   <div className="mt-10 flex flex-col items-center gap-3">
                     <button
                       type="button"
-                      onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200/80 bg-white px-8 text-sm font-black text-slate-700 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95"
+                      onClick={fetchNextPage}
+                      disabled={isFetchingNext}
+                      className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200/80 bg-white px-8 text-sm font-black text-slate-700 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95 disabled:opacity-50"
                     >
-                      {lang === "ar" ? "عرض المزيد" : "Load more"}
+                      {isFetchingNext
+                        ? (lang === "ar" ? "جارٍ التحميل…" : "Loading…")
+                        : (lang === "ar" ? "عرض المزيد" : "Load more")}
                     </button>
                   </div>
                 )}

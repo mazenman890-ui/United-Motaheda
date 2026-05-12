@@ -188,15 +188,14 @@ function buildSupabaseQuery(
     .select("*", { count: "exact" });
 
   // Full-text search across name (AR + EN), product code, and barcode.
+  // Arabic is searched with the original (un-lowercased) term because Arabic
+  // has no case distinction and toLowerCase() can mangle Unicode normalisation
+  // in some JS runtimes. English / code columns use the lowercased term.
   if (filters.searchQuery) {
-    const term = `%${filters.searchQuery.toLowerCase()}%`;
+    const raw   = filters.searchQuery.trim();
+    const lower = raw.toLowerCase();
     query = query.or(
-      [
-        `Name_Ar.ilike.${term}`,
-        `Name_En.ilike.${term}`,
-        `Code.ilike.${term}`,
-        `Barcode.ilike.${term}`,
-      ].join(","),
+      `Name_En.ilike.%${lower}%,Name_Ar.ilike.%${raw}%,Code.ilike.%${lower}%,Barcode.ilike.%${lower}%`,
     );
   }
 
@@ -489,4 +488,28 @@ function readCachedCategories(): CatalogCategory[] | null {
 function writeCachedCategories(categories: CatalogCategory[]): void {
   const payload: CachedCategories = { categories, timestamp: Date.now() };
   safeLocalStorageSet(CATEGORY_CACHE_KEY, JSON.stringify(payload));
+}
+
+/**
+ * Fetch a specific set of products by their UUIDs in a single Supabase call.
+ * Used by Cart and Favorites to resolve product IDs that are not in the
+ * page-1 in-memory cache (i.e. products added from page 2+).
+ *
+ * Returns an empty array (never throws) so callers can treat this as best-effort.
+ */
+export async function fetchProductsByIds(ids: string[]): Promise<CatalogProduct[]> {
+  if (ids.length === 0) return [];
+  try {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .in("id", ids);
+    if (error || !data || !Array.isArray(data)) return [];
+    return (data as Record<string, unknown>[])
+      .map((row, i) => normalizeSupabaseProduct(row, i))
+      .filter((p): p is CatalogProduct => p !== null);
+  } catch {
+    return [];
+  }
 }
