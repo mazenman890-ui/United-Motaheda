@@ -279,7 +279,7 @@ function ProductsDesktop() {
 
               <div>
                 <h1 className="text-[1.75rem] font-black tracking-tight text-slate-950">
-                  {lang === "ar" ? "تصفح الكتالوج الكامل" : "Browse the full catalog"}
+                  {lang === "ar" ? "تصفح المنتجات" : "Browse the full catalog"}
                 </h1>
                 <p className="mt-1.5 max-w-xl text-[13px] font-semibold leading-6 text-slate-500">
                   {lang === "ar"
