@@ -31,7 +31,6 @@ import {
   LayoutGrid,
   Search,
   SlidersHorizontal,
-  Sparkles,
   Tag,
   Truck,
   X,
@@ -312,18 +311,6 @@ const CategoryList = memo(function CategoryList({
                     <span className="truncate text-[12px] font-black">{opt.label}</span>
                   </span>
 
-                  {opt.count !== undefined && (
-                    <span
-                      className={cn(
-                        "ms-2 inline-flex min-w-[1.5rem] shrink-0 items-center justify-center rounded-full px-1.5 py-0.5 text-[9px] font-black",
-                        isActive
-                          ? "bg-white/15 text-white"
-                          : "bg-slate-100 text-slate-500",
-                      )}
-                    >
-                      {opt.count.toLocaleString()}
-                    </span>
-                  )}
                 </button>
               </li>
             );
@@ -401,7 +388,6 @@ const SidebarBody = memo(function SidebarBody(
     maxPrice,
     onPriceRangeChange,
     currency,
-    totalResults,
     hasFilters,
     onClearAll,
   } = props;
@@ -463,12 +449,6 @@ const SidebarBody = memo(function SidebarBody(
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Result count badge */}
-          <span className="inline-flex h-6 items-center gap-1 rounded-lg border border-slate-200/80 bg-slate-50 px-2.5 text-[10px] font-black text-slate-500">
-            <Sparkles className="h-2.5 w-2.5 text-teal-400" />
-            {totalResults.toLocaleString()}
-          </span>
-
           {/* Clear button — only when filters active */}
           {hasFilters && (
             <button
@@ -706,9 +686,7 @@ export const FilterSidebar = memo(function FilterSidebar(props: FilterSidebarPro
                       {lang === "ar" ? "تصفية النتائج" : "Filter results"}
                     </p>
                     <p className="text-[10px] font-semibold text-slate-400">
-                      {lang === "ar"
-                        ? `${bodyProps.totalResults.toLocaleString()} نتيجة`
-                        : `${bodyProps.totalResults.toLocaleString()} results`}
+                      {lang === "ar" ? "اختر الفلاتر" : "Choose filters"}
                     </p>
                   </div>
                 </div>
@@ -735,9 +713,7 @@ export const FilterSidebar = memo(function FilterSidebar(props: FilterSidebarPro
                   className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800 text-sm font-black text-white shadow-[0_8px_20px_rgba(15,23,42,0.22)] transition-all hover:shadow-[0_12px_24px_rgba(15,23,42,0.28)] active:scale-[0.98]"
                 >
                   <CheckCircle2 className="h-4 w-4 text-teal-300" />
-                  {lang === "ar"
-                    ? `عرض ${bodyProps.totalResults.toLocaleString()} نتيجة`
-                    : `Show ${bodyProps.totalResults.toLocaleString()} results`}
+                  {lang === "ar" ? "عرض النتائج" : "Show results"}
                 </button>
                 {bodyProps.hasFilters && (
                   <button

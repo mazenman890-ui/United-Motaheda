@@ -1,7 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import {
   ArrowUpDown,
-  CheckCircle2,
   PackageSearch,
   Search,
   SlidersHorizontal,
@@ -37,60 +36,6 @@ const SORT_OPTIONS = [
 ] as const;
 
 type SortValue = (typeof SORT_OPTIONS)[number]["value"];
-
-/* ─── Stat Card ──────────────────────────────────────────────── */
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  accent,
-}: {
-  label: string;
-  value: string | number;
-  icon: React.ElementType;
-  accent?: "teal" | "amber";
-}) {
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-3 rounded-2xl border px-4 py-3 transition-all duration-200",
-        accent === "amber"
-          ? "border-amber-200/80 bg-gradient-to-br from-amber-50 to-yellow-50/60 shadow-[0_6px_20px_rgba(245,158,11,0.12)]"
-          : accent === "teal"
-            ? "border-teal-200/80 bg-gradient-to-br from-teal-50 to-emerald-50/60 shadow-[0_6px_20px_rgba(20,184,166,0.12)]"
-            : "border-slate-200/70 bg-white/90 shadow-[0_2px_8px_rgba(15,23,42,0.05)]",
-      )}
-    >
-      <div
-        className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl",
-          accent === "amber"
-            ? "bg-amber-100/80 text-amber-600"
-            : accent === "teal"
-              ? "bg-teal-100/80 text-teal-600"
-              : "bg-slate-100 text-slate-500",
-        )}
-      >
-        <Icon className="h-3.5 w-3.5" />
-      </div>
-      <div>
-        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">{label}</p>
-        <p
-          className={cn(
-            "mt-0.5 text-lg font-black leading-none tracking-tight",
-            accent === "amber"
-              ? "text-amber-700"
-              : accent === "teal"
-                ? "text-teal-700"
-                : "text-slate-900",
-          )}
-        >
-          {value}
-        </p>
-      </div>
-    </div>
-  );
-}
 
 /* ─── Sort Segment ───────────────────────────────────────────── */
 function SortSegment({
@@ -250,10 +195,6 @@ function OffersDesktop() {
   );
 
   const isInitialLoading = isLoading && featuredProducts.length === 0;
-  const availableCount = useMemo(
-    () => featuredProducts.filter((p) => p.inStock).length,
-    [featuredProducts],
-  );
 
   const visibleProducts = useMemo(
     () => sortedProducts.slice(0, visibleCount),
@@ -308,8 +249,7 @@ function OffersDesktop() {
             className="pointer-events-none absolute inset-x-0 top-0 h-1 rounded-t-[1.6rem] bg-gradient-to-r from-amber-300/60 via-yellow-300/40 to-amber-400/60"
           />
 
-          <div className="flex flex-col gap-5 p-5 xl:flex-row xl:items-center xl:justify-between">
-            <div className="space-y-3">
+          <div className="space-y-3 p-5">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-amber-200/90 bg-gradient-to-r from-amber-50 to-yellow-50 px-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">
                   <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
@@ -333,27 +273,6 @@ function OffersDesktop() {
                     : "Browse featured products, search within them, and sort by category or price."}
                 </p>
               </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 xl:w-64 xl:grid-cols-1 xl:gap-2">
-              <StatCard
-                label={lang === "ar" ? "إجمالي العروض" : "Total offers"}
-                value={featuredProducts.length}
-                icon={Star}
-                accent="amber"
-              />
-              <StatCard
-                label={lang === "ar" ? "المتاح الآن" : "In stock"}
-                value={availableCount}
-                icon={CheckCircle2}
-                accent="teal"
-              />
-              <StatCard
-                label={lang === "ar" ? "النتائج" : "Results"}
-                value={resultCount}
-                icon={Sparkles}
-              />
-            </div>
           </div>
         </div>
 
@@ -367,7 +286,7 @@ function OffersDesktop() {
             />
             <span className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-slate-200/70 bg-slate-50 px-3 text-[11px] font-black text-slate-600">
               <Tag className="h-3 w-3 text-amber-400" />
-              {lang === "ar" ? `${resultCount} عرض` : `${resultCount} offers`}
+              {lang === "ar" ? "العروض" : "Offers"}
             </span>
             {hasFilters && (
               <button
@@ -420,14 +339,9 @@ function OffersDesktop() {
               <CatalogSkeletonGrid count={8} />
             ) : visibleProducts.length > 0 ? (
               <>
-                <div className="mb-4 flex items-center justify-between gap-3 px-1">
+                <div className="mb-4 px-1">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
                     {lang === "ar" ? "شبكة العروض" : "Offers grid"}
-                  </p>
-                  <p className="text-[11px] font-semibold text-slate-400">
-                    {lang === "ar"
-                      ? `عرض ${visibleProducts.length} من ${resultCount}`
-                      : `Showing ${visibleProducts.length} of ${resultCount}`}
                   </p>
                 </div>
 
@@ -440,17 +354,6 @@ function OffersDesktop() {
 
                 {resultCount > visibleCount && (
                   <div className="mt-10 flex flex-col items-center gap-3">
-                    <div className="h-1 w-24 overflow-hidden rounded-full bg-slate-200">
-                      <div
-                        className="h-full rounded-full bg-amber-400 transition-all"
-                        style={{ width: `${Math.round((visibleCount / resultCount) * 100)}%` }}
-                      />
-                    </div>
-                    <p className="text-[11px] font-semibold text-slate-400">
-                      {lang === "ar"
-                        ? `${visibleCount} من ${resultCount} عرض`
-                        : `${visibleCount} of ${resultCount} offers`}
-                    </p>
                     <button
                       type="button"
                       onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}

@@ -4,12 +4,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   ArrowUpDown,
-  CheckCircle2,
   LayoutGrid,
   PackageSearch,
   SlidersHorizontal,
   Sparkles,
-  Tag,
   TrendingDown,
   TrendingUp,
   X,
@@ -58,46 +56,6 @@ function InlineState({
         <h2 className="mt-5 text-xl font-black tracking-tight text-slate-900">{title}</h2>
         <p className="mt-2 text-sm font-semibold leading-7 text-slate-500">{description}</p>
         {action ? <div className="mt-5">{action}</div> : null}
-      </div>
-    </motion.div>
-  );
-}
-
-/* ─── Metric Tile ────────────────────────────────────────────── */
-function MetricTile({
-  label,
-  value,
-  accent,
-  icon: Icon,
-}: {
-  label: string;
-  value: string | number;
-  accent?: boolean;
-  icon?: React.ElementType;
-}) {
-  return (
-    <motion.div
-      whileHover={{ y: -2 }}
-      className={cn(
-        "flex items-center gap-3 rounded-xl border px-4 py-3 transition-all",
-        accent
-          ? "border-teal-200/80 bg-gradient-to-br from-teal-50 to-emerald-50/60 shadow-[0_4px_14px_rgba(20,184,166,0.10)]"
-          : "border-slate-200/70 bg-white/90 shadow-[0_2px_8px_rgba(15,23,42,0.05)]",
-      )}
-    >
-      {Icon && (
-        <div className={cn(
-          "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
-          accent ? "bg-teal-100/80 text-teal-600" : "bg-slate-100 text-slate-500",
-        )}>
-          <Icon className="h-3.5 w-3.5" />
-        </div>
-      )}
-      <div>
-        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">{label}</p>
-        <p className={cn("mt-0.5 text-lg font-black leading-none tracking-tight", accent ? "text-teal-700" : "text-slate-900")}>
-          {value}
-        </p>
       </div>
     </motion.div>
   );
@@ -220,7 +178,7 @@ function CategoryDetailsDesktop() {
   const displayName = getLocalizedCategoryName(category, lang);
   const description = lang === "ar" ? category.descAr : category.descEn;
   const hasFilters = onlyInStock || searchQuery.trim().length > 0;
-  const stockPct = category.count > 0 ? Math.round((category.inStockCount / category.count) * 100) : 0;
+
 
   return (
     <div className="category-details-page min-h-screen bg-[linear-gradient(165deg,#f0fafa_0%,#f7fafb_50%,#fafafa_100%)]">
@@ -279,48 +237,6 @@ function CategoryDetailsDesktop() {
                 </AnimatePresence>
               </div>
 
-              {/* Availability bar */}
-              <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
-                <div className="mb-2 flex items-center justify-between text-[10px] font-black">
-                  <span className="text-slate-400">
-                    {lang === "ar" ? "نسبة توفر المخزون" : "Stock availability"}
-                  </span>
-                  <span className="text-teal-600">{stockPct}%</span>
-                </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
-                  <motion.div
-                    className="h-full rounded-full bg-teal-400"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${stockPct}%` }}
-                    transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.25 }}
-                  />
-                </div>
-                <p className="mt-1.5 text-[10px] font-semibold text-slate-400">
-                  {lang === "ar"
-                    ? `${category.inStockCount} من أصل ${category.count} صنف متاح للطلب`
-                    : `${category.inStockCount} of ${category.count} items ready to order`}
-                </p>
-              </div>
-
-              {/* Metrics row */}
-              <div className="grid grid-cols-3 gap-2">
-                <MetricTile
-                  label={lang === "ar" ? "منتجات القسم" : "Total items"}
-                  value={category.count}
-                  icon={Tag}
-                />
-                <MetricTile
-                  label={lang === "ar" ? "المتاح الآن" : "In stock"}
-                  value={category.inStockCount}
-                  accent
-                  icon={CheckCircle2}
-                />
-                <MetricTile
-                  label={lang === "ar" ? "النتائج الحالية" : "Filtered"}
-                  value={resultCount}
-                  icon={Sparkles}
-                />
-              </div>
             </div>
 
             {/* Right: category image */}
@@ -353,9 +269,7 @@ function CategoryDetailsDesktop() {
                 </p>
               </div>
               <span className="text-[11px] font-semibold text-slate-400">
-                {lang === "ar"
-                  ? `${relatedCategories.length} قسم آخر`
-                  : `${relatedCategories.length} other sections`}
+                {lang === "ar" ? "أقسام أخرى" : "Other sections"}
               </span>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -366,9 +280,6 @@ function CategoryDetailsDesktop() {
                   className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-slate-200/70 bg-white/90 px-3 text-[11px] font-black text-slate-600 shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:text-slate-900 hover:shadow-md"
                 >
                   {getLocalizedCategoryName(entry, lang)}
-                  <span className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[9px] font-black text-slate-500">
-                    {entry.count}
-                  </span>
                 </Link>
               ))}
             </div>
@@ -379,7 +290,7 @@ function CategoryDetailsDesktop() {
         <div className="catalog-controls-stick z-30 mb-6 flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-[1.8rem] border border-slate-200/80 bg-white/97 px-5 py-3.5 shadow-[0_4px_24px_rgba(15,23,42,0.08)] backdrop-blur-xl">
           <div className="flex items-center gap-2">
             <span className="inline-flex h-7 items-center rounded-lg border border-slate-200/70 bg-slate-50 px-3 text-[11px] font-black text-slate-600">
-              {lang === "ar" ? `${resultCount} نتيجة` : `${resultCount} results`}
+              {lang === "ar" ? "المنتجات" : "Products"}
             </span>
             {hasFilters && (
               <button
@@ -437,14 +348,9 @@ function CategoryDetailsDesktop() {
               <CatalogSkeletonGrid count={8} />
             ) : filteredProducts.length > 0 ? (
               <>
-                <div className="mb-4 flex items-center justify-between gap-3 px-1">
+                <div className="mb-4 px-1">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
                     {lang === "ar" ? "منتجات القسم" : "Category feed"}
-                  </p>
-                  <p className="text-[11px] font-semibold text-slate-400">
-                    {lang === "ar"
-                      ? `عرض ${filteredProducts.length} من ${resultCount}`
-                      : `Showing ${filteredProducts.length} of ${resultCount}`}
                   </p>
                 </div>
                 <ProductGrid products={filteredProducts} />

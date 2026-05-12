@@ -5,7 +5,6 @@ import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ArrowUpDown,
-  CheckCircle2,
   LayoutGrid,
   PackageSearch,
   SlidersHorizontal,
@@ -47,45 +46,6 @@ const SORT_OPTIONS: readonly SortOption[] = [
   { value: "price_desc", labelAr: "السعر ↓", labelEn: "Price ↓", Icon: TrendingDown },
   { value: "name", labelAr: "الاسم أ–ي", labelEn: "Name A–Z", Icon: ArrowUpDown },
 ];
-
-/* ─── Stat Card ──────────────────────────────────────────────── */
-function StatCard({
-  label,
-  value,
-  accent,
-  icon: Icon,
-}: {
-  label: string;
-  value: string | number;
-  accent?: boolean;
-  icon?: React.ElementType;
-}) {
-  return (
-    <div
-      className={cn(
-        "group flex items-center gap-3 rounded-2xl border px-4 py-3 transition-all duration-200",
-        accent
-          ? "border-teal-200/80 bg-gradient-to-br from-teal-50 to-emerald-50/60 shadow-[0_6px_20px_rgba(20,184,166,0.12)]"
-          : "border-slate-200/80 bg-white/82 shadow-[0_2px_8px_rgba(15,23,42,0.06)]",
-      )}
-    >
-      {Icon && (
-        <div className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl",
-          accent ? "bg-teal-100/80 text-teal-600" : "bg-slate-100 text-slate-500",
-        )}>
-          <Icon className="h-3.5 w-3.5" />
-        </div>
-      )}
-      <div>
-        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">{label}</p>
-        <p className={cn("mt-0.5 text-lg font-black leading-none tracking-tight", accent ? "text-teal-700" : "text-slate-900")}>
-          {value}
-        </p>
-      </div>
-    </div>
-  );
-}
 
 /* ─── Sort Segment ───────────────────────────────────────────── */
 function SortSegment({
@@ -183,7 +143,6 @@ function ProductsDesktop() {
   const {
     categories,
     products,
-    inStockProducts,
     isLoading,
     isLoadingMore,
     error,
@@ -246,7 +205,6 @@ function ProductsDesktop() {
   );
 
   const activeCategoryLabel = categoryOptions.find((c) => c.id === activeCategory)?.label;
-  const availableCount = inStockProducts.length;
   const isPriceFiltered = maxPrice > 0 && priceRange < maxPrice;
   const hasFilters = activeCategory !== "all" || onlyInStock || isPriceFiltered || searchQuery.trim().length > 0;
 
@@ -301,8 +259,7 @@ function ProductsDesktop() {
           transition={{ duration: 0.3 }}
           className="mb-5 overflow-hidden rounded-[1.8rem] border border-slate-200/80 bg-white/92 shadow-[0_4px_28px_rgba(15,23,42,0.07)] backdrop-blur-xl"
         >
-          <div className="flex flex-col gap-5 p-5 xl:flex-row xl:items-center xl:justify-between">
-            <div className="space-y-3">
+          <div className="space-y-3 p-5">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-teal-200/80 bg-teal-50 px-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-teal-700">
                   <LayoutGrid className="h-3 w-3" />
@@ -350,27 +307,6 @@ function ProductsDesktop() {
                   </button>
                 )}
               </div>
-            </div>
-
-            {/* Right: Stats */}
-            <div className="grid grid-cols-3 gap-2 xl:w-64 xl:grid-cols-1 xl:gap-2">
-              <StatCard
-                label={lang === "ar" ? "إجمالي المنتجات" : "Catalog size"}
-                value={totalProductCount || products.length}
-                icon={Tag}
-              />
-              <StatCard
-                label={lang === "ar" ? "المتاح الآن" : "In stock"}
-                value={availableCount}
-                accent
-                icon={CheckCircle2}
-              />
-              <StatCard
-                label={lang === "ar" ? "النتائج" : "Results"}
-                value={resultCount}
-                icon={Sparkles}
-              />
-            </div>
           </div>
         </motion.div>
 
@@ -379,9 +315,7 @@ function ProductsDesktop() {
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-slate-200/70 bg-slate-50 px-3 text-[11px] font-black text-slate-700">
               <Tag className="h-3 w-3 text-teal-500" />
-              {lang === "ar"
-                ? `${resultCount} منتج`
-                : `${resultCount} ${resultCount === 1 ? "item" : "items"}`}
+              {lang === "ar" ? "المنتجات" : "Products"}
             </span>
             {hasFilters && (
               <button
@@ -455,14 +389,9 @@ function ProductsDesktop() {
               <CatalogSkeletonGrid count={8} />
             ) : filteredProducts.length > 0 ? (
               <>
-                <div className="mb-4 flex items-center justify-between gap-3 px-1">
+                <div className="mb-4 px-1">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
                     {lang === "ar" ? "شبكة المنتجات" : "Product grid"}
-                  </p>
-                  <p className="text-[11px] font-semibold text-slate-400">
-                    {lang === "ar"
-                      ? `عرض ${filteredProducts.length} من ${resultCount}`
-                      : `Showing ${filteredProducts.length} of ${resultCount}`}
                   </p>
                 </div>
 
@@ -474,11 +403,6 @@ function ProductsDesktop() {
 
                 {hasNextPage && (
                   <div ref={loadMoreRef} className="mt-10 flex flex-col items-center gap-3">
-                    <p className="text-[11px] font-semibold text-slate-400">
-                      {lang === "ar"
-                        ? `${filteredProducts.length} من ${totalProductCount || resultCount} منتج`
-                        : `${filteredProducts.length} of ${totalProductCount || resultCount} items`}
-                    </p>
                     <motion.button
                       whileHover={{ y: -2 }}
                       whileTap={{ scale: 0.97 }}
