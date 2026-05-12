@@ -4,8 +4,8 @@
  * Boot path:
  *  1. Page-1 fetch (24 products) gives a fast first paint.
  *  2. requestIdleCallback triggers a full-catalog load in the background.
- *  3. Once the full catalog arrives, `products` is upgraded to the complete
- *     52K list and `isFullCatalogReady` flips to true.
+ *  3. Once the full catalog arrives, `allProducts` holds the complete 52K
+ *     list for search workers and lookups; `products` stays paginated.
  *
  * Worker init:
  *  The fuzzy-search worker is initialized from `allProducts` (the stable
@@ -183,14 +183,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
             );
             setIsFullCatalogReady(true);
             setCategories(snapshot.categories);
-            // Upgrade the display layer to the full catalog
-            setProducts(snapshot.products);
-            setProductMap(
-              Object.fromEntries(snapshot.products.map((p) => [p.id, p])),
-            );
             setTotalCount(snapshot.products.length);
-            setHasNextPage(false);
-            setIsLoading(false);
             setLastUpdated(new Date().toISOString());
           });
         } catch (err) {
@@ -316,18 +309,10 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
         );
         setIsFullCatalogReady(true);
         setCategories(snapshot.categories);
-        setProducts(snapshot.products);
-        setProductMap(
-          Object.fromEntries(snapshot.products.map((p) => [p.id, p])),
-        );
         setTotalCount(snapshot.products.length);
-        setHasNextPage(false);
-        setCurrentPage(1);
         setIsLoading(false);
-        setIsLoadingMore(false);
         setLastUpdated(new Date().toISOString());
         setError(null);
-        setActiveFilters({});
       });
       invalidatePageCache();
     } catch (err) {
@@ -382,7 +367,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   const derivedCategories = useMemo(
     () => deriveCatalogCategories(catalogSource, categories),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allProducts, products, categories],
+    [catalogSource, categories],
   );
 
   const productsById = useMemo(() => productMap, [productMap]);
@@ -399,13 +384,13 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   const inStockProducts = useMemo(
     () => catalogSource.filter((p) => p.inStock),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allProducts, products],
+    [catalogSource],
   );
 
   const featuredProducts = useMemo(
     () => buildSpotlightProducts(catalogSource, derivedCategories, 180),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allProducts, products, derivedCategories],
+    [catalogSource, derivedCategories],
   );
 
   const metrics = useMemo<CatalogMetrics>(() => {
@@ -417,7 +402,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       lowStockProducts: inStockProducts.filter((p) => p.stock <= 5).length,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allProducts, products, derivedCategories, inStockProducts, totalProductCount]);
+  }, [catalogSource, derivedCategories, inStockProducts, totalProductCount]);
 
   // ── Context value ─────────────────────────────────────────────────────────
 
