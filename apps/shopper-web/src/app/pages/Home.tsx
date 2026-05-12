@@ -215,52 +215,86 @@ function HomeDesktop() {
     <div className="home-page overflow-x-hidden bg-white">
 
       {/* ══════ 1. HERO ══════ */}
-      <section className="border-b border-slate-100 bg-white">
-        <div className="page-section py-10 sm:py-14">
-          <div className={cn("mx-auto max-w-3xl text-center")}>
-            {/* Eyebrow */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-4 py-1.5 text-[11px] font-black uppercase tracking-[0.16em] text-teal-700">
-              <Sparkles className="h-3 w-3" />
-              {isRtl ? "صيدلية متحدة — الكتالوج المباشر" : "United Pharmacy — Live Catalog"}
+      <section className="relative overflow-hidden">
+
+        {/* ── Dark gradient backdrop ── */}
+        <div className="absolute inset-0 bg-gradient-to-br from-teal-950 via-teal-800 to-emerald-800" aria-hidden />
+
+        {/* ── Ambient glow blobs (CSS-only, no JS) ── */}
+        <div aria-hidden className="absolute -right-32 -top-32 h-[30rem] w-[30rem] rounded-full bg-teal-400/20 blur-3xl animate-pulse" />
+        <div aria-hidden className="absolute -bottom-24 -left-24 h-96 w-96 rounded-full bg-emerald-400/20 blur-3xl animate-pulse [animation-delay:1.2s]" />
+        <div aria-hidden className="absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-300/10 blur-3xl animate-pulse [animation-delay:0.6s]" />
+
+        {/* ── Floating pharmacy icons (decorative, RTL-aware) ── */}
+        <div aria-hidden className={cn("absolute top-10 opacity-20 animate-bounce [animation-duration:3.2s]", isRtl ? "left-[8%]" : "right-[8%]")}>
+          <Pill className="h-8 w-8 text-teal-300" />
+        </div>
+        <div aria-hidden className={cn("absolute top-1/3 opacity-[0.13] animate-bounce [animation-duration:4.1s] [animation-delay:0.8s]", isRtl ? "right-[6%]" : "left-[6%]")}>
+          <ShieldCheck className="h-10 w-10 text-emerald-300" />
+        </div>
+        <div aria-hidden className={cn("absolute bottom-1/3 opacity-[0.13] animate-bounce [animation-duration:3.7s] [animation-delay:1.5s]", isRtl ? "right-[12%]" : "left-[12%]")}>
+          <Heart className="h-7 w-7 text-rose-300" />
+        </div>
+        <div aria-hidden className={cn("absolute top-16 opacity-[0.17] animate-pulse [animation-delay:2s]", isRtl ? "right-[22%]" : "left-[22%]")}>
+          <Activity className="h-6 w-6 text-cyan-300" />
+        </div>
+        <div aria-hidden className={cn("absolute bottom-14 opacity-[0.12] animate-bounce [animation-duration:5s] [animation-delay:0.4s]", isRtl ? "left-[18%]" : "right-[18%]")}>
+          <Stethoscope className="h-9 w-9 text-teal-200" />
+        </div>
+
+        {/* ── Geometric accent ring ── */}
+        <div aria-hidden className="absolute right-[-6rem] top-[-6rem] h-[22rem] w-[22rem] rounded-full border border-white/5" />
+        <div aria-hidden className="absolute right-[-3rem] top-[-3rem] h-[16rem] w-[16rem] rounded-full border border-white/5" />
+
+        {/* ── Content ── */}
+        <div className="page-section relative z-10 py-14 sm:py-20">
+          <div className="mx-auto max-w-3xl text-center">
+
+            {/* Live badge */}
+            <div className="inline-flex items-center gap-2 rounded-full border border-teal-400/35 bg-white/10 px-4 py-1.5 text-[11px] font-black uppercase tracking-[0.16em] text-teal-200 backdrop-blur-sm">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+              {isRtl ? "صيدلية متحدة — الكتالوج الحي" : "United Pharmacy — Live Catalog"}
             </div>
 
             {/* Headline */}
             <h1 className={cn(
-              "mt-5 font-black text-slate-950",
+              "mt-6 font-black text-white",
               isRtl
-                ? "text-[2rem] leading-[1.32] sm:text-[2.8rem] sm:leading-[1.26]"
-                : "text-[2.2rem] leading-[1.06] tracking-tight sm:text-[3.2rem]",
+                ? "text-[2.2rem] leading-[1.28] sm:text-[3.4rem] sm:leading-[1.18]"
+                : "text-[2.4rem] leading-[1.1] tracking-tight sm:text-[3.8rem] sm:leading-[1.06]",
             )}>
-              {isRtl
-                ? "ابحث عن الدواء المناسب\nوابدأ الطلب بسهولة"
-                : "Find the right medicine,\nplace your order with ease"}
+              {isRtl ? (
+                <>دواؤك بكلمة واحدة<br /><span className="text-teal-300">+52,000 منتج دوائي</span></>
+              ) : (
+                <>Your medicine,<br /><span className="text-teal-300">one search away</span></>
+              )}
             </h1>
 
-            <p className="mx-auto mt-4 max-w-xl text-[13px] font-semibold leading-7 text-slate-500 sm:text-base">
+            <p className="mx-auto mt-5 max-w-xl text-[14px] font-semibold leading-7 text-teal-100/75 sm:text-[15px]">
               {isRtl
-                ? "بحث ذكي بالعربية والإنجليزية — اسم، كود، أو قسم."
-                : "Smart bilingual search — by name, code, or category."}
+                ? "بحث ذكي بالعربية والإنجليزية — اسم، كود، أو قسم. مقاوم للأخطاء الإملائية."
+                : "Smart bilingual search — by name, code, or category. Typo-tolerant fuzzy matching."}
             </p>
 
             {/* Error banner */}
             {error && (
-              <div className="mx-auto mt-4 max-w-lg rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-bold text-amber-800">
+              <div className="mx-auto mt-4 max-w-lg rounded-xl border border-amber-400/40 bg-amber-500/20 px-4 py-2.5 text-sm font-bold text-amber-200 backdrop-blur-sm">
                 {isRtl ? "تعذر تحديث الكتالوج — تُعرض آخر البيانات المتاحة." : "Catalog refresh issue — showing latest available data."}
               </div>
             )}
 
-            {/* Search */}
-            <form className="relative mx-auto mt-7 max-w-2xl" onSubmit={handleSearch}>
+            {/* Search — glowing white card */}
+            <form className="relative mx-auto mt-8 max-w-2xl" onSubmit={handleSearch}>
               <SearchBar
                 value={searchQuery}
                 onChange={(v) => { setSearchQuery(v); commitQuery(v); }}
                 onClear={() => { setSearchQuery(""); commitQuery(""); }}
                 placeholder={isRtl ? "ابحث بالاسم أو الكود أو القسم…" : "Search by name, code, or category…"}
                 lang={lang}
-                shellClassName="rounded-2xl border-slate-200 bg-white shadow-[0_4px_24px_rgba(15,23,42,0.10)]"
+                shellClassName="rounded-2xl border-white/20 bg-white shadow-[0_0_0_4px_rgba(20,184,166,0.30),0_24px_56px_rgba(0,0,0,0.35)]"
                 suggestions={
                   prodSuggestions.length > 0 || catSuggestions.length > 0 ? (
-                    <div className="absolute inset-x-0 top-[calc(100%+0.5rem)] z-30 rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_20px_48px_rgba(15,23,42,0.14)] text-start">
+                    <div className="absolute inset-x-0 top-[calc(100%+0.5rem)] z-30 rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_20px_48px_rgba(15,23,42,0.20)] text-start">
                       {prodSuggestions.length > 0 && (
                         <div>
                           <p className="px-2 pb-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">{isRtl ? "منتجات" : "Products"}</p>
@@ -302,23 +336,57 @@ function HomeDesktop() {
               />
             </form>
 
-            {/* Quick CTAs */}
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            {/* CTAs */}
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
               <Link to="/products"
-                className="inline-flex h-11 items-center gap-2 rounded-xl bg-teal-600 px-6 text-sm font-black text-white shadow-[0_8px_20px_rgba(20,184,166,0.28)] transition-all hover:bg-teal-700 hover:-translate-y-0.5">
-                {isRtl ? "تصفح المنتجات" : "Browse products"}
-                <ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />
+                className="group inline-flex h-12 items-center gap-2 rounded-2xl bg-white px-7 text-sm font-black text-teal-800 shadow-[0_8px_28px_rgba(0,0,0,0.28)] transition-all hover:-translate-y-0.5 hover:shadow-[0_14px_36px_rgba(0,0,0,0.34)]">
+                {isRtl ? "تصفح المنتجات" : "Browse Products"}
+                <ArrowRight className={cn("h-4 w-4 transition-transform group-hover:translate-x-0.5", isRtl && "rotate-180 group-hover:translate-x-[-2px]")} />
               </Link>
               <Link to="/offers"
-                className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 text-sm font-black text-slate-700 transition-all hover:border-teal-200 hover:bg-teal-50">
-                {isRtl ? "العروض الحالية" : "Current offers"}
+                className="inline-flex h-12 items-center gap-2 rounded-2xl border border-white/25 bg-white/12 px-7 text-sm font-black text-white backdrop-blur-sm transition-all hover:bg-white/20 hover:-translate-y-0.5">
+                {isRtl ? "العروض الحالية" : "Current Offers"}
+                <Sparkles className="h-4 w-4 text-amber-300" />
               </Link>
               <Link to="/categories"
-                className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-6 text-sm font-black text-slate-700 transition-all hover:border-slate-300">
+                className="inline-flex h-12 items-center gap-2 rounded-2xl border border-white/15 bg-transparent px-7 text-sm font-black text-white/80 transition-all hover:border-white/30 hover:text-white">
                 {isRtl ? "الأقسام" : "Categories"}
               </Link>
             </div>
+
+            {/* Stats strip */}
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 border-t border-white/10 pt-8">
+              {[
+                { value: "+52K",         labelAr: "منتج دوائي",      labelEn: "Products"          },
+                { value: isRtl ? "ذكي" : "Fuzzy",
+                                          labelAr: "بحث بالأخطاء",    labelEn: "Typo-tolerant"     },
+                { value: "AR+EN",        labelAr: "لغتان",            labelEn: "Bilingual"         },
+                { value: isRtl ? "✓" : "✓", labelAr: "توصيل القاهرة", labelEn: "Cairo delivery"   },
+              ].map(({ value, labelAr, labelEn }) => (
+                <div key={labelEn} className="flex flex-col items-center gap-0.5">
+                  <span className="text-2xl font-black text-white">{value}</span>
+                  <span className="text-[11px] font-semibold text-teal-200/70">
+                    {isRtl ? labelAr : labelEn}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
+        </div>
+
+        {/* ── Bottom wave: white fill so next section transitions seamlessly ── */}
+        <div className="relative z-10 h-10 sm:h-14" aria-hidden>
+          <svg
+            viewBox="0 0 1440 56"
+            preserveAspectRatio="none"
+            className="absolute inset-0 h-full w-full"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M0,56 L0,28 C180,56 360,0 540,28 C720,56 900,0 1080,28 C1260,56 1380,14 1440,28 L1440,56 Z"
+              fill="white"
+            />
+          </svg>
         </div>
       </section>
 

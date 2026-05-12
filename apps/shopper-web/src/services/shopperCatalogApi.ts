@@ -341,6 +341,14 @@ export async function fetchShopperCatalogSnapshot(
 /**
  * Fetch a single page of products with server-side filtering and pagination.
  *
+ * When a `searchQuery` is present the request is routed through the
+ * `search_products_fuzzy` Supabase RPC (pg_trgm similarity — tolerates Arabic
+ * typos like "بنادول" → "بانادول").  All other filters and pagination behave
+ * identically for both paths.
+ *
+ * Fallback: if the RPC is not yet deployed the function transparently retries
+ * with the standard ilike query so the UI never goes blank.
+ *
  * Results are kept in the in-memory LRU page cache (TTL: 5 min for filtered
  * results, 15 min for unfiltered).
  */
@@ -351,25 +359,28 @@ export async function fetchProductsPage(
   const cached = pageCache.get(pageNumber, filters);
   if (cached) return cached;
 
-  const supabase = getSupabaseClient();
-  const query = buildSupabaseQuery(supabase, filters, pageNumber, PAGE_SIZE);
+  let products: CatalogProduct[];
+  let totalCount: number;
 
-  // `query` is a PostgrestFilterBuilder — awaiting it yields { data, error, count }.
-  const { data, error, count } = await query;
-
-  if (error) throw new Error(`Supabase query failed: ${error.message}`);
-  if (!data || !Array.isArray(data)) {
-    throw new Error("Invalid data shape received from Supabase.");
+  if (filters.searchQuery?.trim()) {
+    // ── Fuzzy path: pg_trgm RPC ──────────────────────────────────────────────
+    try {
+      const result = await fetchProductsPageFuzzy(pageNumber, filters);
+      products   = result.products;
+      totalCount = result.totalCount;
+    } catch {
+      // RPC not yet deployed — fall back to ilike silently.
+      const result = await fetchProductsPageIlike(pageNumber, filters);
+      products   = result.products;
+      totalCount = result.totalCount;
+    }
+  } else {
+    // ── Regular path: ilike + filter ─────────────────────────────────────────
+    const result = await fetchProductsPageIlike(pageNumber, filters);
+    products   = result.products;
+    totalCount = result.totalCount;
   }
 
-  const products: CatalogProduct[] = (data as Record<string, unknown>[])
-    .map((row, index) => {
-      const sourceRow = (pageNumber - 1) * PAGE_SIZE + index + 2;
-      return normalizeSupabaseProduct(row, sourceRow);
-    })
-    .filter((p): p is CatalogProduct => p !== null);
-
-  const totalCount = count ?? 0;
   const pageResult: PageResult = {
     products,
     totalCount,
@@ -380,6 +391,62 @@ export async function fetchProductsPage(
 
   pageCache.set(pageNumber, filters, pageResult);
   return pageResult;
+}
+
+// ─── Internal helpers ─────────────────────────────────────────────────────────
+
+async function fetchProductsPageIlike(
+  pageNumber: number,
+  filters: ProductFilters,
+): Promise<{ products: CatalogProduct[]; totalCount: number }> {
+  const supabase = getSupabaseClient();
+  const query = buildSupabaseQuery(supabase, filters, pageNumber, PAGE_SIZE);
+  const { data, error, count } = await query;
+
+  if (error) throw new Error(`Supabase query failed: ${error.message}`);
+  if (!data || !Array.isArray(data)) throw new Error("Invalid data shape from Supabase.");
+
+  const products = (data as Record<string, unknown>[])
+    .map((row, i) => normalizeSupabaseProduct(row, (pageNumber - 1) * PAGE_SIZE + i + 2))
+    .filter((p): p is CatalogProduct => p !== null);
+
+  return { products, totalCount: count ?? 0 };
+}
+
+async function fetchProductsPageFuzzy(
+  pageNumber: number,
+  filters: ProductFilters,
+): Promise<{ products: CatalogProduct[]; totalCount: number }> {
+  const supabase = getSupabaseClient();
+
+  // Resolve category slug → display names for the RPC filter parameters.
+  let categoryAr: string | null = null;
+  let categoryEn: string | null = null;
+  if (filters.categoryId) {
+    const names = getCategoryNamesById(filters.categoryId);
+    if (names) { categoryAr = names.name; categoryEn = names.nameEn; }
+  }
+
+  const { data, error } = await supabase.rpc("search_products_fuzzy", {
+    search_term:    filters.searchQuery!.trim(),
+    page_number:    pageNumber,
+    page_size:      PAGE_SIZE,
+    category_ar:    categoryAr,
+    category_en:    categoryEn,
+    in_stock_only:  filters.inStock  ?? null,
+    sort_order:     filters.sortBy   ?? "relevant",
+    min_similarity: 0.15,
+  });
+
+  if (error) throw new Error(`Fuzzy RPC failed: ${error.message}`);
+  if (!data || !Array.isArray(data)) return { products: [], totalCount: 0 };
+
+  const totalCount = (data[0] as Record<string, unknown> | undefined)?.total_count as number ?? 0;
+  const products   = (data as Record<string, unknown>[])
+    .map((row, i) => normalizeSupabaseProduct(row, (pageNumber - 1) * PAGE_SIZE + i + 2))
+    .filter((p): p is CatalogProduct => p !== null);
+
+  return { products, totalCount };
 }
 
 /**

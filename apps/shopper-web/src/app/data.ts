@@ -91,12 +91,12 @@ export type SiteLocation = {
 export const locations = [
   {
     id: "gardenia",
-    nameAr: "جاردينيا سيتي",
-    nameEn: "Gardenia City",
-    fullNameAr: "صيدليات المتحدة - جاردينيا سيتي",
-    fullNameEn: "United Pharmacies - Gardenia City",
-    addressAr: "مول جاردينيا سيتي، وراك كومباوند، القاهرة الجديدة",
-    addressEn: "Gardenia City Mall, Warak Compound, New Cairo",
+    nameAr: "Cairo",
+    nameEn: "Cairo",
+    fullNameAr: "صيدليات المتحدة - Cairo",
+    fullNameEn: "United Pharmacies - Cairo",
+    addressAr: "القاهرة الجديدة، القاهرة، مصر",
+    addressEn: "New Cairo, Cairo, Egypt",
     phones: [supportLine, whatsappSupportLine],
     hoursAr: sharedBranchHoursAr,
     hoursEn: sharedBranchHoursEn,
