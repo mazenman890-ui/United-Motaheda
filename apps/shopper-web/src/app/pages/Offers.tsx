@@ -100,7 +100,7 @@ function OffersSearch({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         className={cn(
-          "h-9 w-full rounded-xl border border-slate-200/70 bg-white/90 pe-3 ps-9 text-[13px] font-semibold text-slate-900 placeholder:text-slate-400",
+          "h-9 w-full rounded-xl border border-slate-200 bg-white pe-3 ps-9 text-[13px] font-semibold text-slate-900 placeholder:text-slate-400",
           "shadow-[0_2px_6px_rgba(15,23,42,0.05)] transition-all duration-200",
           "focus:border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-200/60",
           value && "border-amber-200 bg-amber-50/30",
@@ -130,7 +130,7 @@ function OffersEmptyState({
   onReset: () => void;
 }) {
   return (
-    <div className="rounded-[1.6rem] border border-slate-200/80 bg-white/90 p-12 text-center shadow-sm backdrop-blur-xl">
+    <div className="rounded-2xl border border-slate-100 bg-white p-12 text-center shadow-sm">
       <div className="mx-auto flex max-w-sm flex-col items-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-100 to-amber-50 shadow-[0_8px_24px_rgba(245,158,11,0.12)]">
           <PackageSearch className="h-7 w-7 text-amber-500" />
@@ -240,13 +240,13 @@ function OffersDesktop() {
   };
 
   return (
-    <div className="offers-page min-h-screen bg-[linear-gradient(165deg,#fffbf0_0%,#fafaf8_50%,#fafafa_100%)]">
+    <div className="offers-page min-h-screen bg-slate-50/50">
       <div className="page-section py-6 pb-14">
         {/* ── Hero Banner ──────────────────────────────────── */}
-        <div className="mb-5 overflow-hidden rounded-[1.6rem] border border-slate-200/80 bg-white/90 shadow-[0_4px_24px_rgba(15,23,42,0.06)] backdrop-blur-xl">
+        <div className="relative mb-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 h-1 rounded-t-[1.6rem] bg-gradient-to-r from-amber-300/60 via-yellow-300/40 to-amber-400/60"
+            className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-300 opacity-60"
           />
 
           <div className="space-y-3 p-5">
@@ -277,7 +277,7 @@ function OffersDesktop() {
         </div>
 
         {/* ── Controls bar ───────────────────────────────── */}
-        <div className="catalog-controls-stick z-30 mb-6 flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-[1.6rem] border border-slate-200/80 bg-white/95 px-5 py-3.5 shadow-[0_4px_20px_rgba(15,23,42,0.07)] backdrop-blur-xl">
+        <div className="catalog-controls-stick z-30 mb-6 flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-white px-5 py-3.5 shadow-sm">
           <div className="flex flex-wrap items-center gap-2">
             <OffersSearch
               value={searchInput}
