@@ -13,6 +13,8 @@ import { getSupabaseClient } from "../lib/supabaseClient";
 import {
   fetchCatalogSnapshot,
   getCachedCatalogSnapshot,
+  getCategoryNamesById,
+  getStaticCategoryList,
   type CatalogSnapshot,
   type CatalogProduct,
   type CatalogCategory,
@@ -199,23 +201,18 @@ function buildSupabaseQuery(
   }
 
   // Category filtering via display-name matching (AR + EN).
-  // Resolves the slug to its human-readable names using the in-memory snapshot
-  // so the query hits the actual DB columns without requiring a schema change.
+  // Resolved directly from CATEGORY_SEEDS — no full snapshot required.
+  // This means category filtering works correctly on cold start without
+  // waiting for 52K products to load into memory.
   if (filters.categoryId) {
-    const cachedCategory = getCachedCatalogSnapshot()?.categories.find(
-      (c) => c.id === filters.categoryId,
-    );
-
-    if (cachedCategory) {
-      const arName = `%${cachedCategory.name}%`;
-      const enName = `%${cachedCategory.nameEn}%`;
+    const names = getCategoryNamesById(filters.categoryId);
+    if (names) {
+      const arName = `%${names.name}%`;
+      const enName = `%${names.nameEn}%`;
       query = query.or(
         `Category_Name.ilike.${arName},Category_Name_En.ilike.${enName}`,
       );
     }
-    // If the snapshot is not yet loaded, the category filter is skipped for
-    // this request and will apply correctly on subsequent calls once the
-    // snapshot is warm. Callers should warm the cache before paginated queries.
   }
 
   // Stock availability filter.
@@ -404,11 +401,12 @@ export async function fetchCategoriesQuick(): Promise<CatalogCategory[]> {
   const localCategories = readCachedCategories();
   if (localCategories) return localCategories;
 
-  // 3. Fetch the full snapshot (also populates the in-memory and slim-index
-  //    caches in catalog.ts for subsequent calls).
-  const snapshot = await fetchShopperCatalogSnapshot();
-  writeCachedCategories(snapshot.categories);
-  return snapshot.categories;
+  // 3. Build from static seed definitions — zero network cost, zero products needed.
+  //    Counts are 0 initially; they update once deriveCatalogCategories() runs with
+  //    real product data. This avoids the old 52K-product fetch just to get names.
+  const staticCategories = getStaticCategoryList();
+  writeCachedCategories(staticCategories);
+  return staticCategories;
 }
 
 /**

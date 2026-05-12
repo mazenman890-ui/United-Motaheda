@@ -1,4 +1,29 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+/**
+ * CategoryDetails.tsx — Single-category product page
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * DATA FLOW (for Bara'a)
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * Before this refactor:
+ *   useCatalog()              → all 52K products + filterByCategory() effect
+ *   useCatalogProductSearch() → client-side fuzzy worker on those products
+ *   "Load more" button        → manual pagination
+ *
+ * After this refactor:
+ *   useInfiniteProducts({ categoryId: id })
+ *     → Supabase .ilike(Category_Name | Category_Name_En, '%name%') + .range(0,23)
+ *     → only 24 products per request, auto-appended on scroll
+ *   useCatalog()              → ONLY for the category list (sidebar rail + hero lookup)
+ *     → served from localStorage cache (30-min TTL), no extra Supabase calls
+ *
+ * CATEGORY LOOKUP:
+ *   `category = categories.find(c => c.id === id)` — reads from the cached list,
+ *   not from `categoriesById` which is derived from loaded products and would be
+ *   empty on a cold start now that the background 52K load has been removed.
+ */
+
+import { useMemo, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -17,23 +42,27 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import { useCatalog } from "../../contexts/CatalogContext";
 import { useSearchInput } from "../../contexts/SearchContext";
 import { ProductGrid } from "../components/ProductGrid";
+import { CatalogSkeletonGrid } from "../components/CatalogPrimitives";
 import { cn } from "../components/UI";
 import { useIsShopperShell } from "../components/ui/use-mobile";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
-import { CatalogSkeletonGrid } from "../components/CatalogPrimitives";
 import { getLocalizedCategoryName } from "../localization";
-import { useCatalogProductSearch, type CatalogProductSort } from "../hooks/useCatalogProductSearch";
+import { useInfiniteProducts } from "../hooks/useInfiniteProducts";
+import type { CatalogProductSort } from "../hooks/useCatalogProductSearch";
 import { MobileCategoryDetailsView } from "./ShopperMobileViews";
 import { FilterSidebar } from "../components/FilterSidebar";
 
+// ─── Sort options ─────────────────────────────────────────────────────────────
+
 const SORT_OPTIONS = [
-  { value: "relevant", labelAr: "الأكثر صلة", labelEn: "Relevant", Icon: Sparkles },
-  { value: "price_asc", labelAr: "السعر ↑", labelEn: "Price ↑", Icon: TrendingUp },
-  { value: "price_desc", labelAr: "السعر ↓", labelEn: "Price ↓", Icon: TrendingDown },
-  { value: "name", labelAr: "الاسم", labelEn: "Name A–Z", Icon: ArrowUpDown },
+  { value: "relevant",   labelAr: "الأكثر صلة", labelEn: "Relevant",  Icon: Sparkles    },
+  { value: "price_asc",  labelAr: "السعر ↑",    labelEn: "Price ↑",   Icon: TrendingUp  },
+  { value: "price_desc", labelAr: "السعر ↓",    labelEn: "Price ↓",   Icon: TrendingDown },
+  { value: "name",       labelAr: "الاسم",      labelEn: "Name A–Z",  Icon: ArrowUpDown  },
 ] as const;
 
-/* ─── Inline State ───────────────────────────────────────────── */
+// ─── InlineState ──────────────────────────────────────────────────────────────
+
 function InlineState({
   title,
   description,
@@ -61,7 +90,8 @@ function InlineState({
   );
 }
 
-/* ─── Sort Segment ───────────────────────────────────────────── */
+// ─── SortSegment ─────────────────────────────────────────────────────────────
+
 function SortSegment({
   options,
   value,
@@ -100,56 +130,95 @@ function SortSegment({
   );
 }
 
-/* ─── Main Export ──────────────────────────────────────────── */
+// ─── Main export ──────────────────────────────────────────────────────────────
+
 export default function CategoryDetails() {
   const isShopperShell = useIsShopperShell();
   if (isShopperShell) return <MobileCategoryDetailsView />;
   return <CategoryDetailsDesktop />;
 }
 
-/* ─── Desktop View ─────────────────────────────────────────── */
+// ─── Desktop view ─────────────────────────────────────────────────────────────
+
 function CategoryDetailsDesktop() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const { lang } = useLanguage();
-  const {
-    categories,
-    categoriesById,
-    products,
-    isLoading,
-    isLoadingMore,
-    isFullCatalogReady,
-    filterByCategory,
-    loadNextPage,
-    hasNextPage,
-  } = useCatalog();
+
+  // `useCatalog()` is used ONLY for the category metadata list.
+  // Categories are cached in localStorage (30-min TTL from fetchCategoriesQuick),
+  // so this is near-instant even on first render.
+  //
+  // NOTE: We look up `category` via `categories.find()` — NOT via `categoriesById`.
+  // `categoriesById` is derived from loaded products (which is now only the first
+  // page) and would be empty for most categories on a cold start. The raw
+  // `categories` array comes from the localStorage category cache and always
+  // contains the full list of category metadata.
+  const { categories, isLoading: isCatalogLoading } = useCatalog();
   const { searchQuery, setSearchQuery } = useSearchInput();
+
   const [sortBy, setSortBy] = useState<CatalogProductSort>("relevant");
   const [onlyInStock, setOnlyInStock] = useState(false);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  // Server-side filter only needed before full catalog loads; afterwards the
-  // hook derives the category slice directly from the in-memory allProducts.
-  useEffect(() => {
-    if (id && !isFullCatalogReady) void filterByCategory(id);
-  }, [id, isFullCatalogReady, filterByCategory]);
-
-  const category = id ? categoriesById[id] : undefined;
-  const relatedCategories = useMemo(
-    () => categories.filter((entry) => entry.id !== id).slice(0, 10),
+  // Resolve the active category from the cached category list.
+  const category = useMemo(
+    () => (id ? categories.find((c) => c.id === id) : undefined),
     [categories, id],
   );
 
-  // products is already server-filtered to this category by the effect above
-  const { products: filteredProducts, resultCount, isSearching } = useCatalogProductSearch(
-    products,
-    { query: searchQuery, onlyInStock },
-    sortBy,
-    lang,
+  // Related categories for the quick-browse rail (excludes current category).
+  const relatedCategories = useMemo(
+    () => categories.filter((c) => c.id !== id).slice(0, 10),
+    [categories, id],
   );
 
-  /* ── Not found ── */
-  if (!category) {
+  // ── Server-side paginated product feed filtered to this category ──────────
+  //
+  // `categoryId: id` is passed to shopperCatalogApi which resolves the slug to
+  // its Arabic/English display names and applies:
+  //   .or("Category_Name.ilike.%name%, Category_Name_En.ilike.%name%")
+  //
+  // The 300ms debounce inside the hook handles search; sortBy is translated to
+  // Supabase .order() calls. No client-side fuzzy search worker is involved.
+  const {
+    products,
+    isLoading,
+    isFetchingNext,
+    fetchNextPage,
+    hasNextPage,
+    totalCount,
+    activeQuery,
+    error,
+  } = useInfiniteProducts({
+    query:     searchQuery,
+    categoryId: id,
+    inStock:   onlyInStock ? true : undefined,
+    sortBy:    sortBy !== "relevant" ? sortBy : undefined,
+  });
+
+  const hasFilters = onlyInStock || searchQuery.trim().length > 0;
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setOnlyInStock(false);
+    setSortBy("relevant");
+  };
+
+  // ── Category not found ────────────────────────────────────────────────────
+  //
+  // Show a skeleton while categories are still loading from localStorage/network.
+  // Only show "not found" once we know the category list is populated.
+  if (!category && isCatalogLoading) {
+    return (
+      <div className="category-details-page min-h-screen bg-[linear-gradient(165deg,#f0fafa_0%,#f7fafb_50%,#fafafa_100%)]">
+        <div className="page-section py-16">
+          <CatalogSkeletonGrid count={8} />
+        </div>
+      </div>
+    );
+  }
+
+  if (!category && !isCatalogLoading) {
     return (
       <div className="category-details-page min-h-screen bg-[linear-gradient(165deg,#f0fafa_0%,#f7fafb_50%,#fafafa_100%)]">
         <div className="page-section py-16">
@@ -175,10 +244,9 @@ function CategoryDetailsDesktop() {
     );
   }
 
-  const displayName = getLocalizedCategoryName(category, lang);
-  const description = lang === "ar" ? category.descAr : category.descEn;
-  const hasFilters = onlyInStock || searchQuery.trim().length > 0;
-
+  // `category` is non-null past this point (TS narrowing via the checks above).
+  const displayName = category ? getLocalizedCategoryName(category, lang) : "";
+  const description = category ? (lang === "ar" ? category.descAr : category.descEn) : "";
 
   return (
     <div className="category-details-page min-h-screen bg-[linear-gradient(165deg,#f0fafa_0%,#f7fafb_50%,#fafafa_100%)]">
@@ -195,7 +263,7 @@ function CategoryDetailsDesktop() {
 
             {/* Left: info */}
             <div className="space-y-4 p-5">
-              {/* Breadcrumb chips */}
+              {/* Breadcrumb */}
               <div className="flex flex-wrap items-center gap-2">
                 <Link
                   to="/categories"
@@ -218,12 +286,15 @@ function CategoryDetailsDesktop() {
 
               {/* Title + description */}
               <div>
-                <h1 className="text-[1.75rem] font-black tracking-tight text-slate-950">{displayName}</h1>
+                <h1 className="text-[1.75rem] font-black tracking-tight text-slate-950">
+                  {displayName}
+                </h1>
                 <p className="mt-1.5 max-w-2xl text-[13px] font-semibold leading-6 text-slate-500">
                   {description}
                 </p>
+                {/* Loading-more indicator */}
                 <AnimatePresence>
-                  {isSearching && (
+                  {isFetchingNext && (
                     <motion.span
                       initial={{ opacity: 0, scale: 0.85 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -231,25 +302,26 @@ function CategoryDetailsDesktop() {
                       className="mt-2 inline-flex h-6 items-center gap-1 rounded-md border border-violet-200 bg-violet-50 px-2 text-[10px] font-black text-violet-700"
                     >
                       <Zap className="h-2.5 w-2.5" />
-                      {lang === "ar" ? "ترتيب ذكي نشط" : "Smart ranking active"}
+                      {lang === "ar" ? "جارٍ تحميل المزيد" : "Loading more"}
                     </motion.span>
                   )}
                 </AnimatePresence>
               </div>
-
             </div>
 
             {/* Right: category image */}
-            <div className="overflow-hidden border-s border-slate-100 bg-slate-50/50 xl:rounded-e-[1.7rem]">
-              <ImageWithFallback
-                src={category.imageUrl}
-                alt={displayName}
-                className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
-                style={category.imagePosition ? { objectPosition: category.imagePosition } : undefined}
-                loading="eager"
-                decoding="async"
-              />
-            </div>
+            {category && (
+              <div className="overflow-hidden border-s border-slate-100 bg-slate-50/50 xl:rounded-e-[1.7rem]">
+                <ImageWithFallback
+                  src={category.imageUrl}
+                  alt={displayName}
+                  className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
+                  style={category.imagePosition ? { objectPosition: category.imagePosition } : undefined}
+                  loading="eager"
+                  decoding="async"
+                />
+              </div>
+            )}
           </div>
         </motion.div>
 
@@ -290,12 +362,14 @@ function CategoryDetailsDesktop() {
         <div className="catalog-controls-stick z-30 mb-6 flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-[1.8rem] border border-slate-200/80 bg-white/97 px-5 py-3.5 shadow-[0_4px_24px_rgba(15,23,42,0.08)] backdrop-blur-xl">
           <div className="flex items-center gap-2">
             <span className="inline-flex h-7 items-center rounded-lg border border-slate-200/70 bg-slate-50 px-3 text-[11px] font-black text-slate-600">
-              {lang === "ar" ? "المنتجات" : "Products"}
+              {totalCount > 0
+                ? (lang === "ar" ? `${totalCount.toLocaleString()} منتج` : `${totalCount.toLocaleString()} products`)
+                : (lang === "ar" ? "المنتجات" : "Products")}
             </span>
             {hasFilters && (
               <button
                 type="button"
-                onClick={() => { setSearchQuery(""); setOnlyInStock(false); setSortBy("relevant"); }}
+                onClick={clearFilters}
                 className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 text-[11px] font-black text-rose-600 transition-colors hover:bg-rose-100"
               >
                 <X className="h-3 w-3" />
@@ -322,8 +396,8 @@ function CategoryDetailsDesktop() {
             </button>
           </div>
         </div>
-
       </div>
+
       <div className="page-section-row pb-14" style={{ overflow: "visible" }}>
         <div className="flex gap-6 items-start">
           <FilterSidebar
@@ -338,40 +412,53 @@ function CategoryDetailsDesktop() {
             priceRange={[0, 9999]}
             maxPrice={0}
             onPriceRangeChange={() => {}}
-            totalResults={resultCount}
+            totalResults={totalCount}
             hasFilters={hasFilters}
-            onClearAll={() => { setSearchQuery(""); setOnlyInStock(false); setSortBy("relevant"); }}
+            onClearAll={clearFilters}
           />
 
           <div className="min-w-0 flex-1">
-            {isLoading && products.length === 0 ? (
+            {error ? (
+              /* ── Error state ── */
+              <div className="rounded-[1.8rem] border border-rose-200/80 bg-rose-50/80 p-10 text-center shadow-sm">
+                <p className="text-sm font-black text-rose-700">
+                  {lang === "ar"
+                    ? "حدث خطأ أثناء تحميل منتجات القسم."
+                    : "An error occurred while loading category products."}
+                </p>
+                <p className="mt-2 text-sm text-rose-600">{error}</p>
+              </div>
+            ) : isLoading && products.length === 0 ? (
+              /* ── Initial skeleton ── */
               <CatalogSkeletonGrid count={8} />
-            ) : filteredProducts.length > 0 ? (
+            ) : products.length > 0 ? (
               <>
                 <div className="mb-4 px-1">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
                     {lang === "ar" ? "منتجات القسم" : "Category feed"}
                   </p>
                 </div>
-                <ProductGrid products={filteredProducts} />
-                {hasNextPage && (
-                  <div ref={loadMoreRef} className="mt-10 flex flex-col items-center gap-3">
-                    <motion.button
-                      whileHover={{ y: -2 }}
-                      whileTap={{ scale: 0.97 }}
-                      type="button"
-                      onClick={() => void loadNextPage()}
-                      disabled={isLoadingMore}
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200/80 bg-white px-8 text-sm font-black text-slate-700 shadow-sm transition-all hover:shadow-md disabled:opacity-60"
-                    >
-                      {isLoadingMore
-                        ? (lang === "ar" ? "جارٍ التحميل..." : "Loading…")
-                        : (lang === "ar" ? "عرض المزيد" : "Load more")}
-                    </motion.button>
-                  </div>
-                )}
+
+                {/**
+                 * ProductGrid with infinite scroll.
+                 *
+                 * `onEndReached` fires when VirtuosoGrid's last item enters the
+                 * viewport → calls `fetchNextPage()` → Supabase .range(N, N+23)
+                 * → appended to `products` array automatically.
+                 *
+                 * `isLoadingMore` shows the spinner + ghost skeletons below the
+                 * grid while the next page is loading.
+                 */}
+                <ProductGrid
+                  products={products}
+                  isLoading={isLoading}
+                  isLoadingMore={isFetchingNext}
+                  onEndReached={hasNextPage ? fetchNextPage : undefined}
+                  activeQuery={activeQuery}
+                />
               </>
             ) : (
+              /* ── Empty state ── */
               <InlineState
                 title={lang === "ar" ? "لا توجد منتجات مطابقة" : "No matching products"}
                 description={

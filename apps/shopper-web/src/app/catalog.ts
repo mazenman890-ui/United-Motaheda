@@ -1002,6 +1002,26 @@ export function getCategoryIconName(categoryId: string) {
   return CATEGORY_SEED_BY_ID[categoryId]?.icon ?? "Package";
 }
 
+/**
+ * Returns the AR and EN display names for a known category seed ID.
+ * Used by shopperCatalogApi to build category filter queries without needing
+ * the full product catalog snapshot loaded into memory.
+ */
+export function getCategoryNamesById(id: string): { name: string; nameEn: string } | null {
+  const seed = CATEGORY_SEED_BY_ID[id];
+  return seed ? { name: seed.names.ar, nameEn: seed.names.en } : null;
+}
+
+/**
+ * Returns all CATEGORY_SEEDS as fully-shaped CatalogCategory objects with
+ * zero product counts. Used as a zero-network fallback for the category sidebar
+ * on cold-start before any products are loaded from Supabase.
+ * Counts will be updated by deriveCatalogCategories() once products arrive.
+ */
+export function getStaticCategoryList(): CatalogCategory[] {
+  return CATEGORY_SEEDS.map((seed) => buildCategoryFromSeed(seed, 0, 0));
+}
+
 export function formatStockQuantity(stock: number) {
   if (stock <= 0) {
     return "0";

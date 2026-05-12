@@ -1,4 +1,3 @@
-﻿
 
 import {
   createContext,
@@ -16,16 +15,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { clearFuzzyCache, fuzzyMatch, fuzzyScore } from "../utils/fuzzySearch";
 import type { CatalogProduct } from "../app/catalog";
 import { useCatalog } from "./CatalogContext";
-import {
-  CATALOG_SEARCH_WORKER_THRESHOLD,
-  clearPrefetchCache,
-  ensureCatalogSearchWorkerInit,
-  generateSearchRequestId,
-  getPrefetchedResult,
-  onWorkerInitProgress,
-  postCatalogSearchRequest,
-  postPrefetchRequests,
-} from "../app/hooks/catalogSearchWorker";
+import { fetchProductsPage } from "../services/shopperCatalogApi";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -58,7 +48,10 @@ export type SearchResultsContextValue = {
 
 const SUGGESTIONS_LIMIT  = 20;
 const COMMIT_DEBOUNCE    = 500;  // ms after last keystroke before query commits
-const PREFETCH_IDLE_MS   = 100;  // ms idle before next-char pre-warming
+/** Debounce for the server-side suggestion fetch. Shorter than the main grid's
+ *  300ms to make the dropdown feel faster. The LRU cache in shopperCatalogApi
+ *  means repeated queries for the same string hit memory, not the network. */
+const SUGGESTION_SERVER_DEBOUNCE_MS = 200;
 
 // ─── Contexts ─────────────────────────────────────────────────────────────────
 
@@ -125,7 +118,6 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   const [searchQuery,    setSearchQueryRaw] = useState("");
   const [committedQuery, setCommittedQuery] = useState("");
   const debounceTimer                       = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prefetchTimer                       = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const setSearchQuery = useCallback((value: string) => {
     setSearchQueryRaw(value);
@@ -157,9 +149,7 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   }, [location.pathname, location.search, navigate]);
 
   // Latest `searchQuery` mirror used by `commitSearch()` so the callback can
-  // remain referentially stable while still reading the current value. Without
-  // this, `commitSearch` would change identity on every keystroke and force
-  // every consumer of the context to re-render on every input event.
+  // remain referentially stable while still reading the current value.
   const searchQueryRef = useRef(searchQuery);
   useEffect(() => {
     searchQueryRef.current = searchQuery;
@@ -179,8 +169,6 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     }
     setCommittedQuery("");
 
-    // Remove ?search= from the URL when the user explicitly clears the
-    // input while on the /products route.
     if (
       location.pathname === "/products" ||
       location.pathname.startsWith("/products/")
@@ -197,7 +185,6 @@ export function SearchProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     return () => {
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
-      if (prefetchTimer.current) clearTimeout(prefetchTimer.current);
     };
   }, []);
 
@@ -234,45 +221,39 @@ export function SearchProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     clearFuzzyCache();
-    clearPrefetchCache();
   }, [location.pathname]);
 
-  // ── 4. Catalog update: flush caches + init worker ────────────────────────
-
-  useEffect(() => {
-    if (products.length === 0) return;
-    clearFuzzyCache();
-    clearPrefetchCache();
-    ensureCatalogSearchWorkerInit(products);
-  }, [products]);
-
-  // ── 5. Deferred value (keeps input responsive) ────────────────────────────
+  // ── 4. Deferred value (keeps input responsive) ────────────────────────────
 
   const deferredSearchQuery = useDeferredValue(searchQuery.trim());
 
-  // ── 6. Stable products map ────────────────────────────────────────────────
+  // ── 5. Stable products map ────────────────────────────────────────────────
 
   const productsById = useMemo(
     () => new Map<string, CatalogProduct>(products.map((p) => [p.id, p])),
     [products],
   );
 
-  // ── 7. Suggestions (worker-first, inline fallback, prefetch-backed) ───────
+  // ── 6. Suggestions — server-side via Supabase ilike ──────────────────────
+  //
+  // Previous architecture: fuzzy-searched over 52K products in a Web Worker.
+  // Problem: requires all 52K products in memory — useCatalog().products now
+  // only contains 24 (page 1 from CatalogContext mount fetch).
+  //
+  // New architecture:
+  //   1. Instant path — fuzzy match on whichever products are already loaded
+  //      (the ~24 from page 1). Shows instant results before the network call.
+  //   2. Server path — fetchProductsPage(1, { searchQuery }) via Supabase ilike.
+  //      Debounced 200ms. Cached by the LRU page cache in shopperCatalogApi so
+  //      repeat queries for the same string cost zero network calls.
+  //
+  // workerStatus is always "ready" because we no longer depend on a worker.
 
   const [suggestions,     setSuggestions]     = useState<CatalogProduct[]>([]);
   const [suggestionsBusy, setSuggestionsBusy] = useState(false);
-  const [workerStatus,    setWorkerStatus]    = useState<"idle" | "building" | "ready">("idle");
 
-  const latestSuggestionRequestId = useRef(0);
-  // AbortController: signal to discard a stale suggestion response
-  const suggestionAbort = useRef<AbortController>(new AbortController());
-
-  // Set up worker initialization progress callback
-  useEffect(() => {
-    onWorkerInitProgress((status) => {
-      setWorkerStatus(status === "building" ? "building" : "ready");
-    });
-  }, []);
+  const suggestionDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suggestionAbort       = useRef<AbortController>(new AbortController());
 
   useEffect(() => {
     const query = deferredSearchQuery;
@@ -285,101 +266,49 @@ export function SearchProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Abort the previous suggestion fetch immediately
+    // Abort any in-flight server request from the previous render.
     suggestionAbort.current.abort();
     suggestionAbort.current = new AbortController();
-    const signal = suggestionAbort.current.signal;
+    const abortSignal = suggestionAbort.current.signal;
 
-    // ── Prefetch cache fast path ─────────────────────────────────────────
-    const prefetched = getPrefetchedResult(query);
-    if (prefetched) {
-      startTransition(() => {
-        if (signal.aborted) return;
-        setSuggestions(
-          mapIdsToProducts(prefetched, productsById, SUGGESTIONS_LIMIT),
-        );
-        setSuggestionsBusy(false);
-      });
-      // Schedule next-char prefetch
-      if (prefetchTimer.current) clearTimeout(prefetchTimer.current);
-      prefetchTimer.current = setTimeout(() => {
-        postPrefetchRequests(
-          Array.from("abcdefghijklmnopqrstuvwxyzابتثجحخدذرزسشصضطظعغفقكلمنهوي")
-            .slice(0, 12)
-            .map((ch) => query + ch),
-          { limit: SUGGESTIONS_LIMIT },
-        );
-      }, PREFETCH_IDLE_MS);
-      return;
+    // ── Instant path: fuzzy match on already-loaded products ──────────────
+    // This gives the dropdown immediate results without waiting for Supabase.
+    // Products is only ~24 items so this runs in < 1 ms.
+    if (products.length > 0) {
+      const ids = rankInline(products, query, SUGGESTIONS_LIMIT);
+      if (ids.length > 0) {
+        startTransition(() => {
+          setSuggestions(mapIdsToProducts(ids, productsById, SUGGESTIONS_LIMIT));
+        });
+      }
     }
 
-    const requestId = generateSearchRequestId();
-    latestSuggestionRequestId.current = requestId;
     setSuggestionsBusy(true);
 
-    // Inline path for tiny catalogs
-    if (products.length < CATALOG_SEARCH_WORKER_THRESHOLD) {
-      startTransition(() => {
-        if (signal.aborted) return;
-        const ids = rankInline(products, query, SUGGESTIONS_LIMIT);
-        setSuggestions(mapIdsToProducts(ids, productsById, SUGGESTIONS_LIMIT));
-        setSuggestionsBusy(false);
-      });
-      return;
-    }
-
-    // Worker path
-    postCatalogSearchRequest({
-      query,
-      requestId,
-      limit: SUGGESTIONS_LIMIT,
-    }).then((response) => {
-      if (signal.aborted) return;
-      if (response.requestId !== requestId) return; // stale
-
-      if (response.error) {
-        startTransition(() => {
-          if (signal.aborted) return;
-          const ids = rankInline(products, query, SUGGESTIONS_LIMIT);
-          setSuggestions(mapIdsToProducts(ids, productsById, SUGGESTIONS_LIMIT));
-          setSuggestionsBusy(false);
+    // ── Server path: full-catalog search via Supabase ilike ───────────────
+    // Debounced so we don't spam Supabase on every keystroke.
+    if (suggestionDebounceRef.current) clearTimeout(suggestionDebounceRef.current);
+    suggestionDebounceRef.current = setTimeout(() => {
+      void fetchProductsPage(1, { searchQuery: query })
+        .then((result) => {
+          if (abortSignal.aborted) return;
+          startTransition(() => {
+            setSuggestions(result.products.slice(0, SUGGESTIONS_LIMIT));
+            setSuggestionsBusy(false);
+          });
+        })
+        .catch(() => {
+          if (abortSignal.aborted) return;
+          startTransition(() => setSuggestionsBusy(false));
         });
-        return;
-      }
+    }, SUGGESTION_SERVER_DEBOUNCE_MS);
 
-      startTransition(() => {
-        if (signal.aborted) return;
-        setSuggestions(
-          mapIdsToProducts(response.rankedIds, productsById, SUGGESTIONS_LIMIT),
-        );
-        setSuggestionsBusy(false);
-      });
-
-      // Schedule next-char prefetch after successful response
-      if (prefetchTimer.current) clearTimeout(prefetchTimer.current);
-      prefetchTimer.current = setTimeout(() => {
-        postPrefetchRequests(
-          Array.from("abcdefghijklmnopqrstuvwxyzابتثجحخدذرزسشصضطظعغفقكلمنهوي")
-            .slice(0, 12)
-            .map((ch) => query + ch),
-          { limit: SUGGESTIONS_LIMIT },
-        );
-      }, PREFETCH_IDLE_MS);
-
-    }).catch(() => {
-      if (signal.aborted) return;
-      if (latestSuggestionRequestId.current !== requestId) return;
-      startTransition(() => {
-        if (signal.aborted) return;
-        const ids = rankInline(products, query, SUGGESTIONS_LIMIT);
-        setSuggestions(mapIdsToProducts(ids, productsById, SUGGESTIONS_LIMIT));
-        setSuggestionsBusy(false);
-      });
-    });
-
+    return () => {
+      if (suggestionDebounceRef.current) clearTimeout(suggestionDebounceRef.current);
+    };
   }, [deferredSearchQuery, products, productsById]);
 
-  // ── 8. Context values (split to prevent cascade re-renders) ──────────────
+  // ── 7. Context values (split to prevent cascade re-renders) ──────────────
 
   const inputValue = useMemo(
     () => ({
@@ -396,10 +325,10 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     () => ({
       suggestions,
       isSearching:   suggestionsBusy,
-      isWorkerReady: workerStatus === "ready",
-      workerStatus,
+      isWorkerReady: true,   // server-side search is always "ready"
+      workerStatus:  "ready" as const,
     }),
-    [suggestions, suggestionsBusy, workerStatus],
+    [suggestions, suggestionsBusy],
   );
 
   return (

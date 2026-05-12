@@ -1,6 +1,51 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+/**
+ * Products.tsx — Full product catalog page
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * DATA FLOW (for Bara'a)
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * Before this refactor:
+ *   useCatalog()              → fetches all 52K products (30-second hang)
+ *   useCatalogProductSearch() → client-side fuzzy worker (requires all 52K)
+ *
+ * After this refactor:
+ *   useInfiniteProducts()     → fetches only 24 at a time from Supabase
+ *     ↑ wired to VirtuosoGrid.endReached for automatic next-page loading
+ *   useCatalog()              → used ONLY for the category sidebar list
+ *     (categories are cached in localStorage — no extra network cost)
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * SEARCH FLOW
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ *   User types in the global search bar (SiteSearchField)
+ *     → SearchContext.searchQuery updates
+ *     → useInfiniteProducts sees the new query
+ *     → 300ms debounce (no network call until the user pauses)
+ *     → Supabase .ilike('%query%', Name_Ar | Name_En | Code | Barcode)
+ *     → 24 matching results appear
+ *     → Scrolling loads 24 more, etc.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * CATEGORY / FILTER FLOW
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ *   URL ?category=medications
+ *     → passed to useInfiniteProducts as `categoryId`
+ *     → shopperCatalogApi resolves slug → Arabic/English names
+ *     → Supabase .ilike(Category_Name | Category_Name_En)
+ *
+ *   In-stock toggle → passed as `inStock: true`
+ *     → Supabase .eq("is_active", true)
+ *
+ *   Price cap → passed as `maxPrice`
+ *     → Supabase .lte("Price", maxPrice)
+ */
+
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -20,19 +65,17 @@ import { useSearchInput } from "../../contexts/SearchContext";
 import { useCatalog } from "../../contexts/CatalogContext";
 import { useIsShopperShell } from "../components/ui/use-mobile";
 import { getLocalizedCategoryName } from "../localization";
-import { getMaxPriceCeiled } from "../hooks/useCatalogFilters";
+import { useInfiniteProducts } from "../hooks/useInfiniteProducts";
 import { ProductGrid } from "../components/ProductGrid";
 import { CatalogSkeletonGrid } from "../components/CatalogPrimitives";
-import {
-  useCatalogProductSearch,
-  type CatalogProductSort,
-} from "../hooks/useCatalogProductSearch";
+import type { CatalogProductSort } from "../hooks/useCatalogProductSearch";
 import { MobileProductsView } from "./ShopperMobileViews";
 import { FilterSidebar } from "../components/FilterSidebar";
 import type { FilterCategory } from "../components/FilterSidebar";
 import { cn } from "../components/UI";
 
-/* ─── Constants ─────────────────────────────────────────────── */
+// ─── Sort options (UI only — sorting is handled server-side via shopperCatalogApi) ──
+
 type SortOption = {
   value: CatalogProductSort;
   labelAr: string;
@@ -41,13 +84,14 @@ type SortOption = {
 };
 
 const SORT_OPTIONS: readonly SortOption[] = [
-  { value: "relevant", labelAr: "الأكثر صلة", labelEn: "Relevant", Icon: Sparkles },
-  { value: "price_asc", labelAr: "السعر ↑", labelEn: "Price ↑", Icon: TrendingUp },
-  { value: "price_desc", labelAr: "السعر ↓", labelEn: "Price ↓", Icon: TrendingDown },
-  { value: "name", labelAr: "الاسم أ–ي", labelEn: "Name A–Z", Icon: ArrowUpDown },
+  { value: "relevant",   labelAr: "الأكثر صلة", labelEn: "Relevant",  Icon: Sparkles   },
+  { value: "price_asc",  labelAr: "السعر ↑",    labelEn: "Price ↑",   Icon: TrendingUp  },
+  { value: "price_desc", labelAr: "السعر ↓",    labelEn: "Price ↓",   Icon: TrendingDown },
+  { value: "name",       labelAr: "الاسم أ–ي",  labelEn: "Name A–Z",  Icon: ArrowUpDown },
 ];
 
-/* ─── Sort Segment ───────────────────────────────────────────── */
+// ─── SortSegment ──────────────────────────────────────────────────────────────
+
 function SortSegment({
   options,
   value,
@@ -86,7 +130,8 @@ function SortSegment({
   );
 }
 
-/* ─── Empty State ───────────────────────────────────────────── */
+// ─── ProductEmptyState ────────────────────────────────────────────────────────
+
 function ProductEmptyState({
   lang,
   hasFilters,
@@ -129,40 +174,69 @@ function ProductEmptyState({
   );
 }
 
-/* ─── Main Export ───────────────────────────────────────────── */
+// ─── Main export ──────────────────────────────────────────────────────────────
+
 export default function Products() {
   const isShopperShell = useIsShopperShell();
   if (isShopperShell) return <MobileProductsView />;
   return <ProductsDesktop />;
 }
 
-/* ─── Desktop View ─────────────────────────────────────────── */
+// ─── Desktop view ─────────────────────────────────────────────────────────────
+
 function ProductsDesktop() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { lang, t } = useLanguage();
-  const {
-    categories,
-    products,
-    isLoading,
-    isLoadingMore,
-    error,
-    loadNextPage,
-    hasNextPage,
-    totalProductCount,
-  } = useCatalog();
+
+  // `useCatalog()` is used ONLY for the category sidebar list.
+  // The category data is cached in localStorage (30-min TTL) so this is fast.
+  // We no longer use it to get products — that comes from useInfiniteProducts below.
+  const { categories, isLoading: isCatalogLoading } = useCatalog();
+
   const { searchQuery, setSearchQuery } = useSearchInput();
+
   const [sortBy, setSortBy] = useState<CatalogProductSort>("relevant");
   const [onlyInStock, setOnlyInStock] = useState(false);
   const [priceRange, setPriceRange] = useState(0);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const activeCategory = searchParams.get("category") || "all";
 
-  const maxPrice = useMemo(
-    () => getMaxPriceCeiled(products, 50),
-    [products],
-  );
+  // ── Server-side paginated product feed ────────────────────────────────────
+  //
+  // This hook replaces both `useCatalog().products` and `useCatalogProductSearch()`.
+  // It sends ONE Supabase request for 24 products and appends more on scroll.
+  // The query is debounced 300ms inside the hook — no extra debounce needed here.
+  //
+  // Sort is mapped to the ProductFilters.sortBy field which buildSupabaseQuery
+  // translates to Supabase `.order()` calls — all sorting happens in the DB.
+  const {
+    products,
+    isLoading,
+    isFetchingNext,
+    fetchNextPage,
+    hasNextPage,
+    totalCount,
+    activeQuery,
+    error,
+  } = useInfiniteProducts({
+    query:      searchQuery,
+    categoryId: activeCategory !== "all" ? activeCategory : undefined,
+    inStock:    onlyInStock ? true : undefined,
+    // Only apply price cap when the user has explicitly lowered it from the max.
+    maxPrice:   priceRange > 0 ? priceRange : undefined,
+    // sortBy is translated to Supabase .order() calls server-side.
+    sortBy:     sortBy !== "relevant" ? sortBy : undefined,
+  });
+
+  // ── Derive max price from first-page results ──────────────────────────────
+  // This gives an approximate max (from the first 24 products) for the price
+  // slider. It's not the global max of all 52K products, but it's fast and
+  // sufficient for filtering within a reasonable price range.
+  const maxPrice = useMemo(() => {
+    if (products.length === 0) return 1000;
+    return Math.ceil(Math.max(...products.map((p) => p.price)) / 50) * 50;
+  }, [products]);
 
   useEffect(() => {
     if (maxPrice > 0) {
@@ -170,12 +244,14 @@ function ProductsDesktop() {
     }
   }, [maxPrice]);
 
+  // ── Category sidebar options ──────────────────────────────────────────────
+
   const categoryOptions = useMemo(
     () => [
       {
         id: "all",
         label: lang === "ar" ? "الكل" : "All",
-        count: totalProductCount || products.length,
+        count: totalCount,
       },
       ...categories.map((c) => ({
         id: c.id,
@@ -183,30 +259,18 @@ function ProductsDesktop() {
         count: c.count,
       })),
     ],
-    [categories, products.length, totalProductCount, lang],
+    [categories, totalCount, lang],
   );
 
-  /* ✅ Destructure activeQuery and pass it to the grid */
-  const {
-    products: filteredProducts,
-    resultCount,
-    isSearching,
-    activeQuery,
-  } = useCatalogProductSearch(
-    products,
-    {
-      category: activeCategory,
-      query: searchQuery,
-      onlyInStock,
-      priceCap: priceRange,
-    },
-    sortBy,
-    lang,
-  );
+  // ── Filter state helpers ──────────────────────────────────────────────────
 
   const activeCategoryLabel = categoryOptions.find((c) => c.id === activeCategory)?.label;
   const isPriceFiltered = maxPrice > 0 && priceRange < maxPrice;
-  const hasFilters = activeCategory !== "all" || onlyInStock || isPriceFiltered || searchQuery.trim().length > 0;
+  const hasFilters =
+    activeCategory !== "all" ||
+    onlyInStock ||
+    isPriceFiltered ||
+    searchQuery.trim().length > 0;
 
   const clearAll = () => {
     setSortBy("relevant");
@@ -245,14 +309,16 @@ function ProductsDesktop() {
       : null,
   ].filter(Boolean) as { key: string; label: string; onRemove: () => void }[];
 
-  const showLoadingState = isLoading && products.length === 0;
-
   const sidebarCategoryOptions: FilterCategory[] = categoryOptions;
+
+  // Show skeleton grid only when we have NO products and the first page is loading.
+  // Once we have any products, we keep them visible even during filter changes.
+  const showInitialSkeleton = isLoading && products.length === 0;
 
   return (
     <div className="products-page min-h-screen bg-[linear-gradient(165deg,#f0fafa_0%,#f7fafb_50%,#fafafa_100%)]">
       <div className="page-section py-6 pb-14">
-        {/* ── Hero Banner ──────────────────────────────────── */}
+        {/* ── Hero Banner ────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -260,62 +326,66 @@ function ProductsDesktop() {
           className="mb-5 overflow-hidden rounded-[1.8rem] border border-slate-200/80 bg-white/92 shadow-[0_4px_28px_rgba(15,23,42,0.07)] backdrop-blur-xl"
         >
           <div className="space-y-3 p-5">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-teal-200/80 bg-teal-50 px-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-teal-700">
-                  <LayoutGrid className="h-3 w-3" />
-                  {lang === "ar" ? "كتالوج المنتجات" : "Product catalog"}
-                </span>
-                {isSearching && (
-                  <motion.span
-                    initial={{ opacity: 0, scale: 0.85 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-violet-700"
-                  >
-                    <Zap className="h-3 w-3" />
-                    {lang === "ar" ? "ترتيب ذكي" : "Smart ranking"}
-                  </motion.span>
-                )}
-              </div>
-
-              <div>
-                <h1 className="text-[1.75rem] font-black tracking-tight text-slate-950">
-                  {lang === "ar" ? "تصفح الكتالوج الكامل" : "Browse the full catalog"}
-                </h1>
-                <p className="mt-1.5 max-w-xl text-[13px] font-semibold leading-6 text-slate-500">
-                  {lang === "ar"
-                    ? "ابحث وفلتر وصنّف المنتجات للعثور على ما تحتاجه بسرعة."
-                    : "Search, filter, and sort products to find exactly what you need."}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <Link
-                  to="/categories"
-                  className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-slate-200/70 bg-white px-3.5 text-xs font-black text-slate-600 shadow-sm transition-all hover:-translate-y-px hover:shadow-md"
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-teal-200/80 bg-teal-50 px-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-teal-700">
+                <LayoutGrid className="h-3 w-3" />
+                {lang === "ar" ? "كتالوج المنتجات" : "Product catalog"}
+              </span>
+              {/* Server-side search indicator */}
+              {isFetchingNext && (
+                <motion.span
+                  initial={{ opacity: 0, scale: 0.85 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-violet-700"
                 >
-                  <LayoutGrid className="h-3.5 w-3.5 text-teal-500" />
-                  {lang === "ar" ? "خريطة الأقسام" : "Category map"}
-                </Link>
-                {searchQuery.trim() && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery("")}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 pl-3 pr-2 text-xs font-black text-teal-700 transition-colors hover:bg-teal-100"
-                  >
-                    {searchQuery.trim()}
-                    <X className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
+                  <Zap className="h-3 w-3" />
+                  {lang === "ar" ? "تحميل المزيد" : "Loading more"}
+                </motion.span>
+              )}
+            </div>
+
+            <div>
+              <h1 className="text-[1.75rem] font-black tracking-tight text-slate-950">
+                {lang === "ar" ? "تصفح الكتالوج الكامل" : "Browse the full catalog"}
+              </h1>
+              <p className="mt-1.5 max-w-xl text-[13px] font-semibold leading-6 text-slate-500">
+                {lang === "ar"
+                  ? "ابحث وفلتر وصنّف المنتجات للعثور على ما تحتاجه بسرعة."
+                  : "Search, filter, and sort products to find exactly what you need."}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                to="/categories"
+                className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-slate-200/70 bg-white px-3.5 text-xs font-black text-slate-600 shadow-sm transition-all hover:-translate-y-px hover:shadow-md"
+              >
+                <LayoutGrid className="h-3.5 w-3.5 text-teal-500" />
+                {lang === "ar" ? "خريطة الأقسام" : "Category map"}
+              </Link>
+              {searchQuery.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 pl-3 pr-2 text-xs font-black text-teal-700 transition-colors hover:bg-teal-100"
+                >
+                  {searchQuery.trim()}
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
           </div>
         </motion.div>
 
-        {/* ── Sort bar + mobile filter toggle ─────────── */}
+        {/* ── Sort bar + mobile filter toggle ──────────── */}
         <div className="catalog-controls-stick z-30 mb-6 flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-[1.8rem] border border-slate-200/80 bg-white/97 px-5 py-3.5 shadow-[0_4px_24px_rgba(15,23,42,0.08)] backdrop-blur-xl">
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-slate-200/70 bg-slate-50 px-3 text-[11px] font-black text-slate-700">
               <Tag className="h-3 w-3 text-teal-500" />
-              {lang === "ar" ? "المنتجات" : "Products"}
+              {/* Show total count when available, otherwise a loading placeholder */}
+              {totalCount > 0
+                ? (lang === "ar" ? `${totalCount.toLocaleString()} منتج` : `${totalCount.toLocaleString()} products`)
+                : (lang === "ar" ? "المنتجات" : "Products")}
             </span>
             {hasFilters && (
               <button
@@ -370,24 +440,27 @@ function ProductsDesktop() {
             maxPrice={maxPrice}
             onPriceRangeChange={([, max]) => setPriceRange(max)}
             currency={t("currency")}
-            totalResults={resultCount}
+            totalResults={totalCount}
             hasFilters={hasFilters}
             onClearAll={clearAll}
           />
 
           <div className="min-w-0 flex-1">
             {error ? (
+              /* ── Error state ── */
               <div className="rounded-[1.8rem] border border-rose-200/80 bg-rose-50/80 p-10 text-center shadow-sm">
                 <p className="text-sm font-black text-rose-700">
                   {lang === "ar"
-                    ? "حدث خطأ أثناء تحميل الكتالوج."
-                    : "An error occurred while loading the catalog."}
+                    ? "حدث خطأ أثناء تحميل المنتجات."
+                    : "An error occurred while loading products."}
                 </p>
                 <p className="mt-2 text-sm text-rose-600">{error}</p>
               </div>
-            ) : showLoadingState ? (
+            ) : showInitialSkeleton || isCatalogLoading ? (
+              /* ── Initial skeleton grid ── */
               <CatalogSkeletonGrid count={8} />
-            ) : filteredProducts.length > 0 ? (
+            ) : products.length > 0 ? (
+              /* ── Product grid with infinite scroll ── */
               <>
                 <div className="mb-4 px-1">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
@@ -395,30 +468,29 @@ function ProductsDesktop() {
                   </p>
                 </div>
 
+                {/**
+                 * ProductGrid with infinite scroll wired up.
+                 *
+                 * `onEndReached` is called by VirtuosoGrid when the last visible
+                 * item enters the viewport. It calls `fetchNextPage()` from
+                 * `useInfiniteProducts`, which sends a Supabase request for the
+                 * next 24 products and appends them to `products`.
+                 *
+                 * `isLoadingMore` shows a spinner + ghost skeletons below the
+                 * grid while the next page is in-flight.
+                 *
+                 * No "Load more" button needed — scrolling is the trigger.
+                 */}
                 <ProductGrid
-                  products={filteredProducts}
-                  isSearching={isSearching}
+                  products={products}
+                  isLoading={isLoading}
+                  isLoadingMore={isFetchingNext}
+                  onEndReached={hasNextPage ? fetchNextPage : undefined}
                   activeQuery={activeQuery}
                 />
-
-                {hasNextPage && (
-                  <div ref={loadMoreRef} className="mt-10 flex flex-col items-center gap-3">
-                    <motion.button
-                      whileHover={{ y: -2 }}
-                      whileTap={{ scale: 0.97 }}
-                      type="button"
-                      onClick={() => void loadNextPage()}
-                      disabled={isLoadingMore}
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200/80 bg-white px-8 text-sm font-black text-slate-700 shadow-sm transition-all hover:shadow-md disabled:opacity-60"
-                    >
-                      {isLoadingMore
-                        ? (lang === "ar" ? "جارٍ التحميل..." : "Loading…")
-                        : (lang === "ar" ? "عرض المزيد" : "Load more")}
-                    </motion.button>
-                  </div>
-                )}
               </>
             ) : (
+              /* ── Empty state ── */
               <ProductEmptyState lang={lang} hasFilters={hasFilters} onReset={clearAll} />
             )}
           </div>

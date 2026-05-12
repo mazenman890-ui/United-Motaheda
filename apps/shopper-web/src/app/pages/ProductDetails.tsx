@@ -15,9 +15,10 @@ import {
 } from "lucide-react";
 import { useLanguage }           from "../../contexts/LanguageContext";
 import { useCart }               from "../../contexts/CartContext";
-import { useCatalog, useFullCatalog } from "../../contexts/CatalogContext";
+import { useCatalog }            from "../../contexts/CatalogContext";
 import { ProductGrid }           from "../components/ProductGrid";
 import { useAlternativeProducts } from "../hooks/useAlternativeProducts";
+import { useProductById }        from "../hooks/useProductById";
 import { cn }                    from "../components/UI";
 import { useIsShopperShell }     from "../components/ui/use-mobile";
 import { ImageWithFallback }     from "../components/figma/ImageWithFallback";
@@ -36,18 +37,30 @@ function ProductDetailsDesktop() {
   const { id }                                          = useParams();
   const { lang, t }                                     = useLanguage();
   const { addToCart }                                   = useCart();
-  const { productsById, featuredProducts }               = useCatalog();
-  const { allProducts, allProductsById }                 = useFullCatalog();
+  const { products: catalogProducts, productsById, featuredProducts } = useCatalog();
   const [added, setAdded]                               = useState(false);
   const [activeImageZoom, setActiveImageZoom]           = useState(false);
 
-  const product = id ? (allProductsById[id] ?? productsById[id]) : undefined;
+  // ── Product resolution — two-tier, no full-catalog dependency ──────────────
+  //
+  // Tier 1 (instant): page-1 products are already in productsById (CatalogContext).
+  //   If the user navigated here from the products list, the product is cached here.
+  //
+  // Tier 2 (server fetch): if the product is not in the page-1 cache (e.g. direct
+  //   URL open, shared link, or product is on page 3+), useProductById fetches it
+  //   directly from Supabase with a single .eq("id") row lookup — ~100ms.
+  //   This hook is completely independent of CatalogContext.
+  const cachedProduct = id ? productsById[id] : undefined;
+  const { product: fetchedProduct, isLoading: isProductLoading } = useProductById(
+    cachedProduct ? undefined : id,
+  );
+  const product = cachedProduct ?? fetchedProduct;
+  const isProductFetching = !cachedProduct && isProductLoading;
 
-  // allProducts is the stable full-catalog reference — prevents worker re-init
-  // thrash when the display-layer products slice changes (e.g. due to filters on
-  // another route).
+  // Use the page-1 product pool for alternatives.
+  // If the full catalog was loaded (refreshCatalog), this is enriched automatically.
   const { alternatives: alternativeProducts } =
-    useAlternativeProducts(product, allProducts, allProductsById, 4);
+    useAlternativeProducts(product ?? undefined, catalogProducts, productsById, 4);
 
   const medicalInfo = useMemo(
     () =>
@@ -75,6 +88,20 @@ function ProductDetailsDesktop() {
     const timeout = window.setTimeout(() => setAdded(false), 1800);
     return () => window.clearTimeout(timeout);
   }, [added]);
+
+  // Show a skeleton while the Supabase row fetch is in-flight.
+  // Without this, the "not found" screen flashes for ~100ms on cold navigation.
+  if (isProductFetching) {
+    return (
+      <div className="min-h-screen bg-[#F5FDFC] px-4 py-20">
+        <div className="mx-auto max-w-3xl rounded-[2rem] border border-slate-200 bg-white p-10 shadow-sm">
+          <div className="mx-auto mb-5 h-16 w-16 animate-pulse rounded-2xl bg-slate-100" />
+          <div className="mx-auto mb-3 h-9 w-56 animate-pulse rounded-xl bg-slate-100" />
+          <div className="mx-auto h-5 w-80 animate-pulse rounded-lg bg-slate-100" />
+        </div>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
