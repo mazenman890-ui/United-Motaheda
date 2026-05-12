@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -6,7 +5,6 @@ import {
   CheckCircle2,
   LayoutGrid,
   PackageSearch,
-  TrendingUp,
   X,
 } from "lucide-react";
 import { useCatalog } from "../../contexts/CatalogContext";
@@ -17,47 +15,7 @@ import { CatalogSkeletonGrid } from "../components/CatalogPrimitives";
 import { useCatalogCategorySearch } from "../hooks/useCatalogCategorySearch";
 import { useIsShopperShell } from "../components/ui/use-mobile";
 import { MobileCategoriesView } from "./ShopperMobileViews";
-import { cn } from "../components/UI";
 
-/* ─── Stat Card ──────────────────────────────────────────────── */
-function StatCard({
-  label,
-  value,
-  Icon,
-  accent,
-}: {
-  label: string;
-  value: string | number;
-  Icon: React.ElementType;
-  accent?: boolean;
-}) {
-  return (
-    <motion.div
-      whileHover={{ y: -2 }}
-      className={cn(
-        "flex items-center gap-3 rounded-2xl border px-4 py-3 transition-all duration-200",
-        accent
-          ? "border-teal-200/80 bg-gradient-to-br from-teal-50 to-emerald-50/60 shadow-[0_6px_20px_rgba(20,184,166,0.12)]"
-          : "border-slate-200/70 bg-white/90 shadow-[0_2px_8px_rgba(15,23,42,0.05)]",
-      )}
-    >
-      <div
-        className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl",
-          accent ? "bg-teal-100/80 text-teal-600" : "bg-slate-100 text-slate-500",
-        )}
-      >
-        <Icon className="h-3.5 w-3.5" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">{label}</p>
-        <p className={cn("mt-0.5 text-lg font-black leading-none tracking-tight", accent ? "text-teal-700" : "text-slate-900")}>
-          {value}
-        </p>
-      </div>
-    </motion.div>
-  );
-}
 
 /* ─── Empty State ────────────────────────────────────────────── */
 function CategoryEmptyState({
@@ -118,10 +76,6 @@ function CategoriesDesktop() {
   const { searchQuery, setSearchQuery } = useSearchInput();
 
   const isInitialLoading = isLoading && categories.length === 0;
-  const totalAvailable = useMemo(
-    () => categories.reduce((sum, cat) => sum + cat.inStockCount, 0),
-    [categories],
-  );
 
   // Fuzzy-ranked, non-blocking via useDeferredValue inside the hook
   const filteredCategories = useCatalogCategorySearch(categories, searchQuery);
@@ -136,9 +90,7 @@ function CategoriesDesktop() {
           transition={{ duration: 0.3 }}
           className="mb-5 overflow-hidden rounded-[1.8rem] border border-slate-200/80 bg-white/92 shadow-[0_4px_28px_rgba(15,23,42,0.07)] backdrop-blur-xl"
         >
-          <div className="flex flex-col gap-5 p-5 xl:flex-row xl:items-center xl:justify-between">
-            {/* Left: title + description + actions */}
-            <div className="space-y-3">
+          <div className="space-y-3 p-5">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-teal-200/80 bg-teal-50 px-2.5 text-[10px] font-black uppercase tracking-[0.14em] text-teal-700">
                   <Boxes className="h-3 w-3" />
@@ -187,27 +139,6 @@ function CategoriesDesktop() {
                   )}
                 </AnimatePresence>
               </div>
-            </div>
-
-            {/* Right: Stats */}
-            <div className="grid grid-cols-3 gap-2 xl:w-64 xl:grid-cols-1 xl:gap-2">
-              <StatCard
-                label={lang === "ar" ? "إجمالي الأقسام" : "Total sections"}
-                value={categories.length}
-                Icon={Boxes}
-              />
-              <StatCard
-                label={lang === "ar" ? "المتاح الآن" : "Ready now"}
-                value={totalAvailable}
-                Icon={TrendingUp}
-                accent
-              />
-              <StatCard
-                label={lang === "ar" ? "نتائج البحث" : "Filtered"}
-                value={filteredCategories.length}
-                Icon={LayoutGrid}
-              />
-            </div>
           </div>
         </motion.div>
 
@@ -217,9 +148,7 @@ function CategoriesDesktop() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-slate-200/70 bg-slate-50 px-3 text-[11px] font-black text-slate-700">
                 <Boxes className="h-3 w-3 text-teal-500" />
-                {lang === "ar"
-                  ? `${filteredCategories.length} قسم`
-                  : `${filteredCategories.length} ${filteredCategories.length === 1 ? "category" : "categories"}`}
+                {lang === "ar" ? "الأقسام" : "Categories"}
               </span>
 
               <AnimatePresence>

@@ -78,9 +78,6 @@ export const CategoryCard = memo(function CategoryCard({
   const description =
     lang === "ar" ? category.descAr : category.descEn || category.descAr;
   const styles = getCategoryStyles(category);
-  const stockPct = category.count > 0
-    ? Math.round((category.inStockCount / category.count) * 100)
-    : 0;
 
   return (
     <Reveal className="h-full" direction="up">
@@ -120,9 +117,7 @@ export const CategoryCard = memo(function CategoryCard({
                 </div>
 
                 <div className="rounded-full border border-white/60 bg-white/85 px-2.5 py-1 text-[9px] font-black text-slate-600 shadow-sm backdrop-blur-md">
-                  {lang === "ar"
-                    ? `${category.inStockCount} متاح`
-                    : `${category.inStockCount} ready`}
+                  {lang === "ar" ? "متاح" : "Available"}
                 </div>
               </div>
 
@@ -176,46 +171,11 @@ export const CategoryCard = memo(function CategoryCard({
               {description}
             </p>
 
-            {/* Availability progress bar */}
-            <div className="mt-3">
-              <div className="mb-1.5 flex items-center justify-between text-[9px] font-black">
-                <span className="text-slate-400">
-                  {lang === "ar" ? "نسبة التوفر" : "Availability"}
-                </span>
-                <span style={{ color: category.theme.color }}>{stockPct}%</span>
-              </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200/80">
-                <div
-                  className="h-full rounded-full transition-all duration-800 ease-out"
-                  style={{
-                    ...styles.progressBar,
-                    width: `${stockPct}%`,
-                  }}
-                />
-              </div>
-            </div>
+            <div className="mt-3" />
 
             {/* ── Footer CTA ── */}
             <div className="mt-auto pt-3.5">
-              <div className="flex items-center justify-between gap-3 rounded-[1.1rem] border border-white/70 bg-white/65 px-3.5 py-2.5 backdrop-blur-md">
-                {/* Stats */}
-                <div className="flex items-center gap-3 text-[10px]">
-                  <div>
-                    <span className="font-black text-slate-500">
-                      {lang === "ar" ? "الإجمالي " : "Total "}
-                    </span>
-                    <span className="font-black text-slate-900">{category.count}</span>
-                  </div>
-                  <div className="h-3 w-px bg-slate-200" />
-                  <div>
-                    <span className="font-black text-slate-500">
-                      {lang === "ar" ? "المتاح " : "Ready "}
-                    </span>
-                    <span className="font-black text-slate-900">{category.inStockCount}</span>
-                  </div>
-                </div>
-
-                {/* CTA */}
+              <div className="flex items-center justify-end rounded-[1.1rem] border border-white/70 bg-white/65 px-3.5 py-2.5 backdrop-blur-md">
                 <span
                   className="category-card__cta inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[10px] font-black shadow-sm backdrop-blur-md transition-all duration-300 ease-out group-hover:-translate-y-0.5 group-hover:shadow-md"
                   style={styles.ctaShell}
@@ -279,9 +239,7 @@ export const CategoryPill = memo(function CategoryPill({ category }: { category:
           {displayName}
         </span>
         <span className="mt-1.5 text-[9.5px] font-black text-slate-400">
-          {lang === "ar"
-            ? `${category.inStockCount} متاح`
-            : `${category.inStockCount} ready`}
+          {lang === "ar" ? "متاح" : "Available"}
         </span>
       </div>
     </Link>

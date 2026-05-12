@@ -339,6 +339,38 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ─────────────────────────────────────────────────────────────
+   M10 — ACCESSIBILITY & MOTION POLISH
+   ───────────────────────────────────────────────────────────── */
+
+*:focus-visible {
+  outline: 2px solid var(--ring, #24B8B5);
+  outline-offset: 2px;
+  border-radius: var(--radius, 0.875rem);
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline-offset: 0;
+}
+
+@media (pointer: coarse) {
+  button,
+  a,
+  [role="button"],
+  input[type="submit"],
+  input[type="button"],
+  summary {
+    min-height: var(--touch-min, 2.75rem);
+    min-width: var(--touch-min, 2.75rem);
+  }
+}
+
+[dir="rtl"] .chevron-directional {
+  transform: rotate(180deg);
+}
+
+/* ─────────────────────────────────────────────────────────────
    PRINT STYLES
    ───────────────────────────────────────────────────────────── */
 

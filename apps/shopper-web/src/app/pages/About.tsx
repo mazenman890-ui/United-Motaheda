@@ -35,7 +35,6 @@ import { PageHero, SectionIntro, InfoTile, StatTile } from "../components/BrandP
 import { PromotionalVideo } from "../components/PromotionalVideo";
 import { Reveal } from "../components/Reveal";
 import { cn } from "../components/UI";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../components/ui/accordion";
 import { useIsShopperShell } from "../components/ui/use-mobile";
 import { AboutMobile } from "./AboutMobile";
 
@@ -767,6 +766,7 @@ export default function About() {
             aria-hidden="true"
           />
 
+          {/* Section Header */}
           <Reveal direction="up">
             <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
               <div className="max-w-2xl">
@@ -775,13 +775,13 @@ export default function About() {
                 </p>
                 <h3 className="mt-2 text-3xl font-black tracking-tight text-slate-950">
                   {isArabic
-                    ? "نغطي احتياجك داخل القاهرة بدعم أوضح"
-                    : "Serving Cairo with a clearer support experience"}
+                    ? `${locations.length} فروع تخدم القاهرة على مدار الساعة`
+                    : `${locations.length} branches serving Cairo around the clock`}
                 </h3>
                 <p className="mt-3 text-sm font-semibold leading-7 text-slate-600">
                   {isArabic
-                    ? "الفروع الحالية تشكل قاعدة خدمة موثوقة، مع تواصل مباشر وساعات عمل ثابتة وتجربة توصيل أكثر تنظيماً."
-                    : "Our current branches form a dependable service base with direct contact, stable working hours, and more structured delivery."}
+                    ? "كل فرع يوفر خدمة مباشرة وتوصيل منظم وساعات عمل ثابتة. اختر الأقرب لك."
+                    : "Every branch provides direct service, structured delivery, and stable working hours. Choose the nearest one."}
                 </p>
               </div>
 
@@ -806,97 +806,165 @@ export default function About() {
             </div>
           </Reveal>
 
-          <p className="mt-8 text-xs font-black uppercase tracking-[0.18em] text-slate-600">
-            {t("branches_directory")}
-          </p>
-
-          <div id="branch-details" className="mt-4 grid gap-6 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-            <Reveal direction="up">
-              <div className="overflow-hidden rounded-[1.7rem] border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
-                <div className="border-b border-slate-100 bg-slate-50/50 px-5 py-4">
-                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">
-                    {isArabic ? "دليل الفروع" : "Branch directory"}
-                  </p>
-                  <p className="mt-1 text-sm font-semibold leading-6 text-slate-600">
-                    {isArabic
-                      ? "اختر فرعاً لعرض أرقام التواصل المباشرة ومزامنة الخريطة."
-                      : "Open a branch to reveal its direct phone numbers and sync the map."}
-                  </p>
-                </div>
-                <Accordion
-                  type="single"
-                  collapsible
-                  value={selectedBranch.id}
-                  onValueChange={(value) => {
-                    if (value) {
-                      navigate(branchDetailHref(value));
-                    }
-                  }}
-                  className="px-4 py-2"
-                >
-                  {locations.map((location) => (
-                    <AccordionItem
-                      key={location.id}
-                      value={location.id}
+          {/* Branch Cards Grid */}
+          <div id="branch-details" className="mt-8">
+            <p className="mb-4 text-xs font-black uppercase tracking-[0.18em] text-slate-600">
+              {t("branches_directory")}
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {locations.map((location, index) => {
+                const isSelected = location.id === selectedBranch.id;
+                return (
+                  <Reveal key={location.id} direction="up" delay={index * 60}>
+                    <button
+                      type="button"
+                      onClick={() => navigate(branchDetailHref(location.id))}
                       className={cn(
-                        "overflow-hidden rounded-[1.3rem] border border-transparent px-1",
-                        location.id === selectedBranch.id && "border-slate-200 bg-slate-50/60",
+                        "group relative w-full overflow-hidden rounded-[1.5rem] border-2 p-5 text-start transition-all duration-200",
+                        isSelected
+                          ? "border-teal-500 bg-white shadow-[0_12px_36px_rgba(20,184,166,0.12)]"
+                          : "border-slate-200 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.04)] hover:border-teal-300 hover:shadow-[0_12px_36px_rgba(15,23,42,0.08)]",
                       )}
                     >
-                      <AccordionTrigger className="px-4 py-4 hover:no-underline">
-                        <div className="text-start">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-sm font-black text-slate-950">
-                              {isArabic ? location.fullNameAr : location.fullNameEn}
-                            </p>
-                            {location.isPrimary ? (
-                              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-600">
+                      {isSelected && (
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-teal-50/60 to-transparent" />
+                      )}
+                      <div className="relative">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.9rem] bg-slate-50 text-teal-600 transition-colors group-hover:bg-teal-50">
+                            <MapPin className="h-5 w-5" />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {location.isPrimary && (
+                              <span className="rounded-full border border-teal-200 bg-teal-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-teal-700">
                                 {isArabic ? "الرئيسي" : "Primary"}
                               </span>
-                            ) : null}
+                            )}
+                            {isSelected && (
+                              <span className="flex h-3 w-3 items-center justify-center rounded-full bg-teal-500">
+                                <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                              </span>
+                            )}
                           </div>
-                          <p className="mt-1 text-xs font-semibold leading-6 text-slate-500">
-                            {isArabic ? location.addressAr : location.addressEn}
-                          </p>
                         </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-4 pb-5">
-                        <div className="grid gap-3">
-                          <div className="rounded-[1.2rem] border border-slate-200 bg-white px-4 py-3">
-                            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">
-                              {isArabic ? "ساعات العمل" : "Working Hours"}
-                            </p>
-                            <p className="mt-1 text-sm font-semibold leading-6 text-slate-700">
-                              {isArabic ? location.hoursAr : location.hoursEn}
-                            </p>
+
+                        <h4 className="mt-3 text-sm font-black text-slate-950">
+                          {isArabic ? location.nameAr : location.nameEn}
+                        </h4>
+                        <p className="mt-1 text-[11px] font-bold text-teal-700">
+                          {isArabic ? location.area : location.area}
+                        </p>
+                        <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                          {isArabic ? location.addressAr : location.addressEn}
+                        </p>
+
+                        <div className="mt-3 flex items-center gap-3 border-t border-slate-100 pt-3">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500">
+                            <Clock className="h-3 w-3" />
+                            <span>24/7</span>
                           </div>
-                          <div className="flex flex-wrap gap-2">
-                            {location.phones.map((phone) => (
-                              <a
-                                key={phone}
-                                href={`tel:${phone}`}
-                                dir="ltr"
-                                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 transition-colors hover:bg-slate-50"
-                              >
-                                <Phone className="h-3.5 w-3.5" />
-                                {phone}
-                              </a>
-                            ))}
-                          </div>
-                          <a
-                            href={location.mapsDirectionsUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs font-black text-teal-700 underline-offset-2 hover:text-teal-600 hover:underline"
-                          >
-                            {isArabic ? "افتح في خرائط جوجل" : "Open in Google Maps"}
-                            <ArrowUpRight className="h-3.5 w-3.5 shrink-0" />
-                          </a>
+                          {location.deliveryEnabled && (
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-teal-600">
+                              <Truck className="h-3 w-3" />
+                              <span>{isArabic ? "توصيل" : "Delivery"}</span>
+                            </div>
+                          )}
                         </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
-                </Accordion>
+                      </div>
+                    </button>
+                  </Reveal>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Selected Branch Details + Map */}
+          <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+            <Reveal direction="up">
+              <div className="overflow-hidden rounded-[1.7rem] border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+                <div className="border-b border-slate-100 bg-gradient-to-r from-teal-50/60 to-white px-6 py-5">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-100 text-teal-700">
+                      <Store className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.16em] text-teal-700">
+                        {isArabic ? "تفاصيل الفرع" : "Branch Details"}
+                      </p>
+                      <p className="text-base font-black text-slate-950">
+                        {isArabic ? selectedBranch.fullNameAr : selectedBranch.fullNameEn}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4 p-5">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50/80 px-4 py-4">
+                      <div className="mb-2 flex items-center gap-2 text-slate-600">
+                        <MapPin className="h-4 w-4" />
+                        <span className="text-[11px] font-black uppercase tracking-[0.16em]">
+                          {isArabic ? "العنوان" : "Address"}
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold leading-7 text-slate-700">
+                        {isArabic ? selectedBranch.addressAr : selectedBranch.addressEn}
+                      </p>
+                    </div>
+                    <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50/80 px-4 py-4">
+                      <div className="mb-2 flex items-center gap-2 text-slate-600">
+                        <Clock className="h-4 w-4" />
+                        <span className="text-[11px] font-black uppercase tracking-[0.16em]">
+                          {isArabic ? "ساعات العمل" : "Working Hours"}
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold leading-7 text-slate-700">
+                        {isArabic ? selectedBranch.hoursAr : selectedBranch.hoursEn}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">
+                      {isArabic ? "أرقام التواصل" : "Contact Numbers"}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedBranch.phones.map((phone) => (
+                        <a
+                          key={phone}
+                          href={`tel:${phone}`}
+                          dir="ltr"
+                          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-700 transition-all hover:border-teal-200 hover:bg-teal-50/50"
+                        >
+                          <Phone className="h-4 w-4 text-teal-600" />
+                          {phone}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4">
+                    {selectedDirectionsUrl && (
+                      <a
+                        href={selectedDirectionsUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-black text-white transition-colors hover:bg-teal-700"
+                      >
+                        <MapPin className="h-4 w-4" />
+                        {isArabic ? "افتح في خرائط جوجل" : "Open in Google Maps"}
+                        <ArrowUpRight className="h-3.5 w-3.5 shrink-0" />
+                      </a>
+                    )}
+                    <Link
+                      to={`/contact?branch=${selectedBranch.id}#branch-details`}
+                      className="inline-flex items-center gap-1.5 text-sm font-black text-slate-600 transition-colors hover:text-teal-700"
+                    >
+                      {isArabic ? "عرض تواصل الفرع" : "View branch contacts"}
+                      <ArrowUpRight className="h-3.5 w-3.5 shrink-0" />
+                    </Link>
+                  </div>
+                </div>
               </div>
             </Reveal>
 
@@ -909,9 +977,6 @@ export default function About() {
                   <p className="mt-1 text-sm font-black text-slate-900">
                     {isArabic ? selectedBranch.fullNameAr : selectedBranch.fullNameEn}
                   </p>
-                  <p className="mt-2 text-xs font-semibold leading-6 text-slate-600">
-                    {isArabic ? selectedBranch.addressAr : selectedBranch.addressEn}
-                  </p>
                 </div>
                 <div className="p-5">
                   <BranchMap
@@ -920,66 +985,6 @@ export default function About() {
                     isArabic={isArabic}
                     onSelectBranch={(branchId) => navigate(branchDetailHref(branchId))}
                   />
-
-                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 px-4 py-4">
-                      <div className="mb-2 flex items-center gap-2 text-slate-600">
-                        <MapPin className="h-4 w-4" />
-                        <span className="text-[11px] font-black uppercase tracking-[0.16em]">
-                          {isArabic ? "العنوان" : "Address"}
-                        </span>
-                      </div>
-                      <p className="text-sm font-semibold leading-7 text-slate-600">
-                        {isArabic ? selectedBranch.addressAr : selectedBranch.addressEn}
-                      </p>
-                    </div>
-                    <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 px-4 py-4">
-                      <div className="mb-2 flex items-center gap-2 text-slate-600">
-                        <Clock className="h-4 w-4" />
-                        <span className="text-[11px] font-black uppercase tracking-[0.16em]">
-                          {isArabic ? "ساعات العمل" : "Working Hours"}
-                        </span>
-                      </div>
-                      <p className="text-sm font-semibold leading-7 text-slate-600">
-                        {isArabic ? selectedBranch.hoursAr : selectedBranch.hoursEn}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {selectedBranch.phones.map((phone) => (
-                      <a
-                        key={phone}
-                        href={`tel:${phone}`}
-                        dir="ltr"
-                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 transition-colors hover:bg-slate-50"
-                      >
-                        <Phone className="h-3.5 w-3.5" />
-                        {phone}
-                      </a>
-                    ))}
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap items-center gap-3">
-                    {selectedDirectionsUrl ? (
-                      <a
-                        href={selectedDirectionsUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 text-sm font-black text-teal-700 underline-offset-2 hover:text-teal-600 hover:underline"
-                      >
-                        {isArabic ? "افتح في خرائط جوجل" : "Open in Google Maps"}
-                        <ArrowUpRight className="h-3.5 w-3.5 shrink-0" />
-                      </a>
-                    ) : null}
-                    <Link
-                      to={`/contact?branch=${selectedBranch.id}#branch-details`}
-                      className="inline-flex items-center gap-1.5 text-sm font-black text-slate-700 transition-colors hover:text-slate-950"
-                    >
-                      {isArabic ? "عرض تواصل الفرع" : "View branch contacts"}
-                      <ArrowUpRight className="h-3.5 w-3.5 shrink-0" />
-                    </Link>
-                  </div>
                 </div>
               </div>
             </Reveal>

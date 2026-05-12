@@ -434,7 +434,7 @@ export function MobileProductsView() {
           activeFilters={
             <>
               <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-700">
-                {resultCount} {lang === "ar" ? "نتيجة" : "results"}
+                {lang === "ar" ? "المنتجات" : "Products"}
               </span>
               <Link
                 to="/categories"
@@ -945,29 +945,14 @@ export function MobileCategoryDetailsView() {
                 {lang === "ar" ? "كل الأقسام" : "All categories"}
               </button>
               <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-700">
-                {category.inStockCount} {lang === "ar" ? "متاح الآن" : "ready now"}
-              </span>
-              <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-700">
-                {resultCount} {lang === "ar" ? "نتيجة" : "results"}
+                {lang === "ar" ? "متاح" : "Available"}
               </span>
             </>
           }
         />
         <ShopperSurface className="overflow-hidden p-3">
-          <div className="grid grid-cols-[repeat(2,minmax(0,1fr))_4.9rem] gap-3">
-            <div className="rounded-[1.1rem] border border-slate-200 bg-slate-50 px-3 py-3">
-              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
-                {lang === "ar" ? "إجمالي القسم" : "Section items"}
-              </p>
-              <p className="mt-1.5 text-lg font-black text-slate-950">{category.count}</p>
-            </div>
-            <div className="rounded-[1.1rem] border border-slate-200 bg-slate-50 px-3 py-3">
-              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
-                {lang === "ar" ? "المتاح الآن" : "Ready now"}
-              </p>
-              <p className="mt-1.5 text-lg font-black text-slate-950">{category.inStockCount}</p>
-            </div>
-            <div className="overflow-hidden rounded-[1.15rem] border border-slate-200 bg-slate-50">
+          <div className="flex gap-3">
+            <div className="flex-1 overflow-hidden rounded-[1.15rem] border border-slate-200 bg-slate-50">
               <ImageWithFallback
                 src={category.imageUrl}
                 alt={displayName}
