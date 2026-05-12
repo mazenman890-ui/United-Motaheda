@@ -21,7 +21,7 @@ import { useIsShopperShell } from "../components/ui/use-mobile";
 import { useCatalog } from "../../contexts/CatalogContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useSearch } from "../../contexts/SearchContext";
-import { images, locations } from "../data";
+import { locations } from "../data";
 import { useCatalogCategorySearch } from "../hooks/useCatalogCategorySearch";
 import { getLocalizedCategoryName, getLocalizedProductName } from "../localization";
 import {
@@ -129,33 +129,6 @@ function HomeDesktop() {
         : "Currently unavailable"
     : null;
 
-  const quickActions = [
-    {
-      titleAr: "كل المنتجات",
-      titleEn: "All products",
-      path: "/products",
-      labelAr: "بحث وفلاتر حديثة",
-      labelEn: "Modern search + filters",
-      Icon: ShoppingBag,
-    },
-    {
-      titleAr: "خريطة الأقسام",
-      titleEn: "Category map",
-      path: "/categories",
-      labelAr: "الأقسام الرئيسية",
-      labelEn: "Main categories",
-      Icon: LayoutGrid,
-    },
-    {
-      titleAr: "العناصر الجاهزة الآن",
-      titleEn: "Ready-now picks",
-      path: "/offers",
-      labelAr: "العروض الحالية",
-      labelEn: "Current offers",
-      Icon: Sparkles,
-    },
-  ];
-
   const shoppingSteps = [
     {
       eyebrowAr: "الخطوة 1",
@@ -219,21 +192,6 @@ function HomeDesktop() {
     },
   ];
 
-  const featuredSignals = [
-    {
-      label: lang === "ar" ? "منتجات معروضة" : "Visible picks",
-      value: heroProducts.length.toString(),
-    },
-    {
-      label: lang === "ar" ? "التوصيل" : "Delivery",
-      value: deliveryWindowLabel,
-    },
-    {
-      label: lang === "ar" ? "الخدمة" : "Service",
-      value: "24/7",
-    },
-  ];
-
   const handleHeroSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextQuery = searchQuery.trim();
@@ -271,261 +229,208 @@ function HomeDesktop() {
         </div>
 
         <div className="page-section relative z-10 py-5 sm:py-8 xl:py-10">
-          <div className="overflow-hidden rounded-[2.3rem] border border-slate-200 bg-white shadow-[0_30px_90px_rgba(15,23,42,0.08)]">
-            <div className="grid xl:grid-cols-[minmax(0,1.02fr)_minmax(360px,0.98fr)]">
-              <Reveal direction="up">
-                <div
+          <Reveal direction="up">
+            <div
+              className={cn(
+                "overflow-hidden rounded-[2.3rem] border border-slate-200 bg-white p-6 shadow-[0_30px_90px_rgba(15,23,42,0.08)] sm:p-8 lg:p-10",
+                isRtl ? "text-right" : "text-left",
+              )}
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-slate-600">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {isRtl ? "الرئيسية" : "Home"}
+                </div>
+                <div className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-2 text-[11px] font-black text-slate-600 sm:inline-flex">
+                  <Clock3 className="h-3.5 w-3.5 text-slate-600" />
+                  {liveUpdatedLabel}
+                </div>
+              </div>
+
+              <div className="mt-6 max-w-3xl">
+                <h1
                   className={cn(
-                    "relative p-6 sm:p-8 lg:p-10",
-                    isRtl ? "text-right" : "text-left",
+                    "text-[2rem] font-black text-slate-950 sm:text-[2.8rem] lg:text-[3.8rem]",
+                    isRtl
+                      ? "leading-[1.3] tracking-normal sm:leading-[1.26] lg:leading-[1.18]"
+                      : "leading-[1.02] tracking-tight",
                   )}
                 >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-slate-600">
-                      <Sparkles className="h-3.5 w-3.5" />
-                      {isRtl ? "الرئيسية" : "Home"}
-                    </div>
-                    <div className="hidden items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3.5 py-2 text-[11px] font-black text-slate-600 sm:inline-flex">
-                      <Clock3 className="h-3.5 w-3.5 text-slate-600" />
-                      {liveUpdatedLabel}
-                    </div>
-                  </div>
+                  {isRtl
+                    ? "ابحث عن الدواء المناسب ثم ابدأ الطلب"
+                    : "Search the right item, then place the order"}
+                </h1>
+                <p className="mt-4 max-w-2xl text-sm font-semibold leading-7 text-slate-500 sm:text-base">
+                  {isRtl
+                    ? "ابدأ من البحث الذكي بالإنجليزية أو العربية، ثم انتقل مباشرة إلى المنتج أو القسم الأنسب بدون تشتيت."
+                    : "Start with smart bilingual search, then move directly into the right product or category without extra friction."}
+                </p>
+              </div>
 
-                  <div className="mt-6 max-w-3xl">
-                    <h1
-                      className={cn(
-                        "text-[2rem] font-black text-slate-950 sm:text-[2.8rem] lg:text-[3.8rem]",
-                        isRtl
-                          ? "leading-[1.3] tracking-normal sm:leading-[1.26] lg:leading-[1.18]"
-                          : "leading-[1.02] tracking-tight",
-                      )}
-                    >
-                      {isRtl
-                        ? "ابحث عن الدواء المناسب ثم ابدأ الطلب"
-                        : "Search the right item, then place the order"}
-                    </h1>
-                    <p className="mt-4 max-w-2xl text-sm font-semibold leading-7 text-slate-500 sm:text-base">
-                      {isRtl
-                        ? "ابدأ من البحث الذكي بالإنجليزية أو العربية، ثم انتقل مباشرة إلى المنتج أو القسم الأنسب بدون تشتيت."
-                        : "Start with smart bilingual search, then move directly into the right product or category without extra friction."}
-                    </p>
-                  </div>
-
-                  {error && (
-                    <div className="mt-5 rounded-[1.45rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-7 text-amber-900">
-                      {isRtl
-                        ? "يوجد تعذر مؤقت في تحديث الكتالوج المباشر، لكننا نعرض آخر بيانات متاحة حاليا."
-                        : "There is a temporary issue refreshing the live catalog, but the latest available data is still being shown."}
-                    </div>
-                  )}
-
-                  <form className="mt-6 max-w-3xl" onSubmit={handleHeroSearchSubmit}>
-                    <SearchBar
-                      value={searchQuery}
-                      onChange={(value) => {
-                        setSearchQuery(value);
-                        commitQuery(value);
-                      }}
-                      onClear={() => {
-                        setSearchQuery("");
-                        commitQuery("");
-                      }}
-                      placeholder={
-                        isRtl
-                          ? "ابحث بالاسم أو الكود أو القسم"
-                          : "Search by name, code, or category"
-                      }
-                      lang={lang}
-                      shellClassName="rounded-[1.7rem] border-slate-200 bg-white shadow-[0_20px_42px_rgba(15,23,42,0.08)]"
-                      suggestions={
-                        heroProductSuggestions.length > 0 || heroCategorySuggestions.length > 0 ? (
-                          <div className="absolute inset-x-0 top-[calc(100%+0.75rem)] z-20 rounded-[1.45rem] border border-slate-200 bg-white p-3 shadow-[0_26px_60px_rgba(15,23,42,0.12)]">
-                            {heroProductSuggestions.length > 0 ? (
-                              <div>
-                                <p className="px-2 pb-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                                  {isRtl ? "منتجات" : "Products"}
-                                </p>
-                                <div className="space-y-1.5">
-                                  {heroProductSuggestions.map((product) => (
-                                    <Link
-                                      key={product.id}
-                                      to={`/products/${product.id}`}
-                                      className="flex items-center justify-between gap-3 rounded-[1rem] px-3 py-2.5 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/20"
-                                    >
-                                      <div className="min-w-0">
-                                        <p className="truncate text-sm font-black text-slate-900">
-                                          {getLocalizedProductName(product, lang)}
-                                        </p>
-                                        <p className="mt-0.5 text-xs font-semibold text-slate-500">
-                                          {lang === "ar" ? product.categoryName : product.categoryNameEn}
-                                        </p>
-                                      </div>
-                                      <span className="shrink-0 text-xs font-black text-slate-400">
-                                        {product.price.toFixed(2)} {isRtl ? "ج.م" : "EGP"}
-                                      </span>
-                                    </Link>
-                                  ))}
-                                </div>
-                              </div>
-                            ) : null}
-                            {heroCategorySuggestions.length > 0 ? (
-                              <div className={cn(heroProductSuggestions.length > 0 && "mt-3 border-t border-slate-100 pt-3")}>
-                                <p className="px-2 pb-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                                  {isRtl ? "أقسام" : "Categories"}
-                                </p>
-                                <div className="space-y-1.5">
-                                  {heroCategorySuggestions.map((category) => (
-                                    <Link
-                                      key={category.id}
-                                      to={`/products?category=${encodeURIComponent(category.id)}${searchQuery.trim() ? `&search=${encodeURIComponent(searchQuery.trim())}` : ""}`}
-                                      className="flex items-center justify-between gap-3 rounded-[1rem] px-3 py-2.5 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/20"
-                                    >
-                                      <div>
-                                        <p className="text-sm font-black text-slate-900">
-                                          {isRtl ? category.name : category.nameEn}
-                                        </p>
-                                        <p className="mt-0.5 text-xs font-semibold text-slate-500">
-                                          {isRtl ? `${category.inStockCount} منتج متاح` : `${category.inStockCount} items ready`}
-                                        </p>
-                                      </div>
-                                      <ArrowRight className={cn("h-4 w-4 text-slate-400", isRtl && "rotate-180")} />
-                                    </Link>
-                                  ))}
-                                </div>
-                              </div>
-                            ) : null}
-                          </div>
-                        ) : null
-                      }
-                    />
-                  </form>
-
-                  <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                    <Link
-                      to={searchQuery.trim() ? `/products?search=${encodeURIComponent(searchQuery.trim())}` : "/products"}
-                      className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--primary)] px-6 text-sm font-black text-white shadow-[0_18px_40px_rgba(20,184,166,0.28)] transition-all hover:bg-[var(--primary-strong)]"
-                    >
-                      {isRtl ? "تصفح المنتجات" : "Browse products"}
-                      <ArrowRight
-                        className={cn("h-4 w-4", isRtl && "rotate-180")}
-                      />
-                    </Link>
-                    <Link
-                      to="/offers"
-                      className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-6 text-sm font-black text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
-                    >
-                      {isRtl ? "العروض الحالية" : "View offers"}
-                    </Link>
-                    <Link
-                      to="/categories"
-                      className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 text-sm font-black text-slate-700 transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
-                    >
-                      {isRtl ? "خريطة الأقسام" : "Browse categories"}
-                    </Link>
-                  </div>
-
-                  <div className="mt-8 hidden gap-3 xl:grid xl:grid-cols-3">
-                    {quickActions.map(
-                      ({ titleAr, titleEn, labelAr, labelEn, Icon, path }) => (
-                        <Link
-                          key={path}
-                          to={path}
-                          className="group rounded-[1.55rem] border border-slate-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-200 hover:shadow-[0_16px_36px_rgba(15,23,42,0.08)]"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-50 text-slate-600 ring-1 ring-teal-100">
-                              <Icon className="h-5 w-5" />
-                            </div>
-                            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
-                              {isRtl ? labelAr : labelEn}
-                            </span>
-                          </div>
-                          <h2 className="mt-4 text-base font-black text-slate-950">
-                            {isRtl ? titleAr : titleEn}
-                          </h2>
-                          <div className="mt-4 inline-flex items-center gap-2 text-sm font-black text-slate-600 transition-all group-hover:gap-3">
-                            {isRtl ? "افتح الآن" : "Open now"}
-                            <ArrowRight
-                              className={cn("h-4 w-4", isRtl && "rotate-180")}
-                            />
-                          </div>
-                        </Link>
-                      ),
-                    )}
-                  </div>
+              {error && (
+                <div className="mt-5 rounded-[1.45rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-7 text-amber-900">
+                  {isRtl
+                    ? "يوجد تعذر مؤقت في تحديث الكتالوج المباشر، لكننا نعرض آخر بيانات متاحة حاليا."
+                    : "There is a temporary issue refreshing the live catalog, but the latest available data is still being shown."}
                 </div>
-              </Reveal>
+              )}
 
-              <Reveal direction="up" delay={90}>
-                <div className="relative border-t border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f2fbfa_100%)] p-4 text-slate-900 sm:p-6 xl:border-s xl:border-t-0 xl:p-8">
-                  <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-0 overflow-hidden"
-                  >
-                    <div className="absolute -end-16 -top-16 h-48 w-48 rounded-full bg-teal-400/12 blur-3xl" />
-                    <div className="absolute -start-12 bottom-0 h-40 w-40 rounded-full bg-cyan-400/10 blur-3xl" />
-                  </div>
-
-                  <div className="relative z-10">
-                    <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
-                      <div className="relative">
-                        <img
-                          src={images.homeWide}
-                          alt={
-                            isRtl
-                              ? "لقطة من داخل الفرع الرئيسي"
-                              : "View inside the primary branch"
-                          }
-                          className="h-[18rem] w-full object-cover object-center sm:h-[22rem]"
-                          loading="eager"
-                          decoding="async"
-                        />
-                        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.06)_0%,rgba(15,23,42,0.24)_100%)]" />
-                        <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-4 sm:p-5">
-                          <span className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/88 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-slate-600 backdrop-blur-sm">
-                            <MapPin className="h-3.5 w-3.5" />
-                            {isRtl ? "الفرع الرئيسي" : "Primary branch"}
-                          </span>
-                          <span className="hidden items-center gap-2 rounded-full border border-white/75 bg-white/86 px-3 py-1.5 text-[10px] font-black text-slate-700 sm:inline-flex">
-                            <Clock3 className="h-3.5 w-3.5 text-slate-600" />
-                            {liveUpdatedLabel}
-                          </span>
-                        </div>
-                        <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
-                          <div className="rounded-[1.5rem] border border-white/80 bg-white/88 p-4 backdrop-blur-md">
-                            <p className="text-lg font-black text-slate-950">
-                              {isRtl
-                                ? primaryLocation.fullNameAr
-                                : primaryLocation.fullNameEn}
+              <form className="mt-6 max-w-3xl" onSubmit={handleHeroSearchSubmit}>
+                <SearchBar
+                  value={searchQuery}
+                  onChange={(value) => {
+                    setSearchQuery(value);
+                    commitQuery(value);
+                  }}
+                  onClear={() => {
+                    setSearchQuery("");
+                    commitQuery("");
+                  }}
+                  placeholder={
+                    isRtl
+                      ? "ابحث بالاسم أو الكود أو القسم"
+                      : "Search by name, code, or category"
+                  }
+                  lang={lang}
+                  shellClassName="rounded-[1.7rem] border-slate-200 bg-white shadow-[0_20px_42px_rgba(15,23,42,0.08)]"
+                  suggestions={
+                    heroProductSuggestions.length > 0 || heroCategorySuggestions.length > 0 ? (
+                      <div className="absolute inset-x-0 top-[calc(100%+0.75rem)] z-20 rounded-[1.45rem] border border-slate-200 bg-white p-3 shadow-[0_26px_60px_rgba(15,23,42,0.12)]">
+                        {heroProductSuggestions.length > 0 ? (
+                          <div>
+                            <p className="px-2 pb-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                              {isRtl ? "منتجات" : "Products"}
                             </p>
-                            <p className="mt-1 hidden text-sm font-semibold text-slate-600 sm:block">
-                              {isRtl
-                                ? primaryLocation.addressAr
-                                : primaryLocation.addressEn}
-                            </p>
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-700">
-                                <Clock3 className="h-3.5 w-3.5 text-slate-600" />
-                                {isRtl
-                                  ? primaryLocation.hoursAr
-                                  : primaryLocation.hoursEn}
-                              </span>
-                              <span className="hidden items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-700 sm:inline-flex">
-                                <MapPin className="h-3.5 w-3.5 text-slate-600" />
-                                {isRtl
-                                  ? "تغطية داخل القاهرة"
-                                  : "Cairo coverage"}
-                              </span>
+                            <div className="space-y-1.5">
+                              {heroProductSuggestions.map((product) => (
+                                <Link
+                                  key={product.id}
+                                  to={`/products/${product.id}`}
+                                  className="flex items-center justify-between gap-3 rounded-[1rem] px-3 py-2.5 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/20"
+                                >
+                                  <div className="min-w-0">
+                                    <p className="truncate text-sm font-black text-slate-900">
+                                      {getLocalizedProductName(product, lang)}
+                                    </p>
+                                    <p className="mt-0.5 text-xs font-semibold text-slate-500">
+                                      {lang === "ar" ? product.categoryName : product.categoryNameEn}
+                                    </p>
+                                  </div>
+                                  <span className="shrink-0 text-xs font-black text-slate-400">
+                                    {product.price.toFixed(2)} {isRtl ? "ج.م" : "EGP"}
+                                  </span>
+                                </Link>
+                              ))}
                             </div>
                           </div>
-                        </div>
+                        ) : null}
+                        {heroCategorySuggestions.length > 0 ? (
+                          <div className={cn(heroProductSuggestions.length > 0 && "mt-3 border-t border-slate-100 pt-3")}>
+                            <p className="px-2 pb-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                              {isRtl ? "أقسام" : "Categories"}
+                            </p>
+                            <div className="space-y-1.5">
+                              {heroCategorySuggestions.map((category) => (
+                                <Link
+                                  key={category.id}
+                                  to={`/products?category=${encodeURIComponent(category.id)}${searchQuery.trim() ? `&search=${encodeURIComponent(searchQuery.trim())}` : ""}`}
+                                  className="flex items-center justify-between gap-3 rounded-[1rem] px-3 py-2.5 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/20"
+                                >
+                                  <div>
+                                    <p className="text-sm font-black text-slate-900">
+                                      {isRtl ? category.name : category.nameEn}
+                                    </p>
+                                    <p className="mt-0.5 text-xs font-semibold text-slate-500">
+                                      {isRtl ? "قسم" : "Category"}
+                                    </p>
+                                  </div>
+                                  <ArrowRight className={cn("h-4 w-4 text-slate-400", isRtl && "rotate-180")} />
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
+                    ) : null
+                  }
+                />
+              </form>
+
+              <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <Link
+                  to="/products"
+                  className="group relative overflow-hidden rounded-[1.6rem] border border-teal-200/80 bg-gradient-to-br from-teal-50 via-teal-50/80 to-cyan-50 p-5 shadow-sm transition-all hover:-translate-y-1 hover:shadow-[0_20px_48px_rgba(20,184,166,0.18)] sm:p-6"
+                >
+                  <div className="absolute -end-6 -top-6 h-28 w-28 rounded-full bg-teal-200/30 blur-2xl transition-transform group-hover:scale-125" aria-hidden />
+                  <div className="relative z-10">
+                    <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-500 text-white shadow-[0_8px_20px_rgba(20,184,166,0.3)]">
+                      <ShoppingBag className="h-5 w-5" />
+                    </div>
+                    <h2 className="mt-4 text-lg font-black text-slate-950">
+                      {isRtl ? "تصفح المنتجات" : "Browse Products"}
+                    </h2>
+                    <p className="mt-1.5 text-sm font-semibold leading-6 text-slate-500">
+                      {isRtl
+                        ? "بحث متقدم وفلاتر ذكية لكل المنتجات"
+                        : "Advanced search and smart filters for every product"}
+                    </p>
+                    <div className="mt-4 inline-flex items-center gap-2 text-sm font-black text-teal-700 transition-all group-hover:gap-3">
+                      {isRtl ? "ابدأ الآن" : "Get started"}
+                      <ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />
                     </div>
                   </div>
-                </div>
-              </Reveal>
+                </Link>
+
+                <Link
+                  to="/offers"
+                  className="group relative overflow-hidden rounded-[1.6rem] border border-rose-200/80 bg-gradient-to-br from-rose-50 via-rose-50/80 to-orange-50 p-5 shadow-sm transition-all hover:-translate-y-1 hover:shadow-[0_20px_48px_rgba(244,63,94,0.15)] sm:p-6"
+                >
+                  <div className="absolute -end-6 -top-6 h-28 w-28 rounded-full bg-rose-200/30 blur-2xl transition-transform group-hover:scale-125" aria-hidden />
+                  <div className="relative z-10">
+                    <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500 text-white shadow-[0_8px_20px_rgba(244,63,94,0.3)]">
+                      <Sparkles className="h-5 w-5" />
+                    </div>
+                    <h2 className="mt-4 text-lg font-black text-slate-950">
+                      {isRtl ? "العروض الحالية" : "Current Offers"}
+                    </h2>
+                    <p className="mt-1.5 text-sm font-semibold leading-6 text-slate-500">
+                      {isRtl
+                        ? "منتجات مميزة بأسعار تنافسية"
+                        : "Featured products at competitive prices"}
+                    </p>
+                    <div className="mt-4 inline-flex items-center gap-2 text-sm font-black text-rose-700 transition-all group-hover:gap-3">
+                      {isRtl ? "شاهد العروض" : "View offers"}
+                      <ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />
+                    </div>
+                  </div>
+                </Link>
+
+                <Link
+                  to="/categories"
+                  className="group relative overflow-hidden rounded-[1.6rem] border border-emerald-200/80 bg-gradient-to-br from-emerald-50 via-emerald-50/80 to-green-50 p-5 shadow-sm transition-all hover:-translate-y-1 hover:shadow-[0_20px_48px_rgba(16,185,129,0.18)] sm:col-span-2 sm:p-6 lg:col-span-1"
+                >
+                  <div className="absolute -end-6 -top-6 h-28 w-28 rounded-full bg-emerald-200/30 blur-2xl transition-transform group-hover:scale-125" aria-hidden />
+                  <div className="relative z-10">
+                    <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-[0_8px_20px_rgba(16,185,129,0.3)]">
+                      <Truck className="h-5 w-5" />
+                    </div>
+                    <h2 className="mt-4 text-lg font-black text-slate-950">
+                      {isRtl ? "توصيل سريع" : "Fast Delivery"}
+                    </h2>
+                    <p className="mt-1.5 text-sm font-semibold leading-6 text-slate-500">
+                      {isRtl
+                        ? `توصيل خلال ${deliveryWindowLabel} داخل القاهرة`
+                        : `Delivery within ${deliveryWindowLabel} across Cairo`}
+                    </p>
+                    <div className="mt-4 inline-flex items-center gap-2 text-sm font-black text-emerald-700 transition-all group-hover:gap-3">
+                      {isRtl ? "تصفح الأقسام" : "Browse categories"}
+                      <ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />
+                    </div>
+                  </div>
+                </Link>
+              </div>
             </div>
-          </div>
+          </Reveal>
         </div>
       </section>
 
@@ -840,14 +745,6 @@ function HomeDesktop() {
                       </div>
 
                       <div className="mt-4 flex flex-wrap gap-2">
-                        {featuredSignals.map((signal) => (
-                          <span
-                            key={signal.label}
-                            className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-700"
-                          >
-                            {signal.label}: {signal.value}
-                          </span>
-                        ))}
                         {spotlightCategory && (
                           <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black text-slate-700">
                             {isRtl
