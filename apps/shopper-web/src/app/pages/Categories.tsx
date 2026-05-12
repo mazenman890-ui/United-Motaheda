@@ -31,7 +31,7 @@ function CategoryEmptyState({
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-[1.8rem] border border-slate-200/80 bg-white/92 p-12 text-center shadow-sm backdrop-blur-xl"
+      className="rounded-2xl border border-slate-100 bg-white p-12 text-center shadow-sm"
     >
       <div className="mx-auto flex max-w-sm flex-col items-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
