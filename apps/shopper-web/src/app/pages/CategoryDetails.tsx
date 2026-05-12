@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+﻿import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -27,13 +27,13 @@ import { MobileCategoryDetailsView } from "./ShopperMobileViews";
 import { FilterSidebar } from "../components/FilterSidebar";
 
 const SORT_OPTIONS = [
-  { value: "relevant", labelAr: "الأكثر صلة", labelEn: "Relevant", Icon: Sparkles },
-  { value: "price_asc", labelAr: "السعر ↑", labelEn: "Price ↑", Icon: TrendingUp },
-  { value: "price_desc", labelAr: "السعر ↓", labelEn: "Price ↓", Icon: TrendingDown },
-  { value: "name", labelAr: "الاسم", labelEn: "Name A–Z", Icon: ArrowUpDown },
+  { value: "relevant", labelAr: "Ø§Ù„Ø£ÙƒØ«Ø± ØµÙ„Ø©", labelEn: "Relevant", Icon: Sparkles },
+  { value: "price_asc", labelAr: "Ø§Ù„Ø³Ø¹Ø± â†‘", labelEn: "Price â†‘", Icon: TrendingUp },
+  { value: "price_desc", labelAr: "Ø§Ù„Ø³Ø¹Ø± â†“", labelEn: "Price â†“", Icon: TrendingDown },
+  { value: "name", labelAr: "Ø§Ù„Ø§Ø³Ù…", labelEn: "Name Aâ€“Z", Icon: ArrowUpDown },
 ] as const;
 
-/* ─── Inline State ───────────────────────────────────────────── */
+/* â”€â”€â”€ Inline State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function InlineState({
   title,
   description,
@@ -47,7 +47,7 @@ function InlineState({
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-[1.8rem] border border-slate-200/80 bg-white/92 p-12 text-center shadow-sm backdrop-blur-xl"
+      className="rounded-2xl border border-slate-100 bg-white p-12 text-center shadow-sm"
     >
       <div className="mx-auto flex max-w-sm flex-col items-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
@@ -61,7 +61,7 @@ function InlineState({
   );
 }
 
-/* ─── Sort Segment ───────────────────────────────────────────── */
+/* â”€â”€â”€ Sort Segment â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function SortSegment({
   options,
   value,
@@ -100,14 +100,14 @@ function SortSegment({
   );
 }
 
-/* ─── Main Export ──────────────────────────────────────────── */
+/* â”€â”€â”€ Main Export â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export default function CategoryDetails() {
   const isShopperShell = useIsShopperShell();
   if (isShopperShell) return <MobileCategoryDetailsView />;
   return <CategoryDetailsDesktop />;
 }
 
-/* ─── Desktop View ─────────────────────────────────────────── */
+/* â”€â”€â”€ Desktop View â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function CategoryDetailsDesktop() {
   const { id } = useParams();
   const { lang } = useLanguage();
@@ -148,16 +148,16 @@ function CategoryDetailsDesktop() {
     lang,
   );
 
-  /* ── Not found ── */
+  /* â”€â”€ Not found â”€â”€ */
   if (!category) {
     return (
       <div className="category-details-page min-h-screen bg-[linear-gradient(165deg,#f0fafa_0%,#f7fafb_50%,#fafafa_100%)]">
         <div className="page-section py-16">
           <InlineState
-            title={lang === "ar" ? "القسم غير متوفر" : "Category not found"}
+            title={lang === "ar" ? "Ø§Ù„Ù‚Ø³Ù… ØºÙŠØ± Ù…ØªÙˆÙØ±" : "Category not found"}
             description={
               lang === "ar"
-                ? "تعذر العثور على هذا القسم. يمكنك العودة إلى الأقسام أو متابعة تصفح كل المنتجات."
+                ? "ØªØ¹Ø°Ø± Ø§Ù„Ø¹Ø«ÙˆØ± Ø¹Ù„Ù‰ Ù‡Ø°Ø§ Ø§Ù„Ù‚Ø³Ù…. ÙŠÙ…ÙƒÙ†Ùƒ Ø§Ù„Ø¹ÙˆØ¯Ø© Ø¥Ù„Ù‰ Ø§Ù„Ø£Ù‚Ø³Ø§Ù… Ø£Ùˆ Ù…ØªØ§Ø¨Ø¹Ø© ØªØµÙØ­ ÙƒÙ„ Ø§Ù„Ù…Ù†ØªØ¬Ø§Øª."
                 : "We couldn't find this category. Return to categories or browse the full catalog."
             }
             action={
@@ -166,7 +166,7 @@ function CategoryDetailsDesktop() {
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 text-sm font-black text-white shadow-[0_8px_20px_rgba(15,23,42,0.18)] transition-all hover:-translate-y-0.5"
               >
                 <LayoutGrid className="h-4 w-4" />
-                {lang === "ar" ? "العودة إلى الأقسام" : "Back to categories"}
+                {lang === "ar" ? "Ø§Ù„Ø¹ÙˆØ¯Ø© Ø¥Ù„Ù‰ Ø§Ù„Ø£Ù‚Ø³Ø§Ù…" : "Back to categories"}
               </Link>
             }
           />
@@ -184,12 +184,12 @@ function CategoryDetailsDesktop() {
     <div className="category-details-page min-h-screen bg-[linear-gradient(165deg,#f0fafa_0%,#f7fafb_50%,#fafafa_100%)]">
       <div className="page-section py-6 pb-14">
 
-        {/* ── Category Hero ──────────────────────────────── */}
+        {/* â”€â”€ Category Hero â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <motion.div
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="mb-5 overflow-hidden rounded-[1.8rem] border border-slate-200/80 bg-white/92 shadow-[0_4px_28px_rgba(15,23,42,0.07)] backdrop-blur-xl"
+          className="mb-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
         >
           <div className="grid gap-0 xl:grid-cols-[1fr_10rem]">
 
@@ -202,7 +202,7 @@ function CategoryDetailsDesktop() {
                   className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-slate-200/70 bg-white px-2.5 text-[10px] font-black text-slate-600 shadow-sm transition-all hover:-translate-y-px hover:shadow-md"
                 >
                   <ArrowLeft className={cn("h-3 w-3", lang === "ar" && "rotate-180")} />
-                  {lang === "ar" ? "الأقسام" : "Categories"}
+                  {lang === "ar" ? "Ø§Ù„Ø£Ù‚Ø³Ø§Ù…" : "Categories"}
                 </Link>
                 <span className="text-slate-300">/</span>
                 <span className="inline-flex h-7 items-center rounded-lg border border-teal-200/80 bg-teal-50 px-2.5 text-[10px] font-black text-teal-700">
@@ -212,7 +212,7 @@ function CategoryDetailsDesktop() {
                   to="/products"
                   className="ms-auto inline-flex h-7 items-center rounded-lg border border-slate-200/60 bg-slate-50 px-2.5 text-[10px] font-black text-slate-500 transition-all hover:bg-white"
                 >
-                  {lang === "ar" ? "كل المنتجات" : "All products"}
+                  {lang === "ar" ? "ÙƒÙ„ Ø§Ù„Ù…Ù†ØªØ¬Ø§Øª" : "All products"}
                 </Link>
               </div>
 
@@ -231,7 +231,7 @@ function CategoryDetailsDesktop() {
                       className="mt-2 inline-flex h-6 items-center gap-1 rounded-md border border-violet-200 bg-violet-50 px-2 text-[10px] font-black text-violet-700"
                     >
                       <Zap className="h-2.5 w-2.5" />
-                      {lang === "ar" ? "ترتيب ذكي نشط" : "Smart ranking active"}
+                      {lang === "ar" ? "ØªØ±ØªÙŠØ¨ Ø°ÙƒÙŠ Ù†Ø´Ø·" : "Smart ranking active"}
                     </motion.span>
                   )}
                 </AnimatePresence>
@@ -253,23 +253,23 @@ function CategoryDetailsDesktop() {
           </div>
         </motion.div>
 
-        {/* ── Related Categories Rail ────────────────────── */}
+        {/* â”€â”€ Related Categories Rail â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {relatedCategories.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="mb-5 overflow-hidden rounded-[1.5rem] border border-slate-200/80 bg-white/92 px-5 py-4 shadow-sm backdrop-blur-xl"
+            className="mb-5 overflow-hidden rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm"
           >
             <div className="mb-3 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <LayoutGrid className="h-3.5 w-3.5 text-slate-400" />
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                  {lang === "ar" ? "تنقل سريع" : "Quick browse"}
+                  {lang === "ar" ? "ØªÙ†Ù‚Ù„ Ø³Ø±ÙŠØ¹" : "Quick browse"}
                 </p>
               </div>
               <span className="text-[11px] font-semibold text-slate-400">
-                {lang === "ar" ? "أقسام أخرى" : "Other sections"}
+                {lang === "ar" ? "Ø£Ù‚Ø³Ø§Ù… Ø£Ø®Ø±Ù‰" : "Other sections"}
               </span>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -286,11 +286,11 @@ function CategoryDetailsDesktop() {
           </motion.div>
         )}
 
-        {/* ── Sort bar + mobile filter toggle ─────────── */}
-        <div className="catalog-controls-stick z-30 mb-6 flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-[1.8rem] border border-slate-200/80 bg-white/97 px-5 py-3.5 shadow-[0_4px_24px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+        {/* â”€â”€ Sort bar + mobile filter toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        <div className="catalog-controls-stick z-30 mb-6 flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-white px-5 py-3.5 shadow-sm">
           <div className="flex items-center gap-2">
             <span className="inline-flex h-7 items-center rounded-lg border border-slate-200/70 bg-slate-50 px-3 text-[11px] font-black text-slate-600">
-              {lang === "ar" ? "المنتجات" : "Products"}
+              {lang === "ar" ? "Ø§Ù„Ù…Ù†ØªØ¬Ø§Øª" : "Products"}
             </span>
             {hasFilters && (
               <button
@@ -299,7 +299,7 @@ function CategoryDetailsDesktop() {
                 className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 text-[11px] font-black text-rose-600 transition-colors hover:bg-rose-100"
               >
                 <X className="h-3 w-3" />
-                {lang === "ar" ? "مسح الكل" : "Clear all"}
+                {lang === "ar" ? "Ù…Ø³Ø­ Ø§Ù„ÙƒÙ„" : "Clear all"}
               </button>
             )}
           </div>
@@ -318,7 +318,7 @@ function CategoryDetailsDesktop() {
               className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-[12px] font-black text-slate-700 shadow-sm transition-all hover:border-teal-200 hover:bg-teal-50 lg:hidden"
             >
               <SlidersHorizontal className="h-3.5 w-3.5 text-teal-500" />
-              {lang === "ar" ? "الفلاتر" : "Filters"}
+              {lang === "ar" ? "Ø§Ù„ÙÙ„Ø§ØªØ±" : "Filters"}
             </button>
           </div>
         </div>
@@ -350,7 +350,7 @@ function CategoryDetailsDesktop() {
               <>
                 <div className="mb-4 px-1">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                    {lang === "ar" ? "منتجات القسم" : "Category feed"}
+                    {lang === "ar" ? "Ù…Ù†ØªØ¬Ø§Øª Ø§Ù„Ù‚Ø³Ù…" : "Category feed"}
                   </p>
                 </div>
                 <ProductGrid products={filteredProducts} />
@@ -365,18 +365,18 @@ function CategoryDetailsDesktop() {
                       className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200/80 bg-white px-8 text-sm font-black text-slate-700 shadow-sm transition-all hover:shadow-md disabled:opacity-60"
                     >
                       {isLoadingMore
-                        ? (lang === "ar" ? "جارٍ التحميل..." : "Loading…")
-                        : (lang === "ar" ? "عرض المزيد" : "Load more")}
+                        ? (lang === "ar" ? "Ø¬Ø§Ø±Ù Ø§Ù„ØªØ­Ù…ÙŠÙ„..." : "Loadingâ€¦")
+                        : (lang === "ar" ? "Ø¹Ø±Ø¶ Ø§Ù„Ù…Ø²ÙŠØ¯" : "Load more")}
                     </motion.button>
                   </div>
                 )}
               </>
             ) : (
               <InlineState
-                title={lang === "ar" ? "لا توجد منتجات مطابقة" : "No matching products"}
+                title={lang === "ar" ? "Ù„Ø§ ØªÙˆØ¬Ø¯ Ù…Ù†ØªØ¬Ø§Øª Ù…Ø·Ø§Ø¨Ù‚Ø©" : "No matching products"}
                 description={
                   lang === "ar"
-                    ? "جرّب تغيير البحث أو تعطيل فلتر التوفر للوصول إلى منتجات أكثر."
+                    ? "Ø¬Ø±Ù‘Ø¨ ØªØºÙŠÙŠØ± Ø§Ù„Ø¨Ø­Ø« Ø£Ùˆ ØªØ¹Ø·ÙŠÙ„ ÙÙ„ØªØ± Ø§Ù„ØªÙˆÙØ± Ù„Ù„ÙˆØµÙˆÙ„ Ø¥Ù„Ù‰ Ù…Ù†ØªØ¬Ø§Øª Ø£ÙƒØ«Ø±."
                     : "Try another search term or disable the stock filter to reveal more products."
                 }
                 action={
@@ -385,7 +385,7 @@ function CategoryDetailsDesktop() {
                     className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 text-sm font-black text-white shadow-[0_8px_20px_rgba(15,23,42,0.18)] transition-all hover:-translate-y-0.5"
                   >
                     <LayoutGrid className="h-4 w-4" />
-                    {lang === "ar" ? "استكشاف كل المنتجات" : "Explore all products"}
+                    {lang === "ar" ? "Ø§Ø³ØªÙƒØ´Ø§Ù ÙƒÙ„ Ø§Ù„Ù…Ù†ØªØ¬Ø§Øª" : "Explore all products"}
                   </Link>
                 }
               />
