@@ -661,10 +661,10 @@ export default function Layout() {
           className={cn(
             "nav-professional sticky top-0 z-40 transition-all duration-300",
             scrolled
-              ? "border-b border-slate-200/70 bg-white/94 shadow-[0_8px_32px_rgba(15,23,42,0.10),0_1px_0_rgba(13,148,136,0.08)] backdrop-blur-2xl"
-              : "border-b border-slate-200/40 bg-white/90 backdrop-blur-xl",
+              ? "border-b border-slate-200 bg-white/96 shadow-[0_4px_16px_rgba(15,23,42,0.08)] backdrop-blur-md"
+              : "border-b border-slate-100 bg-white/95 backdrop-blur-md",
           )}
-          style={{ WebkitBackdropFilter: "blur(24px)" }}
+          style={{ WebkitBackdropFilter: "blur(12px)" }}
         >
 
           {/* ── Main bar ────────────────────────────────────────────────── */}

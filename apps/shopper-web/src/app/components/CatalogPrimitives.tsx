@@ -125,7 +125,7 @@ export function FilterPanel({
   return (
     <section
       className={cn(
-        "rounded-[1.6rem] border border-white/70 bg-white/72 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] backdrop-blur-md",
+        "rounded-2xl border border-slate-100 bg-white p-4 shadow-sm",
         className,
       )}
     >

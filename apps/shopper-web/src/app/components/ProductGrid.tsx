@@ -214,7 +214,7 @@ function SearchLoadingOverlay({ lang }: { lang: "ar" | "en" }) {
       aria-label={lang === "ar" ? "جارٍ تحديث النتائج" : "Updating results"}
       className="pointer-events-none fixed inset-x-0 top-20 z-40 flex justify-center"
     >
-      <div className="flex items-center gap-2.5 rounded-2xl border border-white/70 bg-white/90 px-4 py-2.5 shadow-[0_8px_32px_rgba(15,23,42,0.12)] backdrop-blur-xl">
+      <div className="flex items-center gap-2.5 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-[0_8px_32px_rgba(15,23,42,0.12)]">
         {/* Spinner — CSS only, zero JS */}
         <span className="relative flex h-4 w-4 items-center justify-center">
           <span className="absolute inset-0 animate-spin rounded-full border-2 border-slate-200 border-t-teal-500" />
