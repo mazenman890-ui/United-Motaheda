@@ -204,15 +204,32 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   );
 
   // ── Mount: page-1 fetch if cold-start, then idle full-catalog ─────────────
+  //
+  // Categories note: on cold start we try the synchronous cache first so the
+  // sidebar/nav already have categories before the async full-catalog arrives.
+  // The separate `refreshCategories` effect was removed because it raced with
+  // `scheduleFullCatalogLoad` — both awaited the same snapshot promise and both
+  // called `setCategories`, producing two separate React update batches and two
+  // extra consumer re-renders.  Now categories flow through one path only:
+  //   • Sync cache → setCategories immediately (zero network cost)
+  //   • scheduleFullCatalogLoad → setCategories as part of its batched update
 
   useEffect(() => {
     if (seedProducts.length > 0) {
-      // Cache warm — schedule a silent background refresh to pick up new data
+      // Cache warm — schedule a silent background refresh to pick up new data.
+      // Categories are already populated from the seed; no separate fetch needed.
       scheduleFullCatalogLoad();
       return;
     }
 
-    // Cold start — fetch page 1 immediately for first paint
+    // Cold start: populate categories from any available sync cache so the
+    // navigation/sidebar can render before the async full-catalog arrives.
+    const quickCats = getCachedCategoriesQuick();
+    if (quickCats?.length) {
+      startTransition(() => setCategories(quickCats));
+    }
+
+    // Fetch page 1 immediately for first paint.
     void (async () => {
       try {
         const result = await fetchProductsPage(1, {});
@@ -226,7 +243,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Categories: load if missing ───────────────────────────────────────────
+  // ── refreshCategories (manual refresh, e.g. after admin upsert) ──────────
 
   const refreshCategories = useCallback(async () => {
     try {
@@ -236,10 +253,6 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       console.error("[CatalogContext] fetchCategoriesQuick failed:", err);
     }
   }, []);
-
-  useEffect(() => {
-    if (categories.length === 0) void refreshCategories();
-  }, [categories.length, refreshCategories]);
 
   // ── loadNextPage ──────────────────────────────────────────────────────────
 

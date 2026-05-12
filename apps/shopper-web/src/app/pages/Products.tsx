@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useSearchInput } from "../../contexts/SearchContext";
-import { useCatalog } from "../../contexts/CatalogContext";
+import { useCatalog, useFullCatalog } from "../../contexts/CatalogContext";
 import { useIsShopperShell } from "../components/ui/use-mobile";
 import { getLocalizedCategoryName } from "../localization";
 import { getMaxPriceCeiled } from "../hooks/useCatalogFilters";
@@ -150,25 +150,27 @@ function ProductsDesktop() {
     hasNextPage,
     totalProductCount,
   } = useCatalog();
+  // Prefer the full 52K catalog for an accurate price ceiling.
+  // Falls back to the paginated 24-item slice while the background fetch runs.
+  const { allProducts } = useFullCatalog();
   const { searchQuery, setSearchQuery } = useSearchInput();
   const [sortBy, setSortBy] = useState<CatalogProductSort>("relevant");
   const [onlyInStock, setOnlyInStock] = useState(false);
-  const [priceRange, setPriceRange] = useState(0);
+  // `undefined` = no explicit cap set by the user (show all prices).
+  // Using undefined avoids the extra re-render that fired when priceRange was
+  // initialized to 0 and then bumped to maxPrice via a useEffect.
+  const [priceRange, setPriceRange] = useState<number | undefined>(undefined);
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const activeCategory = searchParams.get("category") || "all";
 
+  // Use the full catalog when loaded so the price slider reflects the real range.
+  const catalogForPrice = allProducts.length > 0 ? allProducts : products;
   const maxPrice = useMemo(
-    () => getMaxPriceCeiled(products, 50),
-    [products],
+    () => getMaxPriceCeiled(catalogForPrice, 50),
+    [catalogForPrice],
   );
-
-  useEffect(() => {
-    if (maxPrice > 0) {
-      setPriceRange((cur) => (cur > 0 ? Math.min(cur, maxPrice) : maxPrice));
-    }
-  }, [maxPrice]);
 
   const categoryOptions = useMemo(
     () => [
@@ -187,6 +189,9 @@ function ProductsDesktop() {
   );
 
   /* ✅ Destructure activeQuery and pass it to the grid */
+  // Resolved cap: if user hasn't set one, treat it as "no cap" (pass undefined).
+  const resolvedPriceCap = priceRange !== undefined ? priceRange : undefined;
+
   const {
     products: filteredProducts,
     resultCount,
@@ -198,20 +203,21 @@ function ProductsDesktop() {
       category: activeCategory,
       query: searchQuery,
       onlyInStock,
-      priceCap: priceRange,
+      priceCap: resolvedPriceCap,
     },
     sortBy,
     lang,
   );
 
   const activeCategoryLabel = categoryOptions.find((c) => c.id === activeCategory)?.label;
-  const isPriceFiltered = maxPrice > 0 && priceRange < maxPrice;
+  // Price is filtered only when user explicitly set a cap below the catalogue maximum.
+  const isPriceFiltered = priceRange !== undefined && maxPrice > 0 && priceRange < maxPrice;
   const hasFilters = activeCategory !== "all" || onlyInStock || isPriceFiltered || searchQuery.trim().length > 0;
 
   const clearAll = () => {
     setSortBy("relevant");
     setOnlyInStock(false);
-    setPriceRange(maxPrice);
+    setPriceRange(undefined);   // reset to "no cap"
     setSearchQuery("");
     setSearchParams(new URLSearchParams());
   };
@@ -233,14 +239,14 @@ function ProductsDesktop() {
     onlyInStock
       ? { key: "stock", label: lang === "ar" ? "المتاح فقط" : "In stock only", onRemove: () => setOnlyInStock(false) }
       : null,
-    isPriceFiltered
+    isPriceFiltered && priceRange !== undefined
       ? {
           key: "price",
           label:
             lang === "ar"
               ? `حتى ${priceRange.toFixed(0)} ${t("currency")}`
               : `Up to ${priceRange.toFixed(0)} ${t("currency")}`,
-          onRemove: () => setPriceRange(maxPrice),
+          onRemove: () => setPriceRange(undefined),
         }
       : null,
   ].filter(Boolean) as { key: string; label: string; onRemove: () => void }[];
@@ -366,9 +372,9 @@ function ProductsDesktop() {
             categories={sidebarCategoryOptions}
             activeCategory={activeCategory}
             onCategoryChange={(id) => updateCategory(id === "all" ? null : id)}
-            priceRange={[0, priceRange]}
+            priceRange={[0, priceRange ?? maxPrice]}
             maxPrice={maxPrice}
-            onPriceRangeChange={([, max]) => setPriceRange(max)}
+            onPriceRangeChange={([, max]) => setPriceRange(max < maxPrice ? max : undefined)}
             currency={t("currency")}
             totalResults={resultCount}
             hasFilters={hasFilters}

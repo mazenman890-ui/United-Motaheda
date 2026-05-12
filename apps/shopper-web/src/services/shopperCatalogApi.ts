@@ -140,6 +140,21 @@ class PageCache {
 
 const pageCache = new PageCache();
 
+/**
+ * In-flight deduplication map for `fetchProductsPage`.
+ *
+ * React StrictMode (dev) double-invokes effects, which causes two concurrent
+ * calls to `fetchProductsPage(1, {})` before either resolves and writes to the
+ * LRU cache.  Without dedup, both calls hit Supabase, both trigger
+ * `applyPageResult`, and the product grid flashes twice.
+ *
+ * The map holds a promise per `page:filtersHash` key; any concurrent caller
+ * for the same key shares the same promise instead of opening a second request.
+ * The key is removed in `.finally()` so the next call (after the result is
+ * cached) goes through the normal LRU-cache path.
+ */
+const inFlightPageRequests = new Map<string, Promise<PageResult>>();
+
 // ─── Supabase Type Helper ─────────────────────────────────────────────────────
 
 /**
@@ -344,43 +359,69 @@ export async function fetchShopperCatalogSnapshot(
  *
  * Results are kept in the in-memory LRU page cache (TTL: 5 min for filtered
  * results, 15 min for unfiltered).
+ *
+ * Concurrent calls for the same page+filters share one in-flight promise so
+ * that React StrictMode's double-effect invocation never opens two Supabase
+ * requests for the same data.
  */
 export async function fetchProductsPage(
   pageNumber: number,
   filters: ProductFilters = {},
 ): Promise<PageResult> {
+  // 1. LRU cache — fastest path, no network.
   const cached = pageCache.get(pageNumber, filters);
   if (cached) return cached;
 
-  const supabase = getSupabaseClient();
-  const query = buildSupabaseQuery(supabase, filters, pageNumber, PAGE_SIZE);
+  // 2. In-flight dedup — return the existing promise for the same page+filters
+  //    if a concurrent call (e.g. StrictMode double-mount) already started one.
+  const inflightKey = `${pageNumber}:${JSON.stringify({
+    searchQuery: filters.searchQuery?.toLowerCase() ?? "",
+    categoryId: filters.categoryId ?? "",
+    inStock: filters.inStock ?? false,
+    minPrice: filters.minPrice ?? 0,
+    maxPrice: filters.maxPrice ?? 0,
+  })}`;
+  const existing = inFlightPageRequests.get(inflightKey);
+  if (existing) return existing;
 
-  // `query` is a PostgrestFilterBuilder — awaiting it yields { data, error, count }.
-  const { data, error, count } = await query;
+  // 3. New network request.
+  const promise = (async (): Promise<PageResult> => {
+    const supabase = getSupabaseClient();
+    const query = buildSupabaseQuery(supabase, filters, pageNumber, PAGE_SIZE);
 
-  if (error) throw new Error(`Supabase query failed: ${error.message}`);
-  if (!data || !Array.isArray(data)) {
-    throw new Error("Invalid data shape received from Supabase.");
-  }
+    // `query` is a PostgrestFilterBuilder — awaiting it yields { data, error, count }.
+    const { data, error, count } = await query;
 
-  const products: CatalogProduct[] = (data as Record<string, unknown>[])
-    .map((row, index) => {
-      const sourceRow = (pageNumber - 1) * PAGE_SIZE + index + 2;
-      return normalizeSupabaseProduct(row, sourceRow);
-    })
-    .filter((p): p is CatalogProduct => p !== null);
+    if (error) throw new Error(`Supabase query failed: ${error.message}`);
+    if (!data || !Array.isArray(data)) {
+      throw new Error("Invalid data shape received from Supabase.");
+    }
 
-  const totalCount = count ?? 0;
-  const pageResult: PageResult = {
-    products,
-    totalCount,
-    hasNextPage: totalCount > pageNumber * PAGE_SIZE,
-    currentPage: pageNumber,
-    pageSize: PAGE_SIZE,
-  };
+    const products: CatalogProduct[] = (data as Record<string, unknown>[])
+      .map((row, index) => {
+        const sourceRow = (pageNumber - 1) * PAGE_SIZE + index + 2;
+        return normalizeSupabaseProduct(row, sourceRow);
+      })
+      .filter((p): p is CatalogProduct => p !== null);
 
-  pageCache.set(pageNumber, filters, pageResult);
-  return pageResult;
+    const totalCount = count ?? 0;
+    const pageResult: PageResult = {
+      products,
+      totalCount,
+      hasNextPage: totalCount > pageNumber * PAGE_SIZE,
+      currentPage: pageNumber,
+      pageSize: PAGE_SIZE,
+    };
+
+    pageCache.set(pageNumber, filters, pageResult);
+    return pageResult;
+  })().finally(() => {
+    // Remove from in-flight map once settled so the next call uses the LRU cache.
+    inFlightPageRequests.delete(inflightKey);
+  });
+
+  inFlightPageRequests.set(inflightKey, promise);
+  return promise;
 }
 
 /**
