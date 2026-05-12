@@ -476,7 +476,7 @@ export function ShopperProductTile({
       return;
     }
 
-    await addToCart(product.id);
+    await addToCart(product);
     setIsAdded(true);
     if (resetAddedTimeoutRef.current !== null) {
       window.clearTimeout(resetAddedTimeoutRef.current);

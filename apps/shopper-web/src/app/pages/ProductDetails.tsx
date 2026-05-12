@@ -166,7 +166,7 @@ function ProductDetailsDesktop() {
 
   const handleAdd = async () => {
     if (!product.inStock) return;
-    await addToCart(product.id);
+    await addToCart(product);
     setAdded(true);
   };
 

@@ -194,8 +194,11 @@ function buildSupabaseQuery(
   if (filters.searchQuery) {
     const raw   = filters.searchQuery.trim();
     const lower = raw.toLowerCase();
+    // PostgREST requires mixed-case column names to be wrapped in double quotes
+    // inside the .or() filter string, otherwise PostgreSQL folds them to lowercase
+    // and returns 0 results. Use raw (un-lowercased) term for Arabic columns.
     query = query.or(
-      `Name_En.ilike.%${lower}%,Name_Ar.ilike.%${raw}%,Code.ilike.%${lower}%,Barcode.ilike.%${lower}%`,
+      `"Name_En".ilike.%${lower}%,"Name_Ar".ilike.%${raw}%,"Code".ilike.%${lower}%,"Barcode".ilike.%${lower}%`,
     );
   }
 
@@ -209,7 +212,7 @@ function buildSupabaseQuery(
       const arName = `%${names.name}%`;
       const enName = `%${names.nameEn}%`;
       query = query.or(
-        `Category_Name.ilike.${arName},Category_Name_En.ilike.${enName}`,
+        `"Category_Name".ilike.${arName},"Category_Name_En".ilike.${enName}`,
       );
     }
   }

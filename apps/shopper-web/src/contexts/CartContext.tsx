@@ -25,7 +25,8 @@ export type CartSummary = {
 type CartContextType = {
   cart: CartItem[];
   summary: CartSummary;
-  addToCart: (productId: string, quantity?: number) => Promise<void>;
+  /** Pass the full product object — no ID lookup needed at add time. */
+  addToCart: (product: CatalogProduct, quantity?: number) => Promise<void>;
   removeFromCart: (cartItemId: string) => Promise<void>;
   updateQuantity: (cartItemId: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -42,10 +43,10 @@ const LOCAL_CART_KEY = "united-pharmacies-cart-v3";
 const CartContext = createContext<CartContextType>({
   cart: [],
   summary: { itemCount: 0, subtotal: 0, discount: 0, tax: 0, shipping: 0, total: 0 },
-  addToCart: async () => {},
+  addToCart:      async () => {},
   removeFromCart: async () => {},
   updateQuantity: async () => {},
-  clearCart: async () => {},
+  clearCart:      async () => {},
   isLoading: false,
 });
 
@@ -221,19 +222,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
   }, [cart]);
 
-  const addToCart = async (productId: string, quantity = 1) => {
-    const product = mergedProductsById[productId];
+  const addToCart = async (product: CatalogProduct, quantity = 1) => {
+    if (!product.inStock) return;
 
-    if (!product || !product.inStock) {
-      return;
+    // Cache the product immediately so inflateEntries can resolve it on next
+    // render — critical for products from page 2+ that aren't in productsById.
+    if (!fetchedRef.current[product.id]) {
+      fetchedRef.current[product.id] = product;
+      setFetchedProducts((prev) => ({ ...prev, [product.id]: product }));
     }
 
     setEntries((current) => {
-      const currentItem = current.find((entry) => entry.product_id === productId);
+      const currentItem = current.find((entry) => entry.product_id === product.id);
       const nextQuantity = clampQuantity(product, (currentItem?.quantity ?? 0) + quantity);
-      return replaceEntry(current, productId, nextQuantity);
+      return replaceEntry(current, product.id, nextQuantity);
     });
-    emitWorkflowEvent("CartUpdated", { mutation: "add", productId, quantity });
+    emitWorkflowEvent("CartUpdated", { mutation: "add", productId: product.id, quantity });
   };
 
   const removeFromCart = async (cartItemId: string) => {

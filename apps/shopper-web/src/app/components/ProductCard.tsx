@@ -254,7 +254,7 @@ export const ProductCard = memo(function ProductCard({
     event.preventDefault();
     event.stopPropagation();
     if (!product.inStock) return;
-    await addToCart(product.id);
+    await addToCart(product);
     trigger();
   };
 
@@ -308,7 +308,9 @@ export const ProductCard = memo(function ProductCard({
       />
 
       {/* ── Media ── */}
-      <div className="product-card__media relative flex-shrink-0 overflow-hidden border-b border-white/60">
+      {/* aspect-square here gives Virtuoso a stable height before images load,
+          eliminating dynamic row-height recalculation on image load. */}
+      <div className="product-card__media relative aspect-square flex-shrink-0 overflow-hidden border-b border-white/60">
         <Link
           to={`/products/${product.id}`}
           className="block focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-500/20"
@@ -522,7 +524,7 @@ export const ProductCardCompact = memo(function ProductCardCompact({
 
   const handleAddToCart = async () => {
     if (!product.inStock) return;
-    await addToCart(product.id);
+    await addToCart(product);
     trigger();
   };
 
