@@ -81,12 +81,12 @@ export interface FuzzySearchableFields {
 }
 
 export interface FuzzyIndexable {
-  id:       string;
-  nameAr:   string;
-  nameEn:   string;
-  category: string;
-  code:     string;
-  barcode:  string;
+  id:        string;
+  nameAr:    string;
+  nameEn:    string;
+  category:  string;
+  code?:     string;
+  barcode?:  string;
 }
 
 export interface SearchIndex {
