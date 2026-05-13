@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0d9488"
+      "backgroundColor": "#021D2E"
     },
     "ios": {
       "supportsTablet": true,
@@ -20,7 +20,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0d9488"
+        "backgroundColor": "#021D2E"
       },
       "package": "com.unitedmotaheda.shopper",
       "versionCode": 1
@@ -39,7 +39,7 @@
           "image": "./assets/splash.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#0d9488"
+          "backgroundColor": "#021D2E"
         }
       ]
     ],

@@ -10,10 +10,11 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { signIn } from "@/services/authApi";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { BrandMark } from "@/components/ui/BrandMark";
 import { theme } from "@/theme";
 
 export default function LoginScreen() {
@@ -58,12 +59,38 @@ export default function LoginScreen() {
           start={{ x: 0.1, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{
-            paddingTop:        insets.top + 30,
-            paddingBottom:     52,
+            paddingTop:        insets.top + 28,
+            paddingBottom:     56,
             paddingHorizontal: 24,
             alignItems:        "center",
-            gap:               14,
+            gap:               16,
           }}>
+
+          {/* Decorative grid lines */}
+          <View
+            style={{
+              position:        "absolute",
+              top:             0,
+              left:            0,
+              right:           0,
+              bottom:          0,
+              opacity:         0.04,
+            }}
+            pointerEvents="none">
+            {[0, 1, 2, 3].map((i) => (
+              <View
+                key={i}
+                style={{
+                  position:        "absolute",
+                  left:            `${i * 33}%` as unknown as number,
+                  top:             0,
+                  bottom:          0,
+                  width:           1,
+                  backgroundColor: "#fff",
+                }}
+              />
+            ))}
+          </View>
 
           {/* Close */}
           <Pressable
@@ -79,53 +106,24 @@ export default function LoginScreen() {
                 width:           36,
                 height:          36,
                 borderRadius:    11,
-                backgroundColor: "rgba(255,255,255,0.14)",
+                backgroundColor: "rgba(255,255,255,0.10)",
                 alignItems:      "center",
                 justifyContent:  "center",
+                borderWidth:     1,
+                borderColor:     "rgba(255,255,255,0.14)",
               }}>
-              <Ionicons name="close" size={16} color="rgba(255,255,255,0.8)" />
+              <Ionicons name="close" size={16} color="rgba(255,255,255,0.75)" />
             </View>
           </Pressable>
 
-          {/* Logo */}
-          <View
-            style={{
-              width:           82,
-              height:          82,
-              borderRadius:    28,
-              backgroundColor: "rgba(255,255,255,0.14)",
-              alignItems:      "center",
-              justifyContent:  "center",
-              borderWidth:     2,
-              borderColor:     "rgba(255,255,255,0.28)",
-              ...theme.shadow.md,
-            }}>
-            <MaterialCommunityIcons name="pill" size={40} color="#fff" />
-          </View>
-
-          <View style={{ alignItems: "center", gap: 5 }}>
-            <Text style={{ color: "#fff", fontSize: 23, fontWeight: "900" }}>United Motaheda</Text>
-            <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 13 }}>
-              سجل دخولك للمتابعة
-            </Text>
-          </View>
-
-          <Text
-            style={{
-              color:         "rgba(255,255,255,0.35)",
-              fontSize:      11,
-              fontWeight:    "700",
-              letterSpacing: 2,
-              marginTop:     4,
-            }}>
-            لكل داء دواء
-          </Text>
+          {/* Brand mark */}
+          <BrandMark size="lg" variant="onHero" showText showSlogan />
         </LinearGradient>
 
         {/* Form card */}
         <View
           style={{
-            marginTop:        -22,
+            marginTop:        -24,
             marginHorizontal: 16,
             backgroundColor:  "#fff",
             borderRadius:     theme.radius["2xl"],
@@ -135,6 +133,18 @@ export default function LoginScreen() {
             borderWidth:      1,
             borderColor:      "rgba(0,0,0,0.04)",
           }}>
+
+          <Text
+            style={{
+              fontSize:   18,
+              fontWeight: "900",
+              color:      theme.colors.slate[900],
+              textAlign:  "right",
+              marginBottom: 2,
+            }}>
+            تسجيل الدخول
+          </Text>
+
           <Input
             label="البريد الإلكتروني"
             value={email}
