@@ -455,19 +455,31 @@ function HomeDesktop() {
                 return (
                   <Link key={b.to + b.titleEn} to={b.to}
                     className={cn(
-                      "group relative flex min-h-[8.5rem] flex-1 flex-col justify-between overflow-hidden rounded-2xl p-5 transition-all hover:-translate-y-0.5 hover:shadow-xl",
+                      "group relative flex min-h-[9rem] flex-1 flex-col justify-between overflow-hidden rounded-2xl p-5 transition-all hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,0,0,0.22)]",
                       `bg-gradient-to-br ${b.from} ${b.via} ${b.to_color}`,
                     )}>
-                    <div aria-hidden className="absolute -end-8 -top-8 h-28 w-28 rounded-full bg-white/10" />
-                    <div className={cn("flex items-start justify-between", isRtl && "flex-row-reverse")}>
-                      <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/25 backdrop-blur-sm">
-                        <Icon className="h-5 w-5 text-white" />
-                      </div>
+                    {/* Layered decorative blobs */}
+                    <div aria-hidden className="absolute -bottom-10 -end-10 h-40 w-40 rounded-full bg-white/10" />
+                    <div aria-hidden className="absolute -top-6 end-10 h-20 w-20 rounded-full bg-white/[0.07]" />
+
+                    {/* Label badge */}
+                    <div className="relative z-10 inline-flex items-center gap-1.5 self-start rounded-full bg-white/25 px-3 py-1 text-[10px] font-black text-white backdrop-blur-sm">
+                      <Icon className="h-3 w-3" />
+                      {isRtl ? b.labelAr : b.labelEn}
                     </div>
-                    <div className={isRtl ? "text-right" : "text-left"}>
-                      <p className="text-sm font-black text-white">{isRtl ? b.titleAr : b.titleEn}</p>
-                      <p className="mt-0.5 text-[11px] font-semibold text-white/75">{isRtl ? b.descAr : b.descEn}</p>
-                      <div className={cn("mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-black text-white/90 transition-all group-hover:gap-2.5", isRtl && "flex-row-reverse")}>
+
+                    {/* Title + desc + CTA */}
+                    <div className={cn("relative z-10", isRtl ? "text-right" : "text-left")}>
+                      <p className="text-[15px] font-black leading-snug text-white">
+                        {isRtl ? b.titleAr : b.titleEn}
+                      </p>
+                      <p className="mt-1 text-[11px] font-semibold text-white/70">
+                        {isRtl ? b.descAr : b.descEn}
+                      </p>
+                      <div className={cn(
+                        "mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1.5 text-[11px] font-black text-white transition-all group-hover:bg-white/30 group-hover:gap-2.5",
+                        isRtl && "flex-row-reverse",
+                      )}>
                         {isRtl ? "اكتشف الآن" : "Explore now"}
                         <ArrowRight className={cn("h-3 w-3", isRtl && "rotate-180")} />
                       </div>
@@ -573,19 +585,44 @@ function HomeDesktop() {
         <div className="page-section">
           <div className="mb-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
             {[
-              { Icon: Truck,       titleAr: "توصيل سريع",      titleEn: "Fast Delivery",     descAr: "لباب البيت في القاهرة",  descEn: "Door-to-door in Cairo"   },
-              { Icon: ShieldCheck, titleAr: "أدوية أصلية",     titleEn: "Genuine Medicines", descAr: "مضمونة 100%",            descEn: "100% guaranteed"          },
-              { Icon: MapPin,      titleAr: "٥ فروع",           titleEn: "5 Branches",        descAr: "في أرجاء القاهرة",       descEn: "Across Cairo"             },
-              { Icon: Clock3,      titleAr: "دعم متواصل",       titleEn: "Always-on support", descAr: serviceHours,             descEn: serviceHours               },
-            ].map(({ Icon, titleAr, titleEn, descAr, descEn }, i) => (
-              <Reveal key={titleEn} direction="up" delay={i * 50}>
-                <div className={cn("flex flex-col gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-5 transition-all hover:border-teal-100 hover:bg-teal-50/30", isRtl && "items-end text-right")}>
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
-                    <Icon className="h-5 w-5" />
+              {
+                Icon: Truck, stat: "24h",
+                titleAr: "توصيل سريع",   titleEn: "Fast Delivery",
+                descAr: "لباب البيت في القاهرة", descEn: "Door-to-door in Cairo",
+                bar: "bg-teal-500", iconBg: "bg-teal-50",    iconC: "text-teal-600",   statC: "text-teal-600",   border: "border-teal-100   hover:border-teal-200",
+              },
+              {
+                Icon: ShieldCheck, stat: "100%",
+                titleAr: "أدوية أصلية",  titleEn: "Genuine Medicines",
+                descAr: "مضمونة ومعتمدة", descEn: "Certified & guaranteed",
+                bar: "bg-emerald-500", iconBg: "bg-emerald-50", iconC: "text-emerald-600", statC: "text-emerald-600", border: "border-emerald-100 hover:border-emerald-200",
+              },
+              {
+                Icon: MapPin, stat: "5",
+                titleAr: "فروع بالقاهرة", titleEn: "Cairo Branches",
+                descAr: "في أرجاء القاهرة", descEn: "Across Cairo",
+                bar: "bg-violet-500", iconBg: "bg-violet-50",  iconC: "text-violet-600",  statC: "text-violet-600",  border: "border-violet-100  hover:border-violet-200",
+              },
+              {
+                Icon: Clock3, stat: "24/7",
+                titleAr: "دعم متواصل",   titleEn: "Always-on Support",
+                descAr: serviceHours,       descEn: serviceHours,
+                bar: "bg-amber-500", iconBg: "bg-amber-50",   iconC: "text-amber-600",   statC: "text-amber-600",   border: "border-amber-100  hover:border-amber-200",
+              },
+            ].map(({ Icon, stat, titleAr, titleEn, descAr, descEn, bar, iconBg, iconC, statC, border }, i) => (
+              <Reveal key={titleEn} direction="up" delay={i * 55}>
+                <div className={cn(
+                  "relative flex flex-col gap-4 overflow-hidden rounded-2xl border bg-white p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(15,23,42,0.08)]",
+                  border, isRtl && "items-end text-right",
+                )}>
+                  <div className={cn("absolute inset-x-0 top-0 h-[3px] rounded-t-2xl", bar)} aria-hidden />
+                  <div className={cn("flex h-12 w-12 items-center justify-center rounded-xl", iconBg)}>
+                    <Icon className={cn("h-6 w-6", iconC)} />
                   </div>
                   <div>
-                    <p className="text-sm font-black text-slate-950">{isRtl ? titleAr : titleEn}</p>
-                    <p className="mt-0.5 text-[12px] font-semibold text-slate-500">{isRtl ? descAr : descEn}</p>
+                    <p className={cn("text-[2rem] font-black leading-none", statC)}>{stat}</p>
+                    <p className="mt-2 text-[13px] font-black text-slate-900">{isRtl ? titleAr : titleEn}</p>
+                    <p className="mt-0.5 text-[11px] font-semibold leading-5 text-slate-500">{isRtl ? descAr : descEn}</p>
                   </div>
                 </div>
               </Reveal>
