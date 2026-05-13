@@ -1,5 +1,5 @@
 ﻿// ShopperMobileViews.tsx – cleaned version
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, forwardRef, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import {
   ArrowLeft,
   Bell,
@@ -22,9 +22,10 @@ import {
   X,
 } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { VirtuosoGrid, type GridComponents } from "react-virtuoso";
 import { useAuth } from "../../contexts/AuthContext";
 import { useCart } from "../../contexts/CartContext";
-import { useCatalog } from "../../contexts/CatalogContext";
+import { useCatalog, useFullCatalog } from "../../contexts/CatalogContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useSearchInput } from "../../contexts/SearchContext";
 import {
@@ -83,6 +84,32 @@ const OFFERS_SORT_OPTIONS = [
 const PAGE_SIZE = 24;
 const PROFILE_PREFERENCES_KEY = "united-pharmacies-profile-preferences-v1";
 
+// Module-level stable refs prevent VirtuosoGrid from unmounting its list/item
+// wrappers on every re-render (avoids full grid remount on state change).
+const MobileGridList = forwardRef<
+  HTMLDivElement,
+  { style?: CSSProperties; children?: ReactNode; className?: string }
+>(({ style, children, className }, ref) => (
+  <div ref={ref} style={style} className={cn("grid grid-cols-2 gap-3 sm:grid-cols-3", className)}>
+    {children}
+  </div>
+));
+MobileGridList.displayName = "MobileGridList";
+
+const MobileGridItem = forwardRef<HTMLDivElement, { children?: ReactNode; className?: string }>(
+  ({ children, className }, ref) => (
+    <div ref={ref} className={cn("min-h-0", className)}>
+      {children}
+    </div>
+  ),
+);
+MobileGridItem.displayName = "MobileGridItem";
+
+const MOBILE_GRID_COMPONENTS: GridComponents = {
+  List: MobileGridList,
+  Item: MobileGridItem,
+};
+
 function getOptionLabel<
   T extends readonly { value: string; labelAr: string; labelEn: string }[],
 >(options: T, value: T[number]["value"], lang: "ar" | "en") {
@@ -132,22 +159,14 @@ function MobileListIntro({
   activeFilters?: ReactNode;
 }) {
   return (
-    <ShopperSurface className="overflow-hidden border-slate-200 bg-[linear-gradient(145deg,#ffffff_0%,#f8fbfb_62%,#eff6f7_100%)]">
-      <div className="relative">
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(36,184,181,0.1),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.06),transparent_28%)]"
-        />
-        <div className="relative z-10">
-          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">
-            {eyebrow}
-          </p>
-          <h1 className="mt-2 text-[1.6rem] font-black leading-[1.08] tracking-tight text-slate-950 sm:text-[1.8rem]">
-            {title}
-          </h1>
-          {activeFilters ? <div className="mt-3 flex flex-wrap gap-2">{activeFilters}</div> : null}
-        </div>
-      </div>
+    <ShopperSurface className="border-slate-200 bg-white">
+      <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">
+        {eyebrow}
+      </p>
+      <h1 className="mt-2 text-[1.6rem] font-black leading-[1.08] tracking-tight text-slate-950 sm:text-[1.8rem]">
+        {title}
+      </h1>
+      {activeFilters ? <div className="mt-3 flex flex-wrap gap-2">{activeFilters}</div> : null}
     </ShopperSurface>
   );
 }
@@ -235,7 +254,7 @@ export function MobileCategoriesView() {
         />
 
         <div
-          className="sticky z-20 -mx-1 rounded-[1.3rem] border border-slate-200/80 bg-white/92 p-3 shadow-[0_14px_26px_rgba(15,23,42,0.08)] backdrop-blur-md"
+          className="sticky z-20 -mx-1 rounded-[1.3rem] border border-slate-200 bg-white p-3 shadow-sm"
           style={{ top: "var(--shopper-header-offset)" }}
         >
           <div className="flex items-center justify-between gap-3">
@@ -328,9 +347,10 @@ export function MobileProductsView() {
     hasNextPage,
     totalProductCount,
   } = useCatalog();
+  const { allProducts } = useFullCatalog();
   const { lang } = useLanguage();
   const { searchQuery, setSearchQuery } = useSearchInput();
-  const [priceRange, setPriceRange] = useState(0);
+  const [priceRange, setPriceRange] = useState<number | undefined>(undefined);
   const [sortBy, setSortBy] =
     useState<(typeof SORT_OPTIONS)[number]["value"]>("relevant");
   const [onlyInStock, setOnlyInStock] = useState(false);
@@ -339,16 +359,13 @@ export function MobileProductsView() {
   const activeCategory = searchParams.get("category") || "all";
   const syncedSearch = (searchParams.get("search") || "").trim();
   const debouncedSearch = useDebouncedValue(searchQuery, 180);
+  // Use full catalog for a stable maxPrice ceiling; fall back to paginated products
+  const catalogForPrice = allProducts.length > 0 ? allProducts : products;
   // getMaxPriceCeiled avoids the V8 spread-limit crash on 65K+ args
   const maxPrice = useMemo(
-    () => getMaxPriceCeiled(products, 50),
-    [products],
+    () => getMaxPriceCeiled(catalogForPrice, 50),
+    [catalogForPrice],
   );
-  useEffect(() => {
-    if (maxPrice > 0) {
-      setPriceRange((current) => (current > 0 ? Math.min(current, maxPrice) : maxPrice));
-    }
-  }, [maxPrice]);
 
   useEffect(() => {
     if (searchQuery !== syncedSearch) {
@@ -387,7 +404,7 @@ export function MobileProductsView() {
       category: activeCategory,
       query: searchQuery,
       onlyInStock,
-      priceCap: priceRange,
+      priceCap: priceRange ?? maxPrice,
     },
     sortBy,
     lang,
@@ -395,7 +412,7 @@ export function MobileProductsView() {
   const hasFilters =
     activeCategory !== "all"
     || onlyInStock
-    || (maxPrice > 0 && priceRange < maxPrice)
+    || (priceRange !== undefined && maxPrice > 0 && priceRange < maxPrice)
     || searchQuery.trim().length > 0;
   const activeCategoryLabel = categoryOptions.find((item) => item.id === activeCategory)?.label;
   const updateParams = (updates: Record<string, string | null>) => {
@@ -413,10 +430,16 @@ export function MobileProductsView() {
   const clearAll = () => {
     setSortBy("relevant");
     setOnlyInStock(false);
-    setPriceRange(maxPrice);
+    setPriceRange(undefined);
     setSearchQuery("");
     setSearchParams(new URLSearchParams());
   };
+  const productItemContent = useCallback(
+    (index: number) => (
+      <ShopperProductTile product={sortedProducts[index]!} showCategory={false} />
+    ),
+    [sortedProducts],
+  );
   return (
     <ShopperPage className="w-full">
       <div className="space-y-4 w-full">
@@ -452,7 +475,7 @@ export function MobileProductsView() {
           }
         />
         <div
-          className="sticky z-20 -mx-1 rounded-[1.35rem] border border-slate-200/80 bg-white/92 p-3 shadow-[0_14px_26px_rgba(15,23,42,0.08)] backdrop-blur-md"
+          className="sticky z-20 -mx-1 rounded-[1.35rem] border border-slate-200 bg-white p-3 shadow-sm"
           style={{ top: "var(--shopper-header-offset)" }}
         >
           <div className="shopper-rail">
@@ -521,15 +544,13 @@ export function MobileProductsView() {
                   : `${sortedProducts.length} of ${totalProductCount || resultCount}`}
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
-              {sortedProducts.map((product) => (
-                <ShopperProductTile
-                  key={product.id}
-                  product={product}
-                  showCategory={false}
-                />
-              ))}
-            </div>
+            <VirtuosoGrid
+              useWindowScroll
+              totalCount={sortedProducts.length}
+              overscan={600}
+              components={MOBILE_GRID_COMPONENTS}
+              itemContent={productItemContent}
+            />
             {hasNextPage ? (
               <button
                 type="button"
@@ -627,7 +648,7 @@ export function MobileProductsView() {
                 {lang === "ar" ? "السعر الأقصى" : "Max price"}
               </p>
               <span className="text-sm font-black text-slate-700">
-                {priceRange.toFixed(0)} {lang === "ar" ? "ج.م" : "EGP"}
+                {(priceRange ?? maxPrice).toFixed(0)} {lang === "ar" ? "ج.م" : "EGP"}
               </span>
             </div>
             <input
@@ -635,8 +656,11 @@ export function MobileProductsView() {
               min={0}
               max={maxPrice || 0}
               step={50}
-              value={priceRange}
-              onChange={(event) => setPriceRange(Number(event.target.value))}
+              value={priceRange ?? maxPrice}
+              onChange={(event) => {
+                const val = Number(event.target.value);
+                setPriceRange(val < maxPrice ? val : undefined);
+              }}
               className="w-full accent-[var(--primary)]"
             />
           </div>
@@ -928,6 +952,12 @@ export function MobileCategoryDetailsView() {
     lang,
   );
   const relatedCategories = categories.filter((entry) => entry.id !== category.id).slice(0, 5);
+  const categoryItemContent = useCallback(
+    (index: number) => (
+      <ShopperProductTile product={sortedProducts[index]!} showCategory={false} />
+    ),
+    [sortedProducts],
+  );
   return (
     <ShopperPage className="w-full">
       <div className="space-y-4 w-full">
@@ -989,7 +1019,7 @@ export function MobileCategoryDetailsView() {
           </ShopperSurface>
         ) : null}
         <div
-          className="sticky z-20 -mx-1 rounded-[1.3rem] border border-slate-200/80 bg-white/92 p-3 shadow-[0_14px_26px_rgba(15,23,42,0.08)] backdrop-blur-md"
+          className="sticky z-20 -mx-1 rounded-[1.3rem] border border-slate-200 bg-white p-3 shadow-sm"
           style={{ top: "var(--shopper-header-offset)" }}
         >
           <div className="flex items-center justify-between gap-3">
@@ -1064,15 +1094,13 @@ export function MobileCategoryDetailsView() {
                 </div>
               </div>
             </ShopperSurface>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {sortedProducts.map((product) => (
-                <ShopperProductTile
-                  key={product.id}
-                  product={product}
-                  showCategory={false}
-                />
-              ))}
-            </div>
+            <VirtuosoGrid
+              useWindowScroll
+              totalCount={sortedProducts.length}
+              overscan={600}
+              components={MOBILE_GRID_COMPONENTS}
+              itemContent={categoryItemContent}
+            />
             {hasNextPage ? (
               <button
                 type="button"
