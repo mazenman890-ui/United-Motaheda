@@ -357,11 +357,10 @@ function HomeDesktop() {
             {/* Stats strip */}
             <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 border-t border-white/10 pt-8">
               {[
-                { value: "+52K",         labelAr: "منتج دوائي",      labelEn: "Products"          },
-                { value: isRtl ? "ذكي" : "Fuzzy",
-                                          labelAr: "بحث بالأخطاء",    labelEn: "Typo-tolerant"     },
-                { value: "AR+EN",        labelAr: "لغتان",            labelEn: "Bilingual"         },
-                { value: isRtl ? "✓" : "✓", labelAr: "توصيل القاهرة", labelEn: "Cairo delivery"   },
+                { value: "+52K",  labelAr: "منتج متاح",         labelEn: "Products in stock"  },
+                { value: "5",     labelAr: "فروع في القاهرة",   labelEn: "Cairo branches"     },
+                { value: "100%",  labelAr: "أدوية أصلية",       labelEn: "Genuine medicines"  },
+                { value: "🚚",    labelAr: "توصيل لباب البيت",  labelEn: "Door-to-door delivery" },
               ].map(({ value, labelAr, labelEn }) => (
                 <div key={labelEn} className="flex flex-col items-center gap-0.5">
                   <span className="text-2xl font-black text-white">{value}</span>
