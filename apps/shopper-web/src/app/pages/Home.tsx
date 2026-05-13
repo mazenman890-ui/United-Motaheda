@@ -303,7 +303,7 @@ function HomeDesktop() {
                 <Sparkles className="h-4 w-4 text-amber-300" />
               </Link>
               <Link to="/categories"
-                className="inline-flex h-12 items-center gap-2 rounded-2xl border border-white/15 bg-transparent px-7 text-sm font-black text-white/80 transition-all hover:border-white/30 hover:text-white">
+                className="inline-flex h-12 items-center gap-2 rounded-2xl border border-white/15 bg-transparent px-7 text-sm font-black text-white transition-all hover:border-white/30 hover:text-white">
                 {isRtl ? "الأقسام" : "Categories"}
               </Link>
             </div>
@@ -582,7 +582,7 @@ function HomeDesktop() {
                       <IconComp className="relative z-10 h-8 w-8 text-white drop-shadow" />
                       <div className="relative z-10">
                         <p className={cn("text-sm font-black text-white", isRtl && "text-right")}>{label}</p>
-                        <div className={cn("mt-1.5 inline-flex items-center gap-1 text-[11px] font-black text-white/80 transition-all group-hover:gap-2", isRtl && "flex-row-reverse")}>
+                        <div className={cn("mt-1.5 inline-flex items-center gap-1 text-[11px] font-black text-white transition-all group-hover:gap-2", isRtl && "flex-row-reverse")}> 
                           {isRtl ? "افتح القسم" : "Open section"}
                           <ArrowRight className={cn("h-3 w-3", isRtl && "rotate-180")} />
                         </div>
