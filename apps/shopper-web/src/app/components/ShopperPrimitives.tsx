@@ -405,9 +405,12 @@ export function ShopperCategoryTile({
               decoding="async"
             />
             <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.05)_0%,rgba(15,23,42,0.4)_100%)]" />
-            <div className="absolute start-3 top-3">
-              <span className="rounded-full border border-white/80 bg-white/95 px-2.5 py-1 text-[10px] font-black text-slate-700 shadow-sm">
+            <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-3">
+              <span className="rounded-full border border-white/80 bg-white/94 px-2.5 py-1 text-[10px] font-black text-slate-700 shadow-sm">
                 {lang === "ar" ? "قسم" : "Section"}
+              </span>
+              <span className="rounded-full border border-white/20 bg-slate-950/78 px-2.5 py-1 text-[10px] font-black text-white shadow-sm backdrop-blur-sm">
+                {category.inStockCount}
               </span>
             </div>
             <div className="absolute end-3 bottom-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/94 text-slate-700 shadow-sm">

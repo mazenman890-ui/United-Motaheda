@@ -183,7 +183,7 @@ export function HomeMobile() {
 
             {/* Top-start: live brand badge */}
             <div className="absolute start-4 top-4">
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-slate-950/45 px-3 py-1.5">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3 py-1.5 backdrop-blur-[10px]">
                 <span className="relative flex h-2 w-2 shrink-0">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--primary,#24b8b5)] opacity-70" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--primary,#24b8b5)]" />
@@ -196,7 +196,7 @@ export function HomeMobile() {
 
             {/* Top-end: offers counter */}
             <div className="absolute end-4 top-4">
-              <div className="flex flex-col items-center rounded-[0.9rem] border border-white/20 bg-slate-950/45 px-3.5 py-2">
+              <div className="flex flex-col items-center rounded-[0.9rem] border border-white/25 bg-white/15 px-3.5 py-2 backdrop-blur-[10px]">
                 <span className="text-[20px] font-black leading-none text-white">
                   {featuredProducts.length}
                 </span>

@@ -13,6 +13,8 @@ import { getSupabaseClient } from "../lib/supabaseClient";
 import {
   fetchCatalogSnapshot,
   getCachedCatalogSnapshot,
+  getCategoryNamesById,
+  getStaticCategoryList,
   type CatalogSnapshot,
   type CatalogProduct,
   type CatalogCategory,
@@ -140,21 +142,6 @@ class PageCache {
 
 const pageCache = new PageCache();
 
-/**
- * In-flight deduplication map for `fetchProductsPage`.
- *
- * React StrictMode (dev) double-invokes effects, which causes two concurrent
- * calls to `fetchProductsPage(1, {})` before either resolves and writes to the
- * LRU cache.  Without dedup, both calls hit Supabase, both trigger
- * `applyPageResult`, and the product grid flashes twice.
- *
- * The map holds a promise per `page:filtersHash` key; any concurrent caller
- * for the same key shares the same promise instead of opening a second request.
- * The key is removed in `.finally()` so the next call (after the result is
- * cached) goes through the normal LRU-cache path.
- */
-const inFlightPageRequests = new Map<string, Promise<PageResult>>();
-
 // ─── Supabase Type Helper ─────────────────────────────────────────────────────
 
 /**
@@ -201,36 +188,33 @@ function buildSupabaseQuery(
     .select("*", { count: "exact" });
 
   // Full-text search across name (AR + EN), product code, and barcode.
+  // Arabic is searched with the original (un-lowercased) term because Arabic
+  // has no case distinction and toLowerCase() can mangle Unicode normalisation
+  // in some JS runtimes. English / code columns use the lowercased term.
   if (filters.searchQuery) {
-    const term = `%${filters.searchQuery.toLowerCase()}%`;
+    const raw   = filters.searchQuery.trim();
+    const lower = raw.toLowerCase();
+    // PostgREST requires mixed-case column names to be wrapped in double quotes
+    // inside the .or() filter string, otherwise PostgreSQL folds them to lowercase
+    // and returns 0 results. Use raw (un-lowercased) term for Arabic columns.
     query = query.or(
-      [
-        `Name_Ar.ilike.${term}`,
-        `Name_En.ilike.${term}`,
-        `Code.ilike.${term}`,
-        `Barcode.ilike.${term}`,
-      ].join(","),
+      `"Name_En".ilike.%${lower}%,"Name_Ar".ilike.%${raw}%,"Code".ilike.%${lower}%,"Barcode".ilike.%${lower}%`,
     );
   }
 
   // Category filtering via display-name matching (AR + EN).
-  // Resolves the slug to its human-readable names using the in-memory snapshot
-  // so the query hits the actual DB columns without requiring a schema change.
+  // Resolved directly from CATEGORY_SEEDS — no full snapshot required.
+  // This means category filtering works correctly on cold start without
+  // waiting for 52K products to load into memory.
   if (filters.categoryId) {
-    const cachedCategory = getCachedCatalogSnapshot()?.categories.find(
-      (c) => c.id === filters.categoryId,
-    );
-
-    if (cachedCategory) {
-      const arName = `%${cachedCategory.name}%`;
-      const enName = `%${cachedCategory.nameEn}%`;
+    const names = getCategoryNamesById(filters.categoryId);
+    if (names) {
+      const arName = `%${names.name}%`;
+      const enName = `%${names.nameEn}%`;
       query = query.or(
-        `Category_Name.ilike.${arName},Category_Name_En.ilike.${enName}`,
+        `"Category_Name".ilike.${arName},"Category_Name_En".ilike.${enName}`,
       );
     }
-    // If the snapshot is not yet loaded, the category filter is skipped for
-    // this request and will apply correctly on subsequent calls once the
-    // snapshot is warm. Callers should warm the cache before paginated queries.
   }
 
   // Stock availability filter.
@@ -357,71 +341,112 @@ export async function fetchShopperCatalogSnapshot(
 /**
  * Fetch a single page of products with server-side filtering and pagination.
  *
+ * When a `searchQuery` is present the request is routed through the
+ * `search_products_fuzzy` Supabase RPC (pg_trgm similarity — tolerates Arabic
+ * typos like "بنادول" → "بانادول").  All other filters and pagination behave
+ * identically for both paths.
+ *
+ * Fallback: if the RPC is not yet deployed the function transparently retries
+ * with the standard ilike query so the UI never goes blank.
+ *
  * Results are kept in the in-memory LRU page cache (TTL: 5 min for filtered
  * results, 15 min for unfiltered).
- *
- * Concurrent calls for the same page+filters share one in-flight promise so
- * that React StrictMode's double-effect invocation never opens two Supabase
- * requests for the same data.
  */
 export async function fetchProductsPage(
   pageNumber: number,
   filters: ProductFilters = {},
 ): Promise<PageResult> {
-  // 1. LRU cache — fastest path, no network.
   const cached = pageCache.get(pageNumber, filters);
   if (cached) return cached;
 
-  // 2. In-flight dedup — return the existing promise for the same page+filters
-  //    if a concurrent call (e.g. StrictMode double-mount) already started one.
-  const inflightKey = `${pageNumber}:${JSON.stringify({
-    searchQuery: filters.searchQuery?.toLowerCase() ?? "",
-    categoryId: filters.categoryId ?? "",
-    inStock: filters.inStock ?? false,
-    minPrice: filters.minPrice ?? 0,
-    maxPrice: filters.maxPrice ?? 0,
-  })}`;
-  const existing = inFlightPageRequests.get(inflightKey);
-  if (existing) return existing;
+  let products: CatalogProduct[];
+  let totalCount: number;
 
-  // 3. New network request.
-  const promise = (async (): Promise<PageResult> => {
-    const supabase = getSupabaseClient();
-    const query = buildSupabaseQuery(supabase, filters, pageNumber, PAGE_SIZE);
-
-    // `query` is a PostgrestFilterBuilder — awaiting it yields { data, error, count }.
-    const { data, error, count } = await query;
-
-    if (error) throw new Error(`Supabase query failed: ${error.message}`);
-    if (!data || !Array.isArray(data)) {
-      throw new Error("Invalid data shape received from Supabase.");
+  if (filters.searchQuery?.trim()) {
+    // ── Fuzzy path: pg_trgm RPC ──────────────────────────────────────────────
+    try {
+      const result = await fetchProductsPageFuzzy(pageNumber, filters);
+      products   = result.products;
+      totalCount = result.totalCount;
+    } catch {
+      // RPC not yet deployed — fall back to ilike silently.
+      const result = await fetchProductsPageIlike(pageNumber, filters);
+      products   = result.products;
+      totalCount = result.totalCount;
     }
+  } else {
+    // ── Regular path: ilike + filter ─────────────────────────────────────────
+    const result = await fetchProductsPageIlike(pageNumber, filters);
+    products   = result.products;
+    totalCount = result.totalCount;
+  }
 
-    const products: CatalogProduct[] = (data as Record<string, unknown>[])
-      .map((row, index) => {
-        const sourceRow = (pageNumber - 1) * PAGE_SIZE + index + 2;
-        return normalizeSupabaseProduct(row, sourceRow);
-      })
-      .filter((p): p is CatalogProduct => p !== null);
+  const pageResult: PageResult = {
+    products,
+    totalCount,
+    hasNextPage: totalCount > pageNumber * PAGE_SIZE,
+    currentPage: pageNumber,
+    pageSize: PAGE_SIZE,
+  };
 
-    const totalCount = count ?? 0;
-    const pageResult: PageResult = {
-      products,
-      totalCount,
-      hasNextPage: totalCount > pageNumber * PAGE_SIZE,
-      currentPage: pageNumber,
-      pageSize: PAGE_SIZE,
-    };
+  pageCache.set(pageNumber, filters, pageResult);
+  return pageResult;
+}
 
-    pageCache.set(pageNumber, filters, pageResult);
-    return pageResult;
-  })().finally(() => {
-    // Remove from in-flight map once settled so the next call uses the LRU cache.
-    inFlightPageRequests.delete(inflightKey);
+// ─── Internal helpers ─────────────────────────────────────────────────────────
+
+async function fetchProductsPageIlike(
+  pageNumber: number,
+  filters: ProductFilters,
+): Promise<{ products: CatalogProduct[]; totalCount: number }> {
+  const supabase = getSupabaseClient();
+  const query = buildSupabaseQuery(supabase, filters, pageNumber, PAGE_SIZE);
+  const { data, error, count } = await query;
+
+  if (error) throw new Error(`Supabase query failed: ${error.message}`);
+  if (!data || !Array.isArray(data)) throw new Error("Invalid data shape from Supabase.");
+
+  const products = (data as Record<string, unknown>[])
+    .map((row, i) => normalizeSupabaseProduct(row, (pageNumber - 1) * PAGE_SIZE + i + 2))
+    .filter((p): p is CatalogProduct => p !== null);
+
+  return { products, totalCount: count ?? 0 };
+}
+
+async function fetchProductsPageFuzzy(
+  pageNumber: number,
+  filters: ProductFilters,
+): Promise<{ products: CatalogProduct[]; totalCount: number }> {
+  const supabase = getSupabaseClient();
+
+  // Resolve category slug → display names for the RPC filter parameters.
+  let categoryAr: string | null = null;
+  let categoryEn: string | null = null;
+  if (filters.categoryId) {
+    const names = getCategoryNamesById(filters.categoryId);
+    if (names) { categoryAr = names.name; categoryEn = names.nameEn; }
+  }
+
+  const { data, error } = await supabase.rpc("search_products_fuzzy", {
+    search_term:    filters.searchQuery!.trim(),
+    page_number:    pageNumber,
+    page_size:      PAGE_SIZE,
+    category_ar:    categoryAr,
+    category_en:    categoryEn,
+    in_stock_only:  filters.inStock  ?? null,
+    sort_order:     filters.sortBy   ?? "relevant",
+    min_similarity: 0.15,
   });
 
-  inFlightPageRequests.set(inflightKey, promise);
-  return promise;
+  if (error) throw new Error(`Fuzzy RPC failed: ${error.message}`);
+  if (!data || !Array.isArray(data)) return { products: [], totalCount: 0 };
+
+  const totalCount = (data[0] as Record<string, unknown> | undefined)?.total_count as number ?? 0;
+  const products   = (data as Record<string, unknown>[])
+    .map((row, i) => normalizeSupabaseProduct(row, (pageNumber - 1) * PAGE_SIZE + i + 2))
+    .filter((p): p is CatalogProduct => p !== null);
+
+  return { products, totalCount };
 }
 
 /**
@@ -445,11 +470,12 @@ export async function fetchCategoriesQuick(): Promise<CatalogCategory[]> {
   const localCategories = readCachedCategories();
   if (localCategories) return localCategories;
 
-  // 3. Fetch the full snapshot (also populates the in-memory and slim-index
-  //    caches in catalog.ts for subsequent calls).
-  const snapshot = await fetchShopperCatalogSnapshot();
-  writeCachedCategories(snapshot.categories);
-  return snapshot.categories;
+  // 3. Build from static seed definitions — zero network cost, zero products needed.
+  //    Counts are 0 initially; they update once deriveCatalogCategories() runs with
+  //    real product data. This avoids the old 52K-product fetch just to get names.
+  const staticCategories = getStaticCategoryList();
+  writeCachedCategories(staticCategories);
+  return staticCategories;
 }
 
 /**
@@ -534,11 +560,10 @@ function writeCachedCategories(categories: CatalogCategory[]): void {
   safeLocalStorageSet(CATEGORY_CACHE_KEY, JSON.stringify(payload));
 }
 
-// ─── fetchProductsByIds ───────────────────────────────────────────────────────
 /**
- * Fetch a batch of products by their IDs directly from Supabase.
- * Used by CartContext and FavoritesContext to resolve product IDs that are not
- * in the page-1 in-memory cache (i.e. products added from page 2+).
+ * Fetch a specific set of products by their UUIDs in a single Supabase call.
+ * Used by Cart and Favorites to resolve product IDs that are not in the
+ * page-1 in-memory cache (i.e. products added from page 2+).
  *
  * Returns an empty array (never throws) so callers can treat this as best-effort.
  */

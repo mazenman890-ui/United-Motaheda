@@ -1,108 +1,59 @@
 /**
- * ProductGrid.tsx — Virtualized product grid
+ * ProductGrid.tsx — Virtualized product grid with Infinite Scroll
  *
  * ═══════════════════════════════════════════════════════════════════════════════
  * THE PRIMARY PERFORMANCE FIX: VIRTUALIZATION
  * ═══════════════════════════════════════════════════════════════════════════════
  *
- * The previous version rendered ALL matched products as DOM nodes:
- *
- *   products.map(p => <ProductCard key={p.id} product={p} />)
- *
- * With 52 000 products and no active search filter, this creates 52 000 DOM
- * nodes simultaneously:
- *   • ~520 MB of DOM memory (each card ~10 KB of nodes)
- *   • Layout thrashing on every scroll (browser must compute positions for all)
- *   • 5–15 second "frozen" render on the /products page
- *
- * With VirtuosoGrid, only the cards that are VISIBLE in the viewport plus a
- * small overscan buffer (~400 px above/below) are ever in the DOM.  For a
- * typical 1080p screen showing 3 columns of ~300 px cards, that's 9–15 cards
- * in the DOM at any moment, regardless of total result count.
+ * With VirtuosoGrid, only the cards visible in the viewport (plus a small
+ * overscan buffer) are ever in the DOM. For a 1080p screen showing 3 columns
+ * of ~300px cards, that's 9–15 DOM nodes at any moment regardless of how many
+ * products are loaded. The grid does not re-render non-visible cards on scroll.
  *
  * ═══════════════════════════════════════════════════════════════════════════════
- * WHY react-virtuoso OVER @tanstack/react-virtual
+ * INFINITE SCROLL — how it works (for Bara'a)
  * ═══════════════════════════════════════════════════════════════════════════════
  *
- * @tanstack/react-virtual virtualizes ROWS or COLUMNS, not individual items.
- * For a `grid-cols-2 lg:grid-cols-3 xl:auto-fill` layout where column count
- * changes with viewport width, the caller would have to:
- *   1. Measure column count via ResizeObserver on every viewport resize.
- *   2. Group products into rows of N.
- *   3. Measure row heights (variable because product names vary in length).
- *   4. Re-virtualise on every column count change.
+ *  1. VirtuosoGrid renders the current `products` array.
+ *  2. When the last item enters the viewport, VirtuosoGrid fires `endReached`.
+ *  3. `endReached` calls `onEndReached()` which the parent (Products.tsx) wires
+ *     to `useInfiniteProducts.fetchNextPage()`.
+ *  4. `fetchNextPage` sends one Supabase request for the next 24 products.
+ *  5. The new products are appended to the array, `totalCount` grows, and
+ *     VirtuosoGrid smoothly extends the list without any layout shift.
  *
- * VirtuosoGrid handles ALL of this automatically.  It accepts:
- *   - A `List` component with your CSS grid classes applied.
- *   - An `Item` wrapper component.
- *   - An `itemContent` function that renders each card.
- *
- * Internally it uses ResizeObserver to track item heights and column counts,
- * recalculates on resize, and handles variable-height rows correctly.
- * The result: identical CSS grid layout, zero manual measurement code.
+ * While the next page is loading, `isLoadingMore` is true. The <InfiniteScrollFooter>
+ * renders a spinner below the grid so the user knows more items are coming.
+ * It is positioned OUTSIDE VirtuosoGrid (below it) so it doesn't interfere with
+ * the virtualizer's internal height calculations.
  *
  * ═══════════════════════════════════════════════════════════════════════════════
  * STABLE COMPONENT REFERENCES (critical correctness requirement)
  * ═══════════════════════════════════════════════════════════════════════════════
  *
  * VirtuosoGrid's `components.List` and `components.Item` MUST be defined
- * OUTSIDE the render function.  If defined inline, React treats them as new
+ * OUTSIDE the render function. If defined inline, React treats them as new
  * component types on every render, unmounting and remounting the entire
- * virtual DOM tree.  This would make virtualization actively worse than a
- * plain map().
+ * virtual DOM tree — defeating the purpose of virtualization.
  *
- * GridListContainer and GridItemContainer are module-level constants — they
- * are defined once and never change.
+ * GridListContainer and GridItemContainer are module-level constants.
  *
  * ═══════════════════════════════════════════════════════════════════════════════
- * LOADING STATES
+ * SKELETON LOADING STATES
  * ═══════════════════════════════════════════════════════════════════════════════
  *
- * Three loading states, each serving a different UX case:
- *
- *   1. INITIAL LOAD (products.length === 0 && isSearching)
- *      Shows a skeleton grid — indicates the search is running, not that
- *      there are no results.  Prevents confusing "empty" flash.
+ *   1. INITIAL LOAD (products.length === 0 && isLoading)
+ *      Shows 12 skeleton cards — signals "search is running", not "no results".
  *
  *   2. SEARCH REFINEMENT (products.length > 0 && isSearching)
- *      The previous results remain visible with a translucent loading overlay.
- *      The user sees where they were while new results load — no disorienting
- *      content replacement.  The overlay uses `pointer-events-none` so the
- *      user can still scroll during loading.
+ *      Previous results stay visible with a translucent loading overlay.
+ *      pointer-events-none so the user can still scroll during the transition.
  *
- *   3. EMPTY RESULTS (products.length === 0 && !isSearching)
- *      Clear empty state with a helpful message — distinguishes "no results"
- *      from "still loading".
+ *   3. NEXT PAGE LOADING (isLoadingMore)
+ *      Spinner appears below the last row. Existing rows stay fully interactive.
  *
- * ═══════════════════════════════════════════════════════════════════════════════
- * REQUIRED SETUP
- * ═══════════════════════════════════════════════════════════════════════════════
- *
- *   npm install react-virtuoso
- *
- * Global CSS (add to your index.css or equivalent):
- *
- *   @keyframes product-card-in {
- *     from { opacity: 0; transform: translateY(12px); }
- *     to   { opacity: 1; transform: translateY(0); }
- *   }
- *   @media (prefers-reduced-motion: no-preference) {
- *     .product-card-animate {
- *       animation: product-card-in 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
- *     }
- *   }
- *
- * Tailwind config (extend.animation + extend.keyframes):
- *
- *   keyframes: {
- *     shimmer: {
- *       '0%':   { backgroundPosition: '-200% 0' },
- *       '100%': { backgroundPosition:  '200% 0' },
- *     },
- *   },
- *   animation: {
- *     shimmer: 'shimmer 1.6s linear infinite',
- *   },
+ *   4. EMPTY RESULTS (products.length === 0 && !isLoading)
+ *      Clear empty-state message distinguishes "no results" from "loading".
  */
 
 import {
@@ -119,7 +70,7 @@ import { ProductCard, ProductCardSkeleton } from "./ProductCard";
 import { cn } from "./UI";
 
 // ─── CSS grid classes ─────────────────────────────────────────────────────────
-// Shared between the live grid, skeleton grid, and empty state so layout is
+// Shared across the live grid, skeleton grid, and empty state so layout is
 // always consistent regardless of which state is rendered.
 
 const GRID_CLASSES = cn(
@@ -132,15 +83,11 @@ const GRID_CLASSES = cn(
 
 // ─── Stable VirtuosoGrid component references ─────────────────────────────────
 //
-// CRITICAL: These must be defined at module scope, not inside the component
-// render function.  VirtuosoGrid compares component identity on each render —
-// a new function reference causes the entire grid to unmount and remount,
-// defeating the purpose of virtualization.
+// CRITICAL: Must be at module scope — not inside any component.
+// VirtuosoGrid compares component identity on each render. A new function
+// reference causes the entire grid DOM tree to unmount and remount, which
+// defeats the purpose of virtualization entirely.
 
-/**
- * The outer grid container forwarded from VirtuosoGrid.
- * Applies the CSS grid classes and accepts className/style from the virtualizer.
- */
 const GridListContainer = forwardRef<
   HTMLDivElement,
   { style?: CSSProperties; children?: ReactNode; className?: string }
@@ -151,11 +98,6 @@ const GridListContainer = forwardRef<
 ));
 GridListContainer.displayName = "GridListContainer";
 
-/**
- * Each item wrapper within the virtualizer.
- * Must be a forwardRef so VirtuosoGrid can measure and observe it.
- * `min-h-0` prevents the grid cell from overflowing its auto-row track.
- */
 const GridItemContainer = forwardRef<
   HTMLDivElement,
   { children?: ReactNode; className?: string }
@@ -166,7 +108,7 @@ const GridItemContainer = forwardRef<
 ));
 GridItemContainer.displayName = "GridItemContainer";
 
-// VirtuosoGrid components object — also module-scoped for referential stability
+// VirtuosoGrid components object — module-scoped for referential stability.
 const VIRTUOSO_COMPONENTS: GridComponents = {
   List: GridListContainer,
   Item: GridItemContainer,
@@ -175,17 +117,14 @@ const VIRTUOSO_COMPONENTS: GridComponents = {
 // ─── ProductGridSkeleton ──────────────────────────────────────────────────────
 
 /**
- * A grid of skeleton cards, rendered while the initial search result is loading.
- *
- * `count` defaults to 12 — enough to fill a typical viewport without
- * layout shift when real cards arrive.  The skeleton cards use the same CSS
- * grid classes as the live grid so column count and spacing are identical.
+ * A grid of skeleton cards shown while the initial page-1 response is in-flight.
+ * Uses the same CSS grid classes as the live grid to prevent layout shift.
  */
 export function ProductGridSkeleton({
   count = 12,
   className,
 }: {
-  count?:     number;
+  count?: number;
   className?: string;
 }) {
   return (
@@ -200,12 +139,9 @@ export function ProductGridSkeleton({
 // ─── SearchLoadingOverlay ─────────────────────────────────────────────────────
 
 /**
- * A subtle loading indicator displayed over existing results while a refined
- * search is in progress.  Keeps the grid visible and scrollable — the user
- * sees context while waiting — rather than replacing it with a skeleton.
- *
- * `pointer-events-none` ensures the overlay doesn't block scroll or taps.
- * The spinner uses CSS `animate-spin` (compositor-only, zero JS).
+ * Shown while a search refinement is in progress (results exist but are being
+ * replaced). Keeps the grid visible and scrollable while the response arrives.
+ * pointer-events-none prevents it from blocking scroll or tap events.
  */
 function SearchLoadingOverlay({ lang }: { lang: "ar" | "en" }) {
   return (
@@ -214,14 +150,50 @@ function SearchLoadingOverlay({ lang }: { lang: "ar" | "en" }) {
       aria-label={lang === "ar" ? "جارٍ تحديث النتائج" : "Updating results"}
       className="pointer-events-none fixed inset-x-0 top-20 z-40 flex justify-center"
     >
-      <div className="flex items-center gap-2.5 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-[0_8px_32px_rgba(15,23,42,0.12)]">
-        {/* Spinner — CSS only, zero JS */}
+      <div className="flex items-center gap-2.5 rounded-2xl border border-white/70 bg-white/90 px-4 py-2.5 shadow-[0_8px_32px_rgba(15,23,42,0.12)] backdrop-blur-xl">
         <span className="relative flex h-4 w-4 items-center justify-center">
           <span className="absolute inset-0 animate-spin rounded-full border-2 border-slate-200 border-t-teal-500" />
         </span>
         <span className="text-xs font-black text-slate-600">
           {lang === "ar" ? "جارٍ البحث…" : "Searching…"}
         </span>
+      </div>
+    </div>
+  );
+}
+
+// ─── InfiniteScrollFooter ─────────────────────────────────────────────────────
+
+/**
+ * Rendered BELOW the VirtuosoGrid when the next page of products is loading.
+ *
+ * Placed outside the virtualizer so it doesn't affect the internal height
+ * measurements that VirtuosoGrid uses to decide which rows to render.
+ * The user sees it as a natural continuation below the last card row.
+ */
+function InfiniteScrollFooter({ lang }: { lang: "ar" | "en" }) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-label={lang === "ar" ? "جارٍ تحميل المزيد" : "Loading more products"}
+      className="mt-8 flex flex-col items-center gap-3 pb-10"
+    >
+      {/* Spinner row */}
+      <div className="flex items-center gap-3">
+        <span className="relative flex h-5 w-5 items-center justify-center">
+          <span className="absolute inset-0 animate-spin rounded-full border-2 border-slate-200 border-t-teal-500" />
+        </span>
+        <span className="text-[12px] font-black text-slate-500">
+          {lang === "ar" ? "جارٍ تحميل المزيد…" : "Loading more…"}
+        </span>
+      </div>
+
+      {/* Skeleton row hint — shows 3 ghost cards so the user knows more are coming */}
+      <div className={cn(GRID_CLASSES, "w-full opacity-60")}>
+        {Array.from({ length: 3 }, (_, i) => (
+          <ProductCardSkeleton key={i} />
+        ))}
       </div>
     </div>
   );
@@ -242,7 +214,6 @@ function EmptyState({
       aria-live="polite"
       className="flex flex-col items-center justify-center py-24 text-center"
     >
-      {/* Icon: magnifying glass with a cross */}
       <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-slate-100 bg-slate-50 shadow-sm">
         <svg
           viewBox="0 0 24 24"
@@ -283,66 +254,84 @@ function EmptyState({
 // ─── ProductGrid ──────────────────────────────────────────────────────────────
 
 interface ProductGridProps {
-  products:     CatalogProduct[];
+  products: CatalogProduct[];
+
   /**
-   * True while the search worker is processing a query.
-   *
-   * Used to pick the correct loading state:
-   *   - products.length === 0 && isSearching  → skeleton grid (initial search)
-   *   - products.length > 0  && isSearching   → results + loading overlay (refinement)
-   *   - products.length === 0 && !isSearching → empty state
+   * True while the initial page-1 response is in-flight.
+   * Shows skeleton cards instead of an empty state.
+   */
+  isLoading?: boolean;
+
+  /**
+   * True while the search worker / server is processing a refinement query.
+   * Shows a translucent overlay over the existing results.
+   * Kept for backward compatibility with the search overlay pattern.
    */
   isSearching?: boolean;
-  /** The debounced query string from the search hook — used in the empty state. */
+
+  /**
+   * True while fetching the next infinite-scroll page.
+   * Shows InfiniteScrollFooter below the grid.
+   */
+  isLoadingMore?: boolean;
+
+  /**
+   * Called when the last visible item enters the viewport.
+   * Wire this to `useInfiniteProducts.fetchNextPage`.
+   *
+   * VirtuosoGrid calls it with the index of the last rendered item.
+   * We ignore the index — the hook knows which page to fetch next.
+   */
+  onEndReached?: () => void;
+
+  /** The debounced query string — used in the empty-state message. */
   activeQuery?: string;
-  className?:   string;
+
+  className?: string;
 }
 
 export const ProductGrid = memo(function ProductGrid({
   products,
+  isLoading = false,
   isSearching = false,
+  isLoadingMore = false,
+  onEndReached,
   activeQuery = "",
   className,
 }: ProductGridProps) {
   const { lang } = useLanguage();
 
-  // ── Case 1: Initial search in progress, no results yet ─────────────────
-  // Show a skeleton grid rather than an empty state so the user knows search
-  // is running — not that there are zero results.
-  if (isSearching && products.length === 0) {
+  // ── Case 1: Initial load — nothing to show yet ─────────────────────────
+  // Display skeleton cards so the user knows content is coming.
+  // Do NOT show an empty state here — that would be misleading.
+  if (isLoading && products.length === 0) {
     return <ProductGridSkeleton className={className} />;
   }
 
   // ── Case 2: No results, not loading ────────────────────────────────────
-  if (!isSearching && products.length === 0) {
+  if (!isLoading && products.length === 0) {
     return <EmptyState activeQuery={activeQuery} lang={lang} />;
   }
 
-  // ── Case 3: Results available (with optional refinement overlay) ────────
+  // ── Case 3: Results available ───────────────────────────────────────────
   //
-  // itemContent is a useCallback so VirtuosoGrid receives a stable function
-  // reference across renders — avoids unnecessary internal re-renders of the
-  // virtualizer's row tracking logic.
+  // `itemContent` is memoised so VirtuosoGrid receives a stable function
+  // reference across renders, avoiding unnecessary internal re-renders of the
+  // virtualizer's row-tracking logic.
   //
-  // animate={false}: ProductCard entrance animations are suppressed in the
-  // virtualized context.  When the user scrolls, DOM nodes are recycled for
-  // new products — re-animating them on every scroll would be visually jarring.
-  // Cards that truly enter for the first time look fine without the animation
-  // because the overscan buffer ensures they're ready before they reach the
-  // viewport.
+  // `animate={false}`: entrance animations are suppressed in the virtualised
+  // context. When the user scrolls, DOM nodes are recycled for new products —
+  // re-animating them on every scroll would be visually jarring.
   const itemContent = useCallback(
     (index: number) => (
-      <ProductCard
-        product={products[index]}
-        animate={false}
-      />
+      <ProductCard product={products[index]} animate={false} />
     ),
     [products],
   );
 
   return (
     <div className={cn("relative", className)}>
-      {/* Refinement loading overlay — shown when results exist but search is updating */}
+      {/* Refinement overlay — shown when the search query is changing but results exist */}
       {isSearching && products.length > 0 && (
         <SearchLoadingOverlay lang={lang} />
       )}
@@ -350,24 +339,25 @@ export const ProductGrid = memo(function ProductGrid({
       {/**
        * VirtuosoGrid — the core virtualizer.
        *
-       * useWindowScroll: uses the browser window as the scroll container
-       *   instead of an internal div.  This means the page scrollbar behaves
-       *   naturally (bottom of page = bottom of products), and the browser's
-       *   native scroll restoration works correctly on back-navigation.
+       * useWindowScroll: uses the browser window as the scroll container.
+       *   Keeps the native scrollbar, scroll restoration, and browser history
+       *   working correctly. The alternative (internal div scroll) would need
+       *   an explicit height and breaks the address bar scroll behavior on mobile.
        *
-       * totalCount: total number of items in the data array.
-       *   VirtuosoGrid derives row count from this + the measured column count.
+       * totalCount: the number of items in `products`. VirtuosoGrid derives
+       *   row count from this + its measured column count.
        *
-       * overscan: render items 400 px above and below the visible area.
-       *   This prevents the user from seeing a blank area if they scroll
-       *   quickly.  Too large = more DOM nodes; too small = visible blanks.
-       *   400 px ≈ one row of cards at standard card heights.
+       * overscan: render items 400 px above/below the visible area.
+       *   Prevents blank gaps when the user scrolls quickly.
+       *   400 px ≈ one row of standard card heights.
        *
-       * components: stable module-level references (see above).
+       * endReached: fired when the last rendered item enters the viewport.
+       *   We wire this to `useInfiniteProducts.fetchNextPage` so infinite
+       *   scroll triggers automatically without any button click.
+       *   The `_index` parameter (last item's index) is intentionally ignored
+       *   — the hook tracks the page number internally.
        *
-       * itemContent: maps an index to a rendered ProductCard.
-       *   The virtualizer calls this for each item in the visible + overscan
-       *   range and recycles the call when items go out of range.
+       * components: module-scoped stable references (see top of file).
        */}
       <VirtuosoGrid
         useWindowScroll
@@ -375,7 +365,11 @@ export const ProductGrid = memo(function ProductGrid({
         overscan={400}
         components={VIRTUOSO_COMPONENTS}
         itemContent={itemContent}
+        endReached={onEndReached ? (_index) => onEndReached() : undefined}
       />
+
+      {/* Infinite scroll loading footer — rendered OUTSIDE the virtualizer */}
+      {isLoadingMore && <InfiniteScrollFooter lang={lang} />}
     </div>
   );
 });
