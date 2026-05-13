@@ -20,6 +20,7 @@ import {
   type CatalogCategory,
   normalizeSupabaseProduct,
 } from "../app/catalog";
+import { expandSearchTerms } from "@pharmacy/fuzzy-search";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -192,14 +193,37 @@ function buildSupabaseQuery(
   // has no case distinction and toLowerCase() can mangle Unicode normalisation
   // in some JS runtimes. English / code columns use the lowercased term.
   if (filters.searchQuery) {
-    const raw   = filters.searchQuery.trim();
-    const lower = raw.toLowerCase();
-    // PostgREST requires mixed-case column names to be wrapped in double quotes
-    // inside the .or() filter string, otherwise PostgreSQL folds them to lowercase
-    // and returns 0 results. Use raw (un-lowercased) term for Arabic columns.
-    query = query.or(
-      `"Name_En".ilike.%${lower}%,"Name_Ar".ilike.%${raw}%,"Code".ilike.%${lower}%,"Barcode".ilike.%${lower}%`,
-    );
+    const raw = filters.searchQuery.trim();
+
+    // Expand with Arabic normalisation + bidirectional drug dictionary so that:
+    //  • "بنادول" also searches for "panadol", "paracetamol" in Name_En
+    //  • "panadol" also searches for "بنادول" in Name_Ar
+    //  • "بندول"  (typo, edit-dist 1) finds the "بنادول" dictionary entry
+    //    and its English synonyms — catches typos even on the ilike path.
+    const { arTerms, enTerms } = expandSearchTerms(raw);
+
+    const orParts: string[] = [];
+
+    // Arabic terms → search Name_Ar column
+    for (const ar of arTerms) {
+      const safe = ar.replace(/[%_]/g, "\\$&"); // escape SQL wildcards
+      orParts.push(`"Name_Ar".ilike.%${safe}%`);
+    }
+
+    // English terms → search Name_En column
+    for (const en of enTerms) {
+      const safe = en.replace(/[%_]/g, "\\$&");
+      orParts.push(`"Name_En".ilike.%${safe}%`);
+    }
+
+    // Code / Barcode — always search with the raw lowercased term
+    const lower = raw.toLowerCase().replace(/[%_]/g, "\\$&");
+    orParts.push(`"Code".ilike.%${lower}%`);
+    orParts.push(`"Barcode".ilike.%${lower}%`);
+
+    // PostgREST OR filter (column names must be double-quoted because they
+    // contain mixed case and PostgreSQL would fold them to lowercase otherwise).
+    query = query.or(orParts.join(","));
   }
 
   // Category filtering via display-name matching (AR + EN).
@@ -427,8 +451,13 @@ async function fetchProductsPageFuzzy(
     if (names) { categoryAr = names.name; categoryEn = names.nameEn; }
   }
 
+  // Send the normalised form (diacritics removed, hamza unified) so pg_trgm
+  // similarity works on a clean string instead of a diacritic-heavy one.
+  const { arTerms } = expandSearchTerms(filters.searchQuery!.trim());
+  const normalisedTerm = arTerms[0] ?? filters.searchQuery!.trim();
+
   const { data, error } = await supabase.rpc("search_products_fuzzy", {
-    search_term:    filters.searchQuery!.trim(),
+    search_term:    normalisedTerm,
     page_number:    pageNumber,
     page_size:      PAGE_SIZE,
     category_ar:    categoryAr,

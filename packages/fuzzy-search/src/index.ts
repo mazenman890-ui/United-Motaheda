@@ -965,3 +965,81 @@ export function queryIndexCandidates(
 
   return result;
 }
+
+// ════════════════════════════════════════════════════════════════════════════════
+// expandSearchTerms — used by the server-side (Supabase) search path
+// ════════════════════════════════════════════════════════════════════════════════
+
+const RE_ARABIC = /[؀-ۿ]/;
+
+/**
+ * Expand a raw search query into all SQL-ready search terms for a Supabase
+ * ilike OR query.  Handles:
+ *
+ *  • Arabic normalisation (removes diacritics, unifies hamza/ة/ى)
+ *  • Exact dictionary lookup   "بنادول" → panadol, paracetamol
+ *  • Fuzzy dictionary lookup   "بندول"  → finds "بنادول" (edit-dist 1) →
+ *                              panadol, paracetamol  (handles typos)
+ *  • English → Arabic reverse  "panadol" → بنادول
+ *
+ * Returns an object with two arrays so callers can target the correct DB
+ * columns (`Name_Ar` for Arabic terms, `Name_En` for English terms).
+ *
+ * Usage in buildSupabaseQuery:
+ *   const { arTerms, enTerms } = expandSearchTerms(raw);
+ *   // build ilike OR conditions for each term in the right column
+ */
+export function expandSearchTerms(rawQuery: string): {
+  arTerms: string[];
+  enTerms: string[];
+} {
+  const raw  = rawQuery.trim();
+  const q    = normalise(raw);
+  if (!q) return { arTerms: [raw], enTerms: [] };
+
+  const arSet = new Set<string>();
+  const enSet = new Set<string>();
+
+  function add(term: string): void {
+    if (!term || term.length < 2) return;
+    if (RE_ARABIC.test(term)) arSet.add(term);
+    else                       enSet.add(term.toLowerCase());
+  }
+
+  // Always include the raw and normalised query itself
+  add(raw);
+  add(q);
+
+  // Exact dictionary expansions
+  for (const t of expandQuery(q)) add(t);
+
+  // Fuzzy dictionary lookup — scan AR keys within edit-distance 2 of query.
+  // This is what makes "بندول" find "بنادول" products even without the RPC.
+  if (q.length >= 3 && q.length <= 16) {
+    const maxDist = q.length <= 6 ? 1 : 2;
+    for (const [key, enTerms] of AR_TO_EN) {
+      if (Math.abs(key.length - q.length) > maxDist) continue;
+      if (editDistance(q, key, maxDist) <= maxDist) {
+        add(key);
+        for (const en of enTerms) add(en);
+      }
+    }
+  }
+
+  // For English queries, also do fuzzy scan of EN keys
+  if (!RE_ARABIC.test(q) && q.length >= 3 && q.length <= 16) {
+    const maxDist = q.length <= 7 ? 1 : 2;
+    for (const [enKey, arSet2] of EN_TO_AR) {
+      if (Math.abs(enKey.length - q.length) > maxDist) continue;
+      if (editDistance(q, enKey, maxDist) <= maxDist) {
+        add(enKey);
+        for (const ar of arSet2) add(ar);
+      }
+    }
+  }
+
+  return {
+    arTerms: Array.from(arSet),
+    enTerms: Array.from(enSet),
+  };
+}
