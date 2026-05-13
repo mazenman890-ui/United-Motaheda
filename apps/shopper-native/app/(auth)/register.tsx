@@ -10,10 +10,11 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { signUp } from "@/services/authApi";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { BrandMark } from "@/components/ui/BrandMark";
 import { theme } from "@/theme";
 
 export default function RegisterScreen() {
@@ -63,11 +64,11 @@ export default function RegisterScreen() {
           start={{ x: 0.1, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{
-            paddingTop:        insets.top + 30,
-            paddingBottom:     52,
+            paddingTop:        insets.top + 28,
+            paddingBottom:     56,
             paddingHorizontal: 24,
             alignItems:        "center",
-            gap:               14,
+            gap:               16,
           }}>
 
           {/* Close */}
@@ -84,32 +85,21 @@ export default function RegisterScreen() {
                 width:           36,
                 height:          36,
                 borderRadius:    11,
-                backgroundColor: "rgba(255,255,255,0.14)",
+                backgroundColor: "rgba(255,255,255,0.10)",
                 alignItems:      "center",
                 justifyContent:  "center",
+                borderWidth:     1,
+                borderColor:     "rgba(255,255,255,0.14)",
               }}>
-              <Ionicons name="close" size={16} color="rgba(255,255,255,0.8)" />
+              <Ionicons name="close" size={16} color="rgba(255,255,255,0.75)" />
             </View>
           </Pressable>
 
-          {/* Logo */}
-          <View
-            style={{
-              width:           82,
-              height:          82,
-              borderRadius:    28,
-              backgroundColor: "rgba(255,255,255,0.14)",
-              alignItems:      "center",
-              justifyContent:  "center",
-              borderWidth:     2,
-              borderColor:     "rgba(255,255,255,0.28)",
-              ...theme.shadow.md,
-            }}>
-            <MaterialCommunityIcons name="pill" size={40} color="#fff" />
-          </View>
+          {/* Brand mark */}
+          <BrandMark size="md" variant="onHero" showText={false} />
 
           <View style={{ alignItems: "center", gap: 5 }}>
-            <Text style={{ color: "#fff", fontSize: 23, fontWeight: "900" }}>حساب جديد</Text>
+            <Text style={{ color: "#fff", fontSize: 22, fontWeight: "900" }}>حساب جديد</Text>
             <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 13 }}>
               أنشئ حسابك في ثوانٍ
             </Text>
@@ -124,7 +114,7 @@ export default function RegisterScreen() {
                   width:           d === 1 ? 22 : 6,
                   height:          6,
                   borderRadius:    3,
-                  backgroundColor: d === 1 ? "#fff" : "rgba(255,255,255,0.30)",
+                  backgroundColor: d === 1 ? "#fff" : "rgba(255,255,255,0.25)",
                 }}
               />
             ))}
@@ -144,6 +134,18 @@ export default function RegisterScreen() {
             borderWidth:      1,
             borderColor:      "rgba(0,0,0,0.04)",
           }}>
+
+          <Text
+            style={{
+              fontSize:   18,
+              fontWeight: "900",
+              color:      theme.colors.slate[900],
+              textAlign:  "right",
+              marginBottom: 2,
+            }}>
+            إنشاء الحساب
+          </Text>
+
           <Input
             label="الاسم الكامل"
             value={name}

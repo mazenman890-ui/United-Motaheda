@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -87,7 +87,7 @@ export default function HomeScreen() {
                 borderWidth:     1,
                 borderColor:     theme.colors.glassBorder,
               }}>
-              <MaterialCommunityIcons name="pill" size={22} color="#fff" />
+              <Ionicons name="medical-outline" size={22} color="#fff" />
             </View>
             <View>
               <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 10, fontWeight: "700", letterSpacing: 1.2 }}>
