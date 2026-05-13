@@ -250,12 +250,6 @@ function HomeDesktop() {
         <div className="page-section relative z-10 py-14 sm:py-20">
           <div className="mx-auto max-w-3xl text-center">
 
-            {/* Live badge */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-teal-400/35 bg-white/10 px-4 py-1.5 text-[11px] font-black uppercase tracking-[0.16em] text-teal-200 backdrop-blur-sm">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-              {isRtl ? "صيدلية متحدة — الكتالوج الحي" : "United Pharmacy — Live Catalog"}
-            </div>
-
             {/* Headline */}
             <h1 className={cn(
               "mt-6 font-black text-white",
@@ -270,10 +264,24 @@ function HomeDesktop() {
               )}
             </h1>
 
-            <p className="mx-auto mt-5 max-w-xl text-[14px] font-semibold leading-7 text-teal-100/75 sm:text-[15px]">
-              {isRtl
-                ? "بحث ذكي بالعربية والإنجليزية — اسم، كود، أو قسم. مقاوم للأخطاء الإملائية."
-                : "Smart bilingual search — by name, code, or category. Typo-tolerant fuzzy matching."}
+            <p className="mx-auto mt-5 max-w-xl text-[15px] font-semibold leading-8 text-teal-100/80 sm:text-[16px]">
+              {isRtl ? (
+                <>
+                  <span className="font-black text-amber-300">مش لاقي دواك؟</span>
+                  {" "}
+                  <span className="font-black text-white">احنا معاك!</span>
+                  {" ابحث عن اكتر من آلاف الأدوية عشان تساعدك في داءك — "}
+                  <span className="italic text-teal-300">لكل داء دواء</span>
+                </>
+              ) : (
+                <>
+                  <span className="font-black text-amber-300">Can't find your medicine?</span>
+                  {" "}
+                  <span className="font-black text-white">We've got you!</span>
+                  {" Search thousands of medicines — "}
+                  <span className="italic text-teal-300">because every illness has a cure</span>
+                </>
+              )}
             </p>
 
             {/* Error banner */}
