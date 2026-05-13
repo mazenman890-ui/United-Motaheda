@@ -21,7 +21,8 @@
     "skipLibCheck": true,
     "strict": false,
     "noImplicitAny": false,
-    "noEmitOnError": false
+    "noEmitOnError": false,
+    "ignoreDeprecations": "6.0"
   },
   "include": [
     "src/**/*.ts",
