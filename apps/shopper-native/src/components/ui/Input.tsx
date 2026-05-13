@@ -31,7 +31,7 @@ export function Input({
   return (
     <View style={[{ gap: 5 }, containerStyle]}>
       {label && (
-        <Text style={{ fontSize: 13, fontWeight: "600", color: theme.colors.slate[700] }}>
+        <Text style={{ fontSize: 12, fontWeight: "700", color: focused ? theme.colors.brand[600] : theme.colors.slate[600], textAlign: "right" }}>
           {label}
         </Text>
       )}
@@ -57,10 +57,11 @@ export function Input({
           onBlur={(e)  => { setFocused(false); rest.onBlur?.(e);  }}
           style={[
             {
-              flex:         1,
+              flex:            1,
               paddingVertical: 12,
-              fontSize:     14,
-              color:        theme.colors.slate[900],
+              fontSize:        14,
+              color:           theme.colors.slate[900],
+              textAlign:       "right",
             },
             style,
           ]}

@@ -1,28 +1,29 @@
 import React from "react";
 import { Pressable, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { theme } from "@/theme";
 import { useCartStore } from "@/stores/cart";
 
 interface HeaderProps {
-  title:      string;
-  showBack?:  boolean;
-  showCart?:  boolean;
-  right?:     React.ReactNode;
-  rtl?:       boolean;
+  title:     string;
+  showBack?: boolean;
+  showCart?: boolean;
+  right?:    React.ReactNode;
+  rtl?:      boolean;
 }
 
 export function Header({ title, showBack, showCart, right, rtl }: HeaderProps) {
-  const insets   = useSafeAreaInsets();
-  const router   = useRouter();
+  const insets    = useSafeAreaInsets();
+  const router    = useRouter();
   const cartCount = useCartStore((s) => s.itemCount());
 
   return (
     <View
       style={{
-        paddingTop:        insets.top + 8,
-        paddingBottom:     12,
+        paddingTop:        insets.top + 10,
+        paddingBottom:     13,
         paddingHorizontal: 16,
         backgroundColor:   "#fff",
         flexDirection:     rtl ? "row-reverse" : "row",
@@ -38,21 +39,30 @@ export function Header({ title, showBack, showCart, right, rtl }: HeaderProps) {
           onPress={() => router.back()}
           hitSlop={10}
           style={{
-            width: 36, height: 36, borderRadius: 12,
-            backgroundColor: theme.colors.slate[100],
-            alignItems: "center", justifyContent: "center",
+            width:           38,
+            height:          38,
+            borderRadius:    12,
+            backgroundColor: theme.colors.slate[50],
+            alignItems:      "center",
+            justifyContent:  "center",
+            borderWidth:     1,
+            borderColor:     theme.colors.slate[200],
           }}>
-          <Text style={{ fontSize: 18, color: theme.colors.slate[700] }}>{rtl ? "→" : "←"}</Text>
+          <Ionicons
+            name={rtl ? "arrow-forward" : "arrow-back"}
+            size={18}
+            color={theme.colors.slate[700]}
+          />
         </Pressable>
       )}
 
       <Text
         numberOfLines={1}
         style={{
-          flex: 1,
+          flex:       1,
           fontSize:   17,
           fontWeight: "900",
-          color:      theme.colors.slate[950],
+          color:      theme.colors.slate[900],
           textAlign:  rtl ? "right" : "left",
         }}>
         {title}
@@ -64,21 +74,33 @@ export function Header({ title, showBack, showCart, right, rtl }: HeaderProps) {
         <Pressable
           onPress={() => router.push("/(tabs)/cart")}
           style={{
-            width: 40, height: 40, borderRadius: 12,
+            width:           40,
+            height:          40,
+            borderRadius:    12,
             backgroundColor: theme.colors.brand[50],
-            alignItems: "center", justifyContent: "center",
-            position: "relative",
+            alignItems:      "center",
+            justifyContent:  "center",
+            position:        "relative",
+            borderWidth:     1,
+            borderColor:     theme.colors.brand[100],
           }}>
-          <Text style={{ fontSize: 20 }}>🛒</Text>
+          <Ionicons name="cart-outline" size={20} color={theme.colors.brand[600]} />
           {cartCount > 0 && (
             <View style={{
-              position: "absolute", top: -2, right: -2,
-              backgroundColor: theme.colors.brand[600],
-              borderRadius: 8, minWidth: 16, height: 16,
-              alignItems: "center", justifyContent: "center",
+              position:          "absolute",
+              top:               -4,
+              right:             -4,
+              backgroundColor:   theme.colors.amber[500],
+              borderRadius:      8,
+              minWidth:          17,
+              height:            17,
+              alignItems:        "center",
+              justifyContent:    "center",
               paddingHorizontal: 3,
+              borderWidth:       1.5,
+              borderColor:       "#fff",
             }}>
-              <Text style={{ color: "#fff", fontSize: 9, fontWeight: "900" }}>{cartCount}</Text>
+              <Text style={{ color: "#fff", fontSize: 8, fontWeight: "900" }}>{Math.min(cartCount, 99)}</Text>
             </View>
           )}
         </Pressable>
