@@ -19,14 +19,15 @@ export default function CategoryScreen() {
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
       queryKey: ["category", id],
-      queryFn:  ({ pageParam = 1 }) => fetchProducts({ categoryId: id, page: pageParam, pageSize: 24 }),
+      queryFn:  ({ pageParam = 1 }) =>
+        fetchProducts({ categoryId: id, page: pageParam, pageSize: 24 }),
       initialPageParam: 1,
       getNextPageParam: (last) => last.hasNextPage ? last.currentPage + 1 : undefined,
       enabled: !!id,
     });
 
-  const products = data?.pages.flatMap((p) => p.products) ?? [];
-  const total    = data?.pages[0]?.totalCount ?? 0;
+  const products   = data?.pages.flatMap((p) => p.products) ?? [];
+  const totalCount = data?.pages[0]?.totalCount ?? 0;
 
   const loadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) fetchNextPage();
@@ -34,12 +35,7 @@ export default function CategoryScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
-      <Header
-        title={id ?? "القسم"}
-        showBack
-        showCart
-        rtl
-      />
+      <Header title={id ?? "القسم"} showBack showCart rtl />
 
       {isLoading ? (
         <FlatList
@@ -49,11 +45,15 @@ export default function CategoryScreen() {
           contentContainerStyle={{ padding: 12, gap: 10 }}
           columnWrapperStyle={{ gap: 10, flexDirection: "row-reverse" }}
           showsVerticalScrollIndicator={false}
-          renderItem={() => <View style={{ flex: 1 }}><ProductCardSkeleton /></View>}
+          renderItem={() => (
+            <View style={{ flex: 1 }}>
+              <ProductCardSkeleton />
+            </View>
+          )}
         />
       ) : products.length === 0 ? (
         <EmptyState
-          icon={<Ionicons name="cube-outline" size={44} color={theme.colors.brand[400]} />}
+          icon={<Ionicons name="cube-outline" size={42} color={theme.colors.brand[400]} />}
           title="لا توجد منتجات"
           description="لا توجد منتجات في هذا القسم حالياً"
           actionLabel="العودة"
@@ -64,17 +64,36 @@ export default function CategoryScreen() {
           data={products}
           numColumns={2}
           keyExtractor={(p) => p.id}
-          contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 20 }}
+          contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 90 }}
           columnWrapperStyle={{ gap: 10, marginBottom: 10, flexDirection: "row-reverse" }}
           onEndReached={loadMore}
           onEndReachedThreshold={0.4}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
-            total > 0 ? (
-              <View style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                <View style={{ backgroundColor: theme.colors.brand[50], borderRadius: theme.radius.full, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: theme.colors.brand[100] }}>
-                  <Text style={{ fontSize: 11, color: theme.colors.brand[700], fontWeight: "800" }}>
-                    {total.toLocaleString()} منتج
+            totalCount > 0 ? (
+              <View
+                style={{
+                  flexDirection:  "row-reverse",
+                  alignItems:     "center",
+                  justifyContent: "space-between",
+                  marginBottom:   12,
+                }}>
+                <View
+                  style={{
+                    backgroundColor:   theme.colors.brand[50],
+                    borderRadius:      theme.radius.full,
+                    paddingHorizontal: 10,
+                    paddingVertical:   4,
+                    borderWidth:       1,
+                    borderColor:       theme.colors.brand[100],
+                  }}>
+                  <Text
+                    style={{
+                      fontSize:   11,
+                      color:      theme.colors.brand[700],
+                      fontWeight: "800",
+                    }}>
+                    {totalCount.toLocaleString()} منتج
                   </Text>
                 </View>
               </View>
@@ -85,7 +104,9 @@ export default function CategoryScreen() {
               <ProductCard
                 product={item}
                 lang="ar"
-                onPress={() => router.push({ pathname: "/product/[id]", params: { id: item.id } })}
+                onPress={() =>
+                  router.push({ pathname: "/product/[id]", params: { id: item.id } })
+                }
               />
             </View>
           )}

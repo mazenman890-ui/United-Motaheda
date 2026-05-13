@@ -13,17 +13,51 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon, title, description, actionLabel, onAction }: EmptyStateProps) {
   return (
-    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 64, paddingHorizontal: 40, gap: 0 }}>
+    <View
+      style={{
+        flex:             1,
+        alignItems:       "center",
+        justifyContent:   "center",
+        paddingVertical:  72,
+        paddingHorizontal: 40,
+        gap:              0,
+      }}>
       {icon && (
-        <View style={{ width: 90, height: 90, borderRadius: 28, backgroundColor: theme.colors.brand[50], alignItems: "center", justifyContent: "center", marginBottom: 20, borderWidth: 1, borderColor: theme.colors.brand[100] }}>
+        <View
+          style={{
+            width:           96,
+            height:          96,
+            borderRadius:    30,
+            backgroundColor: theme.colors.brand[50],
+            alignItems:      "center",
+            justifyContent:  "center",
+            marginBottom:    22,
+            borderWidth:     1,
+            borderColor:     theme.colors.brand[100],
+          }}>
           {icon}
         </View>
       )}
-      <Text style={{ fontSize: 17, fontWeight: "900", color: theme.colors.slate[800], textAlign: "center", marginBottom: 8 }}>
+      <Text
+        style={{
+          fontSize:      18,
+          fontWeight:    "900",
+          color:         theme.colors.slate[800],
+          textAlign:     "center",
+          marginBottom:  10,
+        }}>
         {title}
       </Text>
       {description && (
-        <Text style={{ fontSize: 13, color: theme.colors.slate[400], textAlign: "center", lineHeight: 20, marginBottom: 24 }}>
+        <Text
+          style={{
+            fontSize:      13,
+            color:         theme.colors.slate[400],
+            textAlign:     "center",
+            lineHeight:    21,
+            marginBottom:  28,
+            paddingHorizontal: 8,
+          }}>
           {description}
         </Text>
       )}
