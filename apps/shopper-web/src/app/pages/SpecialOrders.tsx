@@ -189,7 +189,7 @@ export default function SpecialOrders() {
   };
 
   const formContent = (
-    <div className="relative overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-sm md:p-8">
+    <div className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_24px_70px_rgba(15,23,42,0.08)] md:p-8">
       {/* Decorative gradient */}
       <div className="absolute -right-20 -top-20 h-40 w-40 rounded-full bg-teal-100/40 blur-3xl" />
 

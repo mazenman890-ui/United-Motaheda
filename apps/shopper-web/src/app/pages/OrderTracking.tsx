@@ -173,7 +173,7 @@ function InfoCard({
   icon?: React.ElementType;
 }) {
   return (
-    <div className="rounded-[1.4rem] border border-slate-200 bg-white/80 px-4 py-4 backdrop-blur-sm">
+    <div className="rounded-[1.4rem] border border-slate-200 bg-white px-4 py-4">
       <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">{label}</p>
       <div className="mt-2 flex items-center gap-2">
         {Icon ? <Icon className="h-4 w-4 shrink-0 text-teal-500" /> : null}

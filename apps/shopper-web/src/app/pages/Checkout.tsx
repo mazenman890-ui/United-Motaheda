@@ -1287,7 +1287,7 @@ export default function Checkout() {
 
         {/* Fixed bottom CTA */}
         <div className="fixed inset-x-0 bottom-0 z-50 bg-[linear-gradient(180deg,rgba(245,252,252,0)_0%,rgba(245,252,252,0.92)_24%,rgba(245,252,252,0.98)_100%)] px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.9rem)] pt-6">
-          <div className="mx-auto max-w-3xl rounded-[1.6rem] border border-slate-200 bg-white p-3 shadow-[0_26px_54px_rgba(15,23,42,0.14)] backdrop-blur-xl">
+          <div className="mx-auto max-w-3xl rounded-[1.6rem] border border-slate-200 bg-white p-3 shadow-[0_26px_54px_rgba(15,23,42,0.14)]">
             <div className="flex items-center justify-between gap-3 px-2 pb-3">
               <div>
                 <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">

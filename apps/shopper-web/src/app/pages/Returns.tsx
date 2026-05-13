@@ -238,7 +238,7 @@ export default function Returns() {
           { label: lang === "ar" ? "الإرجاع" : "Returns" },
         ]}
         eyebrow={
-          <span className="badge-teal border-0 bg-white/70 text-teal-700 shadow-sm backdrop-blur-md">
+          <span className="badge-teal border-0 bg-white text-teal-700 shadow-sm">
             <RefreshCcw className="h-4 w-4" />
             {lang === "ar" ? "مراجعة طلبات الإرجاع" : "Return request review"}
           </span>
@@ -251,19 +251,19 @@ export default function Returns() {
         }
         stats={
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-white/70 bg-white/70 p-4 backdrop-blur-md">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
                 {lang === "ar" ? "الطلبات المتاحة" : "Eligible orders"}
               </p>
               <p className="mt-2 text-2xl font-black text-slate-950">{orders.length}</p>
             </div>
-            <div className="rounded-2xl border border-white/70 bg-white/70 p-4 backdrop-blur-md">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
                 {lang === "ar" ? "طلبات الإرجاع" : "Return requests"}
               </p>
               <p className="mt-2 text-2xl font-black text-slate-950">{requests.length}</p>
             </div>
-            <div className="rounded-2xl border border-white/70 bg-white/70 p-4 backdrop-blur-md">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
                 {lang === "ar" ? "الحالة الحالية" : "Latest status"}
               </p>
