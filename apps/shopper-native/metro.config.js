@@ -7,8 +7,8 @@ const monorepoRoot = path.resolve(projectRoot, "../..");
 
 const config = getDefaultConfig(projectRoot);
 
-// Support monorepo packages
-config.watchFolders = [monorepoRoot];
+// Only watch shared packages — watching the entire monorepo root hangs Metro
+config.watchFolders = [path.resolve(monorepoRoot, "packages")];
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, "node_modules"),
   path.resolve(monorepoRoot, "node_modules"),

@@ -1,6 +1,8 @@
 import React from "react";
-import { Image, Pressable, Text, View } from "react-native";
+import { Image, Pressable, View } from "react-native";
+import { Text } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { theme } from "@/theme";
 import { formatPrice, truncate } from "@/utils/format";
@@ -14,9 +16,9 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, lang = "ar", onPress }: ProductCardProps) {
-  const addItem  = useCartStore((s) => s.addItem);
+  const addItem   = useCartStore((s) => s.addItem);
   const cartItems = useCartStore((s) => s.items);
-  const inCart   = cartItems.some((i) => i.productId === product.id);
+  const inCart    = cartItems.some((i) => i.productId === product.id);
 
   const name = lang === "ar"
     ? (product.nameAr ?? product.name)
@@ -36,10 +38,12 @@ export function ProductCard({ product, lang = "ar", onPress }: ProductCardProps)
         overflow:        "hidden",
         opacity:         pressed ? 0.95 : 1,
         transform:       [{ scale: pressed ? 0.98 : 1 }],
-        ...theme.shadow.md,
+        borderWidth:     1,
+        borderColor:     theme.colors.slate[100],
+        ...theme.shadow.sm,
       })}>
 
-      {/* Image area */}
+      {/* Image */}
       <View style={{ height: 148, backgroundColor: theme.colors.slate[50] }}>
         {product.imageUrl ? (
           <Image
@@ -49,51 +53,60 @@ export function ProductCard({ product, lang = "ar", onPress }: ProductCardProps)
           />
         ) : (
           <LinearGradient
-            colors={["#f0fdfa", "#ccfbf1"]}
+            colors={["#f0fdf4", "#dcfce7"]}
             style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ fontSize: 40 }}>💊</Text>
+            <MaterialCommunityIcons name="pill" size={42} color={theme.colors.slate[300]} />
           </LinearGradient>
         )}
 
-        {/* Stock badge */}
+        {/* Out of stock overlay */}
         {!product.inStock && (
           <View style={{
-            position: "absolute", top: 8, right: 8,
-            backgroundColor: "rgba(0,0,0,0.55)", borderRadius: 6,
-            paddingHorizontal: 7, paddingVertical: 3,
+            position:        "absolute", top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.40)",
+            alignItems:      "center",
+            justifyContent:  "center",
           }}>
-            <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>
-              {lang === "ar" ? "نفذ" : "Out"}
-            </Text>
+            <View style={{ backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}>
+              <Text style={{ color: "#fff", fontSize: 11, fontWeight: "800" }}>
+                {lang === "ar" ? "نفذ المخزون" : "Out of stock"}
+              </Text>
+            </View>
           </View>
         )}
 
-        {/* In-cart indicator */}
+        {/* In-cart badge */}
         {inCart && (
           <View style={{
-            position: "absolute", top: 8, left: 8,
-            backgroundColor: theme.colors.brand[600], borderRadius: 6,
-            paddingHorizontal: 7, paddingVertical: 3,
+            position:          "absolute",
+            top:               8,
+            left:              8,
+            backgroundColor:   theme.colors.brand[600],
+            borderRadius:      8,
+            width:             24,
+            height:            24,
+            alignItems:        "center",
+            justifyContent:    "center",
           }}>
-            <Text style={{ color: "#fff", fontSize: 10, fontWeight: "800" }}>✓</Text>
+            <Ionicons name="checkmark" size={14} color="#fff" />
           </View>
         )}
       </View>
 
       {/* Details */}
-      <View style={{ padding: 11, gap: 6 }}>
+      <View style={{ padding: 11, gap: 5 }}>
         <Text
           numberOfLines={2}
-          style={{ fontSize: 12, fontWeight: "700", color: theme.colors.slate[900], lineHeight: 17 }}>
+          style={{ fontSize: 12, fontWeight: "700", color: theme.colors.slate[900], lineHeight: 17, textAlign: "right" }}>
           {truncate(name, 50)}
         </Text>
 
-        <Text style={{ fontSize: 10, color: theme.colors.slate[400], fontWeight: "500" }} numberOfLines={1}>
+        <Text style={{ fontSize: 10, color: theme.colors.slate[400], fontWeight: "500", textAlign: "right" }} numberOfLines={1}>
           {lang === "ar" ? product.categoryName : product.categoryNameEn}
         </Text>
 
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 2 }}>
-          <Text style={{ fontSize: 15, fontWeight: "900", color: theme.colors.brand[700] }}>
+          <Text style={{ fontSize: 15, fontWeight: "900", color: theme.colors.amber[600] }}>
             {formatPrice(product.price, lang)}
           </Text>
 
@@ -107,12 +120,14 @@ export function ProductCard({ product, lang = "ar", onPress }: ProductCardProps)
               backgroundColor: inCart ? theme.colors.brand[100] : theme.colors.brand[600],
               alignItems:      "center",
               justifyContent:  "center",
-              opacity:         !product.inStock ? 0.4 : pressed ? 0.8 : 1,
+              opacity:         !product.inStock ? 0.35 : pressed ? 0.8 : 1,
               ...theme.shadow.sm,
             })}>
-            <Text style={{ color: inCart ? theme.colors.brand[700] : "#fff", fontSize: 18, lineHeight: 22 }}>
-              {inCart ? "✓" : "+"}
-            </Text>
+            <Ionicons
+              name={inCart ? "checkmark" : "add"}
+              size={18}
+              color={inCart ? theme.colors.brand[700] : "#fff"}
+            />
           </Pressable>
         </View>
       </View>

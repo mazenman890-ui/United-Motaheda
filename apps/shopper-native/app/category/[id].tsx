@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import { ActivityIndicator, FlatList, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useInfiniteQuery } from "@tanstack/react-query";
@@ -7,6 +7,7 @@ import { fetchProducts } from "@/services/productsApi";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Ionicons } from "@expo/vector-icons";
 import { Header } from "@/components/Header";
 import { theme } from "@/theme";
 
@@ -32,7 +33,7 @@ export default function CategoryScreen() {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.slate[50] }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       <Header
         title={id ?? "القسم"}
         showBack
@@ -42,19 +43,20 @@ export default function CategoryScreen() {
 
       {isLoading ? (
         <FlatList
-          data={[1, 2, 3, 4]}
+          data={[1, 2, 3, 4, 5, 6]}
           numColumns={2}
           keyExtractor={(k) => String(k)}
           contentContainerStyle={{ padding: 12, gap: 10 }}
           columnWrapperStyle={{ gap: 10, flexDirection: "row-reverse" }}
+          showsVerticalScrollIndicator={false}
           renderItem={() => <View style={{ flex: 1 }}><ProductCardSkeleton /></View>}
         />
       ) : products.length === 0 ? (
         <EmptyState
-          icon="📦"
+          icon={<Ionicons name="cube-outline" size={44} color={theme.colors.brand[400]} />}
           title="لا توجد منتجات"
           description="لا توجد منتجات في هذا القسم حالياً"
-          actionLabel="العودة للرئيسية"
+          actionLabel="العودة"
           onAction={() => router.back()}
         />
       ) : (
@@ -62,16 +64,20 @@ export default function CategoryScreen() {
           data={products}
           numColumns={2}
           keyExtractor={(p) => p.id}
-          contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 16 }}
+          contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 20 }}
           columnWrapperStyle={{ gap: 10, marginBottom: 10, flexDirection: "row-reverse" }}
           onEndReached={loadMore}
           onEndReachedThreshold={0.4}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
             total > 0 ? (
-              <Text style={{ textAlign: "right", fontSize: 12, color: theme.colors.slate[400], fontWeight: "600", marginBottom: 10 }}>
-                {total.toLocaleString()} منتج
-              </Text>
+              <View style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <View style={{ backgroundColor: theme.colors.brand[50], borderRadius: theme.radius.full, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: theme.colors.brand[100] }}>
+                  <Text style={{ fontSize: 11, color: theme.colors.brand[700], fontWeight: "800" }}>
+                    {total.toLocaleString()} منتج
+                  </Text>
+                </View>
+              </View>
             ) : null
           }
           renderItem={({ item }) => (
@@ -85,7 +91,7 @@ export default function CategoryScreen() {
           )}
           ListFooterComponent={
             isFetchingNextPage ? (
-              <View style={{ paddingVertical: 20, alignItems: "center" }}>
+              <View style={{ paddingVertical: 24, alignItems: "center" }}>
                 <ActivityIndicator color={theme.colors.brand[500]} />
               </View>
             ) : null

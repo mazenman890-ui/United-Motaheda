@@ -10,21 +10,25 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { signIn } from "@/services/authApi";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { theme } from "@/theme";
 
 export default function LoginScreen() {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const router  = useRouter();
+  const insets  = useSafeAreaInsets();
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
 
   const handleLogin = async () => {
-    if (!email || !password) { setError("يرجى إدخال البريد الإلكتروني وكلمة المرور"); return; }
+    if (!email || !password) {
+      setError("يرجى إدخال البريد الإلكتروني وكلمة المرور");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -40,23 +44,50 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <ScrollView
-        style={{ flex: 1, backgroundColor: "#fff" }}
+        style={{ flex: 1, backgroundColor: theme.colors.bg }}
         contentContainerStyle={{ flexGrow: 1 }}
-        keyboardShouldPersistTaps="handled">
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
 
-        {/* Hero */}
+        {/* Hero gradient */}
         <LinearGradient
-          colors={[theme.colors.brand[600], theme.colors.brand[800]]}
-          style={{ paddingTop: insets.top + 20, paddingBottom: 40, paddingHorizontal: 24, alignItems: "center", gap: 10 }}>
-          <View style={{ width: 72, height: 72, borderRadius: 24, backgroundColor: "rgba(255,255,255,0.20)", alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ fontSize: 36 }}>💊</Text>
+          colors={["#065f46", "#047857", "#059669"]}
+          start={{ x: 0.1, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ paddingTop: insets.top + 28, paddingBottom: 48, paddingHorizontal: 24, alignItems: "center", gap: 14 }}>
+
+          {/* Close button */}
+          <Pressable
+            onPress={() => router.back()}
+            style={{ position: "absolute", top: insets.top + 12, left: 16 }}
+            hitSlop={10}>
+            <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name="close" size={14} color="rgba(255,255,255,0.8)" />
+            </View>
+          </Pressable>
+
+          <View style={{
+            width:           80,
+            height:          80,
+            borderRadius:    26,
+            backgroundColor: "rgba(255,255,255,0.15)",
+            alignItems:      "center",
+            justifyContent:  "center",
+            borderWidth:     2,
+            borderColor:     "rgba(255,255,255,0.3)",
+            ...theme.shadow.md,
+          }}>
+            <MaterialCommunityIcons name="pill" size={38} color="#fff" />
           </View>
-          <Text style={{ color: "#fff", fontSize: 22, fontWeight: "900" }}>United Motaheda</Text>
-          <Text style={{ color: "rgba(255,255,255,0.70)", fontSize: 14 }}>سجل دخولك للمتابعة</Text>
+
+          <View style={{ alignItems: "center", gap: 4 }}>
+            <Text style={{ color: "#fff", fontSize: 22, fontWeight: "900" }}>United Motaheda</Text>
+            <Text style={{ color: "rgba(255,255,255,0.65)", fontSize: 14 }}>سجل دخولك للمتابعة</Text>
+          </View>
         </LinearGradient>
 
-        {/* Form */}
-        <View style={{ padding: 24, gap: 18, flex: 1 }}>
+        {/* Form card */}
+        <View style={{ marginTop: -20, marginHorizontal: 16, backgroundColor: "#fff", borderRadius: theme.radius["2xl"], padding: 24, gap: 16, ...theme.shadow.lg, borderWidth: 1, borderColor: theme.colors.slate[100] }}>
           <Input
             label="البريد الإلكتروني"
             value={email}
@@ -75,8 +106,9 @@ export default function LoginScreen() {
           />
 
           {error ? (
-            <View style={{ backgroundColor: "#fef2f2", borderRadius: 10, padding: 12 }}>
-              <Text style={{ color: theme.colors.error, fontSize: 13, fontWeight: "600", textAlign: "right" }}>{error}</Text>
+            <View style={{ backgroundColor: "#fef2f2", borderRadius: theme.radius.lg, padding: 14, flexDirection: "row-reverse", alignItems: "center", gap: 10, borderWidth: 1, borderColor: "#fecaca" }}>
+              <Ionicons name="alert-circle-outline" size={16} color={theme.colors.error} />
+              <Text style={{ color: theme.colors.error, fontSize: 13, fontWeight: "600", textAlign: "right", flex: 1 }}>{error}</Text>
             </View>
           ) : null}
 
@@ -88,21 +120,23 @@ export default function LoginScreen() {
             onPress={handleLogin}>
             تسجيل الدخول
           </Button>
-
-          <View style={{ flexDirection: "row", justifyContent: "center", gap: 6, marginTop: 4 }}>
-            <Pressable onPress={() => router.push("/(auth)/register")}>
-              <Text style={{ color: theme.colors.brand[600], fontWeight: "700", fontSize: 14 }}>إنشاء حساب جديد</Text>
-            </Pressable>
-            <Text style={{ color: theme.colors.slate[400], fontSize: 14 }}>ليس لديك حساب؟</Text>
-          </View>
         </View>
 
-        {/* Close */}
-        <Pressable
-          onPress={() => router.back()}
-          style={{ alignSelf: "center", paddingVertical: 16, paddingBottom: insets.bottom + 16 }}>
-          <Text style={{ color: theme.colors.slate[400], fontSize: 13 }}>إغلاق</Text>
-        </Pressable>
+        {/* Register link */}
+        <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6, marginTop: 24, paddingHorizontal: 16 }}>
+          <Pressable onPress={() => router.push("/(auth)/register")}>
+            <Text style={{ color: theme.colors.brand[600], fontWeight: "800", fontSize: 14 }}>إنشاء حساب جديد</Text>
+          </Pressable>
+          <Text style={{ color: theme.colors.slate[400], fontSize: 14 }}>ليس لديك حساب؟</Text>
+        </View>
+
+        <View style={{ flex: 1, minHeight: 32 }} />
+
+        <View style={{ alignItems: "center", paddingBottom: insets.bottom + 20 }}>
+          <Text style={{ color: theme.colors.slate[400], fontSize: 11, textAlign: "center" }}>
+            بمتابعتك فأنت توافق على سياسة الخصوصية وشروط الاستخدام
+          </Text>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
