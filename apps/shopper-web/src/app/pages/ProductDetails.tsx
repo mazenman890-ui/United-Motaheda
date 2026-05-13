@@ -173,7 +173,7 @@ function ProductDetailsDesktop() {
   return (
     <div className="product-details-page min-h-screen bg-[#F5FDFC] pb-16 sm:pb-20">
       {/* Breadcrumb */}
-      <div className="hidden border-b border-slate-200 bg-white/90 backdrop-blur sm:block">
+      <div className="hidden border-b border-slate-200 bg-white sm:block">
         <div className="product-details-breadcrumbs page-section flex items-center gap-2 py-4 text-sm font-bold text-slate-500">
           <Link to="/" className="transition-colors hover:text-slate-600">{t("home")}</Link>
           <ChevronRight className={cn("h-4 w-4 text-slate-300", lang === "ar" && "rotate-180")} />
@@ -218,7 +218,7 @@ function ProductDetailsDesktop() {
               <motion.div
                 whileHover={{ scale: 1.01 }}
                 transition={{ duration: 0.3 }}
-                className="product-details-gallery-hero relative cursor-zoom-in overflow-hidden rounded-[1.75rem] border border-white/80 bg-white/80 p-4 shadow-[0_18px_50px_rgba(15,23,42,0.07)] backdrop-blur-sm sm:p-6"
+                className="product-details-gallery-hero relative cursor-zoom-in overflow-hidden rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-6"
                 onClick={() => setActiveImageZoom(!activeImageZoom)}
               >
                 <ImageWithFallback
@@ -228,7 +228,7 @@ function ProductDetailsDesktop() {
                   loading="eager"
                   decoding="async"
                 />
-                <div className="absolute bottom-4 end-4 rounded-full border border-white/70 bg-white/90 px-2.5 py-1.5 text-[10px] font-black text-slate-500 shadow-sm backdrop-blur-sm">
+                <div className="absolute bottom-4 end-4 rounded-full border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-black text-slate-500 shadow-sm">
                   {lang === "ar" ? "انقر للتكبير" : "Click to zoom"}
                 </div>
               </motion.div>

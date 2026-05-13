@@ -14,6 +14,7 @@ import { FavoritesProvider } from "./contexts/FavoritesContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { Toaster } from "./app/components/ui/sonner";
 import "./styles/index.css";
+import { reportWebVitals } from "./app/vitals";
 
 configureApiClient({
   baseUrl: publicEnv.apiBase,
@@ -24,6 +25,10 @@ function LocationBootstrap() {
   useBrowserLocation(true);
   return null;
 }
+
+// M9: Start collecting Core Web Vitals immediately after the app boots.
+// Metrics are logged to the console in dev; sent to VITE_VITALS_ENDPOINT in prod.
+reportWebVitals();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

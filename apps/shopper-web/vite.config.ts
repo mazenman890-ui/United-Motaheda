@@ -50,60 +50,119 @@ export default defineConfig({
     ]
   },
   build: {
+    // M7: Budget — warn at 600 KB; target initial shell ≤ 250 KB gzipped.
+    // All routes are code-split via lazy() in App.tsx so the initial chunk
+    // contains only react-core, router, context providers, and the Layout shell.
     chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
-          // React ecosystem (core only, no deps that import React)
-          if (id.includes("react") || id.includes("scheduler") || id.includes("use-sync-external-store")) {
+
+          // ── React core ── must resolve before any React-importing packages
+          // "react" matches: react, react-dom, react-router, react-hook-form …
+          // so we gate it narrowly — only the React runtime packages.
+          if (
+            /node_modules[\\/](react|react-dom|scheduler|use-sync-external-store)[\\/]/.test(id)
+          ) {
             return "react-core";
           }
-          // React DOM - separate to avoid circular
-          if (id.includes("react-dom") || id.includes("react-refresh")) {
-            return "react-dom";
-          }
-          // Routing (may import React, but not vice versa in circular way)
-          if (id.includes("react-router") || id.includes("@remix-run") || id.includes("history")) {
+          // react-refresh is dev-only; keep with react-core in builds that include it
+          if (id.includes("react-refresh")) return "react-core";
+
+          // ── Router ──
+          if (
+            id.includes("react-router") ||
+            id.includes("@remix-run") ||
+            id.includes("/history/")
+          ) {
             return "router";
           }
-          // Animation (imports React)
-          if (id.includes("framer-motion") || id.includes("motion")) {
+
+          // ── Animation ──
+          // BUG FIX (M7): the previous `id.includes("motion")` incorrectly
+          // matched `@emotion/react` and `@emotion/styled` (emotion ⊃ motion).
+          // Use path-segment matching to target only the animation packages.
+          if (
+            id.includes("framer-motion") ||
+            /node_modules[\\/]motion[\\/]/.test(id)
+          ) {
             return "motion";
           }
-          // UI libraries
+
+          // ── CSS-in-JS (emotion — peer dep of MUI) ──
+          // Must come before the @mui check so emotion lands in the MUI chunk,
+          // not scattered across consumer chunks.
+          if (id.includes("@emotion")) return "mui";
+
+          // ── UI component libraries ──
           if (id.includes("@radix-ui")) return "ui-libs";
           if (id.includes("@mui")) return "mui";
-          // Icons (should be standalone)
-          if (id.includes("lucide-react") || id.includes("@heroicons") || id.includes("lucide")) {
+
+          // ── Icons ──
+          // lucide-react tree-shakes well per named import; heroicons is
+          // admin-only (lazy route) so it will only appear in admin chunk.
+          if (
+            id.includes("lucide-react") ||
+            id.includes("@heroicons") ||
+            /node_modules[\\/]lucide[\\/]/.test(id)
+          ) {
             return "icons";
           }
-          // Charts (large, standalone)
-          if (id.includes("recharts") || id.includes("d3") || id.includes("victory")) {
+
+          // ── Charts ── admin-only (DashboardTrendChart, ui/chart) ──
+          // These are always behind a lazy() boundary so they don't touch the
+          // initial shell. Grouping them avoids duplicating recharts in every
+          // admin sub-chunk.
+          if (
+            id.includes("recharts") ||
+            id.includes("/d3-") ||
+            id.includes("victory")
+          ) {
             return "charts";
           }
-          // Utilities (small, standalone)
-          if (id.includes("lodash") || id.includes("date-fns") || id.includes("dayjs") || id.includes("clsx") || id.includes("tailwind-merge")) {
+
+          // ── Utilities ── small, standalone, no React dep ──
+          if (
+            id.includes("lodash") ||
+            id.includes("date-fns") ||
+            id.includes("dayjs") ||
+            id.includes("/clsx/") ||
+            id.includes("tailwind-merge") ||
+            id.includes("class-variance-authority")
+          ) {
             return "utils";
           }
-          // Data layer (may import React context)
-          if (id.includes("@supabase") || id.includes("@tanstack") || id.includes("swr")) {
+
+          // ── Data layer ──
+          if (
+            id.includes("@supabase") ||
+            id.includes("@tanstack") ||
+            id.includes("/swr/")
+          ) {
             return "data";
           }
-          // State management
-          if (id.includes("zustand") || id.includes("jotai") || id.includes("zustand/vanilla")) {
-            return "state";
-          }
-          // Forms (imports React)
-          if (id.includes("react-hook-form") || id.includes("zod") || id.includes("@hookform")) {
+
+          // ── State management ──
+          if (id.includes("zustand") || id.includes("jotai")) return "state";
+
+          // ── Forms ──
+          if (
+            id.includes("react-hook-form") ||
+            id.includes("/zod/") ||
+            id.includes("@hookform")
+          ) {
             return "forms";
           }
-          // Large standalone libs
+
+          // ── Large optional libs ──
           if (id.includes("pdf-lib")) return "pdf";
           if (id.includes("xlsx")) return "excel";
-          if (id.includes("jsqr")) return "qr";
+          if (id.includes("/jsqr/")) return "qr";
           if (id.includes("leaflet") || id.includes("react-leaflet")) return "maps";
-          // Let remaining deps be bundled with their consumers (no catch-all)
+
+          // Everything else rides with its consuming chunk — avoids splitting
+          // tiny transitive deps into their own HTTP requests.
           return undefined;
         },
       },

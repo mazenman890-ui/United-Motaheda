@@ -1060,9 +1060,64 @@ function truncate(value: string, maxLength: number) {
   return value.length <= maxLength ? value : `${value.slice(0, maxLength - 1)}…`;
 }
 
-export function getCatalogProductImage(product: CatalogProduct) {
+// ─── M8: Supabase image transform utilities ───────────────────────────────────
+//
+// Supabase Storage exposes a render endpoint that performs on-the-fly image
+// transforms: resize, quality reduction, and WebP conversion.
+// Pattern: replace `/object/public/` with `/render/image/public/` then
+// append `?width=N&quality=Q&format=webp`.
+//
+// We generate a responsive srcset at 3 widths (320/640/960) so the browser
+// selects the most appropriate size for the viewport and pixel-density.
+// Fallback (non-Supabase URLs, data: URIs) return undefined srcset so the
+// browser uses the plain src attribute unchanged.
+//
+// Acceptance: every real product image request carries transform params;
+// SVG placeholder images are passed through unchanged.
+
+function isSupabaseStorageUrl(url: string): boolean {
+  return url.includes("supabase.co/storage") && url.includes("/object/public/");
+}
+
+/**
+ * Returns a Supabase render-transformed URL at the requested width.
+ * Non-Supabase URLs are returned unchanged.
+ */
+export function getSupabaseImageTransformUrl(
+  url: string,
+  width: number,
+  quality = 80,
+): string {
+  if (!isSupabaseStorageUrl(url)) return url;
+  const renderUrl = url.replace(
+    "/object/public/",
+    "/render/image/public/",
+  );
+  const sep = renderUrl.includes("?") ? "&" : "?";
+  return `${renderUrl}${sep}width=${width}&quality=${quality}&format=webp`;
+}
+
+/**
+ * Builds a responsive srcset string for Supabase storage images.
+ * Returns `undefined` for SVG placeholders and external CDN images so
+ * <ImageWithFallback> omits the srcset attribute entirely.
+ */
+export function getProductImageSrcset(imageUrl: string): string | undefined {
+  if (!isSupabaseStorageUrl(imageUrl)) return undefined;
+  return [
+    `${getSupabaseImageTransformUrl(imageUrl, 320)} 320w`,
+    `${getSupabaseImageTransformUrl(imageUrl, 640)} 640w`,
+    `${getSupabaseImageTransformUrl(imageUrl, 960)} 960w`,
+  ].join(", ");
+}
+
+export function getCatalogProductImage(product: CatalogProduct): string {
   if (product.imageUrl && isValidHttpUrl(product.imageUrl)) {
-    return product.imageUrl;
+    // For Supabase storage images, serve a sensibly-sized default (640 px)
+    // instead of the raw, uncompressed original.
+    return isSupabaseStorageUrl(product.imageUrl)
+      ? getSupabaseImageTransformUrl(product.imageUrl, 640)
+      : product.imageUrl;
   }
 
   const theme = getCategoryTheme(product.category);

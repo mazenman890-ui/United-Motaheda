@@ -31,7 +31,7 @@ function CategoryEmptyState({
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-[1.8rem] border border-slate-200/80 bg-white/92 p-12 text-center shadow-sm backdrop-blur-xl"
+      className="rounded-2xl border border-slate-100 bg-white p-12 text-center shadow-sm"
     >
       <div className="mx-auto flex max-w-sm flex-col items-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
@@ -81,14 +81,14 @@ function CategoriesDesktop() {
   const filteredCategories = useCatalogCategorySearch(categories, searchQuery);
 
   return (
-    <div className="categories-page min-h-screen bg-[linear-gradient(165deg,#f0fafa_0%,#f7fafb_50%,#fafafa_100%)]">
+    <div className="categories-page min-h-screen bg-slate-50/50">
       <div className="page-section py-6 pb-14">
         {/* ── Hero Banner ───────────────────────────────── */}
         <motion.div
-          initial={{ opacity: 0, y: -12 }}
+          initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="mb-5 overflow-hidden rounded-[1.8rem] border border-slate-200/80 bg-white/92 shadow-[0_4px_28px_rgba(15,23,42,0.07)] backdrop-blur-xl"
+          transition={{ duration: 0.25 }}
+          className="mb-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
         >
           <div className="space-y-3 p-5">
               <div className="flex flex-wrap items-center gap-2">
@@ -143,7 +143,7 @@ function CategoriesDesktop() {
         </motion.div>
 
         {/* ── Controls Bar ──────────────────────────────── */}
-        <div className="catalog-controls-stick z-30 mb-6 overflow-hidden rounded-[1.8rem] border border-slate-200/80 bg-white/97 shadow-[0_4px_24px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+        <div className="catalog-controls-stick z-30 mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-slate-200/70 bg-slate-50 px-3 text-[11px] font-black text-slate-700">

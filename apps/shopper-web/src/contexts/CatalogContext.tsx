@@ -1,27 +1,19 @@
 /**
- * CatalogContext — Shared catalog state for the entire app
+ * M3 — Server-paginated catalog reads
  *
- * ═══════════════════════════════════════════════════════════════════════════════
- * PERFORMANCE REFACTOR (the 30-second hang fix)
- * ═══════════════════════════════════════════════════════════════════════════════
+ * Boot path:
+ *  1. Page-1 fetch (24 products) gives a fast first paint.
+ *  2. requestIdleCallback triggers a full-catalog load in the background.
+ *  3. Once the full catalog arrives, `allProducts` holds the complete 52K
+ *     list for search workers and lookups; `products` stays paginated.
  *
- * The previous version called `scheduleFullCatalogLoad()` automatically on
- * mount, which fetched ALL 52 000 products from Supabase via 53 HTTP requests.
- * Even when triggered via requestIdleCallback, the browser was forced to
- * execute it within 8 seconds (timeout: 8000), causing a major performance
- * spike that froze the UI.
+ * Worker init:
+ *  The fuzzy-search worker is initialized from `allProducts` (the stable
+ *  full-catalog reference) rather than the transient paginated `products`.
+ *  This prevents the worker from reinitialising on every `loadNextPage()`.
  *
- * NEW BOOT PATH:
- *   1. Page-1 fetch (24 products) gives fast first paint — sub-second.
- *   2. Categories are loaded from localStorage cache (30-min TTL) or via a
- *      separate lightweight fetch — no full catalog needed.
- *   3. The Products page now uses `useInfiniteProducts` (server-paginated)
- *      so it never needs the full 52K dataset.
- *   4. `refreshCatalog()` is still available for admin pages that explicitly
- *      need the full catalog (e.g., product management dashboard).
- *
- * `useFullCatalog()` returns the full dataset when available (after an explicit
- * `refreshCatalog()` call from an admin page), but no longer auto-fetches it.
+ * `useFullCatalog()` gives admin pages and the search hook access to the
+ *  full dataset without exposing it in the default catalog context shape.
  */
 
 import {
@@ -146,6 +138,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
 
   // ── Ref guards ────────────────────────────────────────────────────────────
   const isLoadingMoreRef = useRef(false);
+  const fullCatalogScheduled = useRef(false);
 
   // ── applyPageResult ───────────────────────────────────────────────────────
 
@@ -173,36 +166,84 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  // ── Mount: page-1 fetch for fast first paint ──────────────────────────────
+  // ── Full-catalog loader (idle-callback) ───────────────────────────────────
+
+  const scheduleFullCatalogLoad = useCallback(
+    (delayMs = 0) => {
+      if (fullCatalogScheduled.current) return;
+      fullCatalogScheduled.current = true;
+
+      const doLoad = async () => {
+        try {
+          const snapshot = await fetchShopperCatalogSnapshot(false);
+          startTransition(() => {
+            setAllProducts(snapshot.products);
+            setAllProductsMap(
+              Object.fromEntries(snapshot.products.map((p) => [p.id, p])),
+            );
+            setIsFullCatalogReady(true);
+            setCategories(snapshot.categories);
+            setTotalCount(snapshot.products.length);
+            setLastUpdated(new Date().toISOString());
+          });
+        } catch (err) {
+          console.error("[CatalogContext] Background full-catalog load failed:", err);
+          fullCatalogScheduled.current = false; // allow retry
+        }
+      };
+
+      if (delayMs > 0) {
+        setTimeout(() => void doLoad(), delayMs);
+      } else if (typeof requestIdleCallback !== "undefined") {
+        requestIdleCallback(() => void doLoad(), { timeout: 8000 });
+      } else {
+        setTimeout(() => void doLoad(), 200);
+      }
+    },
+    [],
+  );
+
+  // ── Mount: page-1 fetch if cold-start, then idle full-catalog ─────────────
   //
-  // We fetch ONLY the first page (24 products) on mount. This gives sub-second
-  // first paint without loading all 52K products into the client.
-  //
-  // The full catalog is no longer loaded automatically. Pages that need the
-  // full dataset (admin product manager) call `refreshCatalog()` explicitly.
-  // The Products page uses `useInfiniteProducts` (server-paginated) so it
-  // never needs the full catalog at all.
+  // Categories note: on cold start we try the synchronous cache first so the
+  // sidebar/nav already have categories before the async full-catalog arrives.
+  // The separate `refreshCategories` effect was removed because it raced with
+  // `scheduleFullCatalogLoad` — both awaited the same snapshot promise and both
+  // called `setCategories`, producing two separate React update batches and two
+  // extra consumer re-renders.  Now categories flow through one path only:
+  //   • Sync cache → setCategories immediately (zero network cost)
+  //   • scheduleFullCatalogLoad → setCategories as part of its batched update
 
   useEffect(() => {
     if (seedProducts.length > 0) {
-      // Cache warm — products are already available from localStorage.
-      // No background fetch needed; the Products page handles its own pagination.
+      // Cache warm — schedule a silent background refresh to pick up new data.
+      // Categories are already populated from the seed; no separate fetch needed.
+      scheduleFullCatalogLoad();
       return;
     }
 
-    // Cold start — fetch page 1 immediately for first paint.
+    // Cold start: populate categories from any available sync cache so the
+    // navigation/sidebar can render before the async full-catalog arrives.
+    const quickCats = getCachedCategoriesQuick();
+    if (quickCats?.length) {
+      startTransition(() => setCategories(quickCats));
+    }
+
+    // Fetch page 1 immediately for first paint.
     void (async () => {
       try {
         const result = await fetchProductsPage(1, {});
         applyPageResult(result, 1, false);
+        scheduleFullCatalogLoad(150);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load catalog");
         setIsLoading(false);
+        scheduleFullCatalogLoad(5000);
       }
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Categories: load if missing ───────────────────────────────────────────
+  // ── refreshCategories (manual refresh, e.g. after admin upsert) ──────────
 
   const refreshCategories = useCallback(async () => {
     try {
@@ -212,10 +253,6 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       console.error("[CatalogContext] fetchCategoriesQuick failed:", err);
     }
   }, []);
-
-  useEffect(() => {
-    if (categories.length === 0) void refreshCategories();
-  }, [categories.length, refreshCategories]);
 
   // ── loadNextPage ──────────────────────────────────────────────────────────
 
@@ -270,14 +307,11 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   }, [applyPageResult]);
 
   // ── refreshCatalog ────────────────────────────────────────────────────────
-  //
-  // Explicitly loads the full 52K catalog. Called by admin pages (product
-  // manager, dashboard) that need the complete dataset. NOT called automatically
-  // on mount — that was the source of the 30-second hang.
 
   const refreshCatalog = useCallback(async (forceRefresh = false) => {
     setIsLoading(true);
     setError(null);
+    fullCatalogScheduled.current = false;
 
     try {
       const snapshot = await fetchShopperCatalogSnapshot(forceRefresh);

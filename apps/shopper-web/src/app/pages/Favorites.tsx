@@ -54,7 +54,7 @@ export default function Favorites() {
         lang={lang}
         crumbs={[{ label: t("home"), to: "/" }, { label: t("favorites_nav") }]}
         eyebrow={
-          <span className="badge-teal border-0 bg-white/70 text-teal-700 shadow-sm backdrop-blur-md">
+          <span className="badge-teal border-0 bg-white text-teal-700 shadow-sm">
             <Heart className="h-4 w-4" />
             {lang === "ar" ? "منتجات محفوظة" : "Saved products"}
           </span>
@@ -63,19 +63,19 @@ export default function Favorites() {
         description={t("favorites_subtitle")}
         stats={
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-white/70 bg-white/70 p-4 backdrop-blur-md">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
                 {lang === "ar" ? "إجمالي العناصر" : "Saved items"}
               </p>
               <p className="mt-2 text-2xl font-black text-slate-950">{favoriteProducts.length}</p>
             </div>
-            <div className="rounded-2xl border border-white/70 bg-white/70 p-4 backdrop-blur-md">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
                 {lang === "ar" ? "المتاح الآن" : "Available now"}
               </p>
               <p className="mt-2 text-2xl font-black text-slate-950">{availableProducts}</p>
             </div>
-            <div className="rounded-2xl border border-white/70 bg-white/70 p-4 backdrop-blur-md">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
                 {lang === "ar" ? "الإجراء" : "Next step"}
               </p>
