@@ -533,3 +533,28 @@ function writeCachedCategories(categories: CatalogCategory[]): void {
   const payload: CachedCategories = { categories, timestamp: Date.now() };
   safeLocalStorageSet(CATEGORY_CACHE_KEY, JSON.stringify(payload));
 }
+
+// ─── fetchProductsByIds ───────────────────────────────────────────────────────
+/**
+ * Fetch a batch of products by their IDs directly from Supabase.
+ * Used by CartContext and FavoritesContext to resolve product IDs that are not
+ * in the page-1 in-memory cache (i.e. products added from page 2+).
+ *
+ * Returns an empty array (never throws) so callers can treat this as best-effort.
+ */
+export async function fetchProductsByIds(ids: string[]): Promise<CatalogProduct[]> {
+  if (ids.length === 0) return [];
+  try {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .in("id", ids);
+    if (error || !data || !Array.isArray(data)) return [];
+    return (data as Record<string, unknown>[])
+      .map((row, i) => normalizeSupabaseProduct(row, i))
+      .filter((p): p is CatalogProduct => p !== null);
+  } catch {
+    return [];
+  }
+}
