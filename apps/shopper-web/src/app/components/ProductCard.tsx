@@ -48,6 +48,7 @@ import {
   formatStockQuantity,
   getCatalogProductImage,
   getProductAvailabilityLabel,
+  getProductImageSrcset,
   type CatalogProduct,
 } from "../catalog";
 import { getLocalizedProductName } from "../localization";
@@ -231,9 +232,12 @@ export const ProductCard = memo(function ProductCard({
               </div>
             )}
 
-            {/* Image */}
+            {/* Image — srcset supplies 320/640/960 WebP transforms for Supabase
+                storage URLs; SVG placeholder falls through without srcset. */}
             <ImageWithFallback
               src={getCatalogProductImage(product)}
+              srcSet={getProductImageSrcset(product.imageUrl ?? "") ?? undefined}
+              sizes="(max-width: 480px) 50vw, (max-width: 768px) 33vw, 25vw"
               alt={primaryName}
               className="h-full w-full object-cover transition-transform duration-400 ease-out group-hover:scale-[1.04]"
               loading="lazy"
@@ -405,6 +409,8 @@ export const ProductCardCompact = memo(function ProductCardCompact({
         >
           <ImageWithFallback
             src={getCatalogProductImage(product)}
+            srcSet={getProductImageSrcset(product.imageUrl ?? "") ?? undefined}
+            sizes="72px"
             alt={primaryName}
             className="h-full w-full object-cover transition-transform duration-400 ease-out group-hover:scale-105"
             loading="lazy"
