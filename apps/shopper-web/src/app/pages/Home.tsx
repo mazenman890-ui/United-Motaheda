@@ -359,51 +359,43 @@ function HomeDesktop() {
               </Link>
             </div>
 
-            {/* Portrait-rectangle category tiles — centered, not full-width */}
-            <div className="mx-auto max-w-[780px]">
-              <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5 sm:gap-4">
+            {/* Slim portrait tiles — fixed width, centered row */}
+            <div className="flex flex-wrap justify-center gap-3">
 
-                {/* "All" tile */}
-                <Link to="/products"
-                  className="group relative flex min-h-[140px] flex-col items-center justify-between overflow-hidden rounded-2xl bg-gradient-to-b from-teal-500 to-emerald-600 px-3 pb-4 pt-5 shadow-[0_6px_18px_rgba(20,184,166,0.30)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_16px_32px_rgba(20,184,166,0.38)] sm:min-h-[160px]">
-                  {/* Decorative circle */}
-                  <div aria-hidden className="absolute -right-5 -top-5 h-20 w-20 rounded-full bg-white/10" />
-                  <div aria-hidden className="absolute -bottom-4 -left-4 h-16 w-16 rounded-full bg-white/10" />
-                  {/* Icon bubble */}
-                  <div className="relative z-10 flex h-11 w-11 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm transition-transform duration-300 group-hover:scale-110">
-                    <ShoppingBag className="h-5 w-5 text-white drop-shadow" />
-                  </div>
-                  {/* Label */}
-                  <span className="relative z-10 mt-auto text-center text-[11px] font-black leading-tight text-white drop-shadow">
-                    {isRtl ? "الكل" : "All"}
-                  </span>
-                </Link>
+              {/* "All" tile */}
+              <Link to="/products"
+                className="group relative flex w-[100px] flex-col items-center justify-between overflow-hidden rounded-2xl bg-gradient-to-b from-teal-500 to-emerald-600 pb-4 pt-6 shadow-[0_6px_20px_rgba(20,184,166,0.32)] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_18px_36px_rgba(20,184,166,0.40)] sm:w-[112px]"
+                style={{ minHeight: "168px" }}>
+                <div aria-hidden className="absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,rgba(255,255,255,0.18),transparent_65%)]" />
+                <div className="relative z-10 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/25 shadow-inner transition-transform duration-300 group-hover:scale-110">
+                  <ShoppingBag className="h-6 w-6 text-white drop-shadow-sm" />
+                </div>
+                <span className="relative z-10 px-2 text-center text-[11px] font-black leading-snug text-white drop-shadow">
+                  {isRtl ? "الكل" : "All"}
+                </span>
+              </Link>
 
-                {categoryChips.map((cat, i) => {
-                  const gradient = CAT_GRADIENTS[i % CAT_GRADIENTS.length];
-                  const IconComp = CAT_ICONS[i % CAT_ICONS.length];
-                  const label = isRtl ? cat.name : (cat.nameEn ?? cat.name);
-                  return (
-                    <Link key={cat.id} to={`/categories/${cat.id}`}
-                      className={cn(
-                        "group relative flex min-h-[140px] flex-col items-center justify-between overflow-hidden rounded-2xl px-3 pb-4 pt-5 shadow-[0_4px_14px_rgba(0,0,0,0.12)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_16px_32px_rgba(0,0,0,0.18)] sm:min-h-[160px]",
-                        `bg-gradient-to-b ${gradient}`,
-                      )}>
-                      {/* Decorative circles */}
-                      <div aria-hidden className="absolute -right-5 -top-5 h-20 w-20 rounded-full bg-white/10" />
-                      <div aria-hidden className="absolute -bottom-4 -left-4 h-16 w-16 rounded-full bg-white/10" />
-                      {/* Icon bubble */}
-                      <div className="relative z-10 flex h-11 w-11 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm transition-transform duration-300 group-hover:scale-110">
-                        <IconComp className="h-5 w-5 text-white drop-shadow" />
-                      </div>
-                      {/* Label */}
-                      <span className="relative z-10 mt-auto line-clamp-2 text-center text-[10.5px] font-black leading-tight text-white drop-shadow">
-                        {label}
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
+              {categoryChips.map((cat, i) => {
+                const gradient = CAT_GRADIENTS[i % CAT_GRADIENTS.length];
+                const IconComp = CAT_ICONS[i % CAT_ICONS.length];
+                const label = isRtl ? cat.name : (cat.nameEn ?? cat.name);
+                return (
+                  <Link key={cat.id} to={`/categories/${cat.id}`}
+                    className={cn(
+                      "group relative flex w-[100px] flex-col items-center justify-between overflow-hidden rounded-2xl pb-4 pt-6 shadow-[0_4px_16px_rgba(0,0,0,0.13)] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_18px_36px_rgba(0,0,0,0.20)] sm:w-[112px]",
+                      `bg-gradient-to-b ${gradient}`,
+                    )}
+                    style={{ minHeight: "168px" }}>
+                    <div aria-hidden className="absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,rgba(255,255,255,0.18),transparent_65%)]" />
+                    <div className="relative z-10 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/25 shadow-inner transition-transform duration-300 group-hover:scale-110">
+                      <IconComp className="h-6 w-6 text-white drop-shadow-sm" />
+                    </div>
+                    <span className="relative z-10 line-clamp-2 px-2 text-center text-[10.5px] font-black leading-snug text-white drop-shadow">
+                      {label}
+                    </span>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </section>
