@@ -76,7 +76,7 @@ import {
   queryIndexCandidates,
   normalise,
   LRUCache,
-} from "../utils/fuzzySearch";
+} from "@pharmacy/fuzzy-search";
 // ─── Slim product type (must match WorkerSearchProduct in catalogSearchWorker.ts) ──
 
 interface WorkerProduct {

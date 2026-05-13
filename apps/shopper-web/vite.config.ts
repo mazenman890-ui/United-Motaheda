@@ -20,6 +20,7 @@ export default defineConfig({
       "@pharmacy/api-client": path.resolve(__dirname, "../../packages/api-client/src/index.ts"),
       "@pharmacy/domain-core": path.resolve(__dirname, "../../packages/domain-core/src/index.ts"),
       "@pharmacy/domain-search": path.resolve(__dirname, "../../packages/domain-search/src/index.ts"),
+      "@pharmacy/fuzzy-search": path.resolve(__dirname, "../../packages/fuzzy-search/src/index.ts"),
       "@pharmacy/domain-catalog": path.resolve(__dirname, "../../packages/domain-catalog/src/index.ts"),
       "@pharmacy/domain-location": path.resolve(__dirname, "../../packages/domain-location/src/index.ts"),
       "@pharmacy/domain-cart": path.resolve(__dirname, "../../packages/domain-cart/src/index.ts"),

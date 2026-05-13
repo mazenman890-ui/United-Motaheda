@@ -8,6 +8,7 @@ import type {
   SearchResultItem,
   SearchSuggestion,
 } from "@pharmacy/types";
+import { fuzzyMatch, type FuzzySearchableFields } from "@pharmacy/fuzzy-search";
 import {
   apiResponseSchema,
   BranchSchema,
@@ -151,19 +152,14 @@ function mapSuggestion(product: SearchResultItem): SearchSuggestion {
 }
 
 function queryMatch(product: SearchResultItem, needle: string) {
-  const values = [
-    product.code,
-    product.barcode,
-    product.nameAr,
-    product.nameEn,
-    product.category,
-    product.categoryName,
-    product.categoryNameEn,
-  ]
-    .map(normalize)
-    .filter(Boolean);
-
-  return values.some((value) => value.includes(needle));
+  const fields: FuzzySearchableFields = {
+    nameAr: product.nameAr,
+    nameEn: product.nameEn,
+    category: product.categoryName || product.categoryNameEn || product.category,
+    code: product.code,
+    barcode: product.barcode,
+  };
+  return fuzzyMatch(needle, fields);
 }
 
 function mapFacet(products: SearchResultItem[]) {

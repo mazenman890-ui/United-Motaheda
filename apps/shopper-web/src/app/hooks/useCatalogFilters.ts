@@ -14,7 +14,7 @@
 import { useMemo } from "react";
 import type { CatalogProduct } from "../catalog";
 import { getLocalizedProductName } from "../localization";
-import { fuzzyMatch } from "../../utils/fuzzySearch";
+import { fuzzyMatch } from "@pharmacy/fuzzy-search";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 

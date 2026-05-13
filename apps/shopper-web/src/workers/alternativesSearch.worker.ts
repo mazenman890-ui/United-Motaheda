@@ -43,7 +43,7 @@
  */
 
 import { rankAlternativeProducts } from "@pharmacy/domain-catalog";
-import { LRUCache } from "../utils/fuzzySearch";
+import { LRUCache } from "@pharmacy/fuzzy-search";
 
 // ─── Strict product shape (no implicit any) ───────────────────────────────────
 

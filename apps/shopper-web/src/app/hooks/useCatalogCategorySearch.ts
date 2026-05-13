@@ -16,7 +16,7 @@ import {
   type CatalogCategory,
   getCatalogCategorySearchMetadata,
 } from "../catalog";
-import { fuzzyMatch, fuzzyScore } from "../../utils/fuzzySearch";
+import { fuzzyMatch, fuzzyScore } from "@pharmacy/fuzzy-search";
 
 function getCategorySearchText(category: CatalogCategory): string {
   const metadata = getCatalogCategorySearchMetadata(category.id);

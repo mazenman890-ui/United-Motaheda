@@ -12,7 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { clearFuzzyCache, fuzzyMatch, fuzzyScore } from "../utils/fuzzySearch";
+import { clearFuzzyCache, fuzzyMatch, fuzzyScore } from "@pharmacy/fuzzy-search";
 import type { CatalogProduct } from "../app/catalog";
 import { useCatalog } from "./CatalogContext";
 import { fetchProductsPage } from "../services/shopperCatalogApi";

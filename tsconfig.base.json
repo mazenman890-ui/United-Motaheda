@@ -26,6 +26,7 @@
       "@pharmacy/api-client": ["packages/api-client/src/index.ts"],
       "@pharmacy/domain-core": ["packages/domain-core/src/index.ts"],
       "@pharmacy/domain-search": ["packages/domain-search/src/index.ts"],
+      "@pharmacy/fuzzy-search": ["packages/fuzzy-search/src/index.ts"],
       "@pharmacy/domain-catalog": ["packages/domain-catalog/src/index.ts"],
       "@pharmacy/domain-location": ["packages/domain-location/src/index.ts"],
       "@pharmacy/domain-cart": ["packages/domain-cart/src/index.ts"],

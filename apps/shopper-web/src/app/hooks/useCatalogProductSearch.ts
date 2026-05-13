@@ -59,7 +59,7 @@ import {
 } from "react";
 import type { CatalogProduct } from "../catalog";
 import { getLocalizedProductName } from "../localization";
-import { fuzzyMatch, fuzzyScore } from "../../utils/fuzzySearch";
+import { fuzzyMatch, fuzzyScore } from "@pharmacy/fuzzy-search";
 import {
   CATALOG_SEARCH_WORKER_THRESHOLD,
   clearPrefetchCache,
