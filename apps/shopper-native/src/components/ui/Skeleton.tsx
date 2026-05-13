@@ -1,56 +1,99 @@
-import React, { useEffect, useRef } from "react";
-import { Animated, View, type ViewStyle, type StyleProp } from "react-native";
+import React, { useEffect } from "react";
+import { Dimensions, View, type StyleProp, type ViewStyle } from "react-native";
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
 import { theme } from "@/theme";
 
+const W = Dimensions.get("window").width;
+
 interface SkeletonProps {
-  width?:  number | string;
+  width?:  number | `${number}%`;
   height?: number;
   radius?: number;
   style?:  StyleProp<ViewStyle>;
 }
 
 export function Skeleton({ width = "100%", height = 16, radius = 8, style }: SkeletonProps) {
-  const anim = useRef(new Animated.Value(0)).current;
+  const x = useSharedValue(-W);
 
   useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(anim, { toValue: 1, duration: 900, useNativeDriver: true }),
-        Animated.timing(anim, { toValue: 0, duration: 900, useNativeDriver: true }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [anim]);
+    x.value = withRepeat(withTiming(W, { duration: 1100 }), -1, false);
+    return () => cancelAnimation(x);
+  }, [x]);
 
-  const opacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0.85] });
+  const shimmerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: x.value }],
+  }));
 
   return (
-    <Animated.View
+    <View
       style={[
         {
           width,
           height,
           borderRadius: radius,
           backgroundColor: theme.colors.slate[200],
-          opacity,
+          overflow: "hidden",
         },
         style,
-      ]}
-    />
+      ]}>
+      <Animated.View
+        style={[
+          { position: "absolute", top: 0, bottom: 0, width: W },
+          shimmerStyle,
+        ]}>
+        <LinearGradient
+          colors={["transparent", "rgba(255,255,255,0.55)", "transparent"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{ width: "100%", height: "100%" }}
+        />
+      </Animated.View>
+    </View>
   );
 }
 
 export function ProductCardSkeleton() {
   return (
-    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 12, gap: 10, ...theme.shadow.sm }}>
-      <Skeleton height={140} radius={12} />
-      <Skeleton width="70%" height={14} />
-      <Skeleton width="50%" height={12} />
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <Skeleton width={60} height={18} />
-        <Skeleton width={36} height={36} radius={10} />
+    <View
+      style={{
+        backgroundColor: theme.colors.surface,
+        borderRadius: theme.radius.xl,
+        overflow: "hidden",
+        borderWidth: 1,
+        borderColor: "rgba(0,0,0,0.04)",
+        ...theme.shadow.sm,
+      }}>
+      <Skeleton height={152} radius={0} />
+      <View style={{ padding: 12, gap: 8 }}>
+        <Skeleton width="75%" height={12} />
+        <Skeleton width="55%" height={11} />
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+          <Skeleton width={56} height={18} radius={6} />
+          <Skeleton width={36} height={36} radius={10} />
+        </View>
       </View>
+    </View>
+  );
+}
+
+export function CategoryTileSkeleton() {
+  return (
+    <View
+      style={{
+        flex: 1,
+        height: 140,
+        borderRadius: theme.radius.xl,
+        backgroundColor: theme.colors.slate[200],
+        overflow: "hidden",
+      }}>
+      <Skeleton height={140} radius={0} />
     </View>
   );
 }

@@ -24,10 +24,10 @@ interface ButtonProps extends Omit<PressableProps, "style"> {
   children:  React.ReactNode;
 }
 
-const sizeStyles: Record<Size, { px: number; py: number; fontSize: number }> = {
-  sm: { px: 14, py: 8,  fontSize: 12 },
-  md: { px: 18, py: 11, fontSize: 14 },
-  lg: { px: 22, py: 15, fontSize: 15 },
+const SIZE_MAP: Record<Size, { px: number; py: number; fs: number; r: number }> = {
+  sm: { px: 16, py: 9,  fs: 12, r: theme.radius.md },
+  md: { px: 20, py: 12, fs: 14, r: theme.radius.lg },
+  lg: { px: 24, py: 15, fs: 15, r: theme.radius.xl },
 };
 
 export function Button({
@@ -42,18 +42,27 @@ export function Button({
   disabled,
   ...rest
 }: ButtonProps) {
-  const ss         = sizeStyles[size];
+  const ss         = SIZE_MAP[size];
   const isDisabled = disabled || loading;
-  const textColor  = variant === "secondary" || variant === "outline" || variant === "ghost"
-    ? (variant === "ghost" ? theme.colors.slate[700] : theme.colors.brand[variant === "secondary" ? 700 : 600])
-    : "#fff";
 
-  const innerContent = loading ? (
+  const textColor =
+    variant === "primary" || variant === "danger" ? "#fff"
+    : variant === "secondary" ? theme.colors.brand[700]
+    : variant === "outline"   ? theme.colors.brand[600]
+    : theme.colors.slate[700];
+
+  const inner = loading ? (
     <ActivityIndicator size="small" color={textColor} />
   ) : (
     <>
       {leftIcon}
-      <Text style={{ fontSize: ss.fontSize, fontWeight: "800", letterSpacing: 0.2, color: textColor }}>
+      <Text
+        style={{
+          fontSize:      ss.fs,
+          fontWeight:    "800",
+          color:         textColor,
+          letterSpacing: 0.1,
+        }}>
         {children as string}
       </Text>
       {rightIcon}
@@ -67,11 +76,11 @@ export function Button({
         disabled={isDisabled}
         style={({ pressed }) => [
           {
-            borderRadius: theme.radius.lg,
+            borderRadius: ss.r,
             overflow:     "hidden",
             alignSelf:    fullWidth ? undefined : "flex-start",
             width:        fullWidth ? "100%" : undefined,
-            opacity:      isDisabled ? 0.5 : pressed ? 0.87 : 1,
+            opacity:      isDisabled ? 0.5 : pressed ? 0.88 : 1,
             ...theme.shadow.brand,
           },
           style,
@@ -84,11 +93,11 @@ export function Button({
             flexDirection:     "row",
             alignItems:        "center",
             justifyContent:    "center",
-            gap:               6,
+            gap:               7,
             paddingHorizontal: ss.px,
             paddingVertical:   ss.py,
           }}>
-          {innerContent}
+          {inner}
         </LinearGradient>
       </Pressable>
     );
@@ -111,21 +120,21 @@ export function Button({
           flexDirection:     "row",
           alignItems:        "center",
           justifyContent:    "center",
-          gap:               6,
-          backgroundColor:   bgMap[variant],
-          borderRadius:      theme.radius.lg,
+          gap:               7,
+          backgroundColor:   pressed && variant === "ghost" ? theme.colors.slate[100] : bgMap[variant],
+          borderRadius:      ss.r,
           paddingHorizontal: ss.px,
           paddingVertical:   ss.py,
           borderWidth:       variant === "outline" ? 1.5 : 0,
           borderColor:       variant === "outline" ? theme.colors.brand[600] : undefined,
           alignSelf:         fullWidth ? undefined : "flex-start",
           width:             fullWidth ? "100%" : undefined,
-          opacity:           isDisabled ? 0.5 : pressed ? 0.82 : 1,
-          ...theme.shadow.xs,
+          opacity:           isDisabled ? 0.5 : pressed && variant !== "ghost" ? 0.82 : 1,
+          ...(variant === "secondary" || variant === "danger" ? theme.shadow.xs : {}),
         },
         style,
       ]}>
-      {innerContent}
+      {inner}
     </Pressable>
   );
 }
