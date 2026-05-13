@@ -111,81 +111,108 @@ function upsertLinkTag(rel: string, href: string) {
   node.setAttribute("href", href);
 }
 
+function upsertScriptJsonLd(id: string, data: object) {
+  let node = document.head.querySelector<HTMLScriptElement>(`script[data-ld="${id}"]`);
+  if (!node) {
+    node = document.createElement("script");
+    node.setAttribute("type", "application/ld+json");
+    node.setAttribute("data-ld", id);
+    document.head.appendChild(node);
+  }
+  node.textContent = JSON.stringify(data);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  Route metadata map
 // ─────────────────────────────────────────────────────────────────────────────
 
 function getRouteMeta(pathname: string, lang: "ar" | "en") {
+  const isAr = lang === "ar";
   const homeMeta = {
-    title: lang === "ar" ? BRAND_NAME_AR : BRAND_NAME_EN,
-    description:
-      "A trusted digital pharmacy in Cairo for products, offers, and direct support.",
+    title: isAr ? BRAND_NAME_AR : BRAND_NAME_EN,
+    description: isAr
+      ? "صيدلية رقمية موثوقة في القاهرة — منتجات، عروض، ودعم مباشر على مدار الساعة."
+      : "A trusted digital pharmacy in Cairo for products, offers, and direct support.",
   };
 
   const metaMap = {
     products: {
-      title: "Products",
-      description:
-        "Browse an organized catalog of medicines, vitamins, and personal care with clearer filters and faster discovery.",
+      title: isAr ? "المنتجات" : "Products",
+      description: isAr
+        ? "تصفّح كتالوج منظّم من الأدوية والفيتامينات ومنتجات العناية بفلاتر أوضح واكتشاف أسرع."
+        : "Browse an organized catalog of medicines, vitamins, and personal care with clearer filters and faster discovery.",
     },
     productDetails: {
-      title: "Product Details",
-      description:
-        "Review product details, pricing, and key information clearly before adding the item to your cart.",
+      title: isAr ? "تفاصيل المنتج" : "Product Details",
+      description: isAr
+        ? "راجع تفاصيل المنتج والسعر والمعلومات الأساسية بوضوح قبل إضافته إلى السلة."
+        : "Review product details, pricing, and key information clearly before adding the item to your cart.",
     },
     categories: {
-      title: "Categories",
-      description:
-        "Explore pharmacy categories by need so customers can reach the right products faster.",
+      title: isAr ? "الأقسام" : "Categories",
+      description: isAr
+        ? "استكشف أقسام الصيدلية حسب الاحتياج للوصول إلى المنتجات المناسبة بشكل أسرع."
+        : "Explore pharmacy categories by need so customers can reach the right products faster.",
     },
     categoryDetails: {
-      title: "Category Details",
-      description:
-        "Browse the selected category with a cleaner sort flow and faster path to purchase.",
+      title: isAr ? "تفاصيل القسم" : "Category Details",
+      description: isAr
+        ? "تصفّح القسم المحدد مع ترتيب أوضح ومسار أسرع نحو الشراء."
+        : "Browse the selected category with a cleaner sort flow and faster path to purchase.",
     },
     offers: {
-      title: "Offers",
-      description:
-        "Review current offers and featured pharmacy products in one place.",
+      title: isAr ? "العروض" : "Offers",
+      description: isAr
+        ? "راجع العروض الحالية ومنتجات الصيدلية المميزة في مكان واحد."
+        : "Review current offers and featured pharmacy products in one place.",
     },
     orders: {
-      title: "My Orders",
-      description:
-        "View your order history, track delivery status, and manage your pharmacy orders in one place.",
+      title: isAr ? "طلباتي" : "My Orders",
+      description: isAr
+        ? "اطّلع على سجل طلباتك وتتبّع حالة التوصيل وأدِر طلبات صيدليتك في مكان واحد."
+        : "View your order history, track delivery status, and manage your pharmacy orders in one place.",
     },
     wishlist: {
-      title: "Wishlist",
-      description:
-        "Review saved products and return to them quickly when you are ready to order.",
+      title: isAr ? "المحفوظات" : "Wishlist",
+      description: isAr
+        ? "راجع المنتجات المحفوظة وعُد إليها بسرعة حين تصبح مستعداً للطلب."
+        : "Review saved products and return to them quickly when you are ready to order.",
     },
     returns: {
-      title: "Returns",
-      description:
-        "Submit a return request linked to your order and review the medical-product return terms.",
+      title: isAr ? "الإرجاع" : "Returns",
+      description: isAr
+        ? "قدّم طلب إرجاع مرتبطاً بطلبك واطّلع على شروط إرجاع المنتجات الطبية."
+        : "Submit a return request linked to your order and review the medical-product return terms.",
     },
     about: {
-      title: "About Us",
-      description:
-        "Learn how United Pharmacies delivers a more organized and trusted experience for customers in Cairo.",
+      title: isAr ? "من نحن" : "About Us",
+      description: isAr
+        ? "تعرّف على كيفية تقديم صيدليات المتحدة تجربة أكثر تنظيماً وموثوقية لعملائها في القاهرة."
+        : "Learn how United Pharmacies delivers a more organized and trusted experience for customers in Cairo.",
     },
     contact: {
-      title: "Contact",
-      description:
-        "Reach United Pharmacies through phone, branch details, or the contact form for direct support.",
+      title: isAr ? "تواصل معنا" : "Contact",
+      description: isAr
+        ? "تواصل مع صيدليات المتحدة عبر الهاتف أو بيانات الفروع أو نموذج الاتصال للدعم المباشر."
+        : "Reach United Pharmacies through phone, branch details, or the contact form for direct support.",
     },
     profile: {
-      title: "My Profile",
-      description: "Review your account details and order history in a cleaner personal area.",
+      title: isAr ? "ملفي الشخصي" : "My Profile",
+      description: isAr
+        ? "راجع بيانات حسابك وسجل طلباتك في منطقة شخصية أنظف."
+        : "Review your account details and order history in a cleaner personal area.",
     },
     checkout: {
-      title: "Checkout",
-      description:
-        "Complete shipping, payment, and order review in a clearer checkout experience.",
+      title: isAr ? "الدفع" : "Checkout",
+      description: isAr
+        ? "أكمل بيانات الشحن والدفع ومراجعة الطلب في تجربة دفع أوضح."
+        : "Complete shipping, payment, and order review in a clearer checkout experience.",
     },
     support: {
-      title: "Support & Policies",
-      description:
-        "Review FAQ, shipping, returns, privacy, and terms in a more structured support area.",
+      title: isAr ? "الدعم والسياسات" : "Support & Policies",
+      description: isAr
+        ? "راجع الأسئلة الشائعة والشحن والإرجاع والخصوصية والشروط في منطقة دعم أكثر تنظيماً."
+        : "Review FAQ, shipping, returns, privacy, and terms in a more structured support area.",
     },
   } as const;
 
@@ -220,9 +247,11 @@ function RouteMetaManager() {
     const meta = getRouteMeta(location.pathname, lang);
     const siteName = lang === "ar" ? BRAND_NAME_AR : BRAND_NAME_EN;
     const title = meta.title === siteName ? siteName : `${meta.title} | ${siteName}`;
-    const absoluteUrl = `${window.location.origin}${location.pathname}${location.search}`;
-    const absoluteImageUrl = new URL(images.logo, window.location.origin).toString();
+    const origin = window.location.origin;
+    const absoluteUrl = `${origin}${location.pathname}${location.search}`;
+    const absoluteImageUrl = new URL(images.logo, origin).toString();
 
+    // ── Standard meta ──────────────────────────────────────────────────────
     document.title = title;
     upsertMetaTag({ name: "description" }, meta.description);
     upsertMetaTag({ property: "og:title" }, title);
@@ -239,6 +268,72 @@ function RouteMetaManager() {
     upsertMetaTag({ name: "theme-color" }, "#0f766e");
     upsertMetaTag({ name: "apple-mobile-web-app-title" }, siteName);
     upsertLinkTag("canonical", absoluteUrl);
+
+    // ── JSON-LD structured data ────────────────────────────────────────────
+    // Organization — present on every page
+    upsertScriptJsonLd("org", {
+      "@context": "https://schema.org",
+      "@type": ["Organization", "Pharmacy"],
+      "@id": `${origin}/#organization`,
+      "name": BRAND_NAME_EN,
+      "alternateName": BRAND_NAME_AR,
+      "url": origin,
+      "logo": {
+        "@type": "ImageObject",
+        "url": absoluteImageUrl,
+      },
+      "telephone": siteContact.phoneHref.replace("tel:", ""),
+      "email": siteContact.email,
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Cairo",
+        "addressCountry": "EG",
+      },
+      "sameAs": siteSocials.map((s) => s.href),
+    });
+
+    // WebSite + sitelinks search — home page only
+    if (location.pathname === "/") {
+      upsertScriptJsonLd("website", {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "@id": `${origin}/#website`,
+        "name": BRAND_NAME_EN,
+        "alternateName": BRAND_NAME_AR,
+        "url": origin,
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": `${origin}/products?search={search_term_string}`,
+          },
+          "query-input": "required name=search_term_string",
+        },
+      });
+    }
+
+    // BreadcrumbList — product / category detail pages
+    if (location.pathname.startsWith("/products/") && location.pathname.length > "/products/".length) {
+      upsertScriptJsonLd("breadcrumb", {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": BRAND_NAME_EN, "item": origin },
+          { "@type": "ListItem", "position": 2, "name": "Products", "item": `${origin}/products` },
+          { "@type": "ListItem", "position": 3, "name": "Product Details", "item": absoluteUrl },
+        ],
+      });
+    } else if (location.pathname.startsWith("/categories/") && location.pathname.length > "/categories/".length) {
+      upsertScriptJsonLd("breadcrumb", {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": BRAND_NAME_EN, "item": origin },
+          { "@type": "ListItem", "position": 2, "name": "Categories", "item": `${origin}/categories` },
+          { "@type": "ListItem", "position": 3, "name": "Category", "item": absoluteUrl },
+        ],
+      });
+    }
   }, [lang, location.pathname, location.search]);
 
   return null;
