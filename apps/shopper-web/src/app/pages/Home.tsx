@@ -581,53 +581,103 @@ function HomeDesktop() {
       )}
 
       {/* ══════ 6. TRUST + CTA ══════ */}
-      <section className="bg-white py-10 sm:py-14">
+      <section className="bg-white py-10 sm:py-16">
         <div className="page-section">
-          <div className="mb-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {[
-              {
-                Icon: Truck, stat: "24h",
-                titleAr: "توصيل سريع",   titleEn: "Fast Delivery",
-                descAr: "لباب البيت في القاهرة", descEn: "Door-to-door in Cairo",
-                bar: "bg-teal-500", iconBg: "bg-teal-50",    iconC: "text-teal-600",   statC: "text-teal-600",   border: "border-teal-100   hover:border-teal-200",
-              },
-              {
-                Icon: ShieldCheck, stat: "100%",
-                titleAr: "أدوية أصلية",  titleEn: "Genuine Medicines",
-                descAr: "مضمونة ومعتمدة", descEn: "Certified & guaranteed",
-                bar: "bg-emerald-500", iconBg: "bg-emerald-50", iconC: "text-emerald-600", statC: "text-emerald-600", border: "border-emerald-100 hover:border-emerald-200",
-              },
-              {
-                Icon: MapPin, stat: "5",
-                titleAr: "فروع بالقاهرة", titleEn: "Cairo Branches",
-                descAr: "في أرجاء القاهرة", descEn: "Across Cairo",
-                bar: "bg-violet-500", iconBg: "bg-violet-50",  iconC: "text-violet-600",  statC: "text-violet-600",  border: "border-violet-100  hover:border-violet-200",
-              },
-              {
-                Icon: Clock3, stat: "24/7",
-                titleAr: "دعم متواصل",   titleEn: "Always-on Support",
-                descAr: serviceHours,       descEn: serviceHours,
-                bar: "bg-amber-500", iconBg: "bg-amber-50",   iconC: "text-amber-600",   statC: "text-amber-600",   border: "border-amber-100  hover:border-amber-200",
-              },
-            ].map(({ Icon, stat, titleAr, titleEn, descAr, descEn, bar, iconBg, iconC, statC, border }, i) => (
-              <Reveal key={titleEn} direction="up" delay={i * 55}>
-                <div className={cn(
-                  "relative flex flex-col gap-4 overflow-hidden rounded-2xl border bg-white p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(15,23,42,0.08)]",
-                  border, isRtl && "items-end text-right",
-                )}>
-                  <div className={cn("absolute inset-x-0 top-0 h-[3px] rounded-t-2xl", bar)} aria-hidden />
-                  <div className={cn("flex h-12 w-12 items-center justify-center rounded-xl", iconBg)}>
-                    <Icon className={cn("h-6 w-6", iconC)} />
-                  </div>
-                  <div>
-                    <p className={cn("text-[2rem] font-black leading-none", statC)}>{stat}</p>
-                    <p className="mt-2 text-[13px] font-black text-slate-900">{isRtl ? titleAr : titleEn}</p>
-                    <p className="mt-0.5 text-[11px] font-semibold leading-5 text-slate-500">{isRtl ? descAr : descEn}</p>
-                  </div>
-                </div>
-              </Reveal>
-            ))}
+
+          {/* Section heading */}
+          <div className="mb-8 text-center">
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
+              {isRtl ? "لماذا تختارنا" : "Why choose us"}
+            </p>
+            <h2 className="mt-2 text-xl font-black text-slate-950 sm:text-2xl">
+              {isRtl ? "الجودة والثقة أولاً" : "Quality & trust, always"}
+            </h2>
           </div>
+
+          {/* Centered portrait cards */}
+          <div className="mx-auto max-w-[660px]">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+              {[
+                {
+                  Icon: Truck,       stat: "24h",
+                  titleAr: "توصيل سريع",    titleEn: "Fast Delivery",
+                  descAr:  "لباب البيت في القاهرة", descEn: "Door-to-door, Cairo",
+                  bar: "bg-teal-500",    iconBg: "bg-teal-50",     iconC: "text-teal-600",    statC: "text-teal-600",
+                  border: "border-teal-100 hover:border-teal-300",
+                  dotBg: "bg-teal-500/15",
+                },
+                {
+                  Icon: ShieldCheck, stat: "100%",
+                  titleAr: "أدوية أصلية",  titleEn: "Genuine Meds",
+                  descAr:  "معتمدة ومضمونة",        descEn: "Certified & verified",
+                  bar: "bg-emerald-500", iconBg: "bg-emerald-50",  iconC: "text-emerald-600", statC: "text-emerald-600",
+                  border: "border-emerald-100 hover:border-emerald-300",
+                  dotBg: "bg-emerald-500/15",
+                },
+                {
+                  Icon: MapPin,      stat: "5",
+                  titleAr: "فروع بالقاهرة", titleEn: "Cairo Branches",
+                  descAr:  "في أرجاء القاهرة",      descEn: "Across Cairo",
+                  bar: "bg-violet-500",  iconBg: "bg-violet-50",   iconC: "text-violet-600",  statC: "text-violet-600",
+                  border: "border-violet-100 hover:border-violet-300",
+                  dotBg: "bg-violet-500/15",
+                },
+                {
+                  Icon: Clock3,      stat: "24/7",
+                  titleAr: "دعم متواصل",   titleEn: "Always-on Support",
+                  descAr:  serviceHours,              descEn: serviceHours,
+                  bar: "bg-amber-500",   iconBg: "bg-amber-50",    iconC: "text-amber-600",   statC: "text-amber-600",
+                  border: "border-amber-100 hover:border-amber-300",
+                  dotBg: "bg-amber-500/15",
+                },
+              ].map(({ Icon, stat, titleAr, titleEn, descAr, descEn, bar, iconBg, iconC, statC, border, dotBg }, i) => (
+                <Reveal key={titleEn} direction="up" delay={i * 60}>
+                  <div className={cn(
+                    "group relative flex min-h-[230px] flex-col items-center overflow-hidden rounded-2xl border bg-white shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_16px_32px_rgba(15,23,42,0.10)]",
+                    border,
+                  )}>
+                    {/* Top accent bar */}
+                    <div className={cn("h-[3px] w-full", bar)} aria-hidden />
+
+                    {/* Decorative glow blob */}
+                    <div className={cn("absolute -right-6 -top-6 h-20 w-20 rounded-full blur-2xl", dotBg)} aria-hidden />
+
+                    <div className="flex flex-1 flex-col items-center justify-between gap-0 px-4 py-5 text-center">
+
+                      {/* Icon bubble */}
+                      <div className={cn(
+                        "flex h-14 w-14 items-center justify-center rounded-2xl transition-transform duration-300 group-hover:scale-110",
+                        iconBg,
+                      )}>
+                        <Icon className={cn("h-7 w-7", iconC)} />
+                      </div>
+
+                      {/* Stat + divider + labels */}
+                      <div className="flex flex-col items-center gap-1">
+                        <p className={cn("text-[2.1rem] font-black leading-none tabular-nums", statC)}>
+                          {stat}
+                        </p>
+                        <div className={cn("my-1.5 h-px w-7 rounded-full opacity-50", bar)} aria-hidden />
+                        <p className="text-[11px] font-black leading-tight text-slate-900">
+                          {isRtl ? titleAr : titleEn}
+                        </p>
+                        <p className="mt-0.5 text-[10px] font-semibold leading-[1.45] text-slate-400">
+                          {isRtl ? descAr : descEn}
+                        </p>
+                      </div>
+
+                    </div>
+
+                    {/* Bottom accent bar */}
+                    <div className={cn("h-[2px] w-full opacity-30", bar)} aria-hidden />
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+
+        </div>
+        <div className="page-section mt-10">
 
           <Reveal direction="up" delay={200}>
             <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-teal-700 via-teal-600 to-emerald-500 p-8 shadow-[0_24px_64px_rgba(20,184,166,0.22)] sm:p-12">
