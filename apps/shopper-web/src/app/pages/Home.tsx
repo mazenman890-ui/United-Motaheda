@@ -345,9 +345,10 @@ function HomeDesktop() {
 
       {/* ══════ 2. CATEGORY GRID ══════ */}
       {categoryChips.length > 0 && (
-        <section className="bg-white py-8 sm:py-10">
+        <section className="bg-white py-10 sm:py-14">
           <div className="page-section">
-            <div className={cn("mb-5 flex items-center justify-between", isRtl && "flex-row-reverse")}>
+            {/* Header */}
+            <div className={cn("mb-7 flex items-center justify-between", isRtl && "flex-row-reverse")}>
               <h2 className="text-lg font-black text-slate-950 sm:text-xl">
                 {isRtl ? "تسوق حسب القسم" : "Shop by category"}
               </h2>
@@ -357,29 +358,52 @@ function HomeDesktop() {
                 <ArrowRight className={cn("h-3.5 w-3.5", isRtl && "rotate-180")} />
               </Link>
             </div>
-            <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6">
-              <Link to="/products"
-                className="group relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 p-3 shadow-[0_4px_14px_rgba(20,184,166,0.28)] transition-all hover:-translate-y-1 hover:shadow-[0_14px_28px_rgba(20,184,166,0.35)]">
-                <div aria-hidden className="absolute inset-0 bg-white/0 transition-all group-hover:bg-white/10" />
-                <ShoppingBag className="relative z-10 h-7 w-7 text-white drop-shadow" />
-                <span className="relative z-10 text-center text-[11px] font-black text-white">{isRtl ? "الكل" : "All"}</span>
-              </Link>
-              {categoryChips.map((cat, i) => {
-                const gradient = CAT_GRADIENTS[i % CAT_GRADIENTS.length];
-                const IconComp = CAT_ICONS[i % CAT_ICONS.length];
-                const label = isRtl ? cat.name : (cat.nameEn ?? cat.name);
-                return (
-                  <Link key={cat.id} to={`/categories/${cat.id}`}
-                    className={cn(
-                      "group relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl p-3 transition-all hover:-translate-y-1 hover:shadow-xl",
-                      `bg-gradient-to-br ${gradient}`,
-                    )}>
-                    <div aria-hidden className="absolute inset-0 bg-white/0 transition-all group-hover:bg-white/10" />
-                    <IconComp className="relative z-10 h-6 w-6 text-white drop-shadow" />
-                    <span className="relative z-10 max-w-full truncate text-center text-[10px] font-black text-white drop-shadow">{label}</span>
-                  </Link>
-                );
-              })}
+
+            {/* Portrait-rectangle category tiles — centered, not full-width */}
+            <div className="mx-auto max-w-[780px]">
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5 sm:gap-4">
+
+                {/* "All" tile */}
+                <Link to="/products"
+                  className="group relative flex min-h-[140px] flex-col items-center justify-between overflow-hidden rounded-2xl bg-gradient-to-b from-teal-500 to-emerald-600 px-3 pb-4 pt-5 shadow-[0_6px_18px_rgba(20,184,166,0.30)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_16px_32px_rgba(20,184,166,0.38)] sm:min-h-[160px]">
+                  {/* Decorative circle */}
+                  <div aria-hidden className="absolute -right-5 -top-5 h-20 w-20 rounded-full bg-white/10" />
+                  <div aria-hidden className="absolute -bottom-4 -left-4 h-16 w-16 rounded-full bg-white/10" />
+                  {/* Icon bubble */}
+                  <div className="relative z-10 flex h-11 w-11 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm transition-transform duration-300 group-hover:scale-110">
+                    <ShoppingBag className="h-5 w-5 text-white drop-shadow" />
+                  </div>
+                  {/* Label */}
+                  <span className="relative z-10 mt-auto text-center text-[11px] font-black leading-tight text-white drop-shadow">
+                    {isRtl ? "الكل" : "All"}
+                  </span>
+                </Link>
+
+                {categoryChips.map((cat, i) => {
+                  const gradient = CAT_GRADIENTS[i % CAT_GRADIENTS.length];
+                  const IconComp = CAT_ICONS[i % CAT_ICONS.length];
+                  const label = isRtl ? cat.name : (cat.nameEn ?? cat.name);
+                  return (
+                    <Link key={cat.id} to={`/categories/${cat.id}`}
+                      className={cn(
+                        "group relative flex min-h-[140px] flex-col items-center justify-between overflow-hidden rounded-2xl px-3 pb-4 pt-5 shadow-[0_4px_14px_rgba(0,0,0,0.12)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_16px_32px_rgba(0,0,0,0.18)] sm:min-h-[160px]",
+                        `bg-gradient-to-b ${gradient}`,
+                      )}>
+                      {/* Decorative circles */}
+                      <div aria-hidden className="absolute -right-5 -top-5 h-20 w-20 rounded-full bg-white/10" />
+                      <div aria-hidden className="absolute -bottom-4 -left-4 h-16 w-16 rounded-full bg-white/10" />
+                      {/* Icon bubble */}
+                      <div className="relative z-10 flex h-11 w-11 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm transition-transform duration-300 group-hover:scale-110">
+                        <IconComp className="h-5 w-5 text-white drop-shadow" />
+                      </div>
+                      {/* Label */}
+                      <span className="relative z-10 mt-auto line-clamp-2 text-center text-[10.5px] font-black leading-tight text-white drop-shadow">
+                        {label}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </section>
