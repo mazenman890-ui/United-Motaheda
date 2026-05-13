@@ -126,7 +126,7 @@ export default function CartScreen() {
                   />
                 ) : (
                   <LinearGradient
-                    colors={["#ecfdf5", "#d1fae5"]}
+                    colors={["#ecfeff", "#cffafe"]}
                     style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
                     <MaterialCommunityIcons name="pill" size={30} color={theme.colors.brand[300]} />
                   </LinearGradient>

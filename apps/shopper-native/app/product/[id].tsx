@@ -91,7 +91,7 @@ export default function ProductDetailScreen() {
             />
           ) : (
             <LinearGradient
-              colors={["#ecfdf5", "#d1fae5", "#a7f3d0"]}
+              colors={["#ecfeff", "#cffafe", "#a5f3fc"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 10 }}>
@@ -150,23 +150,23 @@ export default function ProductDetailScreen() {
                     paddingHorizontal: 10,
                     paddingVertical:   5,
                     borderRadius:      theme.radius.full,
-                    backgroundColor:   product.inStock ? "#f0fdf4" : "#fef2f2",
+                    backgroundColor:   product.inStock ? "#ecfeff" : "#fef2f2",
                     borderWidth:       1,
-                    borderColor:       product.inStock ? "#bbf7d0" : "#fecaca",
+                    borderColor:       product.inStock ? "#a5f3fc" : "#fecaca",
                   }}>
                   <View
                     style={{
                       width:           6,
                       height:          6,
                       borderRadius:    3,
-                      backgroundColor: product.inStock ? "#16a34a" : "#dc2626",
+                      backgroundColor: product.inStock ? "#0e7490" : "#dc2626",
                     }}
                   />
                   <Text
                     style={{
                       fontSize:   11,
                       fontWeight: "800",
-                      color:      product.inStock ? "#16a34a" : "#dc2626",
+                      color:      product.inStock ? "#0e7490" : "#dc2626",
                     }}>
                     {product.inStock ? "متاح" : "نفذ"}
                   </Text>

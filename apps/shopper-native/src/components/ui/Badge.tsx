@@ -12,7 +12,7 @@ interface BadgeProps {
 
 const styles: Record<BadgeVariant, { bg: string; text: string; dot: string }> = {
   brand:   { bg: theme.colors.brand[50],   text: theme.colors.brand[700],  dot: theme.colors.brand[500]  },
-  success: { bg: "#ecfdf5",                text: "#065f46",                dot: theme.colors.success     },
+  success: { bg: "#ecfeff",                text: "#0e7490",                dot: theme.colors.success     },
   warning: { bg: "#fffbeb",                text: "#92400e",                dot: theme.colors.warning     },
   error:   { bg: "#fef2f2",                text: "#991b1b",                dot: theme.colors.error       },
   neutral: { bg: theme.colors.slate[100],  text: theme.colors.slate[600],  dot: theme.colors.slate[400]  },

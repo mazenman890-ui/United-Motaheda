@@ -388,7 +388,7 @@ export default function HomeScreen() {
 
 function SectionHeader({
   title,
-  accentColor = "#059669",
+  accentColor = "#06b6d4",
   onMore,
 }: {
   title:         string;

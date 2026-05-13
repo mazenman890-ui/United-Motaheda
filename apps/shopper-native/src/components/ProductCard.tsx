@@ -80,7 +80,7 @@ export function ProductCard({ product, lang = "ar", onPress }: ProductCardProps)
             />
           ) : (
             <LinearGradient
-              colors={["#ecfdf5", "#d1fae5", "#a7f3d0"]}
+              colors={["#ecfeff", "#cffafe", "#a5f3fc"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>

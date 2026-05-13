@@ -2,17 +2,17 @@ import { Platform } from "react-native";
 
 export const colors = {
   brand: {
-    50:  "#ecfdf5",
-    100: "#d1fae5",
-    200: "#a7f3d0",
-    300: "#6ee7b7",
-    400: "#34d399",
-    500: "#10b981",
-    600: "#059669",
-    700: "#047857",
-    800: "#065f46",
-    900: "#064e3b",
-    950: "#022c22",
+    50:  "#ecfeff",
+    100: "#cffafe",
+    200: "#a5f3fc",
+    300: "#67e8f9",
+    400: "#22d3ee",
+    500: "#06b6d4",
+    600: "#0891b2",
+    700: "#0e7490",
+    800: "#155e75",
+    900: "#164e63",
+    950: "#083344",
   },
   amber: {
     50:  "#fffbeb",
@@ -42,20 +42,20 @@ export const colors = {
   },
 
   // App surfaces
-  bg:      "#F4FAF7",
+  bg:      "#F0F9FC",
   surface: "#FFFFFF",
-  muted:   "#F8FBF9",
+  muted:   "#F6FBFD",
 
-  // Hero depths
-  hero:    "#061910",
-  heroMid: "#0A2818",
-  heroBright: "#0F3D23",
+  // Hero depths (deep teal-navy)
+  hero:       "#021D2E",
+  heroMid:    "#053348",
+  heroBright: "#0A4A65",
 
   // Semantic
   error:   "#DC2626",
   warning: "#D97706",
-  success: "#059669",
-  info:    "#0EA5E9",
+  success: "#0f766e",
+  info:    "#0891b2",
 
   // Utility
   white:  "#FFFFFF",
@@ -159,16 +159,16 @@ export const shadow = {
   })!,
   brand: Platform.select({
     ios: {
-      shadowColor: "#059669",
+      shadowColor: "#0891b2",
       shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.30,
+      shadowOpacity: 0.28,
       shadowRadius: 14,
     },
     android: { elevation: 6 },
   })!,
   float: Platform.select({
     ios: {
-      shadowColor: "#0A2818",
+      shadowColor: "#021D2E",
       shadowOffset: { width: 0, height: 10 },
       shadowOpacity: 0.18,
       shadowRadius: 28,
@@ -178,13 +178,13 @@ export const shadow = {
 } as const;
 
 export const catGradients: [string, string][] = [
-  ["#059669", "#047857"],
+  ["#0891b2", "#0e7490"],
   ["#7C3AED", "#6D28D9"],
   ["#0284C7", "#0369A1"],
   ["#DC2626", "#B91C1C"],
   ["#D97706", "#B45309"],
-  ["#0891B2", "#0E7490"],
-  ["#65A30D", "#4D7C0F"],
+  ["#06b6d4", "#0891b2"],
+  ["#0d9488", "#0f766e"],
   ["#DB2777", "#BE185D"],
   ["#2563EB", "#1D4ED8"],
   ["#9333EA", "#7E22CE"],

@@ -86,7 +86,7 @@ export function Button({
           style,
         ]}>
         <LinearGradient
-          colors={["#059669", "#047857"]}
+          colors={["#0891b2", "#0e7490"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={{
