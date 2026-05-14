@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo, useCallback } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -22,33 +22,27 @@ interface ProductCardProps {
   onPress?: () => void;
 }
 
-export function ProductCard({ product, lang = "ar", onPress }: ProductCardProps) {
-  const addItem   = useCartStore((s) => s.addItem);
-  const cartItems = useCartStore((s) => s.items);
-  const inCart    = cartItems.some((i) => i.productId === product.id);
+export const ProductCard = memo(function ProductCard({ product, lang = "ar", onPress }: ProductCardProps) {
+  const addItem = useCartStore((s) => s.addItem);
+  const inCart  = useCartStore(useCallback((s) => s.items.some((i) => i.productId === product.id), [product.id]));
 
   const scale    = useSharedValue(1);
   const btnScale = useSharedValue(1);
 
-  const cardStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+  const cardStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const btnStyle  = useAnimatedStyle(() => ({ transform: [{ scale: btnScale.value }] }));
 
-  const btnStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: btnScale.value }],
-  }));
+  const handlePressIn  = useCallback(() => { scale.value = withSpring(0.97, { damping: 14, stiffness: 300 }); }, [scale]);
+  const handlePressOut = useCallback(() => { scale.value = withSpring(1,    { damping: 14, stiffness: 300 }); }, [scale]);
 
-  const handlePressIn  = () => { scale.value = withSpring(0.97, { damping: 14, stiffness: 300 }); };
-  const handlePressOut = () => { scale.value = withSpring(1,    { damping: 14, stiffness: 300 }); };
-
-  const handleAdd = () => {
+  const handleAdd = useCallback(() => {
     if (!product.inStock) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    btnScale.value = withSpring(0.85, { damping: 8, stiffness: 400 }, () => {
+    btnScale.value = withSpring(0.82, { damping: 8, stiffness: 400 }, () => {
       btnScale.value = withSpring(1, { damping: 10, stiffness: 300 });
     });
     addItem(product);
-  };
+  }, [addItem, btnScale, product]);
 
   const name = lang === "ar"
     ? (product.nameAr ?? product.name)
@@ -77,6 +71,7 @@ export function ProductCard({ product, lang = "ar", onPress }: ProductCardProps)
               style={{ width: "100%", height: "100%" }}
               contentFit="cover"
               transition={200}
+              cachePolicy="memory-disk"
             />
           ) : (
             <LinearGradient
@@ -88,7 +83,6 @@ export function ProductCard({ product, lang = "ar", onPress }: ProductCardProps)
             </LinearGradient>
           )}
 
-          {/* Out-of-stock dim */}
           {!product.inStock && (
             <View
               style={{
@@ -98,13 +92,7 @@ export function ProductCard({ product, lang = "ar", onPress }: ProductCardProps)
                 alignItems:      "center",
                 justifyContent:  "center",
               }}>
-              <View
-                style={{
-                  backgroundColor:   "rgba(0,0,0,0.55)",
-                  borderRadius:      theme.radius.md,
-                  paddingHorizontal: 10,
-                  paddingVertical:   5,
-                }}>
+              <View style={{ backgroundColor: "rgba(0,0,0,0.55)", borderRadius: theme.radius.md, paddingHorizontal: 10, paddingVertical: 5 }}>
                 <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>
                   {lang === "ar" ? "نفذ المخزون" : "Out of stock"}
                 </Text>
@@ -112,7 +100,6 @@ export function ProductCard({ product, lang = "ar", onPress }: ProductCardProps)
             </View>
           )}
 
-          {/* In-cart dot */}
           {inCart && (
             <View
               style={{
@@ -149,28 +136,12 @@ export function ProductCard({ product, lang = "ar", onPress }: ProductCardProps)
 
           <Text
             numberOfLines={1}
-            style={{
-              fontSize:   10,
-              color:      theme.colors.slate[400],
-              fontWeight: "500",
-              textAlign:  "right",
-            }}>
+            style={{ fontSize: 10, color: theme.colors.slate[400], fontWeight: "500", textAlign: "right" }}>
             {lang === "ar" ? product.categoryName : product.categoryNameEn}
           </Text>
 
-          <View
-            style={{
-              flexDirection:  "row",
-              alignItems:     "center",
-              justifyContent: "space-between",
-              marginTop:      6,
-            }}>
-            <Text
-              style={{
-                fontSize:   16,
-                fontWeight: "900",
-                color:      theme.colors.amber[600],
-              }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 }}>
+            <Text style={{ fontSize: 16, fontWeight: "900", color: theme.colors.amber[600] }}>
               {formatPrice(product.price, lang)}
             </Text>
 
@@ -200,4 +171,4 @@ export function ProductCard({ product, lang = "ar", onPress }: ProductCardProps)
       </Pressable>
     </Animated.View>
   );
-}
+});

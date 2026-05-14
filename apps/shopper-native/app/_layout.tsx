@@ -15,10 +15,11 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime:          5 * 60 * 1000,
-      gcTime:             10 * 60 * 1000,
-      retry:              2,
+      staleTime:            5 * 60 * 1000,
+      gcTime:               15 * 60 * 1000,
+      retry:                1,
       refetchOnWindowFocus: false,
+      refetchOnMount:       false,
     },
   },
 });
@@ -27,7 +28,6 @@ export default function RootLayout() {
   const hydrate = useCartStore((s) => s.hydrate);
 
   useEffect(() => {
-    // Force RTL for Arabic
     if (!I18nManager.isRTL) {
       I18nManager.forceRTL(true);
     }
@@ -39,13 +39,15 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <StatusBar style="dark" />
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(tabs)"    options={{ headerShown: false }} />
-              <Stack.Screen name="(auth)"    options={{ headerShown: false, presentation: "modal" }} />
-              <Stack.Screen name="product/[id]" options={{ headerShown: false }} />
-              <Stack.Screen name="category/[id]" options={{ headerShown: false }} />
-              <Stack.Screen name="checkout"  options={{ headerShown: false, presentation: "modal" }} />
+            <StatusBar style="light" />
+            <Stack screenOptions={{ headerShown: false, animation: "fade" }}>
+              <Stack.Screen name="index"         options={{ headerShown: false }} />
+              <Stack.Screen name="onboarding"    options={{ headerShown: false, animation: "fade" }} />
+              <Stack.Screen name="(tabs)"        options={{ headerShown: false }} />
+              <Stack.Screen name="(auth)"        options={{ headerShown: false, presentation: "modal", animation: "slide_from_bottom" }} />
+              <Stack.Screen name="product/[id]"  options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="category/[id]" options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="checkout"      options={{ headerShown: false, presentation: "modal", animation: "slide_from_bottom" }} />
             </Stack>
           </AuthProvider>
         </QueryClientProvider>

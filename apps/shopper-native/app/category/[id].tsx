@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Ionicons } from "@expo/vector-icons";
 import { Header } from "@/components/Header";
 import { theme } from "@/theme";
+import type { NativeProduct } from "@/services/productsApi";
 
 export default function CategoryScreen() {
   const { id }  = useLocalSearchParams<{ id: string }>();
@@ -18,12 +19,13 @@ export default function CategoryScreen() {
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
-      queryKey: ["category", id],
-      queryFn:  ({ pageParam = 1 }) =>
+      queryKey:         ["category", id],
+      queryFn:          ({ pageParam = 1 }) =>
         fetchProducts({ categoryId: id, page: pageParam, pageSize: 24 }),
       initialPageParam: 1,
       getNextPageParam: (last) => last.hasNextPage ? last.currentPage + 1 : undefined,
-      enabled: !!id,
+      enabled:          !!id,
+      staleTime:        5 * 60 * 1000,
     });
 
   const products   = data?.pages.flatMap((p) => p.products) ?? [];
@@ -32,6 +34,18 @@ export default function CategoryScreen() {
   const loadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) fetchNextPage();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const renderItem = useCallback(({ item }: { item: NativeProduct }) => (
+    <View style={{ flex: 1 }}>
+      <ProductCard
+        product={item}
+        lang="ar"
+        onPress={() => router.push({ pathname: "/product/[id]", params: { id: item.id } })}
+      />
+    </View>
+  ), [router]);
+
+  const keyExtractor = useCallback((p: NativeProduct) => p.id, []);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
@@ -45,11 +59,7 @@ export default function CategoryScreen() {
           contentContainerStyle={{ padding: 12, gap: 10 }}
           columnWrapperStyle={{ gap: 10, flexDirection: "row-reverse" }}
           showsVerticalScrollIndicator={false}
-          renderItem={() => (
-            <View style={{ flex: 1 }}>
-              <ProductCardSkeleton />
-            </View>
-          )}
+          renderItem={() => <View style={{ flex: 1 }}><ProductCardSkeleton /></View>}
         />
       ) : products.length === 0 ? (
         <EmptyState
@@ -63,21 +73,19 @@ export default function CategoryScreen() {
         <FlatList
           data={products}
           numColumns={2}
-          keyExtractor={(p) => p.id}
+          keyExtractor={keyExtractor}
           contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 90 }}
           columnWrapperStyle={{ gap: 10, marginBottom: 10, flexDirection: "row-reverse" }}
           onEndReached={loadMore}
           onEndReachedThreshold={0.4}
           showsVerticalScrollIndicator={false}
+          removeClippedSubviews
+          maxToRenderPerBatch={10}
+          initialNumToRender={8}
+          windowSize={5}
           ListHeaderComponent={
             totalCount > 0 ? (
-              <View
-                style={{
-                  flexDirection:  "row-reverse",
-                  alignItems:     "center",
-                  justifyContent: "space-between",
-                  marginBottom:   12,
-                }}>
+              <View style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                 <View
                   style={{
                     backgroundColor:   theme.colors.brand[50],
@@ -87,29 +95,14 @@ export default function CategoryScreen() {
                     borderWidth:       1,
                     borderColor:       theme.colors.brand[100],
                   }}>
-                  <Text
-                    style={{
-                      fontSize:   11,
-                      color:      theme.colors.brand[700],
-                      fontWeight: "800",
-                    }}>
+                  <Text style={{ fontSize: 11, color: theme.colors.brand[700], fontWeight: "800" }}>
                     {totalCount.toLocaleString()} منتج
                   </Text>
                 </View>
               </View>
             ) : null
           }
-          renderItem={({ item }) => (
-            <View style={{ flex: 1 }}>
-              <ProductCard
-                product={item}
-                lang="ar"
-                onPress={() =>
-                  router.push({ pathname: "/product/[id]", params: { id: item.id } })
-                }
-              />
-            </View>
-          )}
+          renderItem={renderItem}
           ListFooterComponent={
             isFetchingNextPage ? (
               <View style={{ paddingVertical: 24, alignItems: "center" }}>
