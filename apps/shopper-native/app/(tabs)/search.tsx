@@ -1,6 +1,5 @@
-import React, { useRef, useState } from "react";
+import React, { useCallback, useRef, useState, memo } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   Text,
@@ -13,6 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { fetchProducts } from "@/services/productsApi";
 import { ProductCard } from "@/components/ProductCard";
+import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { theme } from "@/theme";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -22,6 +22,24 @@ const QUICK_SEARCHES = [
   "مضاد حيوي", "مسكن ألم", "أوميجا 3", "زنك",
   "مرهم", "قطرة عين", "ميلاتونين", "كالسيوم",
 ];
+
+const QuickPill = memo(function QuickPill({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        paddingHorizontal: 14,
+        paddingVertical:   9,
+        borderRadius:      theme.radius.full,
+        backgroundColor:   pressed ? theme.colors.brand[50] : "#fff",
+        borderWidth:       1.5,
+        borderColor:       theme.colors.brand[200],
+        ...theme.shadow.xs,
+      })}>
+      <Text style={{ color: theme.colors.brand[700], fontSize: 13, fontWeight: "700" }}>{label}</Text>
+    </Pressable>
+  );
+});
 
 export default function SearchScreen() {
   const router    = useRouter();
@@ -34,10 +52,23 @@ export default function SearchScreen() {
     queryKey: ["search", debounced],
     queryFn:  () => fetchProducts({ search: debounced, pageSize: 40 }),
     enabled:  debounced.trim().length >= 2,
+    staleTime: 2 * 60 * 1000,
   });
 
   const results = data?.products ?? [];
   const active  = query.trim().length >= 2;
+
+  const renderItem = useCallback(({ item }: { item: typeof results[0] }) => (
+    <View style={{ flex: 1 }}>
+      <ProductCard
+        product={item}
+        lang="ar"
+        onPress={() => router.push({ pathname: "/product/[id]", params: { id: item.id } })}
+      />
+    </View>
+  ), [router]);
+
+  const keyExtractor = useCallback((item: typeof results[0]) => item.id, []);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
@@ -54,17 +85,10 @@ export default function SearchScreen() {
           borderBottomColor: theme.colors.slate[100],
           ...theme.shadow.sm,
         }}>
-        <Text
-          style={{
-            fontSize:   20,
-            fontWeight: "900",
-            color:      theme.colors.slate[900],
-            textAlign:  "right",
-          }}>
+        <Text style={{ fontSize: 20, fontWeight: "900", color: theme.colors.slate[900], textAlign: "right" }}>
           البحث
         </Text>
 
-        {/* Search input */}
         <View
           style={{
             flexDirection:     "row-reverse",
@@ -86,11 +110,7 @@ export default function SearchScreen() {
               alignItems:      "center",
               justifyContent:  "center",
             }}>
-            <Ionicons
-              name="search-outline"
-              size={17}
-              color={active ? "#fff" : theme.colors.slate[400]}
-            />
+            <Ionicons name="search-outline" size={17} color={active ? "#fff" : theme.colors.slate[400]} />
           </View>
           <TextInput
             ref={inputRef}
@@ -131,49 +151,20 @@ export default function SearchScreen() {
       {/* Body */}
       {!active ? (
         <View style={{ padding: 20, gap: 24 }}>
-          {/* Quick searches */}
           <View style={{ gap: 12 }}>
             <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6 }}>
               <Ionicons name="time-outline" size={14} color={theme.colors.slate[400]} />
-              <Text
-                style={{
-                  fontSize:      11,
-                  fontWeight:    "800",
-                  color:         theme.colors.slate[400],
-                  textAlign:     "right",
-                  letterSpacing: 0.8,
-                }}>
+              <Text style={{ fontSize: 11, fontWeight: "800", color: theme.colors.slate[400], letterSpacing: 0.8 }}>
                 بحث سريع
               </Text>
             </View>
             <View style={{ flexDirection: "row-reverse", flexWrap: "wrap", gap: 8 }}>
               {QUICK_SEARCHES.map((s) => (
-                <Pressable
-                  key={s}
-                  onPress={() => setQuery(s)}
-                  style={({ pressed }) => ({
-                    paddingHorizontal: 14,
-                    paddingVertical:   9,
-                    borderRadius:      theme.radius.full,
-                    backgroundColor:   pressed ? theme.colors.brand[50] : "#fff",
-                    borderWidth:       1.5,
-                    borderColor:       theme.colors.brand[200],
-                    ...theme.shadow.xs,
-                  })}>
-                  <Text
-                    style={{
-                      color:      theme.colors.brand[700],
-                      fontSize:   13,
-                      fontWeight: "700",
-                    }}>
-                    {s}
-                  </Text>
-                </Pressable>
+                <QuickPill key={s} label={s} onPress={() => setQuery(s)} />
               ))}
             </View>
           </View>
 
-          {/* Empty illustration */}
           <View style={{ alignItems: "center", gap: 14, paddingTop: 16 }}>
             <View
               style={{
@@ -185,29 +176,27 @@ export default function SearchScreen() {
                 justifyContent:  "center",
                 borderWidth:     1,
                 borderColor:     theme.colors.brand[100],
-                ...theme.shadow.xs,
               }}>
               <Ionicons name="search-outline" size={40} color={theme.colors.brand[400]} />
             </View>
             <Text style={{ fontSize: 17, fontWeight: "800", color: theme.colors.slate[700] }}>
               ابحث عن دوائك
             </Text>
-            <Text
-              style={{
-                fontSize:   13,
-                color:      theme.colors.slate[400],
-                textAlign:  "center",
-                lineHeight: 20,
-              }}>
+            <Text style={{ fontSize: 13, color: theme.colors.slate[400], textAlign: "center", lineHeight: 20 }}>
               يمكنك البحث بالاسم العربي أو الإنجليزي أو الكود
             </Text>
           </View>
         </View>
       ) : isLoading ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 16 }}>
-          <ActivityIndicator size="large" color={theme.colors.brand[500]} />
-          <Text style={{ color: theme.colors.slate[400], fontSize: 13 }}>جاري البحث…</Text>
-        </View>
+        <FlatList
+          data={[1, 2, 3, 4, 5, 6]}
+          numColumns={2}
+          keyExtractor={(k) => String(k)}
+          contentContainerStyle={{ padding: 12, gap: 10 }}
+          columnWrapperStyle={{ gap: 10, flexDirection: "row-reverse" }}
+          showsVerticalScrollIndicator={false}
+          renderItem={() => <View style={{ flex: 1 }}><ProductCardSkeleton /></View>}
+        />
       ) : results.length === 0 ? (
         <EmptyState
           icon={<Ionicons name="search-outline" size={42} color={theme.colors.brand[400]} />}
@@ -220,21 +209,16 @@ export default function SearchScreen() {
         <FlatList
           data={results}
           numColumns={2}
-          keyExtractor={(p) => p.id}
-          contentContainerStyle={{
-            padding:       12,
-            paddingBottom: insets.bottom + 90,
-          }}
+          keyExtractor={keyExtractor}
+          contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 90 }}
           columnWrapperStyle={{ gap: 10, marginBottom: 10, flexDirection: "row-reverse" }}
           showsVerticalScrollIndicator={false}
+          removeClippedSubviews
+          maxToRenderPerBatch={10}
+          initialNumToRender={8}
+          windowSize={5}
           ListHeaderComponent={
-            <View
-              style={{
-                flexDirection:     "row-reverse",
-                alignItems:        "center",
-                gap:               6,
-                marginBottom:      14,
-              }}>
+            <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6, marginBottom: 14 }}>
               <View
                 style={{
                   backgroundColor:   theme.colors.brand[50],
@@ -244,36 +228,16 @@ export default function SearchScreen() {
                   borderWidth:       1,
                   borderColor:       theme.colors.brand[100],
                 }}>
-                <Text
-                  style={{
-                    fontSize:   11,
-                    color:      theme.colors.brand[700],
-                    fontWeight: "800",
-                  }}>
+                <Text style={{ fontSize: 11, color: theme.colors.brand[700], fontWeight: "800" }}>
                   {data?.totalCount ?? 0} نتيجة
                 </Text>
               </View>
-              <Text
-                style={{
-                  fontSize:   12,
-                  color:      theme.colors.slate[400],
-                  fontWeight: "500",
-                }}>
+              <Text style={{ fontSize: 12, color: theme.colors.slate[400], fontWeight: "500" }}>
                 لـ «{query}»
               </Text>
             </View>
           }
-          renderItem={({ item }) => (
-            <View style={{ flex: 1 }}>
-              <ProductCard
-                product={item}
-                lang="ar"
-                onPress={() =>
-                  router.push({ pathname: "/product/[id]", params: { id: item.id } })
-                }
-              />
-            </View>
-          )}
+          renderItem={renderItem}
         />
       )}
     </View>
