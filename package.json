@@ -102,5 +102,10 @@
     "overrides": {
       "vite": "6.3.5"
     }
+  },
+  "overrides": {
+    "expo": "~55.0.0",
+    "expo-font": "~55.0.7",
+    "expo-splash-screen": "~55.0.21"
   }
 }
