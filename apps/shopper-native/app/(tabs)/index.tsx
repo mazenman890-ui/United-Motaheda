@@ -23,7 +23,7 @@ import { useCartStore } from "@/stores/cart";
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
 const TRUST_PILLS: { icon: IoniconsName; label: string }[] = [
-  { icon: "flash-outline",            label: "توصيل 24 ساعة" },
+  { icon: "flash-outline",            label: "توصيل سريع" },
   { icon: "shield-checkmark-outline", label: "أدوية أصلية" },
   { icon: "wallet-outline",           label: "الدفع عند الاستلام" },
   { icon: "refresh-outline",          label: "إرجاع مضمون" },

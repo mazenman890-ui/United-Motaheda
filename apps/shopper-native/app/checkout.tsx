@@ -244,7 +244,7 @@ export default function CheckoutScreen() {
 
               <View style={{ flexDirection: "row-reverse", gap: 8 }}>
                 {[
-                  { icon: "flash-outline" as const,  label: "توصيل خلال 24 ساعة" },
+                  { icon: "flash-outline" as const,  label: "توصيل سريع" },
                   { icon: "wallet-outline" as const, label: "دفع عند الاستلام" },
                 ].map((b) => (
                   <View
