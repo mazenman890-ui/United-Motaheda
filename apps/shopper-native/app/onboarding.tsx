@@ -134,7 +134,7 @@ export default function OnboardingScreen() {
   }, [router]);
 
   const goNext = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     if (current < SLIDES.length - 1) {
       scrollRef.current?.scrollTo({ x: (current + 1) * W, animated: true });
     } else {
@@ -236,7 +236,7 @@ export default function OnboardingScreen() {
                 opacity:           pressed ? 0.88 : 1,
                 ...theme.shadow.brand,
               })}>
-              <Text style={{ color: slide.colors[1], fontSize: 15, fontWeight: "900" }}>
+              <Text style={{ color: slide.colors[1], fontSize: 15, fontFamily: theme.fonts.black }}>
                 {current === SLIDES.length - 1 ? "ابدأ الآن" : "التالي"}
               </Text>
               <Ionicons
@@ -342,14 +342,14 @@ function SlideView({
               style={{
                 color:         slide.accent,
                 fontSize:      11,
-                fontWeight:    "800",
+                fontFamily:    theme.fonts.extrabold,
                 letterSpacing: 2.5,
                 textTransform: "uppercase",
               }}>
               {slide.eyebrow}
             </Animated.Text>
           ) : (
-            <Text style={{ color: slide.accent, fontSize: 11, fontWeight: "800", letterSpacing: 2.5 }}>
+            <Text style={{ color: slide.accent, fontSize: 11, fontFamily: theme.fonts.extrabold, letterSpacing: 2.5 }}>
               {slide.eyebrow}
             </Text>
           )}
@@ -359,15 +359,15 @@ function SlideView({
               entering={FadeInDown.duration(500).delay(180)}
               style={{
                 color:      "#fff",
-                fontSize:   38,
-                fontWeight: "900",
+                fontSize:   36,
+                fontFamily: theme.fonts.black,
                 lineHeight: 46,
                 textAlign:  "center",
               }}>
               {slide.title}
             </Animated.Text>
           ) : (
-            <Text style={{ color: "#fff", fontSize: 38, fontWeight: "900", lineHeight: 46, textAlign: "center" }}>
+            <Text style={{ color: "#fff", fontSize: 36, fontFamily: theme.fonts.black, lineHeight: 46, textAlign: "center" }}>
               {slide.title}
             </Text>
           )}
@@ -376,16 +376,16 @@ function SlideView({
             <Animated.Text
               entering={FadeInUp.duration(500).delay(260)}
               style={{
-                color:      "rgba(255,255,255,0.60)",
+                color:      "rgba(255,255,255,0.65)",
                 fontSize:   15,
-                lineHeight: 24,
+                fontFamily: theme.fonts.regular,
+                lineHeight: 26,
                 textAlign:  "center",
-                fontWeight: "500",
               }}>
               {slide.body}
             </Animated.Text>
           ) : (
-            <Text style={{ color: "rgba(255,255,255,0.60)", fontSize: 15, lineHeight: 24, textAlign: "center" }}>
+            <Text style={{ color: "rgba(255,255,255,0.65)", fontSize: 15, fontFamily: theme.fonts.regular, lineHeight: 26, textAlign: "center" }}>
               {slide.body}
             </Text>
           )}

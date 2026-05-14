@@ -111,6 +111,15 @@ export async function fetchProductById(id: string): Promise<NativeProduct | null
   return normalize(data as Record<string, unknown>);
 }
 
+function isValidCategoryName(name: string): boolean {
+  if (!name || name.trim().length < 2) return false;
+  if (/�/.test(name)) return false;
+  if (/^\?+$/.test(name)) return false;
+  if (/^[\s\W\d]+$/.test(name)) return false;
+  if (!/[؀-ۿa-zA-Z]/.test(name)) return false;
+  return true;
+}
+
 export async function fetchCategories(): Promise<NativeCategory[]> {
   const { data, error } = await supabase
     .from("products")
@@ -120,13 +129,14 @@ export async function fetchCategories(): Promise<NativeCategory[]> {
 
   const map = new Map<string, NativeCategory>();
   for (const row of (data ?? []) as Array<{ Category_Name: string; Category_Name_En: string }>) {
-    const id = row.Category_Name;
-    if (!id) continue;
-    const existing = map.get(id);
+    const rawName = (row.Category_Name ?? "").trim();
+    if (!isValidCategoryName(rawName)) continue;
+    const existing = map.get(rawName);
     if (existing) {
       existing.count++;
     } else {
-      map.set(id, { id, name: row.Category_Name, nameEn: row.Category_Name_En ?? id, count: 1 });
+      const nameEn = (row.Category_Name_En ?? "").trim() || rawName;
+      map.set(rawName, { id: rawName, name: rawName, nameEn, count: 1 });
     }
   }
   return Array.from(map.values()).sort((a, b) => b.count - a.count);

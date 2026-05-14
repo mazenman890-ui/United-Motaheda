@@ -1,11 +1,19 @@
 import React, { useEffect } from "react";
-import { I18nManager, Platform } from "react-native";
+import { I18nManager } from "react-native";
 import { Stack } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
+import {
+  useFonts,
+  Cairo_400Regular,
+  Cairo_600SemiBold,
+  Cairo_700Bold,
+  Cairo_800ExtraBold,
+  Cairo_900Black,
+} from "@expo-google-fonts/cairo";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { useCartStore } from "@/stores/cart";
 
@@ -26,12 +34,21 @@ const queryClient = new QueryClient({
 export default function RootLayout() {
   const hydrate = useCartStore((s) => s.hydrate);
 
+  const [fontsLoaded] = useFonts({
+    Cairo_400Regular,
+    Cairo_600SemiBold,
+    Cairo_700Bold,
+    Cairo_800ExtraBold,
+    Cairo_900Black,
+  });
+
   useEffect(() => {
+    if (!fontsLoaded) return;
     if (!I18nManager.isRTL) {
       I18nManager.forceRTL(true);
     }
     hydrate().then(() => SplashScreen.hideAsync());
-  }, [hydrate]);
+  }, [fontsLoaded, hydrate]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

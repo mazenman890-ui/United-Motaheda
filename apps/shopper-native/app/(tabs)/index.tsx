@@ -1,6 +1,7 @@
 import React, { useCallback, memo } from "react";
 import {
   FlatList,
+  Linking,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -167,8 +168,8 @@ export default function HomeScreen() {
               <Ionicons name="medical-outline" size={22} color="#fff" />
             </View>
             <View>
-              <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, fontWeight: "700", letterSpacing: 1.5 }}>صيدلية</Text>
-              <Text style={{ color: "#fff", fontSize: 15, fontWeight: "900" }}>United Motaheda</Text>
+              <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, fontFamily: theme.fonts.semibold, letterSpacing: 1.5 }}>صيدلية</Text>
+              <Text style={{ color: "#fff", fontSize: 15, fontFamily: theme.fonts.black }}>الصيدلية المتحدة</Text>
             </View>
           </View>
 
@@ -229,13 +230,13 @@ export default function HomeScreen() {
 
         {/* Headline */}
         <View style={{ gap: 8, marginBottom: 22 }}>
-          <Text style={{ color: theme.colors.brand[300], fontSize: 11, fontWeight: "800", letterSpacing: 2.2, textAlign: "right" }}>
+          <Text style={{ color: theme.colors.brand[300], fontSize: 11, fontFamily: theme.fonts.extrabold, letterSpacing: 2.2, textAlign: "right" }}>
             لكل داء دواء
           </Text>
-          <Text style={{ color: "#fff", fontSize: 28, fontWeight: "900", lineHeight: 36, textAlign: "right" }}>
+          <Text style={{ color: "#fff", fontSize: 28, fontFamily: theme.fonts.black, lineHeight: 38, textAlign: "right" }}>
             {"صحتك\nأولويتنا في كل وقت"}
           </Text>
-          <Text style={{ color: "rgba(255,255,255,0.50)", fontSize: 13, textAlign: "right", lineHeight: 20 }}>
+          <Text style={{ color: "rgba(255,255,255,0.50)", fontSize: 13, fontFamily: theme.fonts.regular, textAlign: "right", lineHeight: 20 }}>
             52,000+ منتج صيدلاني أصلي
           </Text>
         </View>
@@ -421,6 +422,7 @@ export default function HomeScreen() {
             فريقنا الصيدلاني جاهز للرد على أسئلتك
           </Text>
           <Pressable
+            onPress={() => Linking.openURL("https://wa.me/201000800100?text=مرحباً%2C%20أود%20الاستفسار%20عن%20منتج").catch(() => {})}
             style={({ pressed }) => ({
               flexDirection:     "row",
               alignItems:        "center",
@@ -434,8 +436,8 @@ export default function HomeScreen() {
               ...theme.shadow.md,
             })}>
             <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
-            <Text style={{ color: theme.colors.brand[800], fontWeight: "900", fontSize: 14 }}>
-              تواصل معنا
+            <Text style={{ color: theme.colors.brand[800], fontFamily: theme.fonts.black, fontSize: 14 }}>
+              تواصل معنا عبر واتساب
             </Text>
           </Pressable>
         </LinearGradient>
@@ -475,7 +477,7 @@ const SectionHeader = memo(function SectionHeader({
           }}>
           <Ionicons name={icon} size={15} color={accent} />
         </View>
-        <Text style={{ fontSize: 16, fontWeight: "900", color: theme.colors.slate[900] }}>{title}</Text>
+        <Text style={{ fontSize: 16, fontFamily: theme.fonts.black, color: theme.colors.slate[900] }}>{title}</Text>
       </View>
       {onMore && (
         <Pressable onPress={onMore} style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>

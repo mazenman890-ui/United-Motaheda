@@ -1,5 +1,3 @@
-import { Platform } from "react-native";
-
 export const colors = {
   brand: {
     50:  "#ecfeff",
@@ -111,70 +109,64 @@ export const fontWeight = {
   black:     "900" as const,
 };
 
+export const fonts = {
+  regular:   "Cairo_400Regular",
+  semibold:  "Cairo_600SemiBold",
+  bold:      "Cairo_700Bold",
+  extrabold: "Cairo_800ExtraBold",
+  black:     "Cairo_900Black",
+};
+
 export const shadow = {
-  xs: Platform.select({
-    ios: {
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.04,
-      shadowRadius: 2,
-    },
-    android: { elevation: 1 },
-  })!,
-  sm: Platform.select({
-    ios: {
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.07,
-      shadowRadius: 6,
-    },
-    android: { elevation: 2 },
-  })!,
-  md: Platform.select({
-    ios: {
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.09,
-      shadowRadius: 12,
-    },
-    android: { elevation: 4 },
-  })!,
-  lg: Platform.select({
-    ios: {
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.12,
-      shadowRadius: 20,
-    },
-    android: { elevation: 8 },
-  })!,
-  xl: Platform.select({
-    ios: {
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: 0.15,
-      shadowRadius: 32,
-    },
-    android: { elevation: 12 },
-  })!,
-  brand: Platform.select({
-    ios: {
-      shadowColor: "#0891b2",
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.28,
-      shadowRadius: 14,
-    },
-    android: { elevation: 6 },
-  })!,
-  float: Platform.select({
-    ios: {
-      shadowColor: "#021D2E",
-      shadowOffset: { width: 0, height: 10 },
-      shadowOpacity: 0.18,
-      shadowRadius: 28,
-    },
-    android: { elevation: 14 },
-  })!,
+  xs: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  sm: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  md: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.09,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  lg: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  xl: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 32,
+    elevation: 12,
+  },
+  brand: {
+    shadowColor: "#0891b2",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  float: {
+    shadowColor: "#021D2E",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.18,
+    shadowRadius: 28,
+    elevation: 14,
+  },
 } as const;
 
 export const catGradients: [string, string][] = [
@@ -190,5 +182,5 @@ export const catGradients: [string, string][] = [
   ["#9333EA", "#7E22CE"],
 ];
 
-export const theme = { colors, spacing, radius, fontSize, fontWeight, shadow, catGradients };
+export const theme = { colors, spacing, radius, fontSize, fontWeight, fonts, shadow, catGradients };
 export default theme;

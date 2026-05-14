@@ -37,7 +37,7 @@ export const ProductCard = memo(function ProductCard({ product, lang = "ar", onP
 
   const handleAdd = useCallback(() => {
     if (!product.inStock) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     btnScale.value = withSpring(0.82, { damping: 8, stiffness: 400 }, () => {
       btnScale.value = withSpring(1, { damping: 10, stiffness: 300 });
     });

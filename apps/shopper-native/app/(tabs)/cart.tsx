@@ -77,7 +77,7 @@ export default function CartScreen() {
         </Text>
         <Pressable
           onPress={() => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
             clearCart();
           }}
           hitSlop={12}>
@@ -177,7 +177,7 @@ export default function CartScreen() {
                     }}>
                     <Pressable
                       onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
                         updateQty(item.productId, item.quantity + 1);
                       }}
                       style={{
@@ -202,7 +202,7 @@ export default function CartScreen() {
                     </Text>
                     <Pressable
                       onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
                         updateQty(item.productId, item.quantity - 1);
                       }}
                       style={{
@@ -219,7 +219,7 @@ export default function CartScreen() {
 
                   <Pressable
                     onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
                       removeItem(item.productId);
                     }}
                     hitSlop={10}>

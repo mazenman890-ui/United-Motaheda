@@ -137,7 +137,7 @@ export default function LoginScreen() {
           <Text
             style={{
               fontSize:   18,
-              fontWeight: "900",
+              fontFamily: theme.fonts.black,
               color:      theme.colors.slate[900],
               textAlign:  "right",
               marginBottom: 2,

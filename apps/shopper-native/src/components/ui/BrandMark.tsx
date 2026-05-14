@@ -1,25 +1,95 @@
 import React from "react";
 import { Text, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
+import Svg, {
+  Defs,
+  LinearGradient,
+  Stop,
+  Rect,
+  Circle,
+  Path,
+} from "react-native-svg";
 import { theme } from "@/theme";
 
 type BrandMarkSize    = "sm" | "md" | "lg" | "xl";
 type BrandMarkVariant = "onHero" | "onLight";
 
 interface BrandMarkProps {
-  size?:     BrandMarkSize;
-  variant?:  BrandMarkVariant;
-  showText?: boolean;
+  size?:      BrandMarkSize;
+  variant?:   BrandMarkVariant;
+  showText?:  boolean;
   showSlogan?: boolean;
 }
 
-const SIZE_MAP: Record<BrandMarkSize, { icon: number; inner: number; outer: number; gap: number; titleSize: number; }> = {
-  sm: { icon: 24, inner: 56,  outer: 72,  gap: 8,  titleSize: 14 },
-  md: { icon: 36, inner: 78,  outer: 96,  gap: 10, titleSize: 18 },
-  lg: { icon: 46, inner: 96,  outer: 118, gap: 12, titleSize: 22 },
-  xl: { icon: 58, inner: 118, outer: 146, gap: 14, titleSize: 26 },
+const SIZE_MAP: Record<BrandMarkSize, { logo: number; gap: number; titleSize: number; sloganSize: number }> = {
+  sm: { logo: 52,  gap: 7,  titleSize: 13, sloganSize: 9  },
+  md: { logo: 68,  gap: 9,  titleSize: 16, sloganSize: 10 },
+  lg: { logo: 86,  gap: 11, titleSize: 20, sloganSize: 11 },
+  xl: { logo: 108, gap: 13, titleSize: 25, sloganSize: 12 },
 };
+
+function PharmacyLogoMark({ size }: { size: number }) {
+  const s = size;
+  const r = s * 0.26;   // corner radius of outer square
+  const cw = s * 0.22;  // cross bar width (pill thickness)
+  const cl = s * 0.72;  // cross bar length
+  const cx = (s - cw) / 2;
+  const cy = (s - cl) / 2;
+  const rx = s * 0.12;  // corner radius of pill bars
+
+  return (
+    <Svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}>
+      <Defs>
+        {/* Deep navy background */}
+        <LinearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+          <Stop offset="0%"   stopColor="#021D2E" />
+          <Stop offset="100%" stopColor="#053348" />
+        </LinearGradient>
+        {/* Teal cross gradient */}
+        <LinearGradient id="crossGrad" x1="0" y1="0" x2="0.3" y2="1">
+          <Stop offset="0%"   stopColor="#22d3ee" />
+          <Stop offset="50%"  stopColor="#06b6d4" />
+          <Stop offset="100%" stopColor="#0891b2" />
+        </LinearGradient>
+        {/* Shimmer gradient (top-left light catch) */}
+        <LinearGradient id="shimmer" x1="0" y1="0" x2="1" y2="1">
+          <Stop offset="0%"   stopColor="rgba(255,255,255,0.18)" />
+          <Stop offset="100%" stopColor="rgba(255,255,255,0)" />
+        </LinearGradient>
+      </Defs>
+
+      {/* Outer rounded square — dark navy */}
+      <Rect x="0" y="0" width={s} height={s} rx={r} fill="url(#bgGrad)" />
+
+      {/* Subtle shimmer highlight in top-left corner */}
+      <Path
+        d={`M ${r} 0 L ${s * 0.7} 0 Q ${s * 0.5} ${s * 0.18} ${s * 0.18} ${s * 0.5} Q 0 ${s * 0.5} 0 ${r} Z`}
+        fill="url(#shimmer)"
+      />
+
+      {/* Vertical pill bar */}
+      <Rect x={cx} y={cy} width={cw} height={cl} rx={rx} fill="url(#crossGrad)" />
+
+      {/* Horizontal pill bar */}
+      <Rect x={cy} y={cx} width={cl} height={cw} rx={rx} fill="url(#crossGrad)" />
+
+      {/* Center square fill (blends the intersection cleanly) */}
+      <Rect x={cx} y={cx} width={cw} height={cw} fill="#06b6d4" />
+
+      {/* Tiny center dot highlight */}
+      <Circle cx={s / 2} cy={s / 2} r={s * 0.045} fill="rgba(255,255,255,0.55)" />
+
+      {/* Bottom-right subtle border arc accent (brand teal ring) */}
+      <Circle
+        cx={s / 2}
+        cy={s / 2}
+        r={s * 0.46}
+        fill="none"
+        stroke="rgba(6,182,212,0.18)"
+        strokeWidth={s * 0.025}
+      />
+    </Svg>
+  );
+}
 
 export function BrandMark({
   size      = "md",
@@ -29,59 +99,12 @@ export function BrandMark({
 }: BrandMarkProps) {
   const s          = SIZE_MAP[size];
   const isOnHero   = variant === "onHero";
-  const textColor  = isOnHero ? "#fff"                    : theme.colors.slate[900];
+  const textColor  = isOnHero ? "#fff" : theme.colors.slate[900];
   const subtleColor = isOnHero ? "rgba(255,255,255,0.50)" : theme.colors.slate[400];
 
   return (
     <View style={{ alignItems: "center", gap: s.gap }}>
-      {/* Outer glow ring */}
-      <View
-        style={{
-          width:           s.outer,
-          height:          s.outer,
-          borderRadius:    s.outer / 2,
-          alignItems:      "center",
-          justifyContent:  "center",
-          backgroundColor: isOnHero
-            ? "rgba(255,255,255,0.06)"
-            : theme.colors.brand[50],
-          borderWidth:     1.5,
-          borderColor:     isOnHero
-            ? "rgba(255,255,255,0.14)"
-            : theme.colors.brand[100],
-        }}>
-
-        {/* Inner gradient core */}
-        <LinearGradient
-          colors={["#06b6d4", "#0891b2", "#0e7490"]}
-          start={{ x: 0.1, y: 0 }}
-          end={{ x: 0.9, y: 1 }}
-          style={{
-            width:           s.inner,
-            height:          s.inner,
-            borderRadius:    s.inner / 2,
-            alignItems:      "center",
-            justifyContent:  "center",
-            borderWidth:     1.5,
-            borderColor:     "rgba(255,255,255,0.22)",
-          }}>
-
-          {/* Decorative highlight arc */}
-          <View
-            style={{
-              position:        "absolute",
-              top:             s.inner * 0.1,
-              left:            s.inner * 0.15,
-              width:           s.inner * 0.55,
-              height:          s.inner * 0.28,
-              borderRadius:    s.inner,
-              backgroundColor: "rgba(255,255,255,0.18)",
-            }}
-          />
-
-          <Ionicons name="medical-outline" size={s.icon} color="#fff" />
-        </LinearGradient>
-      </View>
+      <PharmacyLogoMark size={s.logo} />
 
       {showText && (
         <View style={{ alignItems: "center", gap: 3 }}>
@@ -89,18 +112,18 @@ export function BrandMark({
             style={{
               color:         textColor,
               fontSize:      s.titleSize,
-              fontWeight:    "900",
-              letterSpacing: 0.3,
+              fontFamily:    theme.fonts.black,
+              letterSpacing: 0.2,
             }}>
-            United Motaheda
+            الصيدلية المتحدة
           </Text>
           {showSlogan && (
             <Text
               style={{
                 color:         subtleColor,
-                fontSize:      11,
-                fontWeight:    "700",
-                letterSpacing: 1.8,
+                fontSize:      s.sloganSize,
+                fontFamily:    theme.fonts.semibold,
+                letterSpacing: 1.6,
               }}>
               لكل داء دواء
             </Text>

@@ -43,7 +43,7 @@ export default function ProductDetailScreen() {
 
   const handleAdd = () => {
     if (!product) return;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     addItem(product, qty);
   };
 
@@ -223,7 +223,7 @@ export default function ProductDetailScreen() {
                   }}>
                   <Pressable
                     onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
                       setQty((q) => q + 1);
                     }}
                     style={{
@@ -246,7 +246,7 @@ export default function ProductDetailScreen() {
                   </Text>
                   <Pressable
                     onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
                       setQty((q) => Math.max(1, q - 1));
                     }}
                     style={{

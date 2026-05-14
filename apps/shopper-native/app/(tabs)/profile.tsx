@@ -1,11 +1,15 @@
 import React from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Linking, Pressable, ScrollView, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/contexts/AuthContext";
 import { theme } from "@/theme";
+
+const WHATSAPP_URL   = "https://wa.me/201000800100?text=مرحباً%2C%20أود%20الاستفسار%20عن%20منتج";
+const PRIVACY_URL    = "https://unitedpharmacy.sa/privacy-policy";
+const ABOUT_URL      = "https://unitedpharmacy.sa/about-us";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -60,21 +64,21 @@ export default function ProfileScreen() {
       iconColor: "#0284C7",
       iconBg:    "#F0F9FF",
       label:     "عن الصيدلية",
-      onPress:   () => {},
+      onPress:   () => Linking.openURL(ABOUT_URL).catch(() => {}),
     },
     {
       iconName:  "logo-whatsapp",
       iconColor: "#25D366",
       iconBg:    "#F0FDF4",
-      label:     "تواصل معنا",
-      onPress:   () => {},
+      label:     "تواصل معنا عبر واتساب",
+      onPress:   () => Linking.openURL(WHATSAPP_URL).catch(() => {}),
     },
     {
       iconName:  "lock-closed-outline",
       iconColor: "#64748B",
       iconBg:    "#F8FAFC",
       label:     "سياسة الخصوصية",
-      onPress:   () => {},
+      onPress:   () => Linking.openURL(PRIVACY_URL).catch(() => {}),
     },
   ];
 
@@ -115,7 +119,7 @@ export default function ProfileScreen() {
         {user ? (
           <>
             <View style={{ alignItems: "center", gap: 5 }}>
-              <Text style={{ color: "#fff", fontSize: 21, fontWeight: "900" }}>
+              <Text style={{ color: "#fff", fontSize: 21, fontFamily: theme.fonts.black }}>
                 {user.name ?? "مرحباً"}
               </Text>
               <Text style={{ color: "rgba(255,255,255,0.60)", fontSize: 13 }}>
@@ -143,7 +147,7 @@ export default function ProfileScreen() {
         ) : (
           <>
             <View style={{ alignItems: "center", gap: 6 }}>
-              <Text style={{ color: "#fff", fontSize: 21, fontWeight: "900" }}>مرحباً بك</Text>
+              <Text style={{ color: "#fff", fontSize: 21, fontFamily: theme.fonts.black }}>مرحباً بك</Text>
               <Text style={{ color: "rgba(255,255,255,0.60)", fontSize: 13 }}>
                 سجل دخولك للوصول لحسابك
               </Text>
@@ -242,7 +246,7 @@ export default function ProfileScreen() {
             marginTop:  8,
             lineHeight: 18,
           }}>
-          United Motaheda v1.0.0{"\n"}جميع الحقوق محفوظة
+          الصيدلية المتحدة v1.0.0{"\n"}جميع الحقوق محفوظة © 2025
         </Text>
       </View>
     </ScrollView>

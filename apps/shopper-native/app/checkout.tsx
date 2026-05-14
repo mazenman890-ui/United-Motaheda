@@ -48,7 +48,7 @@ export default function CheckoutScreen() {
   const handleConfirm = async () => {
     setLoading(true);
     await new Promise((r) => setTimeout(r, 1400));
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     clearCart();
     setStep("success");
     setLoading(false);
