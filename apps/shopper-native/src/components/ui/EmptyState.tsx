@@ -1,71 +1,88 @@
 import React from "react";
 import { Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { theme } from "@/theme";
 import { Button } from "./Button";
 
+type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
+
 interface EmptyStateProps {
-  icon?:        React.ReactNode;
-  title:        string;
-  description?: string;
-  actionLabel?: string;
-  onAction?:    () => void;
+  icon?:          IoniconsName;
+  title:          string;
+  description?:   string;
+  actionLabel?:   string;
+  onAction?:      () => void;
+  compact?:       boolean;
 }
 
-export function EmptyState({ icon, title, description, actionLabel, onAction }: EmptyStateProps) {
+export function EmptyState({
+  icon        = "cube-outline",
+  title,
+  description,
+  actionLabel,
+  onAction,
+  compact     = false,
+}: EmptyStateProps) {
   return (
-    <View
+    <Animated.View
+      entering={FadeInDown.duration(350).delay(80)}
       style={{
-        flex:             1,
-        alignItems:       "center",
-        justifyContent:   "center",
-        paddingVertical:  72,
-        paddingHorizontal: 40,
-        gap:              0,
+        flex:           compact ? 0 : 1,
+        alignItems:     "center",
+        justifyContent: "center",
+        paddingHorizontal: 32,
+        paddingVertical:   compact ? 32 : 64,
+        gap:            16,
       }}>
-      {icon && (
-        <View
-          style={{
-            width:           96,
-            height:          96,
-            borderRadius:    30,
-            backgroundColor: theme.colors.brand[50],
-            alignItems:      "center",
-            justifyContent:  "center",
-            marginBottom:    22,
-            borderWidth:     1,
-            borderColor:     theme.colors.brand[100],
-          }}>
-          {icon}
-        </View>
-      )}
-      <Text
+      {/* Icon circle */}
+      <View
         style={{
-          fontSize:      18,
-          fontWeight:    "900",
-          color:         theme.colors.slate[800],
-          textAlign:     "center",
-          marginBottom:  10,
+          width:           compact ? 64 : 80,
+          height:          compact ? 64 : 80,
+          borderRadius:    compact ? 32 : 40,
+          backgroundColor: theme.colors.brand[50],
+          alignItems:      "center",
+          justifyContent:  "center",
+          borderWidth:     1,
+          borderColor:     theme.colors.brand[100],
         }}>
-        {title}
-      </Text>
-      {description && (
-        <Text
-          style={{
-            fontSize:      13,
-            color:         theme.colors.slate[400],
-            textAlign:     "center",
-            lineHeight:    21,
-            marginBottom:  28,
-            paddingHorizontal: 8,
-          }}>
-          {description}
+        <Ionicons
+          name={icon}
+          size={compact ? 28 : 34}
+          color={theme.colors.brand[400]}
+        />
+      </View>
+
+      {/* Text */}
+      <View style={{ alignItems: "center", gap: 6 }}>
+        <Text style={{
+          fontSize:   compact ? theme.fontSize.lg : theme.fontSize['2xl'],
+          fontFamily: theme.fonts.bold,
+          color:      theme.colors.text.primary,
+          textAlign:  "center",
+        }}>
+          {title}
         </Text>
-      )}
+        {description && (
+          <Text style={{
+            fontSize:   theme.fontSize.sm,
+            fontFamily: theme.fonts.regular,
+            color:      theme.colors.text.tertiary,
+            textAlign:  "center",
+            lineHeight: 20,
+          }}>
+            {description}
+          </Text>
+        )}
+      </View>
+
+      {/* Action */}
       {actionLabel && onAction && (
-        <Button variant="primary" size="md" onPress={onAction}>
+        <Button variant="primary" size="sm" onPress={onAction} gradient>
           {actionLabel}
         </Button>
       )}
-    </View>
+    </Animated.View>
   );
 }

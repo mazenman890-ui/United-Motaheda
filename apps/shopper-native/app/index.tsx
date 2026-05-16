@@ -10,9 +10,9 @@ export default function Entry() {
   const [target, setTarget] = useState<"/(tabs)" | "/onboarding" | null>(null);
 
   useEffect(() => {
-    AsyncStorage.getItem(ONBOARDING_KEY).then((v) => {
-      setTarget(v === "1" ? "/(tabs)" : "/onboarding");
-    });
+    AsyncStorage.getItem(ONBOARDING_KEY)
+      .then((v) => setTarget(v === "1" ? "/(tabs)" : "/onboarding"))
+      .catch(() => setTarget("/onboarding"));
   }, []);
 
   if (!target) {

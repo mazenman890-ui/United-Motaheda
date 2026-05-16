@@ -1,34 +1,34 @@
 {
   "expo": {
-    "name": "United Motaheda",
+    "name": "صيدليات المتحدة",
     "slug": "shopper-native",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "shopper",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#021D2E"
     },
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.unitedmotaheda.shopper",
+      "supportsTablet": false,
+      "bundleIdentifier": "com.unitedpharmacy.app",
       "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#021D2E"
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#ffffff"
       },
-      "package": "com.unitedmotaheda.shopper",
+      "package": "com.unitedpharmacy.app",
       "versionCode": 1
     },
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/icon.png"
     },
     "plugins": [
       "expo-router",
@@ -36,8 +36,8 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/splash.png",
-          "imageWidth": 200,
+          "image": "./assets/logo.png",
+          "imageWidth": 280,
           "resizeMode": "contain",
           "backgroundColor": "#021D2E"
         }
@@ -45,6 +45,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "4eeb1af1-7d2b-4893-ac23-11feb4d06fcd"
+      }
     }
   }
 }

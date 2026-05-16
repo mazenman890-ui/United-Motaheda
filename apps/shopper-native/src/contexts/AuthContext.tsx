@@ -19,22 +19,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      const u = data.session?.user;
-      setUser(u ? { id: u.id, email: u.email ?? "", name: u.user_metadata?.name } : null);
-      setLoading(false);
-    });
+    supabase.auth.getSession()
+      .then(({ data }) => {
+        const u = data.session?.user;
+        setUser(u ? { id: u.id, email: u.email ?? "", name: u.user_metadata?.name as string | undefined } : null);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       const u = session?.user;
-      setUser(u ? { id: u.id, email: u.email ?? "", name: u.user_metadata?.name } : null);
+      setUser(u ? { id: u.id, email: u.email ?? "", name: u.user_metadata?.name as string | undefined } : null);
+      setLoading(false);
     });
 
     return () => sub.subscription.unsubscribe();
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // network failure — clear local state regardless
+    }
     setUser(null);
   };
 

@@ -6,29 +6,44 @@ import Animated, {
   useSharedValue,
   withRepeat,
   withTiming,
+  interpolate,
+  Extrapolation,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { theme } from "@/theme";
 
-const W = Dimensions.get("window").width;
+const { width: SCREEN_W } = Dimensions.get("window");
 
 interface SkeletonProps {
-  width?:  number | `${number}%`;
-  height?: number;
-  radius?: number;
-  style?:  StyleProp<ViewStyle>;
+  width?:   number | `${number}%`;
+  height?:  number;
+  radius?:  number;
+  style?:   StyleProp<ViewStyle>;
 }
 
-export function Skeleton({ width = "100%", height = 16, radius = 8, style }: SkeletonProps) {
-  const x = useSharedValue(-W);
+export function Skeleton({ width = "100%", height = 16, radius = theme.radius.md, style }: SkeletonProps) {
+  const progress = useSharedValue(0);
 
   useEffect(() => {
-    x.value = withRepeat(withTiming(W, { duration: 1100 }), -1, false);
-    return () => cancelAnimation(x);
-  }, [x]);
+    progress.value = withRepeat(
+      withTiming(1, { duration: 1200 }),
+      -1,
+      false,
+    );
+    return () => cancelAnimation(progress);
+  }, [progress]);
 
-  const shimmerStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: x.value }],
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateX: interpolate(
+          progress.value,
+          [0, 1],
+          [-SCREEN_W, SCREEN_W],
+          Extrapolation.CLAMP,
+        ),
+      },
+    ],
   }));
 
   return (
@@ -37,63 +52,69 @@ export function Skeleton({ width = "100%", height = 16, radius = 8, style }: Ske
         {
           width,
           height,
-          borderRadius: radius,
+          borderRadius:    radius,
           backgroundColor: theme.colors.slate[200],
-          overflow: "hidden",
+          overflow:        "hidden",
         },
         style,
       ]}>
-      <Animated.View
-        style={[
-          { position: "absolute", top: 0, bottom: 0, width: W },
-          shimmerStyle,
-        ]}>
+      <Animated.View style={[{ position: "absolute", top: 0, bottom: 0, width: SCREEN_W }, animStyle]}>
         <LinearGradient
           colors={["transparent", "rgba(255,255,255,0.55)", "transparent"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={{ width: "100%", height: "100%" }}
+          style={{ flex: 1 }}
         />
       </Animated.View>
     </View>
   );
 }
 
+// ─── Preset skeletons ─────────────────────────────────────────────────────────
+
 export function ProductCardSkeleton() {
   return (
-    <View
-      style={{
-        backgroundColor: theme.colors.surface,
-        borderRadius: theme.radius.xl,
-        overflow: "hidden",
-        borderWidth: 1,
-        borderColor: "rgba(0,0,0,0.04)",
-        ...theme.shadow.sm,
-      }}>
-      <Skeleton height={152} radius={0} />
+    <View style={{
+      backgroundColor: theme.colors.surface,
+      borderRadius:    theme.layout.cardRadius,
+      overflow:        "hidden",
+      ...theme.shadow.card,
+    }}>
+      <Skeleton height={160} radius={0} />
       <View style={{ padding: 12, gap: 8 }}>
-        <Skeleton width="75%" height={12} />
-        <Skeleton width="55%" height={11} />
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
-          <Skeleton width={56} height={18} radius={6} />
-          <Skeleton width={36} height={36} radius={10} />
+        <Skeleton height={13} width="75%" />
+        <Skeleton height={11} width="50%" />
+        <View style={{ flexDirection: "row-reverse", justifyContent: "space-between", marginTop: 4 }}>
+          <Skeleton height={16} width={60} />
+          <Skeleton height={32} width={32} radius={theme.radius.md} />
         </View>
       </View>
     </View>
   );
 }
 
-export function CategoryTileSkeleton() {
+export function CategoryCardSkeleton() {
+  return <Skeleton width={102} height={172} radius={theme.radius['2xl']} />;
+}
+
+export function OrderCardSkeleton() {
   return (
-    <View
-      style={{
-        flex: 1,
-        height: 140,
-        borderRadius: theme.radius.xl,
-        backgroundColor: theme.colors.slate[200],
-        overflow: "hidden",
-      }}>
-      <Skeleton height={140} radius={0} />
+    <View style={{
+      backgroundColor: theme.colors.surface,
+      borderRadius:    theme.layout.cardRadius,
+      padding:         16,
+      gap:             10,
+      ...theme.shadow.card,
+    }}>
+      <View style={{ flexDirection: "row-reverse", justifyContent: "space-between" }}>
+        <Skeleton height={14} width="40%" />
+        <Skeleton height={22} width={70} radius={theme.radius.full} />
+      </View>
+      <Skeleton height={11} width="60%" />
+      <View style={{ flexDirection: "row-reverse", justifyContent: "space-between", marginTop: 4 }}>
+        <Skeleton height={14} width={80} />
+        <Skeleton height={14} width={100} />
+      </View>
     </View>
   );
 }

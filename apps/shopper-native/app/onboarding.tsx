@@ -49,7 +49,7 @@ const SLIDES: Slide[] = [
     id:      1,
     colors:  [theme.colors.hero, theme.colors.heroMid, theme.colors.heroBright],
     accent:  theme.colors.brand[400],
-    eyebrow: "صيدلية United Motaheda",
+    eyebrow: "صيدليات المتحدة",
     title:   "صحتك\nأولويتنا",
     body:    "أكثر من 52,000 منتج صيدلاني أصلي في متناول يدك في أي وقت",
   },
@@ -213,7 +213,7 @@ export default function OnboardingScreen() {
           {/* Skip */}
           {current < SLIDES.length - 1 ? (
             <Pressable onPress={finish} hitSlop={12}>
-              <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 13, fontWeight: "600" }}>
+              <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 13, fontFamily: theme.fonts.semibold }}>
                 تخطى
               </Text>
             </Pressable>

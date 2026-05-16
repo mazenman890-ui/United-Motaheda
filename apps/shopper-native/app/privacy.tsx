@@ -1,0 +1,157 @@
+import React from "react";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import { theme } from "@/theme";
+
+interface SectionProps {
+  title:    string;
+  children: React.ReactNode;
+  delay?:   number;
+}
+
+function Section({ title, children, delay = 0 }: SectionProps) {
+  return (
+    <Animated.View entering={FadeInDown.duration(350).delay(delay)} style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionDot} />
+        <Text style={styles.sectionTitle}>{title}</Text>
+      </View>
+      <Text style={styles.sectionBody}>{children}</Text>
+    </Animated.View>
+  );
+}
+
+export default function PrivacyScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View style={[styles.screen, { paddingTop: insets.top }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={10}>
+          <Ionicons name="arrow-forward" size={18} color={theme.colors.text.primary} />
+        </Pressable>
+        <Text style={styles.title}>سياسة الخصوصية</Text>
+        <View style={{ width: 38 }} />
+      </View>
+
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]}
+        showsVerticalScrollIndicator={false}>
+
+        {/* Last updated */}
+        <Animated.View entering={FadeInDown.duration(300)} style={styles.updatedBanner}>
+          <Ionicons name="calendar-outline" size={15} color={theme.colors.brand[700]} />
+          <Text style={styles.updatedText}>آخر تحديث: يناير ٢٠٢٥</Text>
+        </Animated.View>
+
+        {/* Intro */}
+        <Animated.View entering={FadeInDown.duration(350).delay(40)} style={styles.introBanner}>
+          <Ionicons name="shield-checkmark" size={20} color={theme.colors.brand[600]} />
+          <Text style={styles.introText}>
+            خصوصيتك أمانة عندنا. تصف هذه الوثيقة كيف تجمع الصيدلية المتحدة بياناتك وتستخدمها وتحميها.
+          </Text>
+        </Animated.View>
+
+        <Section title="١. المعلومات التي نجمعها" delay={80}>
+          {`نجمع المعلومات التي تقدمها مباشرةً عند إنشاء حسابك أو تقديم طلب، وتشمل:
+• الاسم الكامل وعنوان البريد الإلكتروني
+• رقم الهاتف وعنوان التوصيل
+• سجل الطلبات والمنتجات المفضلة
+
+كما نجمع بيانات الاستخدام التلقائية مثل نوع الجهاز ونظام التشغيل والصفحات التي تزورها داخل التطبيق، وذلك لتحسين تجربتك.`}
+        </Section>
+
+        <Section title="٢. كيف نستخدم بياناتك" delay={120}>
+          {`نستخدم معلوماتك للأغراض التالية:
+• تنفيذ طلباتك وتتبع الشحنات والتواصل معك بشأنها
+• تخصيص عروض المنتجات وتوصياتها وفق اهتماماتك
+• إرسال إشعارات هامة تتعلق بطلباتك وحسابك
+• تحسين خدماتنا وتطوير ميزات التطبيق
+• الامتثال للمتطلبات القانونية والتنظيمية
+
+لن نستخدم بياناتك لأغراض تسويقية دون موافقتك الصريحة.`}
+        </Section>
+
+        <Section title="٣. مشاركة البيانات مع الأطراف الثالثة" delay={160}>
+          {`لا نبيع معلوماتك الشخصية لأطراف ثالثة. قد نشارك بياناتك بشكل محدود في الحالات الآتية:
+• شركات الشحن والتوصيل لتنفيذ طلباتك
+• مزودو خدمة الدفع الإلكتروني لمعالجة المعاملات المالية بأمان
+• الجهات الحكومية والتنظيمية عند الاقتضاء القانوني
+
+نلزم جميع شركاءنا بسياسات خصوصية صارمة وعدم إعادة استخدام بياناتك.`}
+        </Section>
+
+        <Section title="٤. أمان البيانات" delay={200}>
+          {`نطبّق معايير أمان متقدمة لحماية بياناتك، تشمل:
+• تشفير SSL/TLS لجميع البيانات المنقولة
+• تشفير كلمات المرور باستخدام خوارزميات bcrypt
+• مراجعات أمنية دورية لقاعدة البيانات والبنية التحتية
+• التحقق الثنائي للعمليات الحساسة
+
+رغم جهودنا الكاملة، لا يمكن ضمان أمان مطلق عبر الإنترنت، وننصحك بالحفاظ على سرية كلمة مرورك.`}
+        </Section>
+
+        <Section title="٥. ملفات التعريف (Cookies)" delay={240}>
+          {`يستخدم التطبيق تقنيات تخزين محلية مشابهة للـ Cookies لحفظ:
+• بيانات جلسة تسجيل الدخول
+• محتويات سلة التسوق
+• التفضيلات الشخصية مثل اللغة والمنطقة
+
+هذه البيانات تُخزَّن على جهازك فقط ولا تُرسَل إلى أطراف ثالثة.`}
+        </Section>
+
+        <Section title="٦. حقوقك" delay={280}>
+          {`يحق لك في أي وقت:
+• الاطلاع على بياناتك الشخصية المحفوظة لدينا
+• تصحيح أي معلومات غير دقيقة
+• طلب حذف حسابك وجميع بياناتك
+• إلغاء الاشتراك في الرسائل التسويقية
+• الاعتراض على معالجة بياناتك لأغراض معينة
+
+للتواصل حول هذه الحقوق: info@unitedpharmacy.com`}
+        </Section>
+
+        <Section title="٧. الاحتفاظ بالبيانات" delay={320}>
+          {`نحتفظ ببياناتك طالما كان حسابك نشطاً أو لفترة ضرورية لتقديم خدماتنا. عند حذف حسابك، تُحذف بياناتك الشخصية خلال ٣٠ يوماً، باستثناء ما يُلزمنا القانون بالاحتفاظ به لأغراض ضريبية أو تنظيمية.`}
+        </Section>
+
+        <Section title="٨. تعديلات السياسة" delay={360}>
+          {`نحتفظ بحق تعديل هذه السياسة في أي وقت. سنُعلمك بأي تغييرات جوهرية عبر إشعار داخل التطبيق أو البريد الإلكتروني قبل نفاذ التعديل بـ ٧ أيام على الأقل. استمرار استخدامك للتطبيق بعد التعديل يُعدّ قبولاً منك للسياسة المحدّثة.`}
+        </Section>
+
+        <Text style={styles.footer}>
+          الصيدلية المتحدة • مصر • info@unitedpharmacy.com
+        </Text>
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen:        { flex: 1, backgroundColor: theme.colors.bg },
+  header:        { flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", paddingHorizontal: theme.layout.pagePaddingH, paddingVertical: 14, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border.default, ...theme.shadow.xs },
+  backBtn:       { width: 38, height: 38, borderRadius: 12, backgroundColor: theme.colors.subtle, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: theme.colors.border.default },
+  title:         { fontSize: theme.fontSize["2xl"], fontFamily: theme.fonts.black, color: theme.colors.text.primary },
+  content:       { padding: theme.layout.pagePaddingH, gap: 0 },
+  updatedBanner: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 6, marginBottom: 14 },
+  updatedText:   { fontSize: theme.fontSize.sm, fontFamily: theme.fonts.semibold, color: theme.colors.brand[700] },
+  introBanner:   { flexDirection: "row-reverse", alignItems: "flex-start", gap: 10, backgroundColor: theme.colors.brand[50], borderRadius: theme.radius.xl, padding: 16, borderWidth: 1, borderColor: theme.colors.brand[100], marginBottom: 20 },
+  introText:     { flex: 1, fontSize: theme.fontSize.base, fontFamily: theme.fonts.semibold, color: theme.colors.text.primary, textAlign: "right", lineHeight: 22 },
+  section:       { marginBottom: 22 },
+  sectionHeader: { flexDirection: "row-reverse", alignItems: "center", gap: 8, marginBottom: 10 },
+  sectionDot:    { width: 6, height: 6, borderRadius: 3, backgroundColor: theme.colors.brand[600] },
+  sectionTitle:  { fontSize: theme.fontSize.lg, fontFamily: theme.fonts.black, color: theme.colors.text.primary },
+  sectionBody:   { fontSize: theme.fontSize.base, fontFamily: theme.fonts.regular, color: theme.colors.text.secondary, textAlign: "right", lineHeight: 24, backgroundColor: theme.colors.surface, borderRadius: theme.radius.xl, padding: 16, borderWidth: 1, borderColor: theme.colors.border.default },
+  footer:        { fontSize: 11, color: theme.colors.text.disabled, textAlign: "center", paddingTop: 16 },
+});

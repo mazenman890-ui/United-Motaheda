@@ -14,8 +14,12 @@ import {
   Cairo_800ExtraBold,
   Cairo_900Black,
 } from "@expo-google-fonts/cairo";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useCartStore } from "@/stores/cart";
+import { useOrderStore } from "@/stores/orders";
+import { useWishlistStore } from "@/stores/wishlist";
+import { useNotificationStore } from "@/stores/notifications";
+import { NotificationBanner } from "@/components/NotificationBanner";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -31,8 +35,32 @@ const queryClient = new QueryClient({
   },
 });
 
+// ─── Notification sync — subscribes/unsubscribes with auth state ──────────────
+
+function NotificationSync() {
+  const { user }    = useAuth();
+  const fetch       = useNotificationStore((s) => s.fetch);
+  const subscribe   = useNotificationStore((s) => s.subscribe);
+  const reset       = useNotificationStore((s) => s.reset);
+
+  useEffect(() => {
+    if (!user) {
+      reset();
+      return;
+    }
+    fetch(user.id);
+    subscribe(user.id);
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return null;
+}
+
+// ─── Root layout ──────────────────────────────────────────────────────────────
+
 export default function RootLayout() {
-  const hydrate = useCartStore((s) => s.hydrate);
+  const hydrate         = useCartStore((s) => s.hydrate);
+  const hydrateOrders   = useOrderStore((s) => s.hydrate);
+  const hydrateWishlist = useWishlistStore((s) => s.hydrate);
 
   const [fontsLoaded] = useFonts({
     Cairo_400Regular,
@@ -44,11 +72,11 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (!fontsLoaded) return;
-    if (!I18nManager.isRTL) {
-      I18nManager.forceRTL(true);
-    }
-    hydrate().then(() => SplashScreen.hideAsync());
-  }, [fontsLoaded, hydrate]);
+    if (!I18nManager.isRTL) I18nManager.forceRTL(true);
+    Promise.all([hydrate(), hydrateOrders(), hydrateWishlist()])
+      .catch(() => {})
+      .finally(() => SplashScreen.hideAsync());
+  }, [fontsLoaded, hydrate, hydrateOrders, hydrateWishlist]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -56,15 +84,27 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <StatusBar style="light" />
+            <NotificationSync />
             <Stack screenOptions={{ headerShown: false, animation: "fade" }}>
-              <Stack.Screen name="index"         options={{ headerShown: false }} />
-              <Stack.Screen name="onboarding"    options={{ headerShown: false, animation: "fade" }} />
-              <Stack.Screen name="(tabs)"        options={{ headerShown: false }} />
-              <Stack.Screen name="(auth)"        options={{ headerShown: false, presentation: "modal", animation: "slide_from_bottom" }} />
-              <Stack.Screen name="product/[id]"  options={{ headerShown: false, animation: "slide_from_right" }} />
-              <Stack.Screen name="category/[id]" options={{ headerShown: false, animation: "slide_from_right" }} />
-              <Stack.Screen name="checkout"      options={{ headerShown: false, presentation: "modal", animation: "slide_from_bottom" }} />
+              <Stack.Screen name="index"                  options={{ headerShown: false }} />
+              <Stack.Screen name="onboarding"             options={{ headerShown: false, animation: "fade" }} />
+              <Stack.Screen name="(tabs)"                 options={{ headerShown: false }} />
+              <Stack.Screen name="(auth)"                 options={{ headerShown: false, presentation: "modal", animation: "slide_from_bottom" }} />
+              <Stack.Screen name="product/[id]"           options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="category/[id]"          options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="checkout"               options={{ headerShown: false, presentation: "modal", animation: "slide_from_bottom" }} />
+              <Stack.Screen name="orders"                 options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="favorites"              options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="addresses"              options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="notifications"          options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="payment"                options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="faq"                    options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="loyalty"                 options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="about"                  options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="privacy"                options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="terms"                  options={{ headerShown: false, animation: "slide_from_right" }} />
             </Stack>
+            <NotificationBanner />
           </AuthProvider>
         </QueryClientProvider>
       </SafeAreaProvider>

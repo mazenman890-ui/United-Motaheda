@@ -61,7 +61,7 @@ export function Header({ title, showBack, showCart, right, rtl }: HeaderProps) {
         style={{
           flex:       1,
           fontSize:   17,
-          fontWeight: "900",
+          fontFamily: theme.fonts.black,
           color:      theme.colors.slate[900],
           textAlign:  rtl ? "right" : "left",
         }}>
@@ -100,7 +100,7 @@ export function Header({ title, showBack, showCart, right, rtl }: HeaderProps) {
               borderWidth:       1.5,
               borderColor:       "#fff",
             }}>
-              <Text style={{ color: "#fff", fontSize: 8, fontWeight: "900" }}>{Math.min(cartCount, 99)}</Text>
+              <Text style={{ color: "#fff", fontSize: 8, fontFamily: theme.fonts.black }}>{Math.min(cartCount, 99)}</Text>
             </View>
           )}
         </Pressable>

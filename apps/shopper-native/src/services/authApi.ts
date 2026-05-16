@@ -24,10 +24,10 @@ export async function signUp(email: string, password: string, name: string): Pro
     options: { data: { name } },
   });
   if (error) throw error;
-  const user = data.user!;
+  if (!data.user) throw new Error("لم يتم إنشاء الحساب، يرجى المحاولة مجدداً");
   return {
-    id:    user.id,
-    email: user.email ?? "",
+    id:    data.user.id,
+    email: data.user.email ?? "",
     name,
   };
 }

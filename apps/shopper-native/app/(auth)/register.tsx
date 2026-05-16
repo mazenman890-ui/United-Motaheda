@@ -1,250 +1,169 @@
 import React, { useState } from "react";
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   View,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { Link, useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { signUp } from "@/services/authApi";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { BrandMark } from "@/components/ui/BrandMark";
 import { theme } from "@/theme";
 
 export default function RegisterScreen() {
   const router  = useRouter();
   const insets  = useSafeAreaInsets();
-  const [name, setName]         = useState("");
-  const [email, setEmail]       = useState("");
+
+  const [name,     setName]     = useState("");
+  const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState("");
   const [showPass, setShowPass] = useState(false);
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState<string | null>(null);
 
   const handleRegister = async () => {
-    if (!name || !email || !password) {
-      setError("يرجى ملء جميع الحقول");
-      return;
-    }
-    if (password.length < 6) {
-      setError("كلمة المرور يجب أن تكون 6 أحرف على الأقل");
-      return;
-    }
+    setError(null);
+    if (!name.trim()) { setError("يرجى إدخال اسمك الكامل"); return; }
+    if (!email.trim()) { setError("يرجى إدخال البريد الإلكتروني"); return; }
+    if (password.length < 6) { setError("كلمة المرور يجب أن تكون 6 أحرف على الأقل"); return; }
     setLoading(true);
-    setError("");
     try {
-      await signUp(email.trim(), password, name.trim());
-      router.back();
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "حدث خطأ. حاول مرة أخرى");
+      await signUp(email.trim().toLowerCase(), password, name.trim());
+      router.replace("/(tabs)");
+    } catch (e) {
+      setError("حدث خطأ أثناء إنشاء الحساب. حاول مرة أخرى");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <ScrollView
-        style={{ flex: 1, backgroundColor: theme.colors.bg }}
+        style={styles.screen}
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
 
-        {/* Hero */}
+        {/* Hero header */}
         <LinearGradient
-          colors={[theme.colors.hero, theme.colors.heroMid, theme.colors.heroBright]}
-          start={{ x: 0.1, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
-            paddingTop:        insets.top + 28,
-            paddingBottom:     56,
-            paddingHorizontal: 24,
-            alignItems:        "center",
-            gap:               16,
-          }}>
-
-          {/* Close */}
-          <Pressable
-            onPress={() => router.back()}
-            hitSlop={12}
-            style={{
-              position: "absolute",
-              top:      insets.top + 12,
-              left:     16,
-            }}>
-            <View
-              style={{
-                width:           36,
-                height:          36,
-                borderRadius:    11,
-                backgroundColor: "rgba(255,255,255,0.10)",
-                alignItems:      "center",
-                justifyContent:  "center",
-                borderWidth:     1,
-                borderColor:     "rgba(255,255,255,0.14)",
-              }}>
-              <Ionicons name="close" size={16} color="rgba(255,255,255,0.75)" />
-            </View>
+          colors={theme.gradients.heroPrimary as [string, string, string]}
+          style={[styles.hero, { paddingTop: insets.top + 20 }]}>
+          {/* Close button */}
+          <Pressable onPress={() => router.back()} style={styles.closeBtn} hitSlop={10}>
+            <Ionicons name="close" size={20} color="rgba(255,255,255,0.80)" />
           </Pressable>
 
-          {/* Brand mark */}
-          <BrandMark size="md" variant="onHero" showText={false} />
-
-          <View style={{ alignItems: "center", gap: 5 }}>
-            <Text style={{ color: "#fff", fontSize: 22, fontWeight: "900" }}>حساب جديد</Text>
-            <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 13 }}>
-              أنشئ حسابك في ثوانٍ
-            </Text>
+          {/* Logo */}
+          <View style={{ alignItems: "center", marginTop: 16 }}>
+            <View style={styles.logoCard}>
+              <Image
+                source={require("../../assets/logo.png")}
+                style={styles.logo}
+                contentFit="contain"
+              />
+            </View>
           </View>
 
-          {/* Progress dots */}
-          <View style={{ flexDirection: "row", gap: 6 }}>
-            {[1, 2, 3].map((d) => (
-              <View
-                key={d}
-                style={{
-                  width:           d === 1 ? 22 : 6,
-                  height:          6,
-                  borderRadius:    3,
-                  backgroundColor: d === 1 ? "#fff" : "rgba(255,255,255,0.25)",
-                }}
-              />
-            ))}
+          <View style={{ alignItems: "center", marginTop: 20, paddingBottom: 32 }}>
+            <Text style={{ color: "#fff", fontSize: 22, fontFamily: theme.fonts.black }}>إنشاء حساب جديد</Text>
+            <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, marginTop: 4 }}>أنشئ حسابك في ثوانٍ</Text>
           </View>
         </LinearGradient>
 
         {/* Form card */}
-        <View
-          style={{
-            marginTop:        -22,
-            marginHorizontal: 16,
-            backgroundColor:  "#fff",
-            borderRadius:     theme.radius["2xl"],
-            padding:          24,
-            gap:              14,
-            ...theme.shadow.lg,
-            borderWidth:      1,
-            borderColor:      "rgba(0,0,0,0.04)",
-          }}>
-
-          <Text
-            style={{
-              fontSize:   18,
-              fontWeight: "900",
-              color:      theme.colors.slate[900],
-              textAlign:  "right",
-              marginBottom: 2,
-            }}>
-            إنشاء الحساب
-          </Text>
+        <View style={styles.formCard}>
+          {error && (
+            <View style={styles.errorBox}>
+              <Ionicons name="alert-circle-outline" size={16} color={theme.colors.error.base} />
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          )}
 
           <Input
             label="الاسم الكامل"
+            placeholder="محمد أحمد"
             value={name}
             onChangeText={setName}
-            placeholder="محمد أحمد"
-            leftIcon={
-              <Ionicons name="person-outline" size={16} color={theme.colors.slate[400]} />
-            }
+            autoCapitalize="words"
+            autoComplete="name"
+            leftIcon={<Ionicons name="person-outline" size={18} color={theme.colors.text.tertiary} />}
           />
+
           <Input
             label="البريد الإلكتروني"
+            placeholder="example@email.com"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
-            placeholder="example@email.com"
-            textAlign="left"
-            leftIcon={
-              <Ionicons name="mail-outline" size={16} color={theme.colors.slate[400]} />
-            }
+            autoComplete="email"
+            leftIcon={<Ionicons name="mail-outline" size={18} color={theme.colors.text.tertiary} />}
           />
+
           <Input
             label="كلمة المرور"
+            placeholder="••••••••  (6 أحرف على الأقل)"
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPass}
-            placeholder="••••••••  (6 أحرف على الأقل)"
-            leftIcon={
-              <Ionicons name="lock-closed-outline" size={16} color={theme.colors.slate[400]} />
-            }
+            leftIcon={<Ionicons name="lock-closed-outline" size={18} color={theme.colors.text.tertiary} />}
             rightIcon={
-              <Pressable onPress={() => setShowPass((v) => !v)} hitSlop={8}>
-                <Ionicons
-                  name={showPass ? "eye-outline" : "eye-off-outline"}
-                  size={16}
-                  color={theme.colors.slate[400]}
-                />
+              <Pressable onPress={() => setShowPass(!showPass)} hitSlop={8}>
+                <Ionicons name={showPass ? "eye-off-outline" : "eye-outline"} size={18} color={theme.colors.text.tertiary} />
               </Pressable>
             }
           />
 
-          {error ? (
-            <View
-              style={{
-                backgroundColor: "#fef2f2",
-                borderRadius:    theme.radius.lg,
-                padding:         13,
-                flexDirection:   "row-reverse",
-                alignItems:      "flex-start",
-                gap:             9,
-                borderWidth:     1,
-                borderColor:     "#fecaca",
-              }}>
-              <Ionicons name="alert-circle-outline" size={16} color={theme.colors.error} />
-              <Text
-                style={{
-                  color:      theme.colors.error,
-                  fontSize:   13,
-                  fontWeight: "600",
-                  textAlign:  "right",
-                  flex:       1,
-                  lineHeight: 19,
-                }}>
-                {error}
-              </Text>
-            </View>
-          ) : null}
-
-          <Button variant="primary" size="lg" fullWidth loading={loading} onPress={handleRegister}>
+          <Button variant="primary" size="lg" fullWidth loading={loading} onPress={handleRegister} gradient style={{ marginTop: 8 }}>
             إنشاء الحساب
           </Button>
-        </View>
 
-        {/* Login link */}
-        <View
-          style={{
-            flexDirection:  "row",
-            justifyContent: "center",
-            alignItems:     "center",
-            gap:            6,
-            marginTop:      22,
-            paddingHorizontal: 16,
-          }}>
-          <Pressable onPress={() => router.replace("/(auth)/login")}>
-            <Text style={{ color: theme.colors.brand[600], fontWeight: "800", fontSize: 14 }}>
-              تسجيل الدخول
-            </Text>
-          </Pressable>
-          <Text style={{ color: theme.colors.slate[400], fontSize: 14 }}>لديك حساب بالفعل؟</Text>
-        </View>
+          <View style={styles.dividerRow}>
+            <View style={styles.divider} />
+            <Text style={styles.dividerText}>أو</Text>
+            <View style={styles.divider} />
+          </View>
 
-        <View style={{ flex: 1, minHeight: 32 }} />
+          <View style={{ alignItems: "center", gap: 4 }}>
+            <Text style={{ fontSize: 14, color: theme.colors.text.secondary }}>لديك حساب بالفعل؟</Text>
+            <Link href="/(auth)/login" asChild>
+              <Pressable>
+                <Text style={{ fontSize: 14, fontFamily: theme.fonts.black, color: theme.colors.brand[700] }}>
+                  تسجيل الدخول
+                </Text>
+              </Pressable>
+            </Link>
+          </View>
 
-        <View style={{ alignItems: "center", paddingBottom: insets.bottom + 22 }}>
-          <Text style={{ color: theme.colors.slate[400], fontSize: 11, textAlign: "center" }}>
-            بمتابعتك فأنت توافق على سياسة الخصوصية وشروط الاستخدام
+          <Text style={styles.terms}>
+            بإنشاء حساب فأنت توافق على سياسة الخصوصية وشروط الاستخدام
           </Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen:      { flex: 1, backgroundColor: theme.colors.bg },
+  hero:        { paddingHorizontal: theme.layout.pagePaddingH, paddingBottom: 0, overflow: "hidden", position: "relative" },
+  closeBtn:    { position: "absolute", top: 16, left: theme.layout.pagePaddingH, width: 36, height: 36, borderRadius: 12, backgroundColor: theme.colors.glass, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: theme.colors.glassBorder },
+  logoCard:    { backgroundColor: "#fff", borderRadius: 20, paddingHorizontal: 20, paddingVertical: 12, ...theme.shadow.lg },
+  logo:        { width: 180, height: 72 },
+  formCard:    { backgroundColor: theme.colors.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, marginTop: -20, flex: 1, padding: theme.layout.pagePaddingH, paddingTop: 28, gap: 16, ...theme.shadow.xl },
+  errorBox:    { flexDirection: "row-reverse", alignItems: "center", gap: 8, backgroundColor: theme.colors.error.bg, borderRadius: theme.radius.lg, padding: 12, borderWidth: 1, borderColor: theme.colors.error.light },
+  errorText:   { fontSize: 13, fontFamily: theme.fonts.semibold, color: theme.colors.error.text, flex: 1, textAlign: "right" },
+  dividerRow:  { flexDirection: "row", alignItems: "center", gap: 12 },
+  divider:     { flex: 1, height: 1, backgroundColor: theme.colors.border.default },
+  dividerText: { fontSize: 12, color: theme.colors.text.tertiary, fontFamily: theme.fonts.semibold },
+  terms:       { fontSize: 11, color: theme.colors.text.disabled, textAlign: "center", lineHeight: 16, paddingTop: 4 },
+});

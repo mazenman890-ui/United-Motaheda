@@ -1,0 +1,223 @@
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Haptics from "expo-haptics";
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
+import { useNotificationStore } from "@/stores/notifications";
+import { theme } from "@/theme";
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
+
+const VISIBLE_MS = 4500;
+
+const TYPE_META: Record<string, {
+  icon:     IoniconsName;
+  color:    string;
+  bg:       string;
+  gradient: [string, string];
+  label:    string;
+}> = {
+  order:  { icon: "bag-check-outline",    color: theme.colors.brand[600],       bg: theme.colors.brand[50],    gradient: [theme.colors.brand[700],     theme.colors.brand[500]],     label: "تحديث الطلب"  },
+  offer:  { icon: "pricetag-outline",     color: theme.colors.warning.strong,   bg: theme.colors.warning.bg,   gradient: [theme.colors.warning.strong, theme.colors.amber[400]],     label: "عرض خاص"      },
+  health: { icon: "heart-circle-outline", color: theme.colors.success.strong,   bg: theme.colors.success.bg,   gradient: [theme.colors.success.strong, theme.colors.green[400]],     label: "تنبيه صحي"    },
+  system: { icon: "sparkles-outline",     color: theme.colors.purple[600],      bg: theme.colors.purple[50],   gradient: [theme.colors.purple[700],    theme.colors.purple[500]],     label: "إشعار النظام" },
+};
+
+// ─── Banner ───────────────────────────────────────────────────────────────────
+
+export function NotificationBanner() {
+  const router        = useRouter();
+  const insets        = useSafeAreaInsets();
+  const banner        = useNotificationStore((s) => s.banner);
+  const dismissBanner = useNotificationStore((s) => s.dismissBanner);
+  const timerRef      = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [bannerWidth, setBannerWidth] = useState(0);
+
+  // Animation values
+  const translateY = useSharedValue(-180);
+  const opacity    = useSharedValue(0);
+  const scale      = useSharedValue(0.95);
+  const progress   = useSharedValue(1); // 1→0 drains during VISIBLE_MS
+
+  const slideOut = useCallback(() => {
+    translateY.value = withTiming(-180, { duration: 320, easing: Easing.in(Easing.quad) });
+    opacity.value    = withTiming(0,    { duration: 260 });
+    scale.value      = withTiming(0.94, { duration: 260 });
+    setTimeout(() => dismissBanner(), 330);
+  }, [dismissBanner, translateY, opacity, scale]);
+
+  useEffect(() => {
+    if (!banner) return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+
+    if (Platform.OS !== "web")
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+
+    // Slide in
+    translateY.value = withSpring(0,    { damping: 16, stiffness: 340, mass: 0.85 });
+    opacity.value    = withTiming(1,    { duration: 180 });
+    scale.value      = withSpring(1.0,  { damping: 18, stiffness: 360 });
+
+    // Progress bar drains linearly
+    progress.value = 1;
+    progress.value = withTiming(0, { duration: VISIBLE_MS - 150, easing: Easing.linear });
+
+    timerRef.current = setTimeout(slideOut, VISIBLE_MS);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [banner?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const containerAnim = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }, { scale: scale.value }],
+    opacity:   opacity.value,
+  }));
+
+  const progressAnim = useAnimatedStyle(() => ({
+    width: bannerWidth * progress.value,
+  }));
+
+  if (!banner) return null;
+
+  const meta  = TYPE_META[banner.type] ?? TYPE_META.system;
+
+  const handlePress = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    dismissBanner();
+    router.push(`/notifications/${banner.id}` as never);
+  };
+
+  const handleDismiss = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    slideOut();
+  };
+
+  return (
+    <Animated.View
+      style={[styles.container, { top: insets.top + 8 }, containerAnim]}
+      pointerEvents="box-none">
+
+      <Pressable
+        onLayout={(e) => setBannerWidth(e.nativeEvent.layout.width)}
+        onPress={handlePress}
+        style={({ pressed }) => [
+          styles.card,
+          pressed && { opacity: 0.88, transform: [{ scale: 0.97 }] },
+        ]}>
+
+        {/* Left gradient accent strip */}
+        <LinearGradient
+          colors={meta.gradient}
+          style={styles.accentStrip}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+        />
+
+        {/* Icon with gradient circle */}
+        <LinearGradient
+          colors={meta.gradient}
+          style={styles.iconCircle}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}>
+          <Ionicons name={meta.icon} size={18} color="#fff" />
+        </LinearGradient>
+
+        {/* Text content */}
+        <View style={styles.textCol}>
+          <Text style={[styles.bannerLabel, { color: meta.color }]}>{meta.label}</Text>
+          <Text style={styles.bannerTitle} numberOfLines={1}>{banner.title}</Text>
+          <Text style={styles.bannerBody}  numberOfLines={1}>{banner.body}</Text>
+        </View>
+
+        {/* Dismiss button */}
+        <Pressable onPress={handleDismiss} hitSlop={14} style={styles.closeBtn}>
+          <Ionicons name="close" size={12} color={theme.colors.text.tertiary} />
+        </Pressable>
+
+        {/* Progress bar (drains left to right) */}
+        <View style={styles.progressTrack}>
+          <Animated.View style={[styles.progressFill, { backgroundColor: meta.color }, progressAnim]} />
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const styles = StyleSheet.create({
+  container: {
+    position: "absolute",
+    left:     12,
+    right:    12,
+    zIndex:   1000,
+  },
+  card: {
+    flexDirection:     "row",
+    alignItems:        "center",
+    gap:               10,
+    backgroundColor:   theme.colors.surface,
+    borderRadius:      20,
+    paddingVertical:   13,
+    paddingHorizontal: 14,
+    paddingEnd:        12,
+    overflow:          "hidden",
+    ...theme.shadow["2xl"],
+    borderWidth:       StyleSheet.hairlineWidth,
+    borderColor:       theme.colors.border.medium,
+  },
+  accentStrip: {
+    position:                   "absolute",
+    right:                      0,
+    top:                        0,
+    bottom:                     0,
+    width:                      4,
+    borderTopRightRadius:       20,
+    borderBottomRightRadius:    20,
+  },
+  iconCircle: {
+    width:           40,
+    height:          40,
+    borderRadius:    13,
+    alignItems:      "center",
+    justifyContent:  "center",
+    ...theme.shadow.sm,
+  },
+  textCol:     { flex: 1, gap: 1.5, marginEnd: 4 },
+  bannerLabel: { fontSize: 9, fontFamily: theme.fonts.extrabold, letterSpacing: 0.8, textAlign: "right" },
+  bannerTitle: { fontSize: theme.fontSize.md, fontFamily: theme.fonts.black, color: theme.colors.text.primary, textAlign: "right" },
+  bannerBody:  { fontSize: theme.fontSize.sm, fontFamily: theme.fonts.regular, color: theme.colors.text.secondary, textAlign: "right" },
+  closeBtn: {
+    width:           26,
+    height:          26,
+    borderRadius:    8,
+    backgroundColor: theme.colors.subtle,
+    alignItems:      "center",
+    justifyContent:  "center",
+    borderWidth:     StyleSheet.hairlineWidth,
+    borderColor:     theme.colors.border.default,
+  },
+  progressTrack: {
+    position:        "absolute",
+    bottom:          0,
+    left:            0,
+    right:           0,
+    height:          2.5,
+    backgroundColor: theme.colors.border.default,
+  },
+  progressFill: {
+    height:       2.5,
+    borderRadius: 99,
+    opacity:      0.6,
+  },
+});

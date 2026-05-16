@@ -2,40 +2,53 @@ import React from "react";
 import { Text, View } from "react-native";
 import { theme } from "@/theme";
 
-type BadgeVariant = "brand" | "success" | "warning" | "error" | "neutral";
+type Variant = "brand" | "success" | "warning" | "error" | "neutral" | "purple" | "info";
+type Size    = "sm" | "md";
 
 interface BadgeProps {
-  label:     string;
-  variant?:  BadgeVariant;
-  dot?:      boolean;
+  children: React.ReactNode;
+  variant?: Variant;
+  size?:    Size;
+  dot?:     boolean;
 }
 
-const styles: Record<BadgeVariant, { bg: string; text: string; dot: string }> = {
-  brand:   { bg: theme.colors.brand[50],   text: theme.colors.brand[700],  dot: theme.colors.brand[500]  },
-  success: { bg: "#ecfeff",                text: "#0e7490",                dot: theme.colors.success     },
-  warning: { bg: "#fffbeb",                text: "#92400e",                dot: theme.colors.warning     },
-  error:   { bg: "#fef2f2",                text: "#991b1b",                dot: theme.colors.error       },
-  neutral: { bg: theme.colors.slate[100],  text: theme.colors.slate[600],  dot: theme.colors.slate[400]  },
+const CONFIGS: Record<Variant, { bg: string; text: string; dot: string }> = {
+  brand:   { bg: theme.colors.brand[50],       text: theme.colors.brand[700],    dot: theme.colors.brand[500]   },
+  success: { bg: theme.colors.success.bg,      text: theme.colors.success.text,  dot: theme.colors.success.base },
+  warning: { bg: theme.colors.warning.bg,      text: theme.colors.warning.text,  dot: theme.colors.warning.base },
+  error:   { bg: theme.colors.error.bg,        text: theme.colors.error.text,    dot: theme.colors.error.base   },
+  neutral: { bg: theme.colors.slate[100],      text: theme.colors.slate[700],    dot: theme.colors.slate[400]   },
+  purple:  { bg: theme.colors.purple[100],     text: theme.colors.purple[800],   dot: theme.colors.purple[500]  },
+  info:    { bg: theme.colors.info.bg,         text: theme.colors.info.text,     dot: theme.colors.info.base    },
 };
 
-export function Badge({ label, variant = "neutral", dot }: BadgeProps) {
-  const s = styles[variant];
+const SIZE_MAP: Record<Size, { px: number; py: number; fontSize: number; radius: number; dotSize: number }> = {
+  sm: { px: 7,  py: 3,  fontSize: 10, radius: theme.radius.xs, dotSize: 5 },
+  md: { px: 10, py: 4,  fontSize: 11, radius: theme.radius.sm, dotSize: 6 },
+};
+
+export function Badge({ children, variant = "neutral", size = "sm", dot = false }: BadgeProps) {
+  const cfg = CONFIGS[variant];
+  const sz  = SIZE_MAP[size];
+
   return (
     <View
       style={{
-        flexDirection:    "row",
-        alignItems:       "center",
-        gap:              5,
-        backgroundColor:  s.bg,
-        borderRadius:     theme.radius.full,
-        paddingHorizontal: 8,
-        paddingVertical:  3,
-        alignSelf:        "flex-start",
+        flexDirection:     "row",
+        alignItems:        "center",
+        alignSelf:         "flex-start",
+        gap:               dot ? 5 : 0,
+        backgroundColor:   cfg.bg,
+        borderRadius:      sz.radius,
+        paddingHorizontal: sz.px,
+        paddingVertical:   sz.py,
       }}>
       {dot && (
-        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: s.dot }} />
+        <View style={{ width: sz.dotSize, height: sz.dotSize, borderRadius: sz.dotSize / 2, backgroundColor: cfg.dot }} />
       )}
-      <Text style={{ fontSize: 11, fontWeight: "700", color: s.text }}>{label}</Text>
+      <Text style={{ fontSize: sz.fontSize, fontFamily: theme.fonts.bold, color: cfg.text }}>
+        {children}
+      </Text>
     </View>
   );
 }

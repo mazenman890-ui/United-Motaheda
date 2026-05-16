@@ -1,7 +1,8 @@
-import React from "react";
-import { Pressable, Text, View } from "react-native";
+import React, { memo } from "react";
+import { Platform, Pressable, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -15,23 +16,23 @@ type IconEntry =
   | { lib: "MCI";      name: React.ComponentProps<typeof MaterialCommunityIcons>["name"] };
 
 const CAT_ICONS: Record<string, IconEntry> = {
-  default:               { lib: "MCI",      name: "pill" },
-  "أدوية":              { lib: "MCI",      name: "pill" },
-  "الأدوية":            { lib: "MCI",      name: "pill" },
-  "الصحة العامة":        { lib: "Ionicons", name: "fitness-outline" },
-  "الأجهزة الطبية":      { lib: "Ionicons", name: "pulse-outline" },
-  "الأم والطفل":          { lib: "Ionicons", name: "heart-circle-outline" },
-  "الفيتامينات":          { lib: "Ionicons", name: "leaf-outline" },
-  "العناية بالبشرة":     { lib: "Ionicons", name: "sparkles-outline" },
-  "الإسعافات":           { lib: "Ionicons", name: "medkit-outline" },
-  "العناية الشخصية":     { lib: "Ionicons", name: "body-outline" },
-  "العناية بالفم":       { lib: "Ionicons", name: "water-outline" },
-  "مستلزمات طبية":       { lib: "Ionicons", name: "thermometer-outline" },
-  "مكملات":             { lib: "Ionicons", name: "leaf-outline" },
+  default:              { lib: "MCI",      name: "pill"                  },
+  "أدوية":              { lib: "MCI",      name: "pill"                  },
+  "الأدوية":            { lib: "MCI",      name: "pill"                  },
+  "الصحة":             { lib: "Ionicons", name: "fitness-outline"        },
+  "الأجهزة":            { lib: "Ionicons", name: "pulse-outline"          },
+  "الأم":               { lib: "Ionicons", name: "heart-circle-outline"   },
+  "الفيتامينات":        { lib: "Ionicons", name: "leaf-outline"           },
+  "مكملات":             { lib: "Ionicons", name: "nutrition-outline"      },
+  "البشرة":             { lib: "Ionicons", name: "sparkles-outline"       },
+  "الإسعافات":          { lib: "Ionicons", name: "medkit-outline"         },
+  "الشخصية":            { lib: "Ionicons", name: "body-outline"           },
+  "الفم":               { lib: "Ionicons", name: "water-outline"          },
+  "مستلزمات":           { lib: "Ionicons", name: "thermometer-outline"    },
 };
 
 function getIcon(name: string): IconEntry {
-  const key = Object.keys(CAT_ICONS).find((k) => name.includes(k));
+  const key = Object.keys(CAT_ICONS).find((k) => k !== "default" && name.includes(k));
   return key ? CAT_ICONS[key] : CAT_ICONS.default;
 }
 
@@ -40,114 +41,107 @@ interface CategoryCardProps {
   gradientIdx: number;
   lang?:       "ar" | "en";
   onPress?:    () => void;
-  /** horizontal scroll pill style (default) vs grid tile */
   variant?:    "pill" | "tile";
 }
 
-export function CategoryCard({
+const AnimPressable = Animated.createAnimatedComponent(Pressable);
+
+export const CategoryCard = memo(function CategoryCard({
   category,
   gradientIdx,
-  lang = "ar",
+  lang    = "ar",
   onPress,
   variant = "pill",
 }: CategoryCardProps) {
   const [c1, c2] = theme.catGradients[gradientIdx % theme.catGradients.length];
-  const iconEntry = getIcon(category.name);
+  const icon      = getIcon(category.name);
   const label     = lang === "ar" ? category.name : category.nameEn;
 
   const scale = useSharedValue(1);
-  const cardStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const anim  = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  const onPressIn  = () => { scale.value = withSpring(0.93, theme.animation.spring.snappy); };
+  const onPressOut = () => { scale.value = withSpring(1,    theme.animation.spring.default); };
 
   const isPill = variant === "pill";
 
   return (
-    <Animated.View style={cardStyle}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={() => { scale.value = withSpring(0.95, { damping: 12, stiffness: 300 }); }}
-        onPressOut={() => { scale.value = withSpring(1,    { damping: 12, stiffness: 300 }); }}
-        style={{
-          width:        isPill ? 102 : undefined,
-          height:       isPill ? 172 : 140,
-          borderRadius: theme.radius["2xl"],
+    <AnimPressable
+      onPress={() => {
+        if (Platform.OS !== "web") Haptics.selectionAsync();
+        onPress?.();
+      }}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      style={[
+        anim,
+        {
+          width:        isPill ? 100 : undefined,
+          height:       isPill ? 168 : 130,
+          borderRadius: theme.radius['2xl'],
           overflow:     "hidden",
           ...theme.shadow.md,
+        },
+      ]}>
+      <LinearGradient
+        colors={[c1, c2]}
+        start={{ x: 0.15, y: 0 }}
+        end={{ x: 0.85, y: 1 }}
+        style={{
+          flex:           1,
+          alignItems:     "center",
+          justifyContent: isPill ? "space-between" : "center",
+          paddingTop:     isPill ? 20 : 0,
+          paddingBottom:  isPill ? 16 : 0,
+          gap:            isPill ? 0 : 8,
         }}>
-        <LinearGradient
-          colors={[c1, c2]}
-          start={{ x: 0.2, y: 0 }}
-          end={{ x: 0.8, y: 1 }}
+
+        {/* Decorative circles */}
+        <View style={{ position: "absolute", top: -18, right: -18, width: 66, height: 66, borderRadius: 33, backgroundColor: "rgba(255,255,255,0.10)" }} />
+        <View style={{ position: "absolute", bottom: -14, left: -14, width: 48, height: 48, borderRadius: 24, backgroundColor: "rgba(255,255,255,0.07)" }} />
+
+        {/* Icon bubble */}
+        <View
           style={{
-            flex:           1,
-            alignItems:     "center",
-            justifyContent: isPill ? "space-between" : "center",
-            paddingTop:     isPill ? 22 : 0,
-            paddingBottom:  isPill ? 18 : 0,
-            gap:            isPill ? 0 : 10,
+            width:           isPill ? 50 : 54,
+            height:          isPill ? 50 : 54,
+            borderRadius:    isPill ? 16 : 17,
+            backgroundColor: "rgba(255,255,255,0.20)",
+            alignItems:      "center",
+            justifyContent:  "center",
+            borderWidth:     1,
+            borderColor:     "rgba(255,255,255,0.28)",
           }}>
+          {icon.lib === "MCI" ? (
+            <MaterialCommunityIcons name={icon.name} size={24} color="#fff" />
+          ) : (
+            <Ionicons name={icon.name} size={24} color="#fff" />
+          )}
+        </View>
 
-          {/* Decorative circles */}
-          <View
+        {/* Label */}
+        <View style={{ alignItems: "center", paddingHorizontal: 6, gap: 3 }}>
+          <Text
+            numberOfLines={2}
             style={{
-              position:        "absolute",
-              top:    -20,
-              right:  -20,
-              width:  72,
-              height: 72,
-              borderRadius: 36,
-              backgroundColor: "rgba(255,255,255,0.10)",
-            }}
-          />
-          <View
-            style={{
-              position:        "absolute",
-              bottom: -16,
-              left:   -16,
-              width:  54,
-              height: 54,
-              borderRadius: 27,
-              backgroundColor: "rgba(255,255,255,0.08)",
-            }}
-          />
-
-          {/* Icon bubble */}
-          <View
-            style={{
-              width:           isPill ? 52 : 56,
-              height:          isPill ? 52 : 56,
-              borderRadius:    isPill ? 17 : 18,
-              backgroundColor: "rgba(255,255,255,0.22)",
-              alignItems:      "center",
-              justifyContent:  "center",
-              borderWidth:     1,
-              borderColor:     "rgba(255,255,255,0.30)",
+              color:            "#fff",
+              fontSize:         isPill ? 11 : 12,
+              fontFamily:       theme.fonts.bold,
+              textAlign:        "center",
+              lineHeight:       isPill ? 15 : 16,
+              textShadowColor:  "rgba(0,0,0,0.18)",
+              textShadowOffset: { width: 0, height: 1 },
+              textShadowRadius: 3,
             }}>
-            {iconEntry.lib === "MCI" ? (
-              <MaterialCommunityIcons name={iconEntry.name} size={26} color="#fff" />
-            ) : (
-              <Ionicons name={iconEntry.name} size={26} color="#fff" />
-            )}
-          </View>
-
-          {/* Label */}
-          <View style={{ alignItems: "center", paddingHorizontal: 8, gap: 2 }}>
-            <Text
-              numberOfLines={2}
-              style={{
-                color:           "#fff",
-                fontSize:        isPill ? 11 : 12,
-                fontWeight:      "800",
-                textAlign:       "center",
-                lineHeight:      isPill ? 15 : 16,
-                textShadowColor: "rgba(0,0,0,0.15)",
-                textShadowOffset: { width: 0, height: 1 },
-                textShadowRadius: 3,
-              }}>
-              {label}
+            {label}
+          </Text>
+          {category.count > 0 && (
+            <Text style={{ color: "rgba(255,255,255,0.65)", fontSize: 9, fontFamily: theme.fonts.semibold }}>
+              {category.count} منتج
             </Text>
-          </View>
-        </LinearGradient>
-      </Pressable>
-    </Animated.View>
+          )}
+        </View>
+      </LinearGradient>
+    </AnimPressable>
   );
-}
+});

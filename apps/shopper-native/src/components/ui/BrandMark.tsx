@@ -115,7 +115,7 @@ export function BrandMark({
               fontFamily:    theme.fonts.black,
               letterSpacing: 0.2,
             }}>
-            الصيدلية المتحدة
+            صيدليات المتحدة
           </Text>
           {showSlogan && (
             <Text
