@@ -225,26 +225,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return userRef.current;
         }
 
-        if (options?.blockUntilProfile) {
-          const retryRow = await Promise.race([
-            fetchProfileRow(authUser.id),
-            new Promise<null>((resolve) => setTimeout(() => resolve(null), 12_000)),
-          ]);
-          if (retryRow !== null) {
-            const profile = buildProfile(authUser, retryRow);
-            setUser(profile);
-            return profile;
-          }
-        }
-
+        // Background retry — updates user state when profile resolves.
+        // finalize() is always called by the caller (INITIAL_SESSION handler),
+        // so loading clears within 5 s even when Supabase is slow.
         fetchProfileRow(authUser.id)
           .then((retryRow) => {
             if (authUserRef.current?.id === authUser.id && retryRow !== null) {
               setUser(buildProfile(authUser, retryRow));
-              if (initialSessionPendingRef.current) {
-                initialSessionPendingRef.current = false;
-                setLoading(false);
-              }
             }
           })
           .catch(() => {
@@ -298,14 +285,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (event === "INITIAL_SESSION") {
           initialSessionPendingRef.current = false;
-          const profile = await resolveUser(currentSession?.user ?? null, currentSession ?? null, {
+          await resolveUser(currentSession?.user ?? null, currentSession ?? null, {
             blockUntilProfile: true,
           });
-          if (profile !== null || !currentSession) {
-            finalize();
-          } else {
-            initialSessionPendingRef.current = true;
-          }
+          // Always finalize — loading clears after at most 5 s (fetchProfileRowWithTimeout
+          // timeout). If profile fetch failed, the background retry in resolveUser will
+          // update user state (role) once Supabase becomes reachable.
+          finalize();
         } else if (
           event === "SIGNED_IN" ||
           event === "TOKEN_REFRESHED" ||

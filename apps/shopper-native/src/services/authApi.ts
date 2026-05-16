@@ -17,14 +17,47 @@ export async function signIn(email: string, password: string): Promise<AuthUser>
   };
 }
 
-export async function signUp(email: string, password: string, name: string): Promise<AuthUser> {
+export async function signUp(
+  email: string,
+  password: string,
+  name: string,
+  phone?: string,
+): Promise<AuthUser> {
+  const phoneClean = phone?.replace(/\D/g, "").slice(0, 11) || undefined;
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { name } },
+    options: {
+      data: {
+        name,
+        phone: phoneClean,
+      },
+    },
   });
   if (error) throw error;
   if (!data.user) throw new Error("لم يتم إنشاء الحساب، يرجى المحاولة مجدداً");
+
+  // Best-effort profile upsert. The on_auth_user_created trigger handles this
+  // normally; this is a safety net for environments where the trigger is
+  // disabled. Failures are swallowed — the auth account is already created.
+  try {
+    await supabase.from("profiles").upsert(
+      {
+        id: data.user.id,
+        email: data.user.email ?? "",
+        full_name: name,
+        phone: phoneClean,
+        phone_verified: false,
+        role: "customer",
+        status: "Active",
+      },
+      { onConflict: "id", ignoreDuplicates: false },
+    );
+  } catch (e) {
+    if (__DEV__) console.warn("[auth] profile upsert failed:", e);
+  }
+
   return {
     id:    data.user.id,
     email: data.user.email ?? "",

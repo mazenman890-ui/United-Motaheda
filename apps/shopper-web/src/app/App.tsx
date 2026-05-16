@@ -22,7 +22,8 @@ const OrdersManager        = lazy(() => import("./admin/OrdersManager"));
 const OrderTracking        = lazy(() => import("./pages/OrderTracking"));
 const ProductManager       = lazy(() => import("./admin/ProductManager"));
 const SpecialOrdersManager = lazy(() => import("./admin/SpecialOrdersManager"));
-const StaffManager         = lazy(() => import("./admin/StaffManager"));
+const StaffManager             = lazy(() => import("./admin/StaffManager"));
+const NotificationsManager     = lazy(() => import("./admin/NotificationsManager"));
 const About                = lazy(() => import("./pages/About"));
 const Cart                 = lazy(() => import("./pages/Cart"));
 const Categories           = lazy(() => import("./pages/Categories"));
@@ -52,9 +53,13 @@ function withSuspense(element: ReactNode) {
  * where CatalogProvider is mounted.
  */
 function CatalogBootstrapOverlay() {
-  const { isLoading, products, error, refreshCatalog } = useCatalog();
+  const { error, refreshCatalog } = useCatalog();
   const { loading: authLoading } = useAuth();
-  const active = authLoading || (isLoading && products.length === 0);
+  // Only block on auth loading (capped at 12 s by AuthContext's emergency timer).
+  // Catalog errors must NOT block the UI — categories always render from
+  // CATEGORY_SEEDS even when Supabase is unreachable, and each page shows its
+  // own inline error / skeleton while products are loading or unavailable.
+  const active = authLoading;
   return (
     <AppBootstrapOverlay
       active={active}
@@ -130,6 +135,7 @@ function AppShell() {
             <Route path="products"            element={withSuspense(<ProductManager />)} />
             <Route path="operations"          element={withSuspense(<ManagerAndAbove><OperationsHub /></ManagerAndAbove>)} />
             <Route path="staff"               element={withSuspense(<StaffManager />)} />
+            <Route path="notifications"       element={withSuspense(<NotificationsManager />)} />
             <Route path="*"                   element={<Navigate to="/admin" replace />} />
           </Route>
 

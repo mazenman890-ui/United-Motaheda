@@ -371,7 +371,7 @@ export default function DashboardOverview() {
       <AdminErrorBanner message={error || catalogError || ""} />
 
       {/* ── KPI Metrics ── */}
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="stagger-children grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {isInitialLoading ? (
           Array.from({ length: 4 }).map((_, i) => <MetricSkeleton key={i} />)
         ) : (

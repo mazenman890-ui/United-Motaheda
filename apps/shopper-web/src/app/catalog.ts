@@ -556,7 +556,7 @@ function normalizeForMatch(value: string) {
 }
 
 function sanitizeText(value: unknown) {
-  return normalizeWhitespace(String(value ?? "").replace(/\uFEFF/g, ""));
+  return normalizeWhitespace(String(value ?? "").replace(/[\uFEFF\uFFFD]/g, ""));
 }
 
 function sanitizeBarcode(value: string) {
@@ -1035,16 +1035,9 @@ export function getProductAvailabilityLabel(product: CatalogProduct, lang: Catal
   if (!product.inStock) {
     return lang === "ar" ? "غير متوفر حالياً" : "Currently unavailable";
   }
-
-  if (product.stock <= 3) {
-    return lang === "ar"
-      ? `كمية محدودة (${formatStockQuantity(product.stock)})`
-      : `Limited stock (${formatStockQuantity(product.stock)})`;
-  }
-
-  return lang === "ar"
-    ? `متوفر (${formatStockQuantity(product.stock)})`
-    : `In stock (${formatStockQuantity(product.stock)})`;
+  // The DB signals availability via is_active only (no real quantity column),
+  // so stock is always 0 or 1 — showing "(1)" as a count is misleading.
+  return lang === "ar" ? "متوفر" : "In stock";
 }
 
 function escapeSvgText(value: string) {

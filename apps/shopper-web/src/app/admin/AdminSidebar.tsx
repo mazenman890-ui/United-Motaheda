@@ -21,6 +21,7 @@ import {
   Squares2X2Icon,
   TruckIcon,
   UsersIcon,
+  BellIcon,
   VideoCameraIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
@@ -156,6 +157,24 @@ const ALL_SECTIONS: NavSection[] = [
         hintEn: "Team, permissions, and roles",
         icon: UsersIcon,
         allowedRoles: ["admin"],
+      },
+    ],
+  },
+  {
+    key: "notifications",
+    labelAr: "الإشعارات",
+    labelEn: "Notifications",
+    icon: BellIcon,
+    accentColor: "sky",
+    items: [
+      {
+        to: "/admin/notifications",
+        labelAr: "إرسال الإشعارات",
+        labelEn: "Send Notifications",
+        hintAr: "أرسل إشعارات فورية للمستخدمين عبر Supabase Realtime",
+        hintEn: "Push real-time notifications to users via Supabase Realtime",
+        icon: BellIcon,
+        allowedRoles: ["admin", "manager"],
       },
     ],
   },

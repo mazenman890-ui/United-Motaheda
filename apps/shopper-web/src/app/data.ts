@@ -46,7 +46,7 @@ export const siteContact = {
   whatsappDisplay: "+20 11 12343212",
   whatsappHref: "201112343212",
   email: "united.pharmacy.eg@gmail.com",
-  whatsappUrl: "https://wa.me/201112343212?text=Hello,%20I%20need%20help%20with%20my%20order",
+  whatsappUrl: "https://wa.me/201112343212?text=مرحباً،%20أود%20الاستفسار%20عن%20منتج",
 } as const;
 
 export const siteSocials = [

@@ -4,6 +4,7 @@ import {
   FlatList,
   Platform,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   View,
@@ -15,8 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn, FadeInDown, FadeInRight } from "react-native-reanimated";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNotificationStore, selectUnreadCount } from "@/stores/notifications";
-import type { AppNotification, NotifType } from "@/services/notificationsApi";
+import { useNotifications, type AppNotification, type NotifType } from "@/features/notifications";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { theme } from "@/theme";
 
@@ -73,11 +73,11 @@ const NotificationRow = React.memo(function NotificationRow({
       onPress={onPress}
       style={({ pressed }) => [
         styles.notifRow,
-        !item.read && styles.notifRowUnread,
+        !item.isRead && styles.notifRowUnread,
         pressed && { backgroundColor: theme.colors.slate[50] },
       ]}>
       {/* Unread dot */}
-      {!item.read && <View style={styles.unreadDot} />}
+      {!item.isRead && <View style={styles.unreadDot} />}
 
       {/* Type icon */}
       <View style={[styles.notifIcon, { backgroundColor: cfg.bg }]}>
@@ -88,11 +88,11 @@ const NotificationRow = React.memo(function NotificationRow({
       <View style={styles.notifContent}>
         <View style={styles.notifTitleRow}>
           <Text
-            style={[styles.notifTitle, !item.read && styles.notifTitleUnread]}
+            style={[styles.notifTitle, !item.isRead && styles.notifTitleUnread]}
             numberOfLines={1}>
             {item.title}
           </Text>
-          <Text style={styles.notifTime}>{timeAgo(item.created_at)}</Text>
+          <Text style={styles.notifTime}>{timeAgo(item.createdAt)}</Text>
         </View>
         <Text style={styles.notifBody} numberOfLines={2}>
           {item.body}
@@ -112,18 +112,19 @@ export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
 
-  const notifications = useNotificationStore((s) => s.notifications);
-  const loading = useNotificationStore((s) => s.loading);
-  const fetchNotifs = useNotificationStore((s) => s.fetch);
-  const markRead = useNotificationStore((s) => s.markRead);
-  const markAllRead = useNotificationStore((s) => s.markAllRead);
-  const unreadCount = useNotificationStore(selectUnreadCount);
+  const {
+    items: notifications,
+    unreadCount,
+    isLoading: loading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+    markRead,
+    markAllRead,
+  } = useNotifications(user?.id);
 
   const [filter, setFilter] = useState<Filter>("all");
-
-  useEffect(() => {
-    if (user?.id) fetchNotifs(user.id);
-  }, [user?.id, fetchNotifs]);
 
   const filtered = useMemo(() => {
     if (filter === "all") return notifications;
@@ -133,19 +134,23 @@ export default function NotificationsScreen() {
   const handleMarkAllRead = useCallback(() => {
     if (!user?.id) return;
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    markAllRead(user.id);
+    markAllRead();
   }, [user?.id, markAllRead]);
 
   const handleNotifPress = useCallback((item: AppNotification) => {
-    if (!item.read) markRead(item.id);
+    if (!item.isRead) markRead(item.id);
     if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
-    if (item.action_url) {
-      router.push(item.action_url as any);
+    if (item.actionUrl) {
+      router.push(item.actionUrl as any);
     }
   }, [markRead, router]);
 
+  const handleEndReached = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
   const renderItem = useCallback(({ item, index }: { item: AppNotification; index: number }) => (
-    <Animated.View entering={FadeInDown.delay(index * 30).duration(200)}>
+    <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 30).duration(200)}>
       <NotificationRow item={item} onPress={() => handleNotifPress(item)} />
     </Animated.View>
   ), [handleNotifPress]);
@@ -173,6 +178,12 @@ export default function NotificationsScreen() {
               <Text style={styles.headerBadgeText}>{unreadCount} جديد</Text>
             </Animated.View>
           )}
+          <Pressable
+            onPress={() => router.push("/notification-preferences")}
+            style={styles.backBtn}
+            hitSlop={6}>
+            <Ionicons name="settings-outline" size={17} color="rgba(255,255,255,0.85)" />
+          </Pressable>
         </View>
 
         {/* Filter chips + mark all */}
@@ -214,6 +225,22 @@ export default function NotificationsScreen() {
           contentContainerStyle={{ paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={styles.sep} />}
+          onEndReached={handleEndReached}
+          onEndReachedThreshold={0.5}
+          refreshControl={
+            <RefreshControl
+              refreshing={loading}
+              onRefresh={() => refetch()}
+              tintColor={theme.colors.brand[500]}
+            />
+          }
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <View style={{ paddingVertical: 16 }}>
+                <ActivityIndicator color={theme.colors.brand[500]} />
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             <View style={{ paddingTop: 60 }}>
               <EmptyState

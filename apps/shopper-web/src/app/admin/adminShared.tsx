@@ -202,7 +202,7 @@ export function AdminMetricCard({
   return (
     <div
       className={cn(
-        "group rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md",
+        "admin-card shine-host group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm",
         className,
       )}
     >
@@ -214,7 +214,7 @@ export function AdminMetricCard({
         {Icon && (
           <span
             className={cn(
-              "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-105",
+              "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110",
               t.iconBg,
             )}
           >
@@ -222,7 +222,7 @@ export function AdminMetricCard({
           </span>
         )}
       </div>
-      <p className="mt-3 text-2xl font-bold tracking-tight text-slate-800">
+      <p className="animate-number-pop mt-3 text-2xl font-bold tracking-tight text-slate-800">
         {value}
       </p>
       {note && (

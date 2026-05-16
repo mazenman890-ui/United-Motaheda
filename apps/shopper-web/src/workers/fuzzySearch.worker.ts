@@ -141,6 +141,7 @@ interface SearchableEntry {
 }
 
 let storedEntries: SearchableEntry[] = [];
+let storedEntriesById: Map<string, SearchableEntry> = new Map();
 let searchIndex:   SearchIndex | null = null;
 let isIndexReady   = false;
 
@@ -310,7 +311,7 @@ function executeSearch(msg: SearchMessage): string[] {
   if (candidateIds !== null) {
     // Index hit: scan only the candidate products (typically 50–500 items)
     for (const candidateId of candidateIds) {
-      const entry = storedEntries.find(e => e.id === candidateId);
+      const entry = storedEntriesById.get(candidateId);
       if (!entry) continue;
 
       // Apply hard filters BEFORE fuzzy scoring (saves expensive computation)
@@ -397,6 +398,9 @@ function handleInit(data: InitMessage): void {
       barcode:  product.barcode,
     },
   }));
+
+  // Build O(1) lookup map — used by the index-hit path to avoid O(N) .find()
+  storedEntriesById = new Map(storedEntries.map((e) => [e.id, e]));
 
   // Build the inverted index + trie from the indexable subset of each product
   const indexableItems: FuzzyIndexable[] = storedEntries.map((e) => ({

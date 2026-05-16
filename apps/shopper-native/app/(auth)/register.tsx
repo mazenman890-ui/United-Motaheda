@@ -25,6 +25,8 @@ export default function RegisterScreen() {
   const [name,     setName]     = useState("");
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
+  const [phone,    setPhone]    = useState("");
+  const [skipPhone, setSkipPhone] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState<string | null>(null);
@@ -34,9 +36,20 @@ export default function RegisterScreen() {
     if (!name.trim()) { setError("يرجى إدخال اسمك الكامل"); return; }
     if (!email.trim()) { setError("يرجى إدخال البريد الإلكتروني"); return; }
     if (password.length < 6) { setError("كلمة المرور يجب أن تكون 6 أحرف على الأقل"); return; }
+    // Phone is optional. If provided, validate EG format.
+    const phoneClean = phone.replace(/\D/g, "");
+    if (!skipPhone && phoneClean && !/^01[0125]\d{8}$/.test(phoneClean)) {
+      setError("رقم الهاتف غير صحيح. يجب أن يبدأ بـ 01");
+      return;
+    }
     setLoading(true);
     try {
-      await signUp(email.trim().toLowerCase(), password, name.trim());
+      await signUp(
+        email.trim().toLowerCase(),
+        password,
+        name.trim(),
+        skipPhone ? undefined : phoneClean || undefined,
+      );
       router.replace("/(tabs)");
     } catch (e) {
       setError("حدث خطأ أثناء إنشاء الحساب. حاول مرة أخرى");
@@ -109,6 +122,29 @@ export default function RegisterScreen() {
             leftIcon={<Ionicons name="mail-outline" size={18} color={theme.colors.text.tertiary} />}
           />
 
+          <View>
+            <Input
+              label="رقم الهاتف"
+              placeholder="01xxxxxxxxx"
+              value={phone}
+              onChangeText={(v) => { setPhone(v); if (v) setSkipPhone(false); }}
+              keyboardType="phone-pad"
+              optional
+              editable={!skipPhone}
+              leftIcon={<Ionicons name="call-outline" size={18} color={theme.colors.text.tertiary} />}
+              hint="اختياري — يمكنك إضافته لاحقاً للتأكيدات وتنبيهات الطلبات"
+            />
+            <Pressable
+              onPress={() => { setSkipPhone((v) => !v); if (!skipPhone) setPhone(""); }}
+              hitSlop={6}
+              style={styles.skipRow}>
+              <View style={[styles.skipCheck, skipPhone && styles.skipCheckActive]}>
+                {skipPhone && <Ionicons name="checkmark" size={11} color="#fff" />}
+              </View>
+              <Text style={styles.skipText}>تخطي الآن — سأضيف رقمي لاحقاً</Text>
+            </Pressable>
+          </View>
+
           <Input
             label="كلمة المرور"
             placeholder="••••••••  (6 أحرف على الأقل)"
@@ -166,4 +202,8 @@ const styles = StyleSheet.create({
   divider:     { flex: 1, height: 1, backgroundColor: theme.colors.border.default },
   dividerText: { fontSize: 12, color: theme.colors.text.tertiary, fontFamily: theme.fonts.semibold },
   terms:       { fontSize: 11, color: theme.colors.text.disabled, textAlign: "center", lineHeight: 16, paddingTop: 4 },
+  skipRow:     { flexDirection: "row-reverse", alignItems: "center", gap: 8, marginTop: 6, paddingHorizontal: 2 },
+  skipCheck:   { width: 16, height: 16, borderRadius: 5, borderWidth: 1.5, borderColor: theme.colors.border.medium, alignItems: "center", justifyContent: "center" },
+  skipCheckActive: { backgroundColor: theme.colors.brand[600], borderColor: theme.colors.brand[600] },
+  skipText:    { fontSize: 11, fontFamily: theme.fonts.semibold, color: theme.colors.text.secondary },
 });

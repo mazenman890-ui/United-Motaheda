@@ -191,15 +191,34 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     }
 
     // Cold start — fetch page 1 immediately for first paint.
+    // Emergency timer: if Supabase hangs (free-tier cold start, network issue),
+    // force isLoading = false after 12 s so the UI is never blocked indefinitely.
+    let settled = false;
+    const emergencyTimer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        setIsLoading(false);
+      }
+    }, 12_000);
+
     void (async () => {
       try {
         const result = await fetchProductsPage(1, {});
+        settled = true;
+        clearTimeout(emergencyTimer);
         applyPageResult(result, 1, false);
       } catch (err) {
+        settled = true;
+        clearTimeout(emergencyTimer);
         setError(err instanceof Error ? err.message : "Failed to load catalog");
         setIsLoading(false);
       }
     })();
+
+    return () => {
+      settled = true;
+      clearTimeout(emergencyTimer);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Categories: load if missing ───────────────────────────────────────────

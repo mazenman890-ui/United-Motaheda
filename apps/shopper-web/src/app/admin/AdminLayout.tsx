@@ -66,6 +66,14 @@ function getAdminRouteMeta(pathname: string, lang: "ar" | "en") {
         : "Organize the team, permissions, and operating status from a cleaner panel.",
     };
 
+  if (pathname.startsWith("/admin/notifications"))
+    return {
+      title: lang === "ar" ? "الإشعارات" : "Notifications",
+      subtitle: lang === "ar"
+        ? "أرسل إشعارات فورية لجميع المستخدمين أو مستخدم محدد عبر Supabase Realtime."
+        : "Push real-time notifications to all users or a specific user via Supabase Realtime.",
+    };
+
   return {
     title: lang === "ar" ? "لوحة التحكم" : "Overview",
     subtitle: lang === "ar"

@@ -23,7 +23,8 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.unitedpharmacy.app",
-      "versionCode": 1
+      "versionCode": 1,
+      "kotlinVersion": "2.0.21" 
     },
     "web": {
       "bundler": "metro",

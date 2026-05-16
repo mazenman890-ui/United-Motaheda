@@ -14,12 +14,14 @@ import {
   Cairo_800ExtraBold,
   Cairo_900Black,
 } from "@expo-google-fonts/cairo";
+import { useRouter } from "expo-router";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useCartStore } from "@/stores/cart";
 import { useOrderStore } from "@/stores/orders";
 import { useWishlistStore } from "@/stores/wishlist";
 import { useNotificationStore } from "@/stores/notifications";
 import { NotificationBanner } from "@/components/NotificationBanner";
+import { usePushNotificationRegistration } from "@/features/notifications";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -55,6 +57,23 @@ function NotificationSync() {
   return null;
 }
 
+// ─── Push notification registration + deep-link routing ──────────────────────
+
+function PushBootstrap() {
+  const { user } = useAuth();
+  const router   = useRouter();
+
+  usePushNotificationRegistration({
+    userId: user?.id,
+    enabled: !!user?.id,
+    onNotificationTap: (actionUrl) => {
+      if (actionUrl) router.push(actionUrl as any);
+    },
+  });
+
+  return null;
+}
+
 // ─── Root layout ──────────────────────────────────────────────────────────────
 
 export default function RootLayout() {
@@ -85,6 +104,7 @@ export default function RootLayout() {
           <AuthProvider>
             <StatusBar style="light" />
             <NotificationSync />
+            <PushBootstrap />
             <Stack screenOptions={{ headerShown: false, animation: "fade" }}>
               <Stack.Screen name="index"                  options={{ headerShown: false }} />
               <Stack.Screen name="onboarding"             options={{ headerShown: false, animation: "fade" }} />
@@ -97,6 +117,7 @@ export default function RootLayout() {
               <Stack.Screen name="favorites"              options={{ headerShown: false, animation: "slide_from_right" }} />
               <Stack.Screen name="addresses"              options={{ headerShown: false, animation: "slide_from_right" }} />
               <Stack.Screen name="notifications"          options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="notification-preferences" options={{ headerShown: false, animation: "slide_from_right" }} />
               <Stack.Screen name="payment"                options={{ headerShown: false, animation: "slide_from_right" }} />
               <Stack.Screen name="faq"                    options={{ headerShown: false, animation: "slide_from_right" }} />
               <Stack.Screen name="loyalty"                 options={{ headerShown: false, animation: "slide_from_right" }} />
