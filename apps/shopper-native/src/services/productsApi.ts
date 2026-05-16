@@ -261,19 +261,19 @@ export interface CatalogStats {
 }
 
 export async function fetchCatalogStats(): Promise<CatalogStats> {
-  const safe = <T>(p: Promise<T>, fallback: T): Promise<T> =>
-    p.catch(() => fallback);
+  const safe = <T>(p: PromiseLike<T>, fallback: T): Promise<T> =>
+    Promise.resolve(p).then((x) => x, () => fallback);
 
   const [totalRes, stockRes, catRes] = await Promise.all([
-    safe(
+    safe<{ count: number | null; data: unknown; error: unknown }>(
       supabase.from("products").select("*", { count: "exact", head: true }).eq("is_active", true),
       { count: 0, data: null, error: null },
     ),
-    safe(
+    safe<{ count: number | null; data: unknown; error: unknown }>(
       supabase.from("products").select("*", { count: "exact", head: true }).eq("is_active", true).gt("Stock", 0),
       { count: 0, data: null, error: null },
     ),
-    safe(
+    safe<{ count: number | null; data: Array<{ Category_Name: string }> | null; error: unknown }>(
       supabase.from("products").select("Category_Name").eq("is_active", true).limit(2000),
       { count: null, data: [], error: null },
     ),

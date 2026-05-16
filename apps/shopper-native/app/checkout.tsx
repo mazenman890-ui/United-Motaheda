@@ -1,12 +1,30 @@
-import React, { useCallback, useRef, useState } from "react";
+/**
+ * Checkout screen — built on the canonical checkout architecture.
+ *
+ * Source of truth:
+ *   - Pricing:    createCheckoutPricing (@/features/checkout)
+ *   - Validation: Zod schema (@/features/checkout/schema)
+ *   - Payload:    buildCheckoutSubmitCommand (@/features/checkout)
+ *   - Submit:     createCheckoutOrder (@/features/checkout/api) — real Edge
+ *                 Function call; falls back to local orders store on network
+ *                 failure so the user always gets a confirmation.
+ *   - Delivery:   useDeliveryQuote (@/features/delivery) — Cairo-only v1;
+ *                 Phase 4 will swap the hook implementation without touching
+ *                 this screen.
+ *
+ * Flow:
+ *   details → review → success
+ *   (with empty-cart guard as a pre-render branch)
+ */
+
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -14,1171 +32,1391 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, {
-  FadeIn,
-  FadeInDown,
-  FadeInUp,
-} from "react-native-reanimated";
-import { useCartStore } from "@/stores/cart";
+import Animated, { FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import { useCartStore, selectItemCount } from "@/stores/cart";
 import { useOrderStore } from "@/stores/orders";
 import { useAuth } from "@/contexts/AuthContext";
+
+import {
+  checkoutFormSchema,
+  type CheckoutFormSchema,
+  createCheckoutPricing,
+  buildCheckoutSubmitCommand,
+  buildCheckoutNote,
+  createIdempotencyKey,
+  createCheckoutOrder,
+  CheckoutRequestError,
+  formatCheckoutError,
+  type CheckoutFormInput,
+  type CheckoutPaymentMethod,
+  type CheckoutPricing,
+} from "@/features/checkout";
+import {
+  useDeliveryQuote,
+  SUPPORTED_GOVERNORATE,
+  FREE_DELIVERY_THRESHOLD,
+} from "@/features/delivery";
+
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { theme } from "@/theme";
 import { formatPrice } from "@/utils/format";
 
+type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 type Step = "details" | "review" | "success";
-type PaymentMethod = "cod" | "instapay" | "vodafone";
 
-const PAYMENT_METHODS: {
-  id: PaymentMethod;
-  label: string;
-  desc: string;
-  icon: React.ComponentProps<typeof Ionicons>["name"];
+// ─── Payment method catalogue ─────────────────────────────────────────────────
+
+const PAYMENT_METHODS: ReadonlyArray<{
+  id: CheckoutPaymentMethod;
+  title: string;
+  description: string;
+  icon: IoniconsName;
   color: string;
-}[] = [
+  bg: string;
+}> = [
   {
     id: "cod",
-    label: "الدفع عند الاستلام",
-    desc: "ادفع للمندوب عند التوصيل",
+    title: "الدفع عند الاستلام",
+    description: "ادفع نقداً للمندوب",
     icon: "cash-outline",
     color: theme.colors.green[600],
+    bg: theme.colors.green[50],
   },
   {
     id: "instapay",
-    label: "إنستاباي",
-    desc: "تحويل فوري عبر إنستاباي",
-    icon: "phone-portrait-outline",
-    color: theme.colors.brand[600],
+    title: "إنستاباي",
+    description: "تحويل فوري من حسابك البنكي",
+    icon: "flash-outline",
+    color: theme.colors.purple[600],
+    bg: theme.colors.purple[50],
   },
   {
     id: "vodafone",
-    label: "فودافون كاش",
-    desc: "تحويل عبر فودافون كاش",
+    title: "فودافون كاش",
+    description: "ادفع من محفظتك الإلكترونية",
     icon: "wallet-outline",
-    color: "#E60000",
+    color: theme.colors.red[500],
+    bg: theme.colors.red[50],
   },
 ];
 
-const FREE_DELIVERY_THRESHOLD = 200;
-const DELIVERY_FEE = 25;
-const PROMO_DISCOUNT = 0.1;
-const VALID_PROMOS = ["UNITED10"];
+function paymentLabel(id: CheckoutPaymentMethod): string {
+  return PAYMENT_METHODS.find((m) => m.id === id)?.title ?? "الدفع عند الاستلام";
+}
+
+function buildDefaults(name?: string): CheckoutFormSchema {
+  return {
+    fullName: name ?? "",
+    phone: "",
+    city: SUPPORTED_GOVERNORATE.ar,
+    streetName: "",
+    buildingNumber: "",
+    floor: "",
+    apartmentNumber: "",
+    note: "",
+    promoCode: "",
+  };
+}
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function CheckoutScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const scrollRef = useRef<ScrollView>(null);
   const { user } = useAuth();
+
   const items = useCartStore((s) => s.items);
-  const subtotal = useCartStore((s) => s.subtotal());
+  const itemCount = useCartStore(selectItemCount);
+  const promoCodeFromStore = useCartStore((s) => s.promoCode);
+  const setPromoCodeStore = useCartStore((s) => s.setPromoCode);
   const clearCart = useCartStore((s) => s.clearCart);
   const addOrder = useOrderStore((s) => s.addOrder);
-  const scrollRef = useRef<ScrollView>(null);
 
-  const [step, setStep] = useState<Step>("details");
-  const [loading, setLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
-  const [promoCode, setPromoCode] = useState("");
-  const [promoApplied, setPromoApplied] = useState(false);
-  const [promoError, setPromoError] = useState("");
-  const [requestPos, setRequestPos] = useState(false);
-
-  const [form, setForm] = useState({
-    name: user?.name ?? "",
-    phone: "",
-    city: "القاهرة",
-    street: "",
-    building: "",
-    floor: "",
-    apartment: "",
-    notes: "",
-  });
-
-  const delivery = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
-  const discount = promoApplied ? Math.round(subtotal * PROMO_DISCOUNT * 100) / 100 : 0;
-  const total = subtotal - discount + delivery;
-  const totalItems = items.reduce((s, i) => s + i.quantity, 0);
-
-  const update = (k: keyof typeof form) => (v: string) =>
-    setForm((f) => ({ ...f, [k]: v }));
-
-  const isValidPhone = /^(010|011|012|015)\d{8}$/.test(
-    form.phone.trim().replace(/\s/g, ""),
+  const cartLines = useMemo(
+    () =>
+      items
+        .filter((i) => i.product && i.product.inStock && i.product.stock > 0)
+        .map((i) => ({
+          productId: i.productId,
+          quantity: i.quantity,
+          unitPrice: i.product.price ?? 0,
+          name: i.product.name,
+          code: i.product.code,
+        })),
+    [items],
   );
 
-  const canProceed =
-    form.name.trim().length >= 2 &&
-    isValidPhone &&
-    form.city.trim() &&
-    form.street.trim();
+  const cartSubtotal = useMemo(
+    () => cartLines.reduce((acc, l) => acc + l.unitPrice * l.quantity, 0),
+    [cartLines],
+  );
 
-  const handleApplyPromo = useCallback(() => {
-    const code = promoCode.trim().toUpperCase();
-    if (VALID_PROMOS.includes(code)) {
-      setPromoApplied(true);
-      setPromoError("");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    } else {
-      setPromoApplied(false);
-      setPromoError("كود الخصم غير صالح");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
-    }
-  }, [promoCode]);
+  const [step, setStep] = useState<Step>("details");
+  const [paymentMethod, setPaymentMethod] = useState<CheckoutPaymentMethod>("cod");
+  const [requestPos, setRequestPos] = useState(false);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [placedOrderId, setPlacedOrderId] = useState<string | null>(null);
+  const idempotencyKeyRef = useRef(createIdempotencyKey());
 
-  const goToReview = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    setStep("review");
+  const {
+    control,
+    handleSubmit,
+    getValues,
+    setValue,
+    formState: { errors },
+    trigger,
+  } = useForm<CheckoutFormSchema>({
+    resolver: zodResolver(checkoutFormSchema("ar")),
+    defaultValues: buildDefaults(user?.name),
+    mode: "onChange",
+  });
+
+  const deliveryQuote = useDeliveryQuote({ subtotal: cartSubtotal });
+
+  const pricing: CheckoutPricing = useMemo(
+    () =>
+      createCheckoutPricing(cartLines, {
+        promoCode: promoCodeFromStore,
+        shippingFee: deliveryQuote.cost,
+      }),
+    [cartLines, promoCodeFromStore, deliveryQuote.cost],
+  );
+
+  const promoApplied = pricing.discount > 0;
+
+  const scrollToTop = useCallback(() => {
     scrollRef.current?.scrollTo({ y: 0, animated: true });
   }, []);
 
-  const handleConfirm = async () => {
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 1400));
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    addOrder({
-      items: items.map((i) => ({
-        productId: i.productId,
-        name: i.product.nameAr ?? i.product.name,
-        price: i.product.price,
-        quantity: i.quantity,
-        imageUrl: i.product.imageUrl,
-      })),
-      subtotal,
-      delivery,
-      total,
-      address: {
-        name: form.name,
-        phone: form.phone,
-        city: form.city,
-        street: form.street,
-        building: form.building || undefined,
-        floor: form.floor || undefined,
-        notes: form.notes || undefined,
-      },
-    });
-    clearCart();
-    setStep("success");
-    setLoading(false);
-  };
+  const goToReview = useCallback(async () => {
+    const valid = await trigger();
+    if (!valid) {
+      if (Platform.OS !== "web")
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      return;
+    }
+    if (Platform.OS !== "web")
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    setStep("review");
+    scrollToTop();
+  }, [trigger, scrollToTop]);
 
-  // ─── Success screen ──────────────────────────────────────────────────────
+  const backToDetails = useCallback(() => {
+    setStep("details");
+    scrollToTop();
+  }, [scrollToTop]);
+
+  const handleApplyPromo = useCallback(() => {
+    const code = (getValues("promoCode") ?? "").trim().toUpperCase();
+    if (!code) return;
+    setPromoCodeStore(code);
+    setValue("promoCode", code);
+    const willDiscount = createCheckoutPricing(cartLines, { promoCode: code }).discount > 0;
+    if (willDiscount) {
+      setPromoError(null);
+      if (Platform.OS !== "web")
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    } else {
+      setPromoError("كود الخصم غير صالح");
+      if (Platform.OS !== "web")
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+    }
+  }, [cartLines, getValues, setPromoCodeStore, setValue]);
+
+  const onSubmit = useCallback(
+    async (form: CheckoutFormSchema) => {
+      if (cartLines.length === 0) return;
+      setSubmitting(true);
+      setSubmitError(null);
+
+      const checkoutNote = buildCheckoutNote({
+        note: form.note ?? "",
+        paymentLabel: paymentLabel(paymentMethod),
+        paymentMethod,
+        requestPosMachine: requestPos,
+        lang: "ar",
+      });
+
+      const command = buildCheckoutSubmitCommand({
+        idempotencyKey: idempotencyKeyRef.current,
+        user,
+        form: form as unknown as CheckoutFormInput,
+        pricing,
+        paymentMethod,
+        paymentLabel: paymentLabel(paymentMethod),
+        requestPosMachine: requestPos,
+        note: checkoutNote,
+      });
+
+      let orderId: string | null = null;
+
+      try {
+        const result = await createCheckoutOrder(command);
+        orderId = result.orderId;
+      } catch (err) {
+        if (err instanceof CheckoutRequestError && err.code === "AUTH") {
+          setSubmitError(formatCheckoutError(err, "ar"));
+          if (Platform.OS !== "web")
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+          setSubmitting(false);
+          return;
+        }
+        if (__DEV__) console.warn("[checkout] Edge Function failed, falling back to local:", err);
+      }
+
+      const localOrder = addOrder({
+        items: pricing.lines.map((l) => ({
+          productId: l.productId,
+          name: l.name,
+          price: l.unitPrice,
+          quantity: l.quantity,
+          imageUrl: items.find((i) => i.productId === l.productId)?.product.imageUrl,
+        })),
+        subtotal: pricing.subtotal,
+        delivery: pricing.shipping,
+        total: pricing.total,
+        address: {
+          name: form.fullName,
+          phone: form.phone,
+          city: form.city,
+          street: form.streetName,
+          building: form.buildingNumber || undefined,
+          floor: form.floor || undefined,
+          notes:
+            [form.apartmentNumber ? `شقة ${form.apartmentNumber}` : "", form.note]
+              .filter(Boolean)
+              .join("\n") || undefined,
+        },
+      });
+
+      setPlacedOrderId(orderId ?? localOrder.id);
+      clearCart();
+      idempotencyKeyRef.current = createIdempotencyKey();
+
+      if (Platform.OS !== "web")
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      setStep("success");
+      scrollToTop();
+      setSubmitting(false);
+    },
+    [cartLines, paymentMethod, requestPos, pricing, user, addOrder, items, clearCart, scrollToTop],
+  );
+
+  // ──── Empty cart guard ─────────────────────────────────────────────────────
+
+  if (items.length === 0 && step !== "success") {
+    return <EmptyCartScreen onBrowse={() => router.replace("/(tabs)/products")} insets={insets} />;
+  }
+
+  // ──── Success screen ───────────────────────────────────────────────────────
 
   if (step === "success") {
     return (
-      <View style={{ flex: 1, backgroundColor: "#F5FDFC" }}>
-        <ScrollView
-          contentContainerStyle={{
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 28,
-            paddingTop: insets.top + 60,
-            paddingBottom: insets.bottom + 40,
-          }}>
-          {/* Animated check */}
-          <Animated.View entering={FadeIn.duration(500)} style={{ alignItems: "center", marginBottom: 8 }}>
-            <View
-              style={{
-                width: 120,
-                height: 120,
-                borderRadius: 40,
-                backgroundColor: theme.colors.slate[900],
-                alignItems: "center",
-                justifyContent: "center",
-                ...theme.shadow.xl,
-              }}>
-              <Ionicons name="checkmark-circle" size={60} color="#fff" />
-            </View>
-          </Animated.View>
-
-          <Animated.View entering={FadeInDown.delay(200).duration(400)} style={{ alignItems: "center" }}>
-            <Text
-              style={{
-                fontSize: 9,
-                fontFamily: theme.fonts.black,
-                color: theme.colors.slate[400],
-                letterSpacing: 3,
-                textTransform: "uppercase",
-                marginTop: 20,
-                marginBottom: 8,
-              }}>
-              تم الاستلام
-            </Text>
-            <Text
-              style={{
-                fontSize: 26,
-                fontFamily: theme.fonts.black,
-                color: theme.colors.slate[900],
-                textAlign: "center",
-                marginBottom: 10,
-              }}>
-              تم تأكيد طلبك بنجاح!
-            </Text>
-            <Text
-              style={{
-                fontSize: 13,
-                fontFamily: theme.fonts.semibold,
-                color: theme.colors.slate[500],
-                textAlign: "center",
-                lineHeight: 22,
-                paddingHorizontal: 10,
-              }}>
-              تم استلام طلبك بنجاح، وسيتواصل فريقنا معك قريباً لتأكيد التوصيل.
-            </Text>
-          </Animated.View>
-
-          {/* Order ID badge */}
-          <Animated.View
-            entering={FadeInDown.delay(350).duration(400)}
-            style={{
-              marginTop: 18,
-              flexDirection: "row-reverse",
-              alignItems: "center",
-              gap: 6,
-              backgroundColor: "#fff",
-              borderRadius: 999,
-              paddingHorizontal: 16,
-              paddingVertical: 10,
-              borderWidth: 1,
-              borderColor: theme.colors.slate[200],
-            }}>
-            <Ionicons name="checkmark-circle" size={15} color={theme.colors.slate[600]} />
-            <Text style={{ fontSize: 12, fontFamily: theme.fonts.black, color: theme.colors.slate[700] }}>
-              رقم الطلب: #{Date.now().toString(36).toUpperCase().slice(-6)}
-            </Text>
-          </Animated.View>
-
-          {/* Delivery card */}
-          <Animated.View
-            entering={FadeInDown.delay(450).duration(400)}
-            style={{
-              marginTop: 20,
-              width: "100%",
-              backgroundColor: "#fff",
-              borderRadius: theme.radius["2xl"],
-              padding: 16,
-              borderWidth: 1,
-              borderColor: theme.colors.slate[100],
-              ...theme.shadow.sm,
-            }}>
-            <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 12 }}>
-              <View
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 14,
-                  backgroundColor: theme.colors.slate[50],
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}>
-                <Ionicons name="bicycle-outline" size={22} color={theme.colors.slate[700]} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, fontFamily: theme.fonts.black, color: theme.colors.slate[900], textAlign: "right" }}>
-                  التوصيل المتوقع
-                </Text>
-                <Text style={{ fontSize: 12, fontFamily: theme.fonts.semibold, color: theme.colors.slate[500], textAlign: "right" }}>
-                  خلال 15-30 دقيقة من تأكيد الطلب
-                </Text>
-              </View>
-            </View>
-          </Animated.View>
-
-          {/* Summary card */}
-          <Animated.View
-            entering={FadeInDown.delay(550).duration(400)}
-            style={{
-              marginTop: 12,
-              width: "100%",
-              backgroundColor: "#fff",
-              borderRadius: theme.radius["2xl"],
-              padding: 16,
-              gap: 10,
-              borderWidth: 1,
-              borderColor: theme.colors.slate[100],
-              ...theme.shadow.sm,
-            }}>
-            <SummaryRow label="الإجمالي" value={formatPrice(total)} bold />
-            <SummaryRow
-              label="التوصيل"
-              value={delivery === 0 ? "مجاني" : formatPrice(delivery)}
-              valueGreen={delivery === 0}
-            />
-            {discount > 0 && (
-              <SummaryRow label="الخصم" value={`- ${formatPrice(discount)}`} valueGreen />
-            )}
-            <SummaryRow label="عدد المنتجات" value={`${totalItems} منتج`} />
-            <SummaryRow
-              label="طريقة الدفع"
-              value={PAYMENT_METHODS.find((m) => m.id === paymentMethod)?.label ?? ""}
-            />
-          </Animated.View>
-
-          {/* CTA */}
-          <Animated.View entering={FadeInUp.delay(650).duration(400)} style={{ width: "100%", marginTop: 24, gap: 6 }}>
-            <Button variant="primary" size="lg" fullWidth gradient onPress={() => router.replace("/(tabs)/")}>
-              مواصلة التسوق
-            </Button>
-            <Button variant="ghost" size="sm" fullWidth onPress={() => router.push("/orders")}>
-              عرض طلباتي
-            </Button>
-          </Animated.View>
-        </ScrollView>
-      </View>
+      <SuccessScreen
+        orderId={placedOrderId ?? ""}
+        total={pricing.total}
+        insets={insets}
+        onContinue={() => router.replace("/(tabs)")}
+        onViewOrders={() => router.push("/orders")}
+      />
     );
   }
 
-  // ─── Empty cart ──────────────────────────────────────────────────────────
-
-  if (items.length === 0) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: theme.colors.bg,
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 32,
-        }}>
-        <View
-          style={{
-            width: 80,
-            height: 80,
-            borderRadius: 26,
-            backgroundColor: theme.colors.slate[100],
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: 18,
-          }}>
-          <Ionicons name="cart-outline" size={36} color={theme.colors.slate[400]} />
-        </View>
-        <Text style={{ fontSize: 18, fontFamily: theme.fonts.black, color: theme.colors.slate[800], marginBottom: 8 }}>
-          السلة فارغة
-        </Text>
-        <Text style={{ fontSize: 13, fontFamily: theme.fonts.semibold, color: theme.colors.slate[500], textAlign: "center", lineHeight: 21, marginBottom: 24 }}>
-          لا يمكنك إكمال الطلب بدون منتجات.{"\n"}ابدأ بإضافة ما تحتاجه.
-        </Text>
-        <Button variant="primary" size="lg" gradient onPress={() => router.replace("/(tabs)/products")}>
-          تصفح المنتجات
-        </Button>
-      </View>
-    );
-  }
-
-  // ─── Main checkout ───────────────────────────────────────────────────────
+  // ──── Main screen ──────────────────────────────────────────────────────────
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: theme.colors.bg }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <View style={{ flex: 1, backgroundColor: "#F5FDFC" }}>
-
-        {/* ── Header ─────────────────────────────────────────────── */}
-        <View
-          style={{
-            paddingTop: insets.top + 10,
-            paddingHorizontal: 16,
-            paddingBottom: 14,
-            backgroundColor: "#fff",
-            borderBottomWidth: 1,
-            borderBottomColor: theme.colors.slate[100],
-            ...theme.shadow.sm,
-          }}>
-          <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 10 }}>
-            <Pressable onPress={() => router.back()} hitSlop={10}>
-              <View
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 12,
-                  backgroundColor: theme.colors.slate[50],
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderWidth: 1,
-                  borderColor: theme.colors.slate[200],
-                }}>
-                <Ionicons name="arrow-forward" size={16} color={theme.colors.slate[600]} />
-              </View>
-            </Pressable>
-
-            <Text
-              style={{
-                flex: 1,
-                fontSize: 17,
-                fontFamily: theme.fonts.black,
-                color: theme.colors.slate[900],
-                textAlign: "right",
-              }}>
-              إتمام الطلب
-            </Text>
-
-            {/* Secure badge */}
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 4,
-                backgroundColor: theme.colors.slate[900],
-                borderRadius: 999,
-                paddingHorizontal: 10,
-                paddingVertical: 5,
-              }}>
-              <Ionicons name="shield-checkmark" size={11} color="#fff" />
-              <Text style={{ fontSize: 9, fontFamily: theme.fonts.black, color: "#fff", letterSpacing: 0.5 }}>
-                آمن
-              </Text>
-            </View>
-          </View>
-
-          {/* Step indicator */}
-          <View style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", marginTop: 14, gap: 0 }}>
-            <StepPill num={1} label="التوصيل" active={step === "details"} done={step === "review"} />
-            <StepLine active={step === "review"} />
-            <StepPill num={2} label="المراجعة" active={step === "review"} done={false} />
-          </View>
+      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+        <Pressable onPress={() => router.back()} style={styles.headerBtn}>
+          <Ionicons name="chevron-forward" size={18} color={theme.colors.slate[700]} />
+        </Pressable>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>إتمام الطلب</Text>
+          <Text style={styles.headerSub}>
+            {step === "details" ? "خطوة 1 من 2 • تفاصيل التوصيل" : "خطوة 2 من 2 • مراجعة الطلب"}
+          </Text>
         </View>
+        <View style={styles.headerBadge}>
+          <Ionicons name="shield-checkmark" size={12} color={theme.colors.green[600]} />
+          <Text style={styles.headerBadgeText}>آمن</Text>
+        </View>
+      </View>
 
-        {/* ── Content ────────────────────────────────────────────── */}
-        <ScrollView
-          ref={scrollRef}
-          contentContainerStyle={{
-            padding: 16,
-            gap: 14,
-            paddingBottom: 120 + insets.bottom,
-          }}
-          keyboardShouldPersistTaps="handled">
+      <View style={styles.stepBar}>
+        <StepPill index={1} label="التوصيل" active={step === "details"} done={step === "review"} />
+        <StepLine done={step === "review"} />
+        <StepPill index={2} label="المراجعة" active={step === "review"} done={false} />
+      </View>
 
-          {step === "details" ? (
-            <>
-              {/* Delivery signals */}
-              <Animated.View entering={FadeInDown.duration(350)} style={{ flexDirection: "row-reverse", gap: 8 }}>
-                {[
-                  { icon: "bicycle-outline" as const, label: "15-30 دقيقة", sub: "وقت التوصيل" },
-                  { icon: "shield-checkmark-outline" as const, label: "دفع آمن", sub: "مشفر 256-bit" },
-                  { icon: "gift-outline" as const, label: `${totalItems} منتج`, sub: "في طلبك" },
-                ].map((s, i) => (
-                  <View
-                    key={i}
-                    style={{
-                      flex: 1,
-                      backgroundColor: "#fff",
-                      borderRadius: theme.radius.xl,
-                      padding: 10,
-                      alignItems: "center",
-                      gap: 4,
-                      borderWidth: 1,
-                      borderColor: theme.colors.slate[100],
-                    }}>
-                    <Ionicons name={s.icon} size={18} color={theme.colors.brand[600]} />
-                    <Text style={{ fontSize: 11, fontFamily: theme.fonts.black, color: theme.colors.slate[800] }}>
-                      {s.label}
-                    </Text>
-                    <Text style={{ fontSize: 9, fontFamily: theme.fonts.semibold, color: theme.colors.slate[400] }}>
-                      {s.sub}
-                    </Text>
-                  </View>
-                ))}
-              </Animated.View>
-
-              {/* Address form */}
-              <Animated.View entering={FadeInDown.delay(100).duration(350)}>
-                <SectionCard title="بيانات التوصيل" iconName="location-outline">
-                  <Input
-                    label="الاسم الكامل *"
-                    value={form.name}
-                    onChangeText={update("name")}
-                    placeholder="محمد أحمد"
-                  />
-                  <Input
-                    label="رقم الهاتف *"
-                    value={form.phone}
-                    onChangeText={update("phone")}
-                    placeholder="01xxxxxxxxx"
-                    keyboardType="phone-pad"
-                    error={form.phone.length > 0 && !isValidPhone ? "رقم هاتف مصري غير صالح" : undefined}
-                  />
-                  <View
-                    style={{
-                      backgroundColor: theme.colors.slate[50],
-                      borderRadius: theme.radius.lg,
-                      padding: 12,
-                      flexDirection: "row-reverse",
-                      alignItems: "center",
-                      gap: 8,
-                      borderWidth: 1,
-                      borderColor: theme.colors.slate[200],
-                    }}>
-                    <Ionicons name="location" size={16} color={theme.colors.brand[600]} />
-                    <Text style={{ fontSize: 13, fontFamily: theme.fonts.bold, color: theme.colors.slate[700] }}>
-                      القاهرة
-                    </Text>
-                    <View
-                      style={{
-                        marginRight: "auto",
-                        backgroundColor: theme.colors.amber[50],
-                        borderRadius: 8,
-                        paddingHorizontal: 8,
-                        paddingVertical: 3,
-                        borderWidth: 1,
-                        borderColor: theme.colors.amber[200],
-                      }}>
-                      <Text style={{ fontSize: 9, fontFamily: theme.fonts.black, color: theme.colors.amber[700] }}>
-                        القاهرة فقط حالياً
-                      </Text>
-                    </View>
-                  </View>
-                  <Input
-                    label="الشارع والمنطقة *"
-                    value={form.street}
-                    onChangeText={update("street")}
-                    placeholder="مثال: شارع النصر، المعادي"
-                  />
-                  <View style={{ flexDirection: "row-reverse", gap: 10 }}>
-                    <View style={{ flex: 1 }}>
-                      <Input
-                        label="رقم المبنى"
-                        value={form.building}
-                        onChangeText={update("building")}
-                        placeholder="١٠"
-                        keyboardType="number-pad"
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Input
-                        label="الطابق"
-                        value={form.floor}
-                        onChangeText={update("floor")}
-                        placeholder="٣"
-                        keyboardType="number-pad"
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Input
-                        label="الشقة"
-                        value={form.apartment}
-                        onChangeText={update("apartment")}
-                        placeholder="٥"
-                        keyboardType="number-pad"
-                      />
-                    </View>
-                  </View>
-                  <Input
-                    label="ملاحظات للسائق (اختياري)"
-                    value={form.notes}
-                    onChangeText={update("notes")}
-                    placeholder="أي تعليمات إضافية…"
-                    multiline
-                    numberOfLines={3}
-                  />
-                </SectionCard>
-              </Animated.View>
-
-              {/* Payment method */}
-              <Animated.View entering={FadeInDown.delay(200).duration(350)}>
-                <SectionCard title="طريقة الدفع" iconName="card-outline">
-                  {PAYMENT_METHODS.map((m) => {
-                    const selected = paymentMethod === m.id;
-                    return (
-                      <Pressable
-                        key={m.id}
-                        onPress={() => {
-                          setPaymentMethod(m.id);
-                          Haptics.selectionAsync().catch(() => {});
-                        }}
-                        style={{
-                          flexDirection: "row-reverse",
-                          alignItems: "center",
-                          gap: 12,
-                          padding: 14,
-                          borderRadius: theme.radius.xl,
-                          backgroundColor: selected ? theme.colors.brand[50] : theme.colors.slate[50],
-                          borderWidth: selected ? 2 : 1,
-                          borderColor: selected ? theme.colors.brand[400] : theme.colors.slate[200],
-                        }}>
-                        <View
-                          style={{
-                            width: 20,
-                            height: 20,
-                            borderRadius: 10,
-                            borderWidth: 2,
-                            borderColor: selected ? theme.colors.brand[600] : theme.colors.slate[300],
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}>
-                          {selected && (
-                            <View
-                              style={{
-                                width: 10,
-                                height: 10,
-                                borderRadius: 5,
-                                backgroundColor: theme.colors.brand[600],
-                              }}
-                            />
-                          )}
-                        </View>
-                        <View
-                          style={{
-                            width: 40,
-                            height: 40,
-                            borderRadius: 12,
-                            backgroundColor: "#fff",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}>
-                          <Ionicons name={m.icon} size={18} color={m.color} />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ fontSize: 13, fontFamily: theme.fonts.black, color: theme.colors.slate[800], textAlign: "right" }}>
-                            {m.label}
-                          </Text>
-                          <Text style={{ fontSize: 11, fontFamily: theme.fonts.semibold, color: theme.colors.slate[500], textAlign: "right" }}>
-                            {m.desc}
-                          </Text>
-                        </View>
-                      </Pressable>
-                    );
-                  })}
-
-                  {/* POS machine option for COD */}
-                  {paymentMethod === "cod" && (
-                    <Pressable
-                      onPress={() => {
-                        setRequestPos((p) => !p);
-                        Haptics.selectionAsync().catch(() => {});
-                      }}
-                      style={{
-                        flexDirection: "row-reverse",
-                        alignItems: "center",
-                        gap: 10,
-                        padding: 12,
-                        borderRadius: theme.radius.lg,
-                        backgroundColor: "#fff",
-                        borderWidth: 1,
-                        borderColor: theme.colors.slate[200],
-                      }}>
-                      <Ionicons
-                        name={requestPos ? "checkbox" : "square-outline"}
-                        size={20}
-                        color={requestPos ? theme.colors.brand[600] : theme.colors.slate[400]}
-                      />
-                      <Text style={{ fontSize: 12, fontFamily: theme.fonts.bold, color: theme.colors.slate[700] }}>
-                        أطلب ماكينة دفع (POS)
-                      </Text>
-                    </Pressable>
-                  )}
-
-                  {/* Disabled methods */}
-                  <View
-                    style={{
-                      flexDirection: "row-reverse",
-                      alignItems: "center",
-                      gap: 12,
-                      padding: 14,
-                      borderRadius: theme.radius.xl,
-                      backgroundColor: theme.colors.slate[50],
-                      borderWidth: 1,
-                      borderColor: theme.colors.slate[200],
-                      opacity: 0.5,
-                      borderStyle: "dashed",
-                    }}>
-                    <View
-                      style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 12,
-                        backgroundColor: "#fff",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}>
-                      <Ionicons name="link-outline" size={18} color={theme.colors.slate[400]} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 13, fontFamily: theme.fonts.black, color: theme.colors.slate[600], textAlign: "right" }}>
-                        رابط دفع إلكتروني
-                      </Text>
-                      <Text style={{ fontSize: 10, fontFamily: theme.fonts.semibold, color: theme.colors.slate[400], textAlign: "right" }}>
-                        قريباً — سيتم إضافته لاحقاً
-                      </Text>
-                    </View>
-                  </View>
-                </SectionCard>
-              </Animated.View>
-
-              {/* Free delivery banner */}
-              {subtotal < FREE_DELIVERY_THRESHOLD && (
-                <Animated.View entering={FadeInDown.delay(300).duration(350)}>
-                  <LinearGradient
-                    colors={[theme.colors.amber[50], theme.colors.amber[100]]}
-                    style={{
-                      borderRadius: theme.radius.xl,
-                      padding: 14,
-                      flexDirection: "row-reverse",
-                      alignItems: "center",
-                      gap: 10,
-                      borderWidth: 1,
-                      borderColor: theme.colors.amber[200],
-                    }}>
-                    <Ionicons name="bicycle" size={20} color={theme.colors.amber[600]} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 12, fontFamily: theme.fonts.black, color: theme.colors.amber[800], textAlign: "right" }}>
-                        أضف {formatPrice(FREE_DELIVERY_THRESHOLD - subtotal)} للتوصيل المجاني!
-                      </Text>
-                      <View
-                        style={{
-                          height: 4,
-                          borderRadius: 2,
-                          backgroundColor: theme.colors.amber[200],
-                          marginTop: 6,
-                          overflow: "hidden",
-                        }}>
-                        <View
-                          style={{
-                            height: "100%",
-                            width: `${Math.min((subtotal / FREE_DELIVERY_THRESHOLD) * 100, 100)}%`,
-                            backgroundColor: theme.colors.amber[500],
-                            borderRadius: 2,
-                          }}
-                        />
-                      </View>
-                    </View>
-                  </LinearGradient>
-                </Animated.View>
-              )}
-            </>
-          ) : (
-            /* ── Review step ──────────────────────────────────── */
-            <>
-              {/* Order items with images */}
-              <Animated.View entering={FadeInDown.duration(350)}>
-                <SectionCard title={`مراجعة الطلب (${totalItems} منتج)`} iconName="cart-outline">
-                  {items.map((item, idx) => (
-                    <View
-                      key={item.productId}
-                      style={{
-                        flexDirection: "row-reverse",
-                        alignItems: "center",
-                        gap: 10,
-                        paddingVertical: 10,
-                        borderBottomWidth: idx < items.length - 1 ? 1 : 0,
-                        borderBottomColor: theme.colors.slate[100],
-                      }}>
-                      {item.product.imageUrl ? (
-                        <Image
-                          source={{ uri: item.product.imageUrl }}
-                          style={{
-                            width: 48,
-                            height: 48,
-                            borderRadius: 12,
-                            backgroundColor: theme.colors.slate[100],
-                            borderWidth: 1,
-                            borderColor: theme.colors.slate[100],
-                          }}
-                          resizeMode="cover"
-                        />
-                      ) : (
-                        <View
-                          style={{
-                            width: 48,
-                            height: 48,
-                            borderRadius: 12,
-                            backgroundColor: theme.colors.brand[50],
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}>
-                          <Ionicons name="medical" size={20} color={theme.colors.brand[400]} />
-                        </View>
-                      )}
-                      <View style={{ flex: 1 }}>
-                        <Text
-                          style={{
-                            fontSize: 12,
-                            fontFamily: theme.fonts.bold,
-                            color: theme.colors.slate[800],
-                            textAlign: "right",
-                            lineHeight: 18,
-                          }}
-                          numberOfLines={2}>
-                          {item.product.nameAr ?? item.product.name}
-                        </Text>
-                        <Text style={{ fontSize: 11, fontFamily: theme.fonts.semibold, color: theme.colors.slate[400], textAlign: "right" }}>
-                          × {item.quantity}
-                        </Text>
-                      </View>
-                      <Text style={{ fontSize: 13, fontFamily: theme.fonts.black, color: theme.colors.amber[600] }}>
-                        {formatPrice(item.product.price * item.quantity)}
-                      </Text>
-                    </View>
-                  ))}
-                </SectionCard>
-              </Animated.View>
-
-              {/* Promo code */}
-              <Animated.View entering={FadeInDown.delay(100).duration(350)}>
-                <SectionCard title="كود الخصم" iconName="pricetag-outline">
-                  <View style={{ flexDirection: "row-reverse", gap: 8 }}>
-                    <View style={{ flex: 1 }}>
-                      <TextInput
-                        value={promoCode}
-                        onChangeText={setPromoCode}
-                        placeholder="أدخل كود الخصم"
-                        editable={!promoApplied}
-                        placeholderTextColor={theme.colors.slate[400]}
-                        style={{
-                          height: 44,
-                          borderRadius: theme.radius.lg,
-                          backgroundColor: theme.colors.slate[50],
-                          borderWidth: 1,
-                          borderColor: promoError ? theme.colors.red[400] : theme.colors.slate[200],
-                          paddingHorizontal: 14,
-                          fontSize: 13,
-                          fontFamily: theme.fonts.semibold,
-                          color: theme.colors.slate[800],
-                          textAlign: "right",
-                        }}
-                      />
-                    </View>
-                    <Pressable
-                      onPress={handleApplyPromo}
-                      disabled={promoApplied || !promoCode.trim()}
-                      style={{
-                        height: 44,
-                        paddingHorizontal: 18,
-                        borderRadius: theme.radius.lg,
-                        backgroundColor: promoApplied
-                          ? theme.colors.slate[100]
-                          : theme.colors.brand[600],
-                        alignItems: "center",
-                        justifyContent: "center",
-                        opacity: promoApplied || !promoCode.trim() ? 0.6 : 1,
-                      }}>
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          fontFamily: theme.fonts.black,
-                          color: promoApplied ? theme.colors.slate[600] : "#fff",
-                        }}>
-                        {promoApplied ? "مفعّل ✓" : "تطبيق"}
-                      </Text>
-                    </Pressable>
-                  </View>
-                  {promoError ? (
-                    <Text style={{ fontSize: 11, fontFamily: theme.fonts.bold, color: theme.colors.red[500], textAlign: "right" }}>
-                      {promoError}
-                    </Text>
-                  ) : null}
-                  {promoApplied && (
-                    <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 5 }}>
-                      <Ionicons name="gift" size={13} color={theme.colors.green[600]} />
-                      <Text style={{ fontSize: 11, fontFamily: theme.fonts.black, color: theme.colors.green[700] }}>
-                        تم تفعيل خصم 10%
-                      </Text>
-                    </View>
-                  )}
-                </SectionCard>
-              </Animated.View>
-
-              {/* Price breakdown */}
-              <Animated.View entering={FadeInDown.delay(200).duration(350)}>
-                <SectionCard title="ملخص الطلب" iconName="receipt-outline">
-                  <SummaryRow label="المجموع الجزئي" value={formatPrice(subtotal)} />
-                  {discount > 0 && (
-                    <SummaryRow label="خصم الكود" value={`- ${formatPrice(discount)}`} valueGreen />
-                  )}
-                  <SummaryRow
-                    label="التوصيل"
-                    value={delivery === 0 ? "مجاني" : formatPrice(delivery)}
-                    valueGreen={delivery === 0}
-                  />
-                  <SummaryRow
-                    label="وقت التوصيل المتوقع"
-                    value="15-30 دقيقة"
-                  />
-                  <View style={{ height: 1.5, backgroundColor: theme.colors.slate[100], marginVertical: 2 }} />
-                  <SummaryRow label="الإجمالي" value={formatPrice(total)} bold />
-                </SectionCard>
-              </Animated.View>
-
-              {/* Address card */}
-              <Animated.View entering={FadeInDown.delay(300).duration(350)}>
-                <SectionCard title="عنوان التوصيل" iconName="location-outline">
-                  <View
-                    style={{
-                      backgroundColor: theme.colors.slate[50],
-                      borderRadius: theme.radius.lg,
-                      padding: 14,
-                      borderWidth: 1,
-                      borderColor: theme.colors.slate[100],
-                    }}>
-                    <Text style={{ fontSize: 14, fontFamily: theme.fonts.extrabold, color: theme.colors.text.primary, textAlign: "right", marginBottom: 4 }}>
-                      {form.name}
-                    </Text>
-                    <Text style={{ fontSize: 12, color: theme.colors.slate[600], textAlign: "right", lineHeight: 20, fontFamily: theme.fonts.semibold }}>
-                      {form.phone}{"\n"}
-                      {form.street}
-                      {form.building ? `، مبنى ${form.building}` : ""}
-                      {form.floor ? `، ط ${form.floor}` : ""}
-                      {form.apartment ? `، شقة ${form.apartment}` : ""}
-                      {"\n"}{form.city}
-                    </Text>
-                  </View>
-                  <Pressable onPress={() => { setStep("details"); scrollRef.current?.scrollTo({ y: 0, animated: true }); }}>
-                    <Text style={{ fontSize: 12, color: theme.colors.brand[600], fontFamily: theme.fonts.bold, textAlign: "right" }}>
-                      تعديل العنوان
-                    </Text>
-                  </Pressable>
-                </SectionCard>
-              </Animated.View>
-
-              {/* Payment method card */}
-              <Animated.View entering={FadeInDown.delay(350).duration(350)}>
-                <SectionCard title="طريقة الدفع" iconName="card-outline">
-                  <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 10 }}>
-                    {(() => {
-                      const m = PAYMENT_METHODS.find((pm) => pm.id === paymentMethod)!;
-                      return (
-                        <>
-                          <View
-                            style={{
-                              width: 40,
-                              height: 40,
-                              borderRadius: 12,
-                              backgroundColor: theme.colors.brand[50],
-                              alignItems: "center",
-                              justifyContent: "center",
-                            }}>
-                            <Ionicons name={m.icon} size={18} color={m.color} />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 13, fontFamily: theme.fonts.black, color: theme.colors.slate[800], textAlign: "right" }}>
-                              {m.label}
-                            </Text>
-                            {requestPos && paymentMethod === "cod" && (
-                              <Text style={{ fontSize: 10, fontFamily: theme.fonts.semibold, color: theme.colors.brand[600], textAlign: "right" }}>
-                                + ماكينة دفع مطلوبة
-                              </Text>
-                            )}
-                          </View>
-                        </>
-                      );
-                    })()}
-                    <Pressable onPress={() => { setStep("details"); scrollRef.current?.scrollTo({ y: 0, animated: true }); }}>
-                      <Text style={{ fontSize: 12, color: theme.colors.brand[600], fontFamily: theme.fonts.bold }}>
-                        تعديل
-                      </Text>
-                    </Pressable>
-                  </View>
-                </SectionCard>
-              </Animated.View>
-
-              {/* Trust badges */}
-              <Animated.View
-                entering={FadeInDown.delay(400).duration(350)}
-                style={{
-                  backgroundColor: "#fff",
-                  borderRadius: theme.radius["2xl"],
-                  padding: 14,
-                  gap: 10,
-                  borderWidth: 1,
-                  borderColor: theme.colors.slate[100],
-                }}>
-                <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6 }}>
-                  <Ionicons name="shield-checkmark" size={15} color={theme.colors.slate[600]} />
-                  <Text style={{ fontSize: 12, fontFamily: theme.fonts.black, color: theme.colors.slate[700] }}>
-                    دفع آمن ومشفر
-                  </Text>
-                </View>
-                <Text style={{ fontSize: 11, fontFamily: theme.fonts.semibold, color: theme.colors.slate[500], textAlign: "right", lineHeight: 18 }}>
-                  لن يمكن تأكيد الطلب إلا بعد إدخال الاسم ورقم الهاتف والعنوان بشكل صحيح. بياناتك محمية بتشفير 256-bit SSL.
+      <ScrollView
+        ref={scrollRef}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 140 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
+        {!deliveryQuote.isFree && pricing.subtotal > 0 && (
+          <Animated.View entering={FadeInDown.duration(280)}>
+            <LinearGradient
+              colors={["#FEF3C7", "#FDE68A"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.freeBanner}>
+              <View style={styles.freeBannerHead}>
+                <Ionicons name="gift-outline" size={16} color={theme.colors.amber[700]} />
+                <Text style={styles.freeBannerTitle}>
+                  أضف منتجات بقيمة {formatPrice(deliveryQuote.amountToFreeDelivery)} لتوصيل مجاني
                 </Text>
-              </Animated.View>
-            </>
-          )}
-        </ScrollView>
+              </View>
+              <View style={styles.freeBarTrack}>
+                <View
+                  style={[
+                    styles.freeBarFill,
+                    {
+                      width: `${Math.min(100, (pricing.subtotal / FREE_DELIVERY_THRESHOLD) * 100)}%` as any,
+                    },
+                  ]}
+                />
+              </View>
+            </LinearGradient>
+          </Animated.View>
+        )}
 
-        {/* ── Bottom CTA ─────────────────────────────────────────── */}
-        <View
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            backgroundColor: "#fff",
-            paddingHorizontal: 16,
-            paddingTop: 12,
-            paddingBottom: insets.bottom + 14,
-            borderTopWidth: 1,
-            borderTopColor: theme.colors.slate[100],
-            ...theme.shadow.lg,
-          }}>
-          {/* Mini summary */}
-          <View style={{ flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <Text style={{ fontSize: 12, fontFamily: theme.fonts.semibold, color: theme.colors.slate[500] }}>
-              {totalItems} منتج
-            </Text>
-            <Text style={{ fontSize: 16, fontFamily: theme.fonts.black, color: theme.colors.slate[900] }}>
-              {formatPrice(total)}
-            </Text>
+        {step === "details" ? (
+          <DetailsStep control={control} errors={errors} />
+        ) : (
+          <ReviewStep
+            values={getValues()}
+            paymentMethod={paymentMethod}
+            requestPos={requestPos}
+            promoApplied={promoApplied}
+            promoError={promoError}
+            pricing={pricing}
+            deliveryQuote={deliveryQuote}
+            submitError={submitError}
+            onEditAddress={backToDetails}
+            onEditPayment={backToDetails}
+            onPaymentChange={(m) => {
+              if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
+              setPaymentMethod(m);
+            }}
+            onTogglePos={() => {
+              if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
+              setRequestPos((v) => !v);
+            }}
+            onApplyPromo={handleApplyPromo}
+            control={control}
+          />
+        )}
+      </ScrollView>
+
+      <View style={[styles.cta, { paddingBottom: insets.bottom + 12 }]}>
+        <View style={styles.ctaTotals}>
+          <View>
+            <Text style={styles.ctaTotalLabel}>الإجمالي</Text>
+            <Text style={styles.ctaTotalValue}>{formatPrice(pricing.total)}</Text>
           </View>
-          <Button
-            variant="primary"
-            size="lg"
-            fullWidth
-            gradient
-            loading={loading}
-            disabled={step === "details" && !canProceed}
-            onPress={step === "details" ? goToReview : handleConfirm}>
-            {step === "details"
-              ? "مراجعة الطلب"
-              : `تأكيد الطلب — ${formatPrice(total)}`}
-          </Button>
+          <View style={styles.ctaCount}>
+            <Ionicons name="bag-handle" size={11} color={theme.colors.brand[600]} />
+            <Text style={styles.ctaCountText}>{itemCount} منتج</Text>
+          </View>
         </View>
+        <Button
+          variant="primary"
+          size="md"
+          fullWidth
+          gradient
+          loading={submitting}
+          disabled={pricing.subtotal === 0 || !deliveryQuote.isDeliverable}
+          onPress={step === "details" ? goToReview : handleSubmit(onSubmit)}>
+          <View style={styles.ctaBtnInner}>
+            <Text style={styles.ctaBtnText}>
+              {step === "details" ? "متابعة للمراجعة" : "تأكيد الطلب"}
+            </Text>
+            <Ionicons name={step === "details" ? "arrow-back" : "checkmark"} size={15} color="#fff" />
+          </View>
+        </Button>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
-// ─── Step indicator components ─────────────────────────────────────────────
+// ─── Details Step ────────────────────────────────────────────────────────────
+
+function DetailsStep({ control, errors }: { control: any; errors: any }) {
+  return (
+    <Animated.View entering={FadeIn.duration(220)}>
+      <SectionCard title="المعلومات الشخصية" icon="person-outline" delay={50}>
+        <Controller
+          control={control}
+          name="fullName"
+          render={({ field }) => (
+            <Input
+              label="الاسم الكامل"
+              value={field.value}
+              onChangeText={field.onChange}
+              onBlur={field.onBlur}
+              placeholder="محمد أحمد"
+              error={errors.fullName?.message}
+            />
+          )}
+        />
+        <Controller
+          control={control}
+          name="phone"
+          render={({ field }) => (
+            <Input
+              label="رقم الهاتف"
+              value={field.value}
+              onChangeText={field.onChange}
+              onBlur={field.onBlur}
+              placeholder="01xxxxxxxxx"
+              keyboardType="phone-pad"
+              error={errors.phone?.message}
+            />
+          )}
+        />
+      </SectionCard>
+
+      <SectionCard title="عنوان التوصيل" icon="location-outline" delay={120}>
+        <View style={styles.cityCard}>
+          <View style={styles.cityHead}>
+            <View style={styles.cityIcon}>
+              <Ionicons name="business-outline" size={14} color={theme.colors.brand[600]} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cityLabel}>المدينة</Text>
+              <Text style={styles.cityValue}>{SUPPORTED_GOVERNORATE.ar}</Text>
+            </View>
+            <View style={styles.cityBadge}>
+              <Text style={styles.cityBadgeText}>{SUPPORTED_GOVERNORATE.label}</Text>
+            </View>
+          </View>
+        </View>
+
+        <Controller
+          control={control}
+          name="streetName"
+          render={({ field }) => (
+            <Input
+              label="الشارع والحي"
+              value={field.value}
+              onChangeText={field.onChange}
+              onBlur={field.onBlur}
+              placeholder="مثال: شارع النصر، المعادي"
+              error={errors.streetName?.message}
+            />
+          )}
+        />
+
+        <View style={styles.row3}>
+          <Controller
+            control={control}
+            name="buildingNumber"
+            render={({ field }) => (
+              <View style={{ flex: 1 }}>
+                <Input
+                  label="رقم العمارة"
+                  value={field.value}
+                  onChangeText={field.onChange}
+                  placeholder="١٠"
+                  keyboardType="number-pad"
+                  error={errors.buildingNumber?.message}
+                />
+              </View>
+            )}
+          />
+          <Controller
+            control={control}
+            name="floor"
+            render={({ field }) => (
+              <View style={{ flex: 1 }}>
+                <Input
+                  label="الطابق"
+                  value={field.value ?? ""}
+                  onChangeText={field.onChange}
+                  placeholder="٣"
+                  keyboardType="number-pad"
+                  optional
+                />
+              </View>
+            )}
+          />
+          <Controller
+            control={control}
+            name="apartmentNumber"
+            render={({ field }) => (
+              <View style={{ flex: 1 }}>
+                <Input
+                  label="رقم الشقة"
+                  value={field.value}
+                  onChangeText={field.onChange}
+                  placeholder="٥"
+                  keyboardType="number-pad"
+                  error={errors.apartmentNumber?.message}
+                />
+              </View>
+            )}
+          />
+        </View>
+
+        <Controller
+          control={control}
+          name="note"
+          render={({ field }) => (
+            <Input
+              label="ملاحظات للمندوب"
+              value={field.value ?? ""}
+              onChangeText={field.onChange}
+              placeholder="أي تعليمات إضافية…"
+              multiline
+              numberOfLines={3}
+              optional
+            />
+          )}
+        />
+      </SectionCard>
+    </Animated.View>
+  );
+}
+
+// ─── Review Step ─────────────────────────────────────────────────────────────
+
+function ReviewStep({
+  values,
+  paymentMethod,
+  requestPos,
+  promoApplied,
+  promoError,
+  pricing,
+  deliveryQuote,
+  submitError,
+  onEditAddress,
+  onEditPayment,
+  onPaymentChange,
+  onTogglePos,
+  onApplyPromo,
+  control,
+}: {
+  values: CheckoutFormSchema;
+  paymentMethod: CheckoutPaymentMethod;
+  requestPos: boolean;
+  promoApplied: boolean;
+  promoError: string | null;
+  pricing: CheckoutPricing;
+  deliveryQuote: ReturnType<typeof useDeliveryQuote>;
+  submitError: string | null;
+  onEditAddress: () => void;
+  onEditPayment: () => void;
+  onPaymentChange: (m: CheckoutPaymentMethod) => void;
+  onTogglePos: () => void;
+  onApplyPromo: () => void;
+  control: any;
+}) {
+  return (
+    <Animated.View entering={FadeIn.duration(220)}>
+      <SectionCard
+        title="عنوان التوصيل"
+        icon="location-outline"
+        delay={50}
+        action={{ label: "تعديل العنوان", onPress: onEditAddress }}>
+        <Text style={styles.reviewLine}>{values.fullName}</Text>
+        <Text style={styles.reviewSub}>{values.phone}</Text>
+        <View style={styles.reviewDivider} />
+        <Text style={styles.reviewLine}>
+          {[
+            values.streetName,
+            values.buildingNumber && `عمارة ${values.buildingNumber}`,
+            values.floor && `طابق ${values.floor}`,
+            values.apartmentNumber && `شقة ${values.apartmentNumber}`,
+            values.city,
+          ]
+            .filter(Boolean)
+            .join("، ")}
+        </Text>
+        {values.note ? <Text style={styles.reviewSub}>ملاحظات: {values.note}</Text> : null}
+      </SectionCard>
+
+      <SectionCard
+        title="طريقة الدفع"
+        icon="card-outline"
+        delay={110}
+        action={{ label: "تعديل", onPress: onEditPayment }}>
+        {PAYMENT_METHODS.map((m) => (
+          <Pressable
+            key={m.id}
+            onPress={() => onPaymentChange(m.id)}
+            style={[
+              styles.payOption,
+              paymentMethod === m.id && {
+                borderColor: m.color,
+                borderWidth: 2,
+                backgroundColor: m.bg + "30",
+              },
+            ]}>
+            <View style={[styles.payRadio, paymentMethod === m.id && { borderColor: m.color }]}>
+              {paymentMethod === m.id && (
+                <View style={[styles.payRadioDot, { backgroundColor: m.color }]} />
+              )}
+            </View>
+            <View style={[styles.payIcon, { backgroundColor: m.bg }]}>
+              <Ionicons name={m.icon} size={18} color={m.color} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.payTitle}>{m.title}</Text>
+              <Text style={styles.paySub}>{m.description}</Text>
+            </View>
+          </Pressable>
+        ))}
+
+        {paymentMethod === "cod" && (
+          <Pressable
+            onPress={onTogglePos}
+            style={[styles.posToggle, requestPos && styles.posToggleActive]}>
+            <View style={[styles.posCheck, requestPos && styles.posCheckActive]}>
+              {requestPos && <Ionicons name="checkmark" size={11} color="#fff" />}
+            </View>
+            <Text style={styles.posLabel}>أطلب ماكينة دفع (POS) مع المندوب</Text>
+          </Pressable>
+        )}
+
+        <View style={styles.comingSoon}>
+          <View style={[styles.payIcon, { backgroundColor: theme.colors.slate[100] }]}>
+            <Ionicons name="link-outline" size={16} color={theme.colors.slate[400]} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.payTitle, { color: theme.colors.slate[400] }]}>
+              رابط دفع إلكتروني
+            </Text>
+            <Text style={styles.paySub}>قريباً</Text>
+          </View>
+        </View>
+      </SectionCard>
+
+      <SectionCard title="كود الخصم" icon="pricetag-outline" delay={170}>
+        <Controller
+          control={control}
+          name="promoCode"
+          render={({ field }) => (
+            <View style={styles.promoRow}>
+              <View style={{ flex: 1 }}>
+                <Input
+                  value={field.value ?? ""}
+                  onChangeText={field.onChange}
+                  placeholder="أدخل كود الخصم"
+                  editable={!promoApplied}
+                  error={promoError ?? undefined}
+                />
+              </View>
+              <Pressable
+                onPress={onApplyPromo}
+                disabled={promoApplied}
+                style={[styles.promoBtn, promoApplied && styles.promoBtnApplied]}>
+                <Text style={[styles.promoBtnText, promoApplied && styles.promoBtnTextApplied]}>
+                  {promoApplied ? "مفعّل ✓" : "تطبيق"}
+                </Text>
+              </Pressable>
+            </View>
+          )}
+        />
+        {promoApplied && (
+          <View style={styles.promoSuccess}>
+            <Ionicons name="gift" size={13} color={theme.colors.green[600]} />
+            <Text style={styles.promoSuccessText}>تم تفعيل خصم 10%</Text>
+          </View>
+        )}
+      </SectionCard>
+
+      <SectionCard title="ملخص الطلب" icon="receipt-outline" delay={230}>
+        <SummaryRow
+          label={`المجموع الفرعي (${pricing.itemCount} منتج)`}
+          value={formatPrice(pricing.subtotal)}
+        />
+        <SummaryRow
+          label="رسوم التوصيل"
+          value={deliveryQuote.isFree ? "مجاني" : formatPrice(deliveryQuote.cost)}
+          valueColor={deliveryQuote.isFree ? theme.colors.green[600] : undefined}
+        />
+        {pricing.discount > 0 && (
+          <SummaryRow
+            label="الخصم"
+            value={`−${formatPrice(pricing.discount)}`}
+            valueColor={theme.colors.green[600]}
+          />
+        )}
+        <View style={styles.summaryDivider} />
+        <View style={styles.summaryTotalRow}>
+          <Text style={styles.summaryTotalLabel}>الإجمالي</Text>
+          <Text style={styles.summaryTotalValue}>{formatPrice(pricing.total)}</Text>
+        </View>
+        <View style={styles.etaPill}>
+          <Ionicons name="time-outline" size={12} color={theme.colors.brand[600]} />
+          <Text style={styles.etaText}>
+            التوصيل خلال {deliveryQuote.eta.min}–{deliveryQuote.eta.max} دقيقة
+          </Text>
+        </View>
+      </SectionCard>
+
+      {submitError && (
+        <Animated.View entering={FadeIn.duration(200)} style={styles.errorBox}>
+          <Ionicons name="alert-circle" size={16} color={theme.colors.red[600]} />
+          <Text style={styles.errorText}>{submitError}</Text>
+        </Animated.View>
+      )}
+    </Animated.View>
+  );
+}
+
+// ─── Sub-components ─────────────────────────────────────────────────────────
 
 function StepPill({
-  num,
+  index,
   label,
   active,
   done,
 }: {
-  num: number;
+  index: number;
   label: string;
   active: boolean;
   done: boolean;
 }) {
-  const filled = active || done;
+  const bg = done
+    ? theme.colors.green[100]
+    : active
+    ? theme.colors.brand[100]
+    : theme.colors.slate[100];
+  const fg = done
+    ? theme.colors.green[700]
+    : active
+    ? theme.colors.brand[700]
+    : theme.colors.slate[500];
+
   return (
-    <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6 }}>
-      <View
-        style={{
-          width: 26,
-          height: 26,
-          borderRadius: 13,
-          backgroundColor: filled ? theme.colors.brand[600] : theme.colors.slate[100],
-          alignItems: "center",
-          justifyContent: "center",
-          borderWidth: filled ? 0 : 1,
-          borderColor: theme.colors.slate[200],
-        }}>
+    <View style={[styles.stepPill, { backgroundColor: bg }]}>
+      <View style={[styles.stepNum, { backgroundColor: fg }]}>
         {done ? (
-          <Ionicons name="checkmark" size={13} color="#fff" />
+          <Ionicons name="checkmark" size={11} color="#fff" />
         ) : (
-          <Text
-            style={{
-              color: filled ? "#fff" : theme.colors.slate[400],
-              fontSize: 11,
-              fontFamily: theme.fonts.black,
-            }}>
-            {num}
-          </Text>
+          <Text style={styles.stepNumText}>{index}</Text>
         )}
       </View>
-      <Text
-        style={{
-          fontSize: 11,
-          fontFamily: filled ? theme.fonts.black : theme.fonts.semibold,
-          color: filled ? theme.colors.brand[700] : theme.colors.slate[400],
-        }}>
-        {label}
-      </Text>
+      <Text style={[styles.stepLabel, { color: fg }]}>{label}</Text>
     </View>
   );
 }
 
-function StepLine({ active }: { active: boolean }) {
+function StepLine({ done }: { done: boolean }) {
   return (
-    <View
-      style={{
-        width: 32,
-        height: 2,
-        backgroundColor: active ? theme.colors.brand[500] : theme.colors.slate[200],
-        marginHorizontal: 8,
-      }}
-    />
+    <View style={[styles.stepLine, done && { backgroundColor: theme.colors.green[200] }]} />
   );
 }
-
-// ─── Section card ──────────────────────────────────────────────────────────
 
 function SectionCard({
   title,
-  iconName,
+  icon,
+  delay,
+  action,
   children,
 }: {
   title: string;
-  iconName: React.ComponentProps<typeof Ionicons>["name"];
+  icon: IoniconsName;
+  delay: number;
+  action?: { label: string; onPress: () => void };
   children: React.ReactNode;
 }) {
   return (
-    <View
-      style={{
-        backgroundColor: "#fff",
-        borderRadius: theme.radius["2xl"],
-        padding: 16,
-        gap: 12,
-        borderWidth: 1,
-        borderColor: "rgba(0,0,0,0.04)",
-        ...theme.shadow.sm,
-      }}>
-      <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8, marginBottom: 2 }}>
-        <View
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 10,
-            backgroundColor: theme.colors.brand[50],
-            alignItems: "center",
-            justifyContent: "center",
-          }}>
-          <Ionicons name={iconName} size={16} color={theme.colors.brand[600]} />
+    <Animated.View entering={FadeInDown.delay(delay).duration(320)} style={styles.section}>
+      <View style={styles.sectionHead}>
+        <View style={styles.sectionTitleWrap}>
+          <View style={styles.sectionIcon}>
+            <Ionicons name={icon} size={13} color={theme.colors.brand[600]} />
+          </View>
+          <Text style={styles.sectionTitle}>{title}</Text>
         </View>
-        <Text style={{ fontSize: 14, fontFamily: theme.fonts.black, color: theme.colors.slate[800] }}>
-          {title}
-        </Text>
+        {action && (
+          <Pressable onPress={action.onPress} hitSlop={6}>
+            <Text style={styles.sectionAction}>{action.label}</Text>
+          </Pressable>
+        )}
       </View>
-      {children}
-    </View>
+      <View style={styles.sectionBody}>{children}</View>
+    </Animated.View>
   );
 }
-
-// ─── Summary row ───────────────────────────────────────────────────────────
 
 function SummaryRow({
   label,
   value,
-  bold,
-  valueGreen,
+  valueColor,
 }: {
   label: string;
   value: string;
-  bold?: boolean;
-  valueGreen?: boolean;
+  valueColor?: string;
 }) {
   return (
-    <View style={{ flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "center" }}>
-      <Text
-        style={{
-          fontSize: bold ? 14 : 13,
-          color: bold ? theme.colors.slate[900] : theme.colors.slate[500],
-          fontFamily: bold ? theme.fonts.extrabold : theme.fonts.semibold,
-        }}>
-        {label}
-      </Text>
-      <Text
-        style={{
-          fontSize: bold ? 16 : 13,
-          color: valueGreen
-            ? theme.colors.green[600]
-            : bold
-              ? theme.colors.amber[600]
-              : theme.colors.slate[800],
-          fontFamily: bold ? theme.fonts.black : theme.fonts.bold,
-        }}>
-        {value}
-      </Text>
+    <View style={styles.summaryRow}>
+      <Text style={styles.summaryLabel}>{label}</Text>
+      <Text style={[styles.summaryValue, valueColor && { color: valueColor }]}>{value}</Text>
     </View>
   );
 }
+
+// ─── Empty cart screen ──────────────────────────────────────────────────────
+
+function EmptyCartScreen({
+  onBrowse,
+  insets,
+}: {
+  onBrowse: () => void;
+  insets: { top: number };
+}) {
+  return (
+    <View style={[styles.emptyScreen, { paddingTop: insets.top + 80 }]}>
+      <View style={styles.emptyIcon}>
+        <Ionicons name="cart-outline" size={42} color={theme.colors.brand[400]} />
+      </View>
+      <Text style={styles.emptyTitle}>السلة فارغة</Text>
+      <Text style={styles.emptyDesc}>أضف منتجات لإتمام عملية الشراء</Text>
+      <View style={{ marginTop: 24, alignSelf: "stretch", paddingHorizontal: 32 }}>
+        <Button variant="primary" size="md" fullWidth gradient onPress={onBrowse}>
+          <View style={styles.ctaBtnInner}>
+            <Text style={styles.ctaBtnText}>تصفح المنتجات</Text>
+            <Ionicons name="arrow-back" size={14} color="#fff" />
+          </View>
+        </Button>
+      </View>
+    </View>
+  );
+}
+
+// ─── Success screen ─────────────────────────────────────────────────────────
+
+function SuccessScreen({
+  orderId,
+  total,
+  insets,
+  onContinue,
+  onViewOrders,
+}: {
+  orderId: string;
+  total: number;
+  insets: { top: number; bottom: number };
+  onContinue: () => void;
+  onViewOrders: () => void;
+}) {
+  return (
+    <View style={[styles.successScreen, { paddingTop: insets.top + 30 }]}>
+      <Animated.View entering={FadeInDown.duration(360)} style={styles.successIconWrap}>
+        <View style={styles.successIcon}>
+          <Ionicons name="checkmark" size={40} color="#fff" />
+        </View>
+      </Animated.View>
+      <Animated.Text entering={FadeInDown.delay(120).duration(320)} style={styles.successTitle}>
+        تم استلام طلبك
+      </Animated.Text>
+      <Animated.Text entering={FadeInDown.delay(180).duration(320)} style={styles.successDesc}>
+        سيتواصل معك المندوب لتأكيد التفاصيل
+      </Animated.Text>
+
+      <Animated.View entering={FadeInDown.delay(240).duration(320)} style={styles.successCard}>
+        <View style={styles.successCardRow}>
+          <Text style={styles.successCardLabel}>رقم الطلب</Text>
+          <Text style={styles.successCardValue}>
+            {orderId ? orderId.slice(-8).toUpperCase() : "—"}
+          </Text>
+        </View>
+        <View style={styles.successCardRow}>
+          <Text style={styles.successCardLabel}>الإجمالي</Text>
+          <Text style={[styles.successCardValue, { color: theme.colors.brand[600] }]}>
+            {formatPrice(total)}
+          </Text>
+        </View>
+        <View style={styles.successCardRow}>
+          <Text style={styles.successCardLabel}>التوصيل المتوقع</Text>
+          <Text style={styles.successCardValue}>30–60 دقيقة</Text>
+        </View>
+      </Animated.View>
+
+      <Animated.View
+        entering={FadeInUp.delay(320).duration(320)}
+        style={{
+          marginTop: "auto",
+          paddingBottom: insets.bottom + 12,
+          alignSelf: "stretch",
+          paddingHorizontal: 24,
+          gap: 10,
+        }}>
+        <Button variant="primary" size="md" fullWidth gradient onPress={onViewOrders}>
+          <View style={styles.ctaBtnInner}>
+            <Text style={styles.ctaBtnText}>عرض طلباتي</Text>
+            <Ionicons name="receipt-outline" size={14} color="#fff" />
+          </View>
+        </Button>
+        <Button variant="ghost" size="md" fullWidth onPress={onContinue}>
+          <Text style={{ fontSize: 13, fontFamily: theme.fonts.bold, color: theme.colors.slate[600] }}>
+            متابعة التسوق
+          </Text>
+        </Button>
+      </Animated.View>
+    </View>
+  );
+}
+
+// ─── Styles ──────────────────────────────────────────────────────────────────
+
+const styles = StyleSheet.create({
+  // Header
+  header: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    backgroundColor: "#fff",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.slate[100],
+  },
+  headerBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: theme.colors.slate[50],
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontFamily: theme.fonts.black,
+    color: theme.colors.text.primary,
+    textAlign: "right",
+  },
+  headerSub: {
+    fontSize: 11,
+    fontFamily: theme.fonts.semibold,
+    color: theme.colors.slate[400],
+    textAlign: "right",
+  },
+  headerBadge: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: theme.colors.green[50],
+  },
+  headerBadgeText: { fontSize: 10, fontFamily: theme.fonts.bold, color: theme.colors.green[700] },
+
+  // Steps
+  stepBar: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#fff",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.slate[100],
+  },
+  stepPill: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  stepNum: { width: 18, height: 18, borderRadius: 9, alignItems: "center", justifyContent: "center" },
+  stepNumText: { fontSize: 10, fontFamily: theme.fonts.black, color: "#fff" },
+  stepLabel: { fontSize: 11, fontFamily: theme.fonts.bold },
+  stepLine: { flex: 1, height: 2, backgroundColor: theme.colors.slate[100], borderRadius: 1 },
+
+  // Free banner
+  freeBanner: { borderRadius: 16, padding: 14, gap: 8, marginBottom: 12 },
+  freeBannerHead: { flexDirection: "row-reverse", alignItems: "center", gap: 8 },
+  freeBannerTitle: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.amber[800],
+    textAlign: "right",
+  },
+  freeBarTrack: {
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "rgba(217,119,6,0.15)",
+    overflow: "hidden",
+  },
+  freeBarFill: { height: "100%", backgroundColor: theme.colors.amber[600], borderRadius: 3 },
+
+  // Section
+  section: {
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: theme.colors.border.default,
+    marginBottom: 12,
+    ...theme.shadow.xs,
+  },
+  sectionHead: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  sectionTitleWrap: { flexDirection: "row-reverse", alignItems: "center", gap: 8 },
+  sectionIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: theme.colors.brand[50],
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sectionTitle: { fontSize: 13, fontFamily: theme.fonts.black, color: theme.colors.text.primary },
+  sectionAction: { fontSize: 11, fontFamily: theme.fonts.bold, color: theme.colors.brand[600] },
+  sectionBody: { padding: 14, gap: 10 },
+
+  // City card
+  cityCard: {
+    backgroundColor: theme.colors.brand[50],
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.brand[100],
+  },
+  cityHead: { flexDirection: "row-reverse", alignItems: "center", gap: 10 },
+  cityIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cityLabel: {
+    fontSize: 10,
+    fontFamily: theme.fonts.semibold,
+    color: theme.colors.slate[500],
+    textAlign: "right",
+  },
+  cityValue: {
+    fontSize: 13,
+    fontFamily: theme.fonts.black,
+    color: theme.colors.text.primary,
+    textAlign: "right",
+  },
+  cityBadge: {
+    backgroundColor: theme.colors.amber[100],
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  cityBadgeText: { fontSize: 9, fontFamily: theme.fonts.bold, color: theme.colors.amber[800] },
+
+  row3: { flexDirection: "row-reverse", gap: 8 },
+
+  // Review
+  reviewLine: {
+    fontSize: 13,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.slate[800],
+    textAlign: "right",
+    lineHeight: 20,
+  },
+  reviewSub: {
+    fontSize: 11,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.slate[500],
+    textAlign: "right",
+  },
+  reviewDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: theme.colors.slate[100],
+    marginVertical: 6,
+  },
+
+  // Payment
+  payOption: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: "#fff",
+    borderWidth: 1.5,
+    borderColor: theme.colors.border.default,
+  },
+  payRadio: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: theme.colors.slate[300],
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  payRadioDot: { width: 8, height: 8, borderRadius: 4 },
+  payIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  payTitle: {
+    fontSize: 12,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.text.primary,
+    textAlign: "right",
+  },
+  paySub: {
+    fontSize: 10,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.slate[400],
+    textAlign: "right",
+  },
+  posToggle: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    marginTop: 4,
+    borderRadius: 12,
+    backgroundColor: theme.colors.slate[50],
+    borderWidth: 1,
+    borderColor: theme.colors.border.default,
+  },
+  posToggleActive: {
+    backgroundColor: theme.colors.brand[50],
+    borderColor: theme.colors.brand[200],
+  },
+  posCheck: {
+    width: 18,
+    height: 18,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: theme.colors.slate[300],
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  posCheckActive: {
+    backgroundColor: theme.colors.brand[600],
+    borderColor: theme.colors.brand[600],
+  },
+  posLabel: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.slate[700],
+    textAlign: "right",
+  },
+  comingSoon: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: theme.colors.slate[200],
+    opacity: 0.5,
+  },
+
+  // Promo
+  promoRow: { flexDirection: "row-reverse", alignItems: "flex-end", gap: 8 },
+  promoBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: 12,
+    backgroundColor: theme.colors.brand[600],
+    minWidth: 80,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  promoBtnApplied: { backgroundColor: theme.colors.slate[200] },
+  promoBtnText: { fontSize: 12, fontFamily: theme.fonts.black, color: "#fff" },
+  promoBtnTextApplied: { color: theme.colors.slate[500] },
+  promoSuccess: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: theme.colors.green[50],
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  promoSuccessText: { fontSize: 11, fontFamily: theme.fonts.bold, color: theme.colors.green[700] },
+
+  // Summary
+  summaryRow: { flexDirection: "row-reverse", justifyContent: "space-between", paddingVertical: 3 },
+  summaryLabel: { fontSize: 12, fontFamily: theme.fonts.semibold, color: theme.colors.slate[500] },
+  summaryValue: { fontSize: 12, fontFamily: theme.fonts.bold, color: theme.colors.slate[700] },
+  summaryDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: theme.colors.slate[200],
+    marginVertical: 8,
+  },
+  summaryTotalRow: {
+    flexDirection: "row-reverse",
+    justifyContent: "space-between",
+    alignItems: "baseline",
+  },
+  summaryTotalLabel: {
+    fontSize: 13,
+    fontFamily: theme.fonts.black,
+    color: theme.colors.text.primary,
+  },
+  summaryTotalValue: { fontSize: 18, fontFamily: theme.fonts.black, color: theme.colors.brand[600] },
+  etaPill: {
+    alignSelf: "flex-end",
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: theme.colors.brand[50],
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    marginTop: 6,
+  },
+  etaText: { fontSize: 10, fontFamily: theme.fonts.bold, color: theme.colors.brand[700] },
+
+  // Error
+  errorBox: {
+    flexDirection: "row-reverse",
+    alignItems: "flex-start",
+    gap: 8,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: theme.colors.red[50],
+    borderWidth: 1,
+    borderColor: theme.colors.red[100],
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 11,
+    fontFamily: theme.fonts.semibold,
+    color: theme.colors.red[700],
+    textAlign: "right",
+    lineHeight: 18,
+  },
+
+  // CTA
+  cta: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.slate[100],
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    gap: 10,
+    ...theme.shadow.lg,
+  },
+  ctaTotals: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  ctaTotalLabel: {
+    fontSize: 10,
+    fontFamily: theme.fonts.semibold,
+    color: theme.colors.slate[400],
+    textAlign: "right",
+  },
+  ctaTotalValue: { fontSize: 18, fontFamily: theme.fonts.black, color: theme.colors.brand[600] },
+  ctaCount: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: theme.colors.brand[50],
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  ctaCountText: { fontSize: 10, fontFamily: theme.fonts.bold, color: theme.colors.brand[700] },
+  ctaBtnInner: { flexDirection: "row-reverse", alignItems: "center", gap: 6 },
+  ctaBtnText: { fontSize: 14, fontFamily: theme.fonts.black, color: "#fff" },
+
+  // Empty
+  emptyScreen: {
+    flex: 1,
+    backgroundColor: theme.colors.bg,
+    alignItems: "center",
+    paddingHorizontal: 32,
+  },
+  emptyIcon: {
+    width: 96,
+    height: 96,
+    borderRadius: 30,
+    backgroundColor: theme.colors.brand[50],
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  emptyTitle: { fontSize: 18, fontFamily: theme.fonts.black, color: theme.colors.text.primary },
+  emptyDesc: {
+    fontSize: 12,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.slate[400],
+    marginTop: 4,
+    textAlign: "center",
+  },
+
+  // Success
+  successScreen: {
+    flex: 1,
+    backgroundColor: theme.colors.bg,
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  successIconWrap: { marginBottom: 16 },
+  successIcon: {
+    width: 84,
+    height: 84,
+    borderRadius: 26,
+    backgroundColor: theme.colors.green[500],
+    alignItems: "center",
+    justifyContent: "center",
+    ...theme.shadow.lg,
+  },
+  successTitle: {
+    fontSize: 22,
+    fontFamily: theme.fonts.black,
+    color: theme.colors.text.primary,
+    textAlign: "center",
+  },
+  successDesc: {
+    fontSize: 12,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.slate[500],
+    textAlign: "center",
+    marginTop: 6,
+  },
+  successCard: {
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    padding: 16,
+    marginTop: 24,
+    alignSelf: "stretch",
+    gap: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.border.default,
+    ...theme.shadow.sm,
+  },
+  successCardRow: { flexDirection: "row-reverse", justifyContent: "space-between" },
+  successCardLabel: { fontSize: 11, fontFamily: theme.fonts.semibold, color: theme.colors.slate[500] },
+  successCardValue: { fontSize: 13, fontFamily: theme.fonts.black, color: theme.colors.text.primary },
+});
