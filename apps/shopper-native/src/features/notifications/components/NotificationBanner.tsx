@@ -12,7 +12,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
-import { useNotificationStore } from "../legacy-store";
+import { useBannerStore } from "../banner-store";
 import { theme } from "@/theme";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -39,8 +39,8 @@ const TYPE_META: Record<string, {
 export function NotificationBanner() {
   const router        = useRouter();
   const insets        = useSafeAreaInsets();
-  const banner        = useNotificationStore((s) => s.banner);
-  const dismissBanner = useNotificationStore((s) => s.dismissBanner);
+  const banner        = useBannerStore((s) => s.banner);
+  const dismissBanner = useBannerStore((s) => s.dismissBanner);
   const timerRef      = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [bannerWidth, setBannerWidth] = useState(0);

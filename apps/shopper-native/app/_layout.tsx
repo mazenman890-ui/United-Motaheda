@@ -21,7 +21,7 @@ import { useOrderStore } from "@/stores/orders";
 import { useWishlistStore } from "@/stores/wishlist";
 import {
   NotificationBanner,
-  useNotificationStore,
+  useNotificationSync,
   usePushNotificationRegistration,
 } from "@/features/notifications";
 import { ErrorBoundary } from "@/shared/components";
@@ -40,23 +40,11 @@ const queryClient = new QueryClient({
   },
 });
 
-// ─── Notification sync — subscribes/unsubscribes with auth state ──────────────
+// ─── Notification sync — single realtime channel + banner toast bridge ──────
 
 function NotificationSync() {
-  const { user }    = useAuth();
-  const fetch       = useNotificationStore((s) => s.fetch);
-  const subscribe   = useNotificationStore((s) => s.subscribe);
-  const reset       = useNotificationStore((s) => s.reset);
-
-  useEffect(() => {
-    if (!user) {
-      reset();
-      return;
-    }
-    fetch(user.id);
-    subscribe(user.id);
-  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
+  const { user } = useAuth();
+  useNotificationSync(user?.id);
   return null;
 }
 

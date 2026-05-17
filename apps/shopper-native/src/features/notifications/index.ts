@@ -3,8 +3,10 @@
  * Consumers should import from "@/features/notifications" exclusively.
  */
 
-// ─── Canonical (camelCase) surface ──────────────────────────────────────────
+// ─── Domain types ──────────────────────────────────────────────────────────
 export * from "./types";
+
+// ─── Server API ────────────────────────────────────────────────────────────
 export {
   fetchNotificationsPage,
   fetchUnreadCount,
@@ -16,14 +18,17 @@ export {
   registerPushToken,
   unregisterPushToken,
 } from "./api";
+
+// ─── Realtime primitive (low-level — most code should use hooks) ──────────
 export { subscribeToNotifications } from "./realtime";
+
+// ─── Hooks (component-facing) ──────────────────────────────────────────────
 export { useNotifications } from "./hooks/useNotifications";
 export { useNotificationPreferences } from "./hooks/useNotificationPreferences";
 export { usePushNotificationRegistration } from "./hooks/usePushNotificationRegistration";
+export { useUnreadCount } from "./hooks/useUnreadCount";
+export { useNotificationSync } from "./hooks/useNotificationSync";
 
-// ─── Legacy surface (banner toast + tab badge state) ────────────────────────
-// Kept for backward compatibility with NotificationBanner + _layout sync +
-// tab badges. These will be consolidated into the TanStack hook in a future
-// pass once the banner state is moved into a shared toast queue.
-export { useNotificationStore, selectUnreadCount } from "./legacy-store";
+// ─── Banner toast (single canonical source for incoming notification toast) ─
+export { useBannerStore } from "./banner-store";
 export { NotificationBanner } from "./components/NotificationBanner";

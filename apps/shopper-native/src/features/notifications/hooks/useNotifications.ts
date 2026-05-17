@@ -9,7 +9,7 @@
  *  - `markRead`, `markAllRead`, `dismiss` — optimistic mutations
  */
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import {
   useInfiniteQuery,
   useMutation,
@@ -21,7 +21,6 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
 } from "../api";
-import { subscribeToNotifications } from "../realtime";
 import type { AppNotification, NotificationPage } from "../types";
 
 const KEY = (userId: string) => ["notifications", userId] as const;
@@ -39,28 +38,10 @@ export function useNotifications(userId: string | undefined) {
     staleTime: 60_000,
   });
 
-  // Realtime: push new rows to the front of the first page
-  useEffect(() => {
-    if (!userId) return;
-    const channel = subscribeToNotifications(userId, (incoming) => {
-      qc.setQueryData<{ pages: NotificationPage[]; pageParams: unknown[] }>(
-        KEY(userId),
-        (data) => {
-          if (!data) return data;
-          const [first, ...rest] = data.pages;
-          if (!first) return data;
-          const updatedFirst: NotificationPage = {
-            items: [incoming, ...first.items.filter((i) => i.id !== incoming.id)],
-            nextCursor: first.nextCursor,
-          };
-          return { ...data, pages: [updatedFirst, ...rest] };
-        },
-      );
-    });
-    return () => {
-      channel.unsubscribe();
-    };
-  }, [userId, qc]);
+  // Realtime invalidation is handled globally by useNotificationSync
+  // (mounted in the app root). When a new notification arrives that
+  // hook invalidates this query, triggering a refetch — no need for
+  // a second subscription here.
 
   const items = useMemo<AppNotification[]>(
     () => query.data?.pages.flatMap((p) => p.items) ?? [],

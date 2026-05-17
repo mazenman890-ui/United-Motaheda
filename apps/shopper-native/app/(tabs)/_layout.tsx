@@ -12,7 +12,8 @@ import Animated, {
 } from "react-native-reanimated";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useCartStore } from "@/stores/cart";
-import { useNotificationStore, selectUnreadCount } from "@/features/notifications";
+import { useUnreadCount } from "@/features/notifications";
+import { useAuth } from "@/features/auth";
 import { theme } from "@/theme";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
@@ -118,7 +119,8 @@ function TabItem({ name, focused, badge, onPress }: TabItemProps) {
 function BottomTabBar({ state, navigation }: BottomTabBarProps) {
   const insets         = useSafeAreaInsets();
   const cartCount      = useCartStore((s) => s.itemCount());
-  const unreadNotifs   = useNotificationStore(selectUnreadCount);
+  const { user }       = useAuth();
+  const unreadNotifs   = useUnreadCount(user?.id);
 
   const onPress = useCallback(
     (route: { key: string; name: string }, focused: boolean) => {
