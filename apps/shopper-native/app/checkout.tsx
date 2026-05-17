@@ -38,7 +38,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { useCartStore, selectItemCount } from "@/stores/cart";
 import { useOrderStore } from "@/stores/orders";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/features/auth";
 
 import {
   checkoutFormSchema,

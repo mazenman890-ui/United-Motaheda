@@ -28,7 +28,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { ProductCardSkeleton, CategoryCardSkeleton } from "@/components/ui/Skeleton";
 import { theme } from "@/theme";
 import { useCartStore } from "@/stores/cart";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/features/auth";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 

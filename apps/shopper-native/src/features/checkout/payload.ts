@@ -6,7 +6,7 @@
  * the React Native JS environment).
  */
 
-import type { AuthUser } from "@/services/authApi";
+import type { AuthUser } from "@/features/auth";
 import type {
   CheckoutAddressSnapshot,
   CheckoutFormInput,

@@ -15,7 +15,7 @@ import {
   Cairo_900Black,
 } from "@expo-google-fonts/cairo";
 import { useRouter } from "expo-router";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/features/auth";
 import { useCartStore } from "@/stores/cart";
 import { useOrderStore } from "@/stores/orders";
 import { useWishlistStore } from "@/stores/wishlist";
