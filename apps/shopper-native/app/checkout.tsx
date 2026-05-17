@@ -58,6 +58,9 @@ import {
   useDeliveryQuote,
   SUPPORTED_GOVERNORATE,
   FREE_DELIVERY_THRESHOLD,
+  BranchSelector,
+  BranchCard,
+  type Branch,
 } from "@/features/delivery";
 
 import { Input } from "@/components/ui/Input";
@@ -163,6 +166,7 @@ export default function CheckoutScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [placedOrderId, setPlacedOrderId] = useState<string | null>(null);
+  const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
   const idempotencyKeyRef = useRef(createIdempotencyKey());
 
   const {
@@ -178,7 +182,10 @@ export default function CheckoutScreen() {
     mode: "onChange",
   });
 
-  const deliveryQuote = useDeliveryQuote({ subtotal: cartSubtotal });
+  const deliveryQuote = useDeliveryQuote({
+    subtotal: cartSubtotal,
+    branchId: selectedBranchId,
+  });
 
   const pricing: CheckoutPricing = useMemo(
     () =>
@@ -391,7 +398,14 @@ export default function CheckoutScreen() {
         )}
 
         {step === "details" ? (
-          <DetailsStep control={control} errors={errors} />
+          <DetailsStep
+            control={control}
+            errors={errors}
+            selectedBranchId={selectedBranchId}
+            onSelectBranch={(b: Branch) => setSelectedBranchId(b.id)}
+            deliveryBranch={deliveryQuote.branch}
+            outOfServiceMessage={deliveryQuote.outOfServiceMessage}
+          />
         ) : (
           <ReviewStep
             values={getValues()}
@@ -451,9 +465,40 @@ export default function CheckoutScreen() {
 
 // ─── Details Step ────────────────────────────────────────────────────────────
 
-function DetailsStep({ control, errors }: { control: any; errors: any }) {
+function DetailsStep({
+  control,
+  errors,
+  selectedBranchId,
+  onSelectBranch,
+  deliveryBranch,
+  outOfServiceMessage,
+}: {
+  control: any;
+  errors: any;
+  selectedBranchId: string | null;
+  onSelectBranch: (b: Branch) => void;
+  deliveryBranch: Branch | null;
+  outOfServiceMessage: string | null;
+}) {
   return (
     <Animated.View entering={FadeIn.duration(220)}>
+      <SectionCard title="فرع التوصيل" icon="storefront-outline" delay={20}>
+        <Text style={styles.branchHint}>
+          سيتم التوصيل من أقرب فرع. يمكنك اختيار فرع آخر إذا أردت:
+        </Text>
+        <BranchSelector
+          selectedId={selectedBranchId ?? deliveryBranch?.id ?? null}
+          onSelect={onSelectBranch}
+          compact
+        />
+        {outOfServiceMessage && (
+          <Animated.View entering={FadeIn.duration(200)} style={styles.branchWarning}>
+            <Ionicons name="alert-circle-outline" size={14} color={theme.colors.amber[700]} />
+            <Text style={styles.branchWarningText}>{outOfServiceMessage}</Text>
+          </Animated.View>
+        )}
+      </SectionCard>
+
       <SectionCard title="المعلومات الشخصية" icon="person-outline" delay={50}>
         <Controller
           control={control}
@@ -623,6 +668,26 @@ function ReviewStep({
 }) {
   return (
     <Animated.View entering={FadeIn.duration(220)}>
+      {deliveryQuote.branch && (
+        <SectionCard
+          title="فرع التوصيل"
+          icon="storefront-outline"
+          delay={20}
+          action={{ label: "تغيير الفرع", onPress: onEditAddress }}>
+          <BranchCard
+            branch={deliveryQuote.branch}
+            distanceKm={deliveryQuote.distanceKm ?? undefined}
+            compact
+          />
+          <View style={styles.etaPillInline}>
+            <Ionicons name="time-outline" size={12} color={theme.colors.brand[600]} />
+            <Text style={styles.etaPillText}>
+              التوصيل خلال {deliveryQuote.eta.min}–{deliveryQuote.eta.max} دقيقة
+            </Text>
+          </View>
+        </SectionCard>
+      )}
+
       <SectionCard
         title="عنوان التوصيل"
         icon="location-outline"
@@ -1125,6 +1190,46 @@ const styles = StyleSheet.create({
   cityBadgeText: { fontSize: 9, fontFamily: theme.fonts.bold, color: theme.colors.amber[800] },
 
   row3: { flexDirection: "row-reverse", gap: 8 },
+
+  // Branch section
+  branchHint: {
+    fontSize: 11,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.slate[500],
+    textAlign: "right",
+    marginBottom: 4,
+  },
+  branchWarning: {
+    flexDirection: "row-reverse",
+    alignItems: "flex-start",
+    gap: 8,
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: theme.colors.amber[50],
+    borderWidth: 1,
+    borderColor: theme.colors.amber[100],
+    marginTop: 6,
+  },
+  branchWarningText: {
+    flex: 1,
+    fontSize: 11,
+    fontFamily: theme.fonts.semibold,
+    color: theme.colors.amber[800],
+    textAlign: "right",
+    lineHeight: 16,
+  },
+  etaPillInline: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    alignSelf: "flex-end",
+    gap: 5,
+    backgroundColor: theme.colors.brand[50],
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    marginTop: 8,
+  },
+  etaPillText: { fontSize: 10, fontFamily: theme.fonts.bold, color: theme.colors.brand[700] },
 
   // Review
   reviewLine: {
