@@ -132,7 +132,6 @@ export default function CategoryScreen() {
         {/* Sort & filter chips */}
         <ScrollView
           horizontal
-          inverted
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ gap: 8, paddingRight: 2 }}>
           {/* In stock toggle */}

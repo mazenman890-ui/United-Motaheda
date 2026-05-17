@@ -390,7 +390,6 @@ export default function ProductDetailScreen() {
                   </View>
                   <ScrollView
                     horizontal
-                    inverted
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{ gap: 10 }}>
                     {relatedProducts.map((p) => (

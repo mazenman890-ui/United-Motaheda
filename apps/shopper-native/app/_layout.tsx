@@ -22,6 +22,7 @@ import { useWishlistStore } from "@/stores/wishlist";
 import { useNotificationStore } from "@/stores/notifications";
 import { NotificationBanner } from "@/components/NotificationBanner";
 import { usePushNotificationRegistration } from "@/features/notifications";
+import { ErrorBoundary } from "@/shared/components";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -98,6 +99,7 @@ export default function RootLayout() {
   }, [fontsLoaded, hydrate, hydrateOrders, hydrateWishlist]);
 
   return (
+    <ErrorBoundary>
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
@@ -130,5 +132,6 @@ export default function RootLayout() {
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }

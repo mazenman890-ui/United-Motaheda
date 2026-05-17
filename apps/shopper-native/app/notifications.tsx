@@ -227,6 +227,10 @@ export default function NotificationsScreen() {
           ItemSeparatorComponent={() => <View style={styles.sep} />}
           onEndReached={handleEndReached}
           onEndReachedThreshold={0.5}
+          removeClippedSubviews
+          maxToRenderPerBatch={12}
+          initialNumToRender={10}
+          windowSize={7}
           refreshControl={
             <RefreshControl
               refreshing={loading}

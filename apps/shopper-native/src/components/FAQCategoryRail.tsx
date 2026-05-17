@@ -19,7 +19,6 @@ export function FAQCategoryRail({ selected, onSelect, counts }: Props) {
   return (
     <ScrollView
       horizontal
-      inverted
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.rail}
       style={styles.container}>
