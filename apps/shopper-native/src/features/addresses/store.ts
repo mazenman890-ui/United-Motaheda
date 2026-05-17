@@ -5,8 +5,8 @@ import {
   updateAddress,
   deleteAddress,
   setDefaultAddress,
-} from "@/services/addressesApi";
-import type { Address, AddressFormData } from "@/types/address";
+} from "./api";
+import type { Address, AddressFormData } from "./types";
 
 interface AddressState {
   addresses: Address[];

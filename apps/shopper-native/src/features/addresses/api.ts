@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import type { Address, AddressFormData } from "@/types/address";
+import type { Address, AddressFormData } from "./types";
 
 export async function fetchAddresses(userId: string): Promise<Address[]> {
   const { data, error } = await supabase

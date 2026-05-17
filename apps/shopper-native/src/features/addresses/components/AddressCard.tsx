@@ -4,8 +4,8 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { AddressMapPlaceholder } from "./AddressMapPlaceholder";
-import { ADDRESS_LABELS } from "@/types/address";
-import type { Address } from "@/types/address";
+import { ADDRESS_LABELS } from "../types";
+import type { Address } from "../types";
 import { theme } from "@/theme";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];

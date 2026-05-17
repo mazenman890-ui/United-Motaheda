@@ -16,8 +16,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn, FadeInDown, SlideInRight } from "react-native-reanimated";
 import { AddressMapPlaceholder } from "./AddressMapPlaceholder";
-import { ADDRESS_LABELS } from "@/types/address";
-import type { Address, AddressFormData, AddressLabel } from "@/types/address";
+import { ADDRESS_LABELS } from "../types";
+import type { Address, AddressFormData, AddressLabel } from "../types";
 import { theme } from "@/theme";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];

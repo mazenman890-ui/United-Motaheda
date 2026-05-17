@@ -15,12 +15,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { useAuth } from "@/contexts/AuthContext";
-import { useAddressStore } from "@/stores/addresses";
-import { AddressCard } from "@/components/AddressCard";
-import { AddressFormDrawer } from "@/components/AddressFormDrawer";
+import {
+  useAddressStore,
+  AddressCard,
+  AddressFormDrawer,
+  type Address,
+  type AddressFormData,
+} from "@/features/addresses";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { theme } from "@/theme";
-import type { Address, AddressFormData } from "@/types/address";
 
 export default function AddressesScreen() {
   const router = useRouter();
