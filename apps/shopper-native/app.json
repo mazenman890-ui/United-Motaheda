@@ -23,8 +23,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.unitedpharmacy.app",
-      "versionCode": 1,
-      "kotlinVersion": "2.0.21" 
+      "versionCode": 1
     },
     "web": {
       "bundler": "metro",
@@ -41,6 +40,14 @@
           "imageWidth": 280,
           "resizeMode": "contain",
           "backgroundColor": "#021D2E"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "2.0.21"
+          }
         }
       ]
     ],
