@@ -24,4 +24,4 @@ export { useBranches } from "./branches/useBranches";
 // ─── UI ─────────────────────────────────────────────────────────────────────
 export { BranchCard } from "./components/BranchCard";
 export { BranchSelector } from "./components/BranchSelector";
-export { BranchMap } from "./components/BranchMap";
+export { DeliveryMap } from "./components/DeliveryMap";
