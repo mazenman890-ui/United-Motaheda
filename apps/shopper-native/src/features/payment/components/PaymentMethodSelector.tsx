@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { PaymentMethodCard } from "./PaymentMethodCard";
-import { usePaymentStore } from "@/stores/payment";
+import { usePaymentStore } from "../store";
 import { theme } from "@/theme";
 
 interface Props {

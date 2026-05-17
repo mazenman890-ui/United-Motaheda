@@ -5,8 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
-import { PaymentMethodSelector } from "@/components/PaymentMethodSelector";
-import { usePaymentStore, hydratePaymentStore } from "@/stores/payment";
+import { PaymentMethodSelector, usePaymentStore, hydratePaymentStore } from "@/features/payment";
 import { theme } from "@/theme";
 
 export default function PaymentScreen() {

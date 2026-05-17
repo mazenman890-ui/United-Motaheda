@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import { theme } from "@/theme";
-import type { PaymentMethod } from "@/types/payment";
+import type { PaymentMethod } from "../types";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 

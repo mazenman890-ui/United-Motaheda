@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { storageGet, storageSet, STORAGE_KEYS } from "@/utils/storage";
-import type { PaymentMethodType, PaymentState } from "@/types/payment";
-import { PAYMENT_METHODS } from "@/types/payment";
+import type { PaymentMethodType, PaymentState } from "./types";
+import { PAYMENT_METHODS } from "./types";
 
 const PAYMENT_STORAGE_KEY = "united-payment-v1";
 
