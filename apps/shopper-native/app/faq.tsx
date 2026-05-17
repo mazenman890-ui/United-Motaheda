@@ -12,11 +12,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
-import { FAQAccordion } from "@/components/FAQAccordion";
-import { FAQCategoryRail } from "@/components/FAQCategoryRail";
+import { FAQAccordion, FAQCategoryRail } from "@/features/faq";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { FAQ_DATA, FAQ_CATEGORIES } from "@/types/faq";
-import type { FAQCategory, FAQItem } from "@/types/faq";
+import { FAQ_DATA, FAQ_CATEGORIES, type FAQCategory, type FAQItem } from "@/features/faq";
 import { theme } from "@/theme";
 
 export default function FAQScreen() {

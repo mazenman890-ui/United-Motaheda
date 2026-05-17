@@ -3,8 +3,8 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-n
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn } from "react-native-reanimated";
-import { FAQ_CATEGORIES } from "@/types/faq";
-import type { FAQCategory } from "@/types/faq";
+import { FAQ_CATEGORIES } from "../data";
+import type { FAQCategory } from "../data";
 import { theme } from "@/theme";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];

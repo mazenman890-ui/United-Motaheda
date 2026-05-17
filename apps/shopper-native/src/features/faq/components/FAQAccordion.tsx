@@ -4,8 +4,8 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { theme } from "@/theme";
-import type { FAQItem, FAQCategoryConfig } from "@/types/faq";
-import { FAQ_CATEGORIES } from "@/types/faq";
+import type { FAQItem, FAQCategoryConfig } from "../data";
+import { FAQ_CATEGORIES } from "../data";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
