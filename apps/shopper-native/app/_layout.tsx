@@ -19,9 +19,11 @@ import { AuthProvider, useAuth } from "@/features/auth";
 import { useCartStore } from "@/stores/cart";
 import { useOrderStore } from "@/stores/orders";
 import { useWishlistStore } from "@/stores/wishlist";
-import { useNotificationStore } from "@/stores/notifications";
-import { NotificationBanner } from "@/components/NotificationBanner";
-import { usePushNotificationRegistration } from "@/features/notifications";
+import {
+  NotificationBanner,
+  useNotificationStore,
+  usePushNotificationRegistration,
+} from "@/features/notifications";
 import { ErrorBoundary } from "@/shared/components";
 
 SplashScreen.preventAutoHideAsync();

@@ -12,7 +12,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
-import { useNotificationStore } from "@/stores/notifications";
+import { useNotificationStore } from "../legacy-store";
 import { theme } from "@/theme";
 
 // ─── Constants ────────────────────────────────────────────────────────────────

@@ -6,7 +6,7 @@ import {
   markAllRead as apiMarkAllRead,
   subscribeToNotifications,
   type AppNotification,
-} from "@/services/notificationsApi";
+} from "./legacy-api";
 
 interface NotificationsStore {
   notifications:  AppNotification[];

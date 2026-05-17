@@ -18,9 +18,9 @@ import {
   fetchNotificationsPage,
   markNotificationRead,
   markAllNotificationsRead,
-} from "@/features/notifications";
-import { subscribeToNotifications as featureSubscribe } from "@/features/notifications";
-import type { AppNotification as CanonicalNotification } from "@/features/notifications";
+} from "./api";
+import { subscribeToNotifications as featureSubscribe } from "./realtime";
+import type { AppNotification as CanonicalNotification } from "./types";
 
 export type NotifType = "order" | "offer" | "health" | "system";
 

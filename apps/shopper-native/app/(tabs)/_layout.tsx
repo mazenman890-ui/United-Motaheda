@@ -12,7 +12,7 @@ import Animated, {
 } from "react-native-reanimated";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useCartStore } from "@/stores/cart";
-import { useNotificationStore, selectUnreadCount } from "@/stores/notifications";
+import { useNotificationStore, selectUnreadCount } from "@/features/notifications";
 import { theme } from "@/theme";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
