@@ -14,6 +14,8 @@ async function bootstrap() {
     origin: [
       "https://unitedpharmacy.net",
       "https://www.unitedpharmacy.net",
+      "https://unitedpharmacy.io",
+      "https://www.unitedpharmacy.io",
       // Allow all localhost ports for local development
       /^http:\/\/localhost(:\d+)?$/,
       /^http:\/\/127\.0\.0\.1(:\d+)?$/,
