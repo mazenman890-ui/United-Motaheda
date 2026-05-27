@@ -1,9 +1,7 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "outDir": "../../dist/apps/api",
-    "rootDir": "../../",
-    "baseUrl": "../../",
+    "outDir": "./dist",
     "skipLibCheck": true,
     "checkJs": false
   },
