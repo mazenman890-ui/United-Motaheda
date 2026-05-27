@@ -64,6 +64,7 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import {
   formatStockQuantity,
   getCatalogProductImage,
+  getCatalogProductImageSrcSet,
   getProductAvailabilityLabel,
   type CatalogProduct,
 } from "../catalog";
@@ -114,12 +115,14 @@ function ProductBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-lg border px-2.5 py-1 text-[9px] font-black backdrop-blur-md transition-all duration-300",
-        tone === "neutral" && "border-white/70 bg-white/85 text-slate-700 shadow-[0_4px_12px_rgba(15,23,42,0.08)]",
-        tone === "stock"   && "border-emerald-200/70 bg-emerald-50/90 text-emerald-700 shadow-[0_4px_12px_rgba(16,185,129,0.10)]",
-        tone === "danger"  && "border-rose-200/70 bg-rose-50/90 text-rose-600 shadow-[0_4px_12px_rgba(244,63,94,0.10)]",
-        tone === "sale"    && "border-amber-200/70 bg-amber-50/90 text-amber-700",
-        tone === "new"     && "border-cyan-200/70 bg-cyan-50/90 text-cyan-700",
+        // backdrop-blur-md REMOVED: these badges appear on every card;
+        // each instance is a GPU compositing layer. Solid colours look identical.
+        "inline-flex items-center rounded-lg border px-2.5 py-1 text-[9px] font-black transition-all duration-300",
+        tone === "neutral" && "border-slate-200/80 bg-white text-slate-700 shadow-[0_4px_12px_rgba(15,23,42,0.06)]",
+        tone === "stock"   && "border-emerald-200 bg-emerald-50 text-emerald-700 shadow-[0_4px_12px_rgba(16,185,129,0.10)]",
+        tone === "danger"  && "border-rose-200 bg-rose-50 text-rose-600 shadow-[0_4px_12px_rgba(244,63,94,0.10)]",
+        tone === "sale"    && "border-amber-200 bg-amber-50 text-amber-700",
+        tone === "new"     && "border-cyan-200 bg-cyan-50 text-cyan-700",
         className,
       )}
     >
@@ -292,8 +295,12 @@ export const ProductCard = memo(function ProductCard({
       style={{ ...(style || {}), WebkitTapHighlightColor: "transparent" } as CSSProperties}
       className={cn(
         "product-card group relative flex h-full min-h-0 flex-col overflow-hidden",
-        "rounded-[1.6rem] border border-white/70 bg-white/90",
-        "shadow-[0_2px_12px_rgba(15,23,42,0.07)] ring-1 ring-slate-200/60 backdrop-blur-xl",
+        "rounded-[1.6rem] border border-slate-200/70 bg-white",
+        // backdrop-blur-xl REMOVED: at bg-white/90 (90% opaque) the visual
+        // difference is imperceptible, but each instance forces the compositor
+        // to create a separate GPU layer. With 15-20 cards in the viewport
+        // that's 15-20 compositing layers on every scroll frame.
+        "shadow-[0_2px_12px_rgba(15,23,42,0.07)] ring-1 ring-slate-200/60",
         "transition-all duration-300 ease-out hover:-translate-y-1.5 hover:shadow-[0_20px_48px_rgba(15,23,42,0.13)]",
         "cursor-pointer",
         // Entrance animation: only when animate=true (non-virtualized use)
@@ -359,11 +366,13 @@ export const ProductCard = memo(function ProductCard({
             ) : null}
 
             {/* Image */}
-            <div className="relative h-full overflow-hidden rounded-[1.1rem] border border-white/70 bg-white/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+            <div className="relative h-full overflow-hidden rounded-[1.1rem] border border-slate-100 bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
               <ImageWithFallback
                 src={getCatalogProductImage(product)}
+                srcSet={getCatalogProductImageSrcSet(product.imageUrl)}
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 240px"
                 alt={primaryName}
-                className="relative h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.06]"
+                className="relative h-full w-full object-contain p-1 transition-transform duration-500 ease-out group-hover:scale-[1.06]"
                 loading="lazy"
                 decoding="async"
               />
@@ -531,8 +540,9 @@ export const ProductCardCompact = memo(function ProductCardCompact({
   return (
     <div
       className={cn(
-        "product-card-compact group relative overflow-hidden rounded-2xl border border-white/70 bg-white/88 p-3",
-        "shadow-[0_2px_10px_rgba(15,23,42,0.06)] ring-1 ring-slate-200/60 backdrop-blur-xl",
+        "product-card-compact group relative overflow-hidden rounded-2xl border border-slate-200/70 bg-white p-3",
+        "shadow-[0_2px_10px_rgba(15,23,42,0.06)] ring-1 ring-slate-200/60",
+        // backdrop-blur-xl removed — same reason as ProductCard
         "transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-lg",
         // Entrance animation only for non-virtualized contexts
         animate && "product-card-animate",
@@ -550,8 +560,10 @@ export const ProductCardCompact = memo(function ProductCardCompact({
         >
           <ImageWithFallback
             src={getCatalogProductImage(product)}
+            srcSet={getCatalogProductImageSrcSet(product.imageUrl)}
+            sizes="80px"
             alt={primaryName}
-            className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+            className="h-full w-full object-contain p-1 transition-transform duration-500 ease-out group-hover:scale-105"
             loading="lazy"
             decoding="async"
           />

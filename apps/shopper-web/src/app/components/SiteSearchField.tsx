@@ -66,14 +66,49 @@ import {
   type RefObject,
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Grid2x2, Search } from "lucide-react";
+import { Clock, Grid2x2, Search, X } from "lucide-react";
 import { useCatalog } from "../../contexts/CatalogContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useSearchInput, useSearchResults } from "../../contexts/SearchContext";
 import { useCatalogCategorySearch } from "../hooks/useCatalogCategorySearch";
 import { getLocalizedCategoryName } from "../localization";
 import type { CatalogCategory, CatalogProduct } from "../catalog";
+import { getCatalogProductImage } from "../catalog";
 import { cn } from "./UI";
+
+// ─── Recent searches ──────────────────────────────────────────────────────────
+
+const RECENT_KEY    = "up:recent-searches";
+const RECENT_LIMIT  = 6;
+
+function loadRecentSearches(): string[] {
+  try {
+    const raw = localStorage.getItem(RECENT_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.slice(0, RECENT_LIMIT) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRecentSearch(query: string) {
+  const trimmed = query.trim();
+  if (!trimmed || trimmed.length < 2) return;
+  const prev    = loadRecentSearches();
+  const updated = [trimmed, ...prev.filter((q) => q.toLowerCase() !== trimmed.toLowerCase())].slice(0, RECENT_LIMIT);
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(updated)); } catch { /* quota */ }
+}
+
+function removeRecentSearch(query: string) {
+  const prev    = loadRecentSearches();
+  const updated = prev.filter((q) => q !== query);
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(updated)); } catch { /* quota */ }
+}
+
+function clearAllRecentSearches() {
+  try { localStorage.removeItem(RECENT_KEY); } catch { /* quota */ }
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -87,6 +122,78 @@ type SiteSearchFieldProps = {
 };
 
 type SiteSearchMode = "products" | "categories" | "category-products" | "global";
+
+// ─── RecentSearchesPanel ──────────────────────────────────────────────────────
+
+interface RecentSearchesPanelProps {
+  lang:           "ar" | "en";
+  recents:        string[];
+  onSelect:       (q: string) => void;
+  onRemove:       (q: string) => void;
+  onClearAll:     () => void;
+}
+
+const RecentSearchesPanel = memo(function RecentSearchesPanel({
+  lang, recents, onSelect, onRemove, onClearAll,
+}: RecentSearchesPanelProps) {
+  if (recents.length === 0) return null;
+
+  return (
+    <div
+      role="listbox"
+      aria-label={lang === "ar" ? "عمليات البحث الأخيرة" : "Recent searches"}
+      className="absolute start-0 end-0 top-[calc(100%+0.35rem)] z-[60] rounded-2xl border border-slate-200 bg-white py-2 shadow-[0_24px_48px_rgba(15,23,42,0.12)]"
+    >
+      <div className={cn(
+        "flex items-center justify-between px-4 pb-1.5 pt-0.5",
+        lang === "ar" ? "flex-row-reverse" : "flex-row",
+      )}>
+        <div className={cn(
+          "flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400",
+          lang === "ar" ? "flex-row-reverse" : "flex-row",
+        )}>
+          <Clock className="h-3 w-3" />
+          {lang === "ar" ? "بحث سابق" : "Recent searches"}
+        </div>
+        <button
+          type="button"
+          onClick={onClearAll}
+          className="text-[10px] font-bold text-slate-400 transition-colors hover:text-rose-500"
+        >
+          {lang === "ar" ? "مسح الكل" : "Clear all"}
+        </button>
+      </div>
+      <ul>
+        {recents.map((q) => (
+          <li key={q} role="option" aria-selected={false}>
+            <div className={cn(
+              "group flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-slate-50",
+              lang === "ar" ? "flex-row-reverse" : "flex-row",
+            )}>
+              <button
+                type="button"
+                className="min-w-0 flex-1 text-start"
+                onClick={() => onSelect(q)}
+              >
+                <span className="block truncate text-sm font-semibold text-slate-700 group-hover:text-slate-950">
+                  {q}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onRemove(q)}
+                className="shrink-0 rounded-full p-0.5 text-slate-300 transition-colors hover:bg-rose-50 hover:text-rose-500"
+                aria-label={lang === "ar" ? `حذف "${q}"` : `Remove "${q}"`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+});
 
 type SuggestionItem =
   | { type: "category"; id: string }
@@ -284,62 +391,47 @@ const SuggestionPanel = memo(function SuggestionPanel({
   return (
     <div
       className={cn(
-        "absolute start-0 end-0 top-[calc(100%+0.35rem)] z-[60] max-h-80 overflow-auto rounded-2xl border border-slate-200 bg-white py-2 shadow-[0_24px_48px_rgba(15,23,42,0.12)]",
+        "absolute start-0 end-0 top-[calc(100%+0.35rem)] z-[60] max-h-[26rem] overflow-auto rounded-2xl border border-slate-200/80 bg-white py-1.5 shadow-[0_28px_56px_rgba(15,23,42,0.14),0_0_0_1px_rgba(15,23,42,0.04)]",
         lang === "ar" ? "text-right" : "text-left",
       )}
       role="listbox"
       aria-label={lang === "ar" ? "اقتراحات البحث" : "Search suggestions"}
     >
-      {/* Cross-script indicator */}
+      {/* Cross-script smart match indicator */}
       {isArabicScript(trimmedQuery) ? (
         <div
           className={cn(
-            "flex items-center gap-2 px-4 pb-2 pt-1 text-[10px] font-black uppercase tracking-[0.16em] text-teal-600",
+            "flex items-center gap-2 px-4 pb-1.5 pt-2 text-[10px] font-black uppercase tracking-[0.16em] text-teal-600",
             lang === "ar" ? "flex-row-reverse" : "flex-row",
           )}
         >
-          <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
-          {lang === "ar" ? "نتائج ذكية بالعربي والإنجليزي" : "Smart Arabic and English matching"}
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-teal-500" />
+          {lang === "ar" ? "بحث ذكي بالعربي والإنجليزي" : "Smart Arabic & English matching"}
         </div>
       ) : null}
 
-      {/* Categories section */}
+      {/* ── Categories section ── */}
       {visibleCategories.length > 0 ? (
         <div className="pb-1">
-          <div
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400",
-              lang === "ar" ? "flex-row-reverse" : "flex-row",
-            )}
-          >
+          <div className={cn(
+            "flex items-center gap-2 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400",
+            lang === "ar" ? "flex-row-reverse" : "flex-row",
+          )}>
             <Grid2x2 className="h-3.5 w-3.5" />
             {lang === "ar" ? "الأقسام" : "Categories"}
           </div>
 
-          {/*
-           * NOTE: If visibleCategories can exceed 20 items, replace this <ul>
-           * with a virtualized list.  Example:
-           *
-           *   import { useVirtualizer } from "@tanstack/react-virtual";
-           *   const parentRef = useRef<HTMLDivElement>(null);
-           *   const rowVirtualizer = useVirtualizer({
-           *     count: visibleCategories.length,
-           *     getScrollElement: () => parentRef.current,
-           *     estimateSize: () => 52,
-           *   });
-           */}
-          <ul className="divide-y divide-slate-100">
+          <ul>
             {visibleCategories.map((category, index) => {
               const active      = index === activeIndex;
               const displayName = getLocalizedCategoryName(category, lang);
-
               return (
                 <li key={category.id} role="option" aria-selected={active}>
                   <button
                     type="button"
                     className={cn(
-                      "flex w-full items-center justify-between gap-3 px-4 py-3 text-start transition-colors",
-                      active ? "bg-teal-50" : "hover:bg-slate-50",
+                      "flex w-full items-center justify-between gap-3 px-4 py-2.5 text-start transition-colors",
+                      active ? "bg-teal-50/80" : "hover:bg-slate-50",
                     )}
                     onClick={() => onCategoryClick(category.id)}
                   >
@@ -347,14 +439,14 @@ const SuggestionPanel = memo(function SuggestionPanel({
                       <span className="block truncate text-sm font-black text-slate-950">
                         {highlightMatch(displayName, searchQuery)}
                       </span>
-                      <span className="mt-1 block text-xs font-semibold text-slate-400">
+                      <span className="mt-0.5 block text-xs font-semibold text-slate-400">
                         {lang === "ar"
-                          ? `${category.inStockCount} متاح الآن`
-                          : `${category.inStockCount} ready now`}
+                          ? `${category.inStockCount.toLocaleString()} متاح الآن`
+                          : `${category.inStockCount.toLocaleString()} in stock`}
                       </span>
                     </div>
-                    <span className="text-xs font-black text-[var(--primary)]">
-                      {lang === "ar" ? "افتح القسم" : "Open"}
+                    <span className="shrink-0 rounded-full bg-teal-50 px-2.5 py-0.5 text-[10px] font-black text-teal-700 transition-colors group-hover:bg-teal-100">
+                      {lang === "ar" ? "افتح" : "Open"}
                     </span>
                   </button>
                 </li>
@@ -364,62 +456,97 @@ const SuggestionPanel = memo(function SuggestionPanel({
         </div>
       ) : null}
 
-      {/* Products section */}
+      {/* ── Divider between sections ── */}
+      {visibleCategories.length > 0 && visibleProducts.length > 0 ? (
+        <div className="mx-3 my-1 border-t border-slate-100" />
+      ) : null}
+
+      {/* ── Products section with thumbnails ── */}
       {visibleProducts.length > 0 ? (
         <div>
-          <div
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400",
-              lang === "ar" ? "flex-row-reverse" : "flex-row",
-            )}
-          >
+          <div className={cn(
+            "flex items-center gap-2 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400",
+            lang === "ar" ? "flex-row-reverse" : "flex-row",
+          )}>
             <Search className="h-3.5 w-3.5" />
             {lang === "ar" ? "المنتجات" : "Products"}
+            {isSearching ? (
+              <span className="ms-auto inline-flex h-4 w-4 items-center justify-center">
+                <span className="h-3 w-3 animate-spin rounded-full border border-slate-200 border-t-teal-500" />
+              </span>
+            ) : null}
           </div>
 
-          {/*
-           * NOTE: For suggestion limits > 20, virtualize here too.
-           */}
-          <ul className="divide-y divide-slate-100">
+          <ul>
             {visibleProducts.map((product, index) => {
-              const active       = index + visibleCategories.length === activeIndex;
-              const primaryName  = (lang === "ar" ? product.nameAr : product.nameEn) ?? product.name ?? "";
+              const active        = index + visibleCategories.length === activeIndex;
+              const primaryName   = (lang === "ar" ? product.nameAr : product.nameEn) ?? product.name ?? "";
               const secondaryName = (lang === "ar" ? product.nameEn : product.nameAr) ?? product.name ?? "";
+              const imgSrc        = getCatalogProductImage(product);
 
               return (
                 <li key={product.id} role="option" aria-selected={active}>
                   <button
                     type="button"
                     className={cn(
-                      "flex w-full items-center justify-between gap-3 px-4 py-3 text-start transition-colors",
-                      active ? "bg-teal-50" : "hover:bg-slate-50",
+                      "flex w-full items-center gap-3 px-4 py-2 text-start transition-colors",
+                      lang === "ar" ? "flex-row-reverse" : "flex-row",
+                      active ? "bg-teal-50/80" : "hover:bg-slate-50",
                     )}
                     onClick={() => onProductClick(product.id)}
                   >
+                    {/* Thumbnail */}
+                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-slate-50">
+                      {imgSrc ? (
+                        <img
+                          src={imgSrc}
+                          alt=""
+                          aria-hidden
+                          className="h-full w-full object-contain p-1"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      ) : (
+                        <span className="flex h-full w-full items-center justify-center text-[1.1rem]">💊</span>
+                      )}
+                      {/* In-stock dot */}
+                      <span
+                        className={cn(
+                          "absolute bottom-0.5 end-0.5 h-2 w-2 rounded-full border border-white",
+                          product.inStock ? "bg-emerald-400" : "bg-slate-300",
+                        )}
+                        aria-hidden
+                      />
+                    </div>
+
+                    {/* Name */}
                     <div className="min-w-0 flex-1">
-                      <span className="block min-w-0 truncate text-sm font-black text-slate-950">
+                      <span className="block min-w-0 truncate text-sm font-black leading-tight text-slate-950">
                         {highlightMatch(primaryName, searchQuery)}
                       </span>
                       {secondaryName && secondaryName !== primaryName ? (
-                        <span className="mt-1 block min-w-0 truncate text-xs font-semibold text-slate-400" dir="auto">
+                        <span className="mt-0.5 block min-w-0 truncate text-[11px] font-semibold text-slate-400" dir="auto">
                           {secondaryName}
                         </span>
                       ) : null}
                     </div>
+
+                    {/* Price + stock */}
                     <div className="flex shrink-0 flex-col items-end gap-1">
-                      <span className="text-sm font-black text-teal-600">
-                        {product.price.toFixed(2)} EGP
+                      <span className="text-sm font-black tabular-nums text-teal-600">
+                        {product.price.toFixed(2)}
+                        <span className="ms-0.5 text-[10px] font-semibold text-slate-400">
+                          {lang === "ar" ? "ج.م" : "EGP"}
+                        </span>
                       </span>
-                      <span
-                        className={cn(
-                          "rounded-full px-2 py-0.5 text-[10px] font-black uppercase",
-                          product.inStock
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "bg-rose-50 text-rose-600",
-                        )}
-                      >
+                      <span className={cn(
+                        "rounded-full px-1.5 py-0.5 text-[10px] font-black",
+                        product.inStock
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-rose-50 text-rose-500",
+                      )}>
                         {product.inStock
-                          ? lang === "ar" ? "متاح"     : "In stock"
+                          ? lang === "ar" ? "متاح" : "In stock"
                           : lang === "ar" ? "غير متاح" : "Out"}
                       </span>
                     </div>
@@ -431,7 +558,7 @@ const SuggestionPanel = memo(function SuggestionPanel({
         </div>
       ) : null}
 
-      {/* Empty state */}
+      {/* ── Empty / loading state ── */}
       {totalItems === 0 ? (
         <div className="px-4 py-8">
           {(workerStatus === "building" || isSearching) ? (
@@ -439,42 +566,47 @@ const SuggestionPanel = memo(function SuggestionPanel({
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-teal-600" />
               <span className="text-sm font-semibold text-slate-600">
                 {lang === "ar"
-                  ? isSearching
-                    ? "جاري البحث عن المنتجات..."
-                    : "جاري تحضير البيانات..."
-                  : isSearching
-                    ? "Searching products..."
-                    : "Loading search index..."}
+                  ? isSearching ? "جاري البحث…" : "جاري التحضير…"
+                  : isSearching ? "Searching…"  : "Loading…"}
               </span>
             </div>
           ) : (
-            <span className="block text-center text-sm font-semibold text-slate-500">
-              {lang === "ar"
-                ? "لا توجد اقتراحات سريعة، اضغط Enter لعرض النتائج."
-                : "No quick suggestions yet. Press Enter to show results."}
-            </span>
+            <div className="text-center">
+              <span className="block text-2xl">🔍</span>
+              <span className="mt-2 block text-sm font-semibold text-slate-500">
+                {lang === "ar"
+                  ? `لا توجد نتائج سريعة لـ "${trimmedQuery}" — اضغط Enter`
+                  : `No quick results for "${trimmedQuery}" — press Enter`}
+              </span>
+            </div>
           )}
         </div>
       ) : null}
 
-      {/* Footer hint */}
-      <div
-        className={cn(
-          "border-t border-slate-100 px-4 py-2.5 text-[10px] font-semibold text-slate-400",
-          lang === "ar" ? "text-right" : "text-left",
-        )}
-      >
-        {mode === "categories"
-          ? lang === "ar"
-            ? `يتم تصفية الأقسام مباشرة عند كتابة "${trimmedQuery}".`
-            : `Categories update live while you type "${trimmedQuery}".`
-          : mode === "category-products"
+      {/* ── Footer hint ── */}
+      <div className={cn(
+        "flex items-center justify-between border-t border-slate-100 px-4 py-2 text-[10px] font-semibold text-slate-400",
+        lang === "ar" ? "flex-row-reverse" : "flex-row",
+      )}>
+        <span>
+          {mode === "categories"
             ? lang === "ar"
-              ? `يتم تصفية منتجات هذا القسم مباشرة عند كتابة "${trimmedQuery}".`
-              : `This section updates live while you type "${trimmedQuery}".`
-            : lang === "ar"
-              ? `اضغط Enter لعرض نتائج "${trimmedQuery}" في صفحة المنتجات.`
-              : `Press Enter to open "${trimmedQuery}" in the products feed.`}
+              ? "الأقسام تتحدث مباشرة أثناء الكتابة"
+              : "Categories filter live"
+            : mode === "category-products"
+              ? lang === "ar"
+                ? "منتجات هذا القسم تتحدث مباشرة"
+                : "Products filter live"
+              : lang === "ar"
+                ? "Enter لعرض كل النتائج"
+                : "Press Enter for all results"}
+        </span>
+        <span className="flex items-center gap-1">
+          <kbd className="rounded border border-slate-200 bg-slate-50 px-1 py-0.5 font-mono text-[9px]">↑↓</kbd>
+          <span>{lang === "ar" ? "للتنقل" : "navigate"}</span>
+          <kbd className="ms-1 rounded border border-slate-200 bg-slate-50 px-1 py-0.5 font-mono text-[9px]">↵</kbd>
+          <span>{lang === "ar" ? "اختيار" : "select"}</span>
+        </span>
       </div>
     </div>
   );
@@ -500,8 +632,15 @@ export function SiteSearchField({
   // SearchResultsContext — only re-renders on suggestion list changes
   const { suggestions, workerStatus, isSearching } = useSearchResults();
 
-  const mode                = getSiteSearchMode(location.pathname);
+  const mode                 = getSiteSearchMode(location.pathname);
   const effectivePlaceholder = placeholder ?? getSiteSearchPlaceholder(location.pathname, lang);
+
+  // ── Recent searches state ─────────────────────────────────────────────────
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => loadRecentSearches());
+
+  const refreshRecents = useCallback(() => {
+    setRecentSearches(loadRecentSearches());
+  }, []);
 
   // ── Visible product suggestions ──────────────────────────────────────────
   const visibleProducts = useMemo(() => {
@@ -530,7 +669,10 @@ export function SiteSearchField({
     [visibleCategories, visibleProducts],
   );
 
+  // Show suggestion dropdown when query has content
   const canShowPanel = showSuggestions && trimmedQuery.length > 1;
+  // Show recent searches when focused with empty / very short query
+  const canShowRecents = showSuggestions && trimmedQuery.length <= 1 && recentSearches.length > 0;
 
   // ── Reset active index when suggestions change ────────────────────────────
   useEffect(() => {
@@ -551,9 +693,14 @@ export function SiteSearchField({
   // ── Navigation callbacks ──────────────────────────────────────────────────
 
   const handleSelectProduct = useCallback((id: string) => {
+    const product = suggestions.find((p) => p.id === id);
+    if (product) {
+      const name = (lang === "ar" ? product.nameAr : product.nameEn) ?? product.name ?? "";
+      if (name) { saveRecentSearch(name); refreshRecents(); }
+    }
     setShowSuggestions(false);
     navigate(`/products/${id}`);
-  }, [navigate]);
+  }, [navigate, suggestions, lang, refreshRecents]);
 
   const handleSelectCategory = useCallback((id: string) => {
     setShowSuggestions(false);
@@ -563,10 +710,39 @@ export function SiteSearchField({
   const handleCommitSearch = useCallback(() => {
     const trimmed = searchQuery.trim();
     if (!trimmed) return;
+    saveRecentSearch(trimmed);
+    refreshRecents();
     setShowSuggestions(false);
     const path = resolveSiteSearchSubmitPath(location.pathname, trimmed);
     if (path) navigate(path);
-  }, [searchQuery, navigate, location.pathname]);
+  }, [searchQuery, navigate, location.pathname, refreshRecents]);
+
+  // ── Recent search selection ───────────────────────────────────────────────
+
+  const handleSelectRecent = useCallback((q: string) => {
+    setSearchQuery(q);
+    commitQuery(q);
+    setShowSuggestions(true);
+    setActiveIndex(-1);
+    // Immediately navigate to results
+    const path = resolveSiteSearchSubmitPath(location.pathname, q);
+    if (path) {
+      saveRecentSearch(q);
+      refreshRecents();
+      setShowSuggestions(false);
+      navigate(path);
+    }
+  }, [setSearchQuery, commitQuery, navigate, location.pathname, refreshRecents]);
+
+  const handleRemoveRecent = useCallback((q: string) => {
+    removeRecentSearch(q);
+    refreshRecents();
+  }, [refreshRecents]);
+
+  const handleClearAllRecents = useCallback(() => {
+    clearAllRecentSearches();
+    refreshRecents();
+  }, [refreshRecents]);
 
   // ── Input change handler ──────────────────────────────────────────────────
 
@@ -583,6 +759,7 @@ export function SiteSearchField({
     (e: KeyboardEvent<HTMLInputElement>) => {
       if (!canShowPanel) {
         if (e.key === "Enter") handleCommitSearch();
+        if (e.key === "Escape") setShowSuggestions(false);
         return;
       }
 
@@ -637,9 +814,23 @@ export function SiteSearchField({
         inputRef={inputRef}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        onFocus={() => setShowSuggestions(true)}
+        onFocus={() => { setShowSuggestions(true); refreshRecents(); }}
         onCommit={handleCommitSearch}
       />
+
+      {/*
+       * RecentSearchesPanel — shown when the user focuses the field with
+       * an empty (or very short) query and has prior searches saved.
+       */}
+      {canShowRecents ? (
+        <RecentSearchesPanel
+          lang={lang}
+          recents={recentSearches}
+          onSelect={handleSelectRecent}
+          onRemove={handleRemoveRecent}
+          onClearAll={handleClearAllRecents}
+        />
+      ) : null}
 
       {/*
        * SuggestionPanel is memo'd — it re-renders when suggestions or

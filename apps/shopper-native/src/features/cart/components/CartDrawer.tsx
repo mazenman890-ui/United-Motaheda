@@ -11,7 +11,7 @@
  */
 
 import React, { forwardRef, useCallback, useImperativeHandle, useMemo, useRef } from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import BottomSheet, { BottomSheetView, BottomSheetFlatList } from "@gorhom/bottom-sheet";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,7 +19,8 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCartStore, selectPricing, selectItemCount } from "@/stores/cart";
-import { useDeliveryQuote } from "@/features/delivery";
+import { useDeliveryContext } from "@/features/delivery";
+import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/theme";
 import { formatPrice } from "@/utils/format";
 import type { CartItem } from "@/stores/cart";
@@ -28,8 +29,6 @@ export interface CartDrawerRef {
   open: () => void;
   close: () => void;
 }
-
-type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
 export const CartDrawer = forwardRef<CartDrawerRef>(function CartDrawer(_, ref) {
   const sheetRef = useRef<BottomSheet>(null);
@@ -42,7 +41,11 @@ export const CartDrawer = forwardRef<CartDrawerRef>(function CartDrawer(_, ref) 
   const updateQty = useCartStore((s) => s.updateQty);
   const removeItem = useCartStore((s) => s.removeItem);
 
-  const delivery = useDeliveryQuote({ subtotal: pricing.subtotal });
+  // Unified delivery context — same source as Cart tab + Checkout.
+  // Recalculates reactively when address/branch/coords change anywhere
+  // in the app, so the drawer's totals stay in lock-step with the
+  // upcoming checkout.
+  const delivery = useDeliveryContext();
 
   useImperativeHandle(ref, () => ({
     open: () => sheetRef.current?.snapToIndex(0),
@@ -81,24 +84,31 @@ export const CartDrawer = forwardRef<CartDrawerRef>(function CartDrawer(_, ref) 
       backgroundStyle={styles.background}
       handleIndicatorStyle={styles.handle}>
       <BottomSheetView style={{ flex: 1 }}>
-        {/* ── Header ── */}
+        {/* ── Header — editorial 2-tier matching Cart screen ── */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.bagIcon}>
-              <Ionicons name="bag-handle" size={16} color={theme.colors.brand[600]} />
+              <Ionicons name="bag-handle" size={16} color={theme.colors.brand[700]} />
             </View>
             <View>
-              <Text style={styles.headerTitle}>سلة المشتريات</Text>
-              <Text style={styles.headerSub}>
+              <UIText variant="eyebrow" color="tertiary" align="right">
+                عربة التسوق
+              </UIText>
+              <UIText variant="card-title" align="right" style={styles.headerTitleNew}>
+                سلة المشتريات
+              </UIText>
+              <UIText variant="caption" color="muted" align="right" style={styles.headerSubNew}>
                 {itemCount > 0 ? `${itemCount} منتج` : "السلة فارغة"}
-              </Text>
+              </UIText>
             </View>
           </View>
           <Pressable
             onPress={() => sheetRef.current?.close()}
             hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="إغلاق"
             style={styles.closeBtn}>
-            <Ionicons name="close" size={16} color={theme.colors.slate[600]} />
+            <Ionicons name="close" size={16} color={theme.colors.slate[700]} />
           </Pressable>
         </View>
 
@@ -115,40 +125,60 @@ export const CartDrawer = forwardRef<CartDrawerRef>(function CartDrawer(_, ref) 
               ItemSeparatorComponent={() => <View style={styles.separator} />}
             />
 
-            {/* ── Footer ── */}
-            <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
+            {/* ── Footer — premium anchor (matches Cart screen) ── */}
+            <View style={[styles.footer, { paddingBottom: insets.bottom + 14 }]}>
               <View style={styles.totalsRow}>
-                <Text style={styles.totalLabel}>المجموع الفرعي</Text>
-                <Text style={styles.totalValue}>{formatPrice(pricing.subtotal)}</Text>
+                <UIText variant="body-sm" color="secondary">المجموع الفرعي</UIText>
+                <UIText variant="body-sm" weight="bold">{formatPrice(pricing.subtotal)}</UIText>
               </View>
               <View style={styles.totalsRow}>
-                <Text style={styles.totalLabel}>التوصيل</Text>
-                <Text style={styles.totalValue}>
+                <UIText variant="body-sm" color="secondary">التوصيل</UIText>
+                <UIText
+                  variant="body-sm"
+                  weight="bold"
+                  style={delivery.isFree ? { color: theme.colors.success.strong } : undefined}>
                   {delivery.isFree ? "مجاني" : formatPrice(delivery.cost)}
-                </Text>
+                </UIText>
               </View>
               {pricing.discount > 0 && (
                 <View style={styles.totalsRow}>
-                  <Text style={[styles.totalLabel, { color: theme.colors.green[600] }]}>الخصم</Text>
-                  <Text style={[styles.totalValue, { color: theme.colors.green[600] }]}>
+                  <UIText variant="body-sm" style={{ color: theme.colors.success.strong }}>
+                    الخصم
+                  </UIText>
+                  <UIText variant="body-sm" weight="bold" style={{ color: theme.colors.success.strong }}>
                     −{formatPrice(pricing.discount)}
-                  </Text>
+                  </UIText>
                 </View>
               )}
               <View style={styles.divider} />
               <View style={styles.grandTotalRow}>
-                <Text style={styles.grandTotalLabel}>الإجمالي</Text>
-                <Text style={styles.grandTotalValue}>
+                <View>
+                  <UIText variant="eyebrow" color="tertiary">المبلغ الإجمالي</UIText>
+                  <UIText variant="card-title" align="right" style={styles.grandTotalLabel}>
+                    الإجمالي
+                  </UIText>
+                </View>
+                <UIText variant="sheet-title" weight="black" align="left" style={styles.grandTotalValue}>
                   {formatPrice(pricing.subtotal - pricing.discount + delivery.cost)}
-                </Text>
+                </UIText>
               </View>
 
               <View style={styles.actions}>
-                <Pressable onPress={handleViewCart} style={styles.secondaryBtn}>
-                  <Text style={styles.secondaryBtnText}>عرض السلة</Text>
+                <Pressable onPress={handleViewCart} style={({ pressed }) => [
+                  styles.secondaryBtn,
+                  pressed && { opacity: 0.92, transform: [{ scale: 0.985 }] },
+                ]}>
+                  <UIText variant="body-sm" weight="extrabold" color="secondary">
+                    عرض السلة
+                  </UIText>
                 </Pressable>
-                <Pressable onPress={handleCheckout} style={styles.primaryBtn}>
-                  <Text style={styles.primaryBtnText}>إتمام الطلب</Text>
+                <Pressable onPress={handleCheckout} style={({ pressed }) => [
+                  styles.primaryBtn,
+                  pressed && { opacity: 0.94, transform: [{ scale: 0.985 }] },
+                ]}>
+                  <UIText variant="body-sm" weight="black" color="inverse">
+                    إتمام الطلب
+                  </UIText>
                   <Ionicons name="arrow-back" size={14} color="#fff" />
                 </Pressable>
               </View>
@@ -188,21 +218,40 @@ function CartDrawerRow({
       )}
 
       <View style={styles.rowContent}>
-        <Text style={styles.rowName} numberOfLines={2}>{product?.name}</Text>
-        <Text style={styles.rowPrice}>{formatPrice(lineTotal)}</Text>
+        <UIText variant="body-sm" weight="bold" align="right" numberOfLines={2} style={styles.rowNameNew}>
+          {product?.name}
+        </UIText>
+        <UIText variant="card-title" weight="black" align="right" style={styles.rowPriceNew}>
+          {formatPrice(lineTotal)}
+        </UIText>
 
         <View style={styles.qtyRow}>
           <View style={styles.qtyControl}>
-            <Pressable onPress={() => { haptic(); onDecrement(); }} style={styles.qtyBtn}>
-              <Ionicons name="remove" size={13} color={theme.colors.slate[700]} />
+            <Pressable
+              onPress={() => { haptic(); onDecrement(); }}
+              accessibilityRole="button"
+              accessibilityLabel="إنقاص"
+              style={styles.qtyBtn}>
+              <Ionicons name="remove" size={14} color={theme.colors.brand[700]} />
             </Pressable>
-            <Text style={styles.qtyValue}>{item.quantity}</Text>
-            <Pressable onPress={() => { haptic(); onIncrement(); }} style={styles.qtyBtn}>
-              <Ionicons name="add" size={13} color={theme.colors.slate[700]} />
+            <UIText variant="body-sm" weight="black" style={styles.qtyValueNew}>
+              {item.quantity}
+            </UIText>
+            <Pressable
+              onPress={() => { haptic(); onIncrement(); }}
+              accessibilityRole="button"
+              accessibilityLabel="زيادة"
+              style={styles.qtyBtn}>
+              <Ionicons name="add" size={14} color={theme.colors.brand[700]} />
             </Pressable>
           </View>
-          <Pressable onPress={() => { haptic(); onRemove(); }} hitSlop={6} style={styles.removeBtn}>
-            <Ionicons name="trash-outline" size={14} color={theme.colors.red[500]} />
+          <Pressable
+            onPress={() => { haptic(); onRemove(); }}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="إزالة المنتج"
+            style={styles.removeBtn}>
+            <Ionicons name="trash-outline" size={14} color={theme.colors.error.base} />
           </Pressable>
         </View>
       </View>
@@ -216,10 +265,14 @@ function EmptyCartBody() {
   return (
     <View style={styles.emptyWrap}>
       <View style={styles.emptyIcon}>
-        <Ionicons name="bag-outline" size={36} color={theme.colors.brand[400]} />
+        <Ionicons name="bag-outline" size={34} color={theme.colors.brand[700]} />
       </View>
-      <Text style={styles.emptyTitle}>السلة فارغة</Text>
-      <Text style={styles.emptyDesc}>ابدأ بتصفح المنتجات وأضف ما تحتاجه</Text>
+      <UIText variant="sheet-title" align="center" style={styles.emptyTitleNew}>
+        السلة فارغة
+      </UIText>
+      <UIText variant="body" color="secondary" align="center" style={styles.emptyDescNew}>
+        ابدأ بتصفح المنتجات وأضف ما تحتاجه إلى عربتك
+      </UIText>
     </View>
   );
 }
@@ -228,125 +281,225 @@ function EmptyCartBody() {
 
 const styles = StyleSheet.create({
   background: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 24,
+    backgroundColor:      theme.colors.surface,
+    borderTopLeftRadius:  24,
     borderTopRightRadius: 24,
   },
   handle: {
     backgroundColor: theme.colors.slate[300],
-    width: 40,
-    height: 4,
+    width:           44,
+    height:          4,
   },
 
-  // Header
+  // ── Header ───────────────────────────────────────────────────────
   header: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection:    "row-reverse",
+    alignItems:       "center",
+    justifyContent:   "space-between",
     paddingHorizontal: 20,
-    paddingTop: 4,
-    paddingBottom: 16,
+    paddingTop:       4,
+    paddingBottom:    16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.slate[100],
+    borderBottomColor: theme.colors.border.hairline,
   },
-  headerLeft: { flexDirection: "row-reverse", alignItems: "center", gap: 10 },
+  headerLeft: {
+    flexDirection: "row-reverse",
+    alignItems:    "center",
+    gap:           12,
+  },
   bagIcon: {
-    width: 36, height: 36, borderRadius: 11,
-    backgroundColor: theme.colors.brand[50],
-    alignItems: "center", justifyContent: "center",
+    width:           38,
+    height:          38,
+    borderRadius:    11,
+    backgroundColor: theme.colors.brand.lighter,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
+    alignItems:      "center",
+    justifyContent:  "center",
   },
-  headerTitle: { fontSize: 15, fontFamily: theme.fonts.black, color: theme.colors.text.primary, textAlign: "right" },
-  headerSub: { fontSize: 11, fontFamily: theme.fonts.semibold, color: theme.colors.slate[400], textAlign: "right" },
+  headerTitleNew: {
+    letterSpacing: -0.2,
+    marginTop:     1,
+  },
+  headerSubNew: {
+    marginTop:     2,
+    textTransform: "none",
+    letterSpacing: 0,
+  },
   closeBtn: {
-    width: 32, height: 32, borderRadius: 10,
-    backgroundColor: theme.colors.slate[50],
-    alignItems: "center", justifyContent: "center",
+    width:           34,
+    height:          34,
+    borderRadius:    11,
+    backgroundColor: theme.colors.surfaceSunken,
+    alignItems:      "center",
+    justifyContent:  "center",
   },
 
-  // List
-  list: { paddingHorizontal: 20, paddingVertical: 12 },
+  // ── List ────────────────────────────────────────────────────────
+  list: {
+    paddingHorizontal: 20,
+    paddingVertical:   14,
+  },
   separator: { height: 10 },
 
-  // Row
+  // ── Row — premium card matching cart screen ──
   row: {
-    flexDirection: "row-reverse",
-    gap: 12,
-    padding: 12,
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: theme.colors.border.default,
+    flexDirection:   "row-reverse",
+    gap:             14,
+    padding:         14,
+    backgroundColor: theme.colors.surface,
+    borderRadius:    16,
+    ...theme.shadow.card,
   },
   rowImage: {
-    width: 64, height: 64, borderRadius: 10,
-    backgroundColor: theme.colors.slate[50],
+    width:           68,
+    height:          68,
+    borderRadius:    theme.radius.lg,
+    backgroundColor: theme.colors.surfaceSunken,
   },
   rowImageFallback: {
-    alignItems: "center", justifyContent: "center",
+    alignItems:     "center",
+    justifyContent: "center",
   },
-  rowContent: { flex: 1, gap: 4, justifyContent: "space-between" },
-  rowName: { fontSize: 12, fontFamily: theme.fonts.bold, color: theme.colors.slate[800], textAlign: "right" },
-  rowPrice: { fontSize: 13, fontFamily: theme.fonts.black, color: theme.colors.brand[600], textAlign: "right" },
-  qtyRow: { flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" },
+  rowContent: {
+    flex:           1,
+    gap:            4,
+    justifyContent: "space-between",
+  },
+  rowNameNew: {
+    lineHeight: 18,
+  },
+  rowPriceNew: {
+    color:         theme.colors.brand[700],
+    letterSpacing: -0.3,
+    marginTop:     2,
+  },
+  qtyRow: {
+    flexDirection:  "row-reverse",
+    alignItems:     "center",
+    justifyContent: "space-between",
+    marginTop:      4,
+  },
   qtyControl: {
-    flexDirection: "row-reverse", alignItems: "center", gap: 4,
-    backgroundColor: theme.colors.slate[50],
-    borderRadius: 8, padding: 2,
+    flexDirection:   "row-reverse",
+    alignItems:      "center",
+    gap:             4,
+    backgroundColor: theme.colors.brand.lighter,
+    borderRadius:    10,
+    padding:         3,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
   },
   qtyBtn: {
-    width: 24, height: 24, borderRadius: 6,
-    backgroundColor: "#fff",
-    alignItems: "center", justifyContent: "center",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: theme.colors.border.default,
+    width:           26,
+    height:          26,
+    borderRadius:    7,
+    backgroundColor: theme.colors.surface,
+    alignItems:      "center",
+    justifyContent:  "center",
   },
-  qtyValue: { minWidth: 18, textAlign: "center", fontSize: 12, fontFamily: theme.fonts.black, color: theme.colors.slate[800] },
-  removeBtn: { padding: 4 },
+  qtyValueNew: {
+    minWidth:  20,
+    textAlign: "center",
+  },
+  removeBtn: {
+    width:           30,
+    height:          30,
+    borderRadius:    9,
+    backgroundColor: theme.colors.error.bg,
+    borderWidth:     1,
+    borderColor:     theme.colors.error.light,
+    alignItems:      "center",
+    justifyContent:  "center",
+  },
 
-  // Footer
+  // ── Footer — premium anchor (matches Cart screen footer) ──
   footer: {
     paddingHorizontal: 20,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.slate[100],
-    backgroundColor: theme.colors.muted,
+    paddingTop:        16,
+    borderTopWidth:    StyleSheet.hairlineWidth,
+    borderTopColor:    theme.colors.border.hairline,
+    backgroundColor:   theme.colors.surface,
   },
   totalsRow: {
-    flexDirection: "row-reverse",
+    flexDirection:  "row-reverse",
     justifyContent: "space-between",
-    paddingVertical: 3,
+    alignItems:     "center",
+    paddingVertical: 4,
   },
-  totalLabel: { fontSize: 12, fontFamily: theme.fonts.semibold, color: theme.colors.slate[500] },
-  totalValue: { fontSize: 12, fontFamily: theme.fonts.bold, color: theme.colors.slate[700] },
-  divider: { height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.slate[200], marginVertical: 8 },
-  grandTotalRow: { flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "baseline" },
-  grandTotalLabel: { fontSize: 13, fontFamily: theme.fonts.black, color: theme.colors.text.primary },
-  grandTotalValue: { fontSize: 18, fontFamily: theme.fonts.black, color: theme.colors.brand[600] },
+  divider: {
+    height:          StyleSheet.hairlineWidth,
+    backgroundColor: theme.colors.border.hairline,
+    marginVertical:  10,
+  },
+  grandTotalRow: {
+    flexDirection:  "row-reverse",
+    justifyContent: "space-between",
+    alignItems:     "center",
+  },
+  grandTotalLabel: {
+    letterSpacing: -0.2,
+    marginTop:     1,
+  },
+  grandTotalValue: {
+    color:         theme.colors.brand[700],
+    letterSpacing: -0.5,
+  },
 
-  actions: { flexDirection: "row-reverse", gap: 10, marginTop: 14 },
-  secondaryBtn: {
-    flex: 1, paddingVertical: 13, borderRadius: 14,
-    backgroundColor: "#fff",
-    borderWidth: 1.5, borderColor: theme.colors.border.medium,
-    alignItems: "center", justifyContent: "center",
+  // ── Action buttons ──
+  actions: {
+    flexDirection: "row-reverse",
+    gap:           10,
+    marginTop:     16,
   },
-  secondaryBtnText: { fontSize: 13, fontFamily: theme.fonts.bold, color: theme.colors.slate[700] },
+  secondaryBtn: {
+    flex:            1,
+    paddingVertical: 14,
+    borderRadius:    14,
+    backgroundColor: theme.colors.surfaceSunken,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.hairline,
+    alignItems:      "center",
+    justifyContent:  "center",
+  },
   primaryBtn: {
-    flex: 1.4, paddingVertical: 13, borderRadius: 14,
-    backgroundColor: theme.colors.brand[600],
-    flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 6,
+    flex:            1.4,
+    paddingVertical: 14,
+    borderRadius:    14,
+    backgroundColor: theme.colors.brand[700],
+    flexDirection:   "row-reverse",
+    alignItems:      "center",
+    justifyContent:  "center",
+    gap:             8,
     ...theme.shadow.brand,
   },
-  primaryBtnText: { fontSize: 13, fontFamily: theme.fonts.black, color: "#fff" },
 
-  // Empty
-  emptyWrap: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 10 },
-  emptyIcon: {
-    width: 76, height: 76, borderRadius: 24,
-    backgroundColor: theme.colors.brand[50],
-    alignItems: "center", justifyContent: "center",
-    marginBottom: 8,
+  // ── Empty state — premium ──
+  emptyWrap: {
+    flex:           1,
+    alignItems:     "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+    paddingVertical:   40,
+    gap:            10,
   },
-  emptyTitle: { fontSize: 16, fontFamily: theme.fonts.black, color: theme.colors.text.primary },
-  emptyDesc: { fontSize: 12, fontFamily: theme.fonts.regular, color: theme.colors.slate[400], textAlign: "center" },
+  emptyIcon: {
+    width:           80,
+    height:          80,
+    borderRadius:    24,
+    backgroundColor: theme.colors.brand.lighter,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
+    alignItems:      "center",
+    justifyContent:  "center",
+    marginBottom:    12,
+    ...theme.shadow.brandGlow,
+  },
+  emptyTitleNew: {
+    letterSpacing: -0.3,
+  },
+  emptyDescNew: {
+    lineHeight: 22,
+    maxWidth:   320,
+  },
 });

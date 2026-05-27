@@ -10,3 +10,5 @@ export { Card } from "./Card";
 export { Section } from "./Section";
 export { Row, Stack, Spacer } from "./Row";
 export { LoadingOverlay } from "./LoadingOverlay";
+export { Text } from "./Text";
+export type { TextProps, TextVariant, TextWeight, TextColor } from "./Text";

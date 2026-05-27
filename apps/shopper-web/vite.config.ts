@@ -4,6 +4,8 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
+  // Serve root assets/web/ as static public files (favicons, PWA icons, manifest)
+  publicDir: path.resolve(__dirname, "../../assets/web"),
   plugins: [
     // The React and Tailwind plugins are both required for Make, even if
     // Tailwind is not being actively used – do not remove them
@@ -14,6 +16,8 @@ export default defineConfig({
     alias: {
       // Alias @ to the src directory
       "@": path.resolve(__dirname, "./src"),
+      // Alias @assets to the root shared assets folder
+      "@assets": path.resolve(__dirname, "../../assets"),
       "@pharmacy/types": path.resolve(__dirname, "../../packages/types/src/index.ts"),
       "@pharmacy/contracts": path.resolve(__dirname, "../../packages/contracts/src/index.ts"),
       "@pharmacy/contracts/": path.resolve(__dirname, "../../packages/contracts/src/"),
@@ -41,6 +45,7 @@ export default defineConfig({
         path.resolve(__dirname),
         path.resolve(__dirname, "../../"),
         path.resolve(__dirname, "../../packages"),
+        path.resolve(__dirname, "../../assets"),
       ],
     },
   },

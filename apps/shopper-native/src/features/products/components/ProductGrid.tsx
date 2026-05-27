@@ -1,0 +1,156 @@
+/**
+ * ProductGrid — 2-column product grid with platform-specific rendering.
+ *
+ * Native (iOS / Android):
+ *   @shopify/flash-list v2. Items are measured after first render so FlashList
+ *   can allocate the correct scroll height. getItemType gives the recycler a
+ *   stable type hint so it never mis-recycles product cards.
+ *   drawDistance pre-renders 2 screens ahead; onEndReachedThreshold fires
+ *   early so infinite scroll page loads feel instantaneous.
+ *
+ * Web:
+ *   FlatList — FlashList 2.x requires the container to have an explicit pixel
+ *   height from the RN layout engine. On web the height comes from the CSS
+ *   viewport, so FlashList silently renders 0 items. FlatList renders a
+ *   straightforward DOM list without that constraint.
+ *
+ * Both branches share the same renderItem and keyExtractor — callers don't
+ * need to know which list is active.
+ */
+
+import React, { useCallback, useMemo } from "react";
+import {
+  FlatList,
+  Platform,
+  RefreshControl,
+  View,
+} from "react-native";
+import { FlashList } from "@shopify/flash-list";
+import { ProductCard } from "@/components/ProductCard";
+import { theme } from "@/theme";
+import type { NativeProduct } from "../types";
+
+const ITEM_TYPE_PRODUCT = "p" as const;
+
+export interface ProductGridProps {
+  products:              NativeProduct[];
+  onProductPress:        (p: NativeProduct) => void;
+  onEndReached?:         () => void;
+  refreshing?:           boolean;
+  onRefresh?:            () => void;
+  ListHeaderComponent?:  React.ComponentType | React.ReactElement | null;
+  ListFooterComponent?:  React.ComponentType | React.ReactElement | null;
+  ListEmptyComponent?:   React.ComponentType | React.ReactElement | null;
+  contentContainerStyle?: { padding?: number; paddingBottom?: number };
+  lang?:                 "ar" | "en";
+}
+
+export const ProductGrid = React.memo(function ProductGrid({
+  products,
+  onProductPress,
+  onEndReached,
+  refreshing,
+  onRefresh,
+  ListHeaderComponent,
+  ListFooterComponent,
+  ListEmptyComponent,
+  contentContainerStyle,
+  lang = "ar",
+}: ProductGridProps) {
+  const keyExtractor = useCallback((item: NativeProduct) => item.id, []);
+  const getItemType  = useCallback(() => ITEM_TYPE_PRODUCT, []);
+
+  const renderItem = useCallback(
+    ({ item }: { item: NativeProduct }) => (
+      <View style={cellStyle}>
+        <ProductCard
+          product={item}
+          lang={lang}
+          onPress={() => onProductPress(item)}
+        />
+      </View>
+    ),
+    [lang, onProductPress],
+  );
+
+  const containerStyle = useMemo(
+    () => ({
+      padding:       contentContainerStyle?.padding ?? 12,
+      paddingBottom: contentContainerStyle?.paddingBottom ?? 24,
+    }),
+    [contentContainerStyle?.padding, contentContainerStyle?.paddingBottom],
+  );
+
+  const refreshControl =
+    onRefresh != null ? (
+      <RefreshControl
+        refreshing={refreshing ?? false}
+        onRefresh={onRefresh}
+        tintColor={theme.colors.brand[600]}
+        colors={[theme.colors.brand[600]]}
+      />
+    ) : undefined;
+
+  // ── Web: FlatList ──────────────────────────────────────────────────────────
+  if (Platform.OS === "web") {
+    return (
+      <FlatList<NativeProduct>
+        data={products}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        numColumns={2}
+        onEndReached={onEndReached}
+        onEndReachedThreshold={0.5}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={containerStyle}
+        columnWrapperStyle={columnWrapperStyle}
+        ListHeaderComponent={ListHeaderComponent}
+        ListFooterComponent={ListFooterComponent}
+        ListEmptyComponent={ListEmptyComponent}
+        refreshControl={refreshControl}
+        initialNumToRender={8}
+        maxToRenderPerBatch={12}
+        updateCellsBatchingPeriod={50}
+        windowSize={10}
+        style={{ flex: 1 }}
+        extraData={products.length}
+      />
+    );
+  }
+
+  // ── Native: FlashList v2 (virtualized, 60 FPS) ─────────────────────────────
+  return (
+    <FlashList<NativeProduct>
+      data={products}
+      keyExtractor={keyExtractor}
+      getItemType={getItemType}
+      renderItem={renderItem}
+      numColumns={2}
+      // Card: 170px image + ~150px info area = ~320px per row.
+      // Providing estimatedItemSize lets FlashList pre-compute scroll positions
+      // without waiting for per-item onLayout measurements, eliminating the
+      // synchronous layout-pass jank that caused the scroll lag.
+      estimatedItemSize={320}
+      drawDistance={Platform.OS === "android" ? 400 : 300}
+      onEndReached={onEndReached}
+      onEndReachedThreshold={0.5}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={containerStyle}
+      ListHeaderComponent={ListHeaderComponent}
+      ListFooterComponent={ListFooterComponent}
+      ListEmptyComponent={ListEmptyComponent}
+      refreshControl={refreshControl}
+      style={{ flex: 1 }}
+      extraData={products.length}
+    />
+  );
+});
+
+const cellStyle = {
+  flex:    1,
+  padding: 5,
+} as const;
+
+const columnWrapperStyle = {
+  flexDirection: "row-reverse" as const,
+};

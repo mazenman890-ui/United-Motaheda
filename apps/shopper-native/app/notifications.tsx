@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -14,7 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeIn, FadeInDown, FadeInRight } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { useAuth } from "@/features/auth";
 import { useNotifications, type AppNotification, type NotifType } from "@/features/notifications";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -71,6 +71,9 @@ const NotificationRow = React.memo(function NotificationRow({
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.title}. ${item.body}${!item.isRead ? ". غير مقروء" : ""}`}
+      accessibilityState={{ selected: !item.isRead }}
       style={({ pressed }) => [
         styles.notifRow,
         !item.isRead && styles.notifRowUnread,
@@ -161,7 +164,7 @@ export default function NotificationsScreen() {
     <View style={styles.screen}>
       {/* ── Header ── */}
       <LinearGradient
-        colors={["#011826", "#032B42", "#064D6E"]}
+        colors={theme.gradients.heroPrimary as [string, string, string]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0.7, y: 1 }}
         style={[styles.header, { paddingTop: insets.top + 10 }]}>
@@ -169,7 +172,9 @@ export default function NotificationsScreen() {
         <View style={styles.headerTopRow}>
           <Pressable
             onPress={() => router.back()}
-            style={styles.backBtn}>
+            style={styles.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel="رجوع">
             <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.8)" />
           </Pressable>
           <Text style={styles.headerTitle}>الإشعارات</Text>
@@ -195,6 +200,9 @@ export default function NotificationsScreen() {
                 <Pressable
                   key={f.key}
                   onPress={() => setFilter(f.key)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`فلتر: ${f.label}`}
+                  accessibilityState={{ selected: active }}
                   style={[styles.filterChip, active && styles.filterChipActive]}>
                   <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
                     {f.label}
@@ -204,7 +212,11 @@ export default function NotificationsScreen() {
             })}
           </View>
           {unreadCount > 0 && (
-            <Pressable onPress={handleMarkAllRead} hitSlop={8}>
+            <Pressable
+              onPress={handleMarkAllRead}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="تحديد جميع الإشعارات كمقروءة">
               <Text style={styles.markAllText}>قراءة الكل</Text>
             </Pressable>
           )}
@@ -315,7 +327,7 @@ const styles = StyleSheet.create({
     borderColor: "#fff",
   },
   filterChipText: { fontSize: 10.5, fontFamily: theme.fonts.bold, color: "rgba(255,255,255,0.65)" },
-  filterChipTextActive: { color: "#032B42", fontFamily: theme.fonts.black },
+  filterChipTextActive: { color: theme.colors.heroMid, fontFamily: theme.fonts.black },
   markAllText: { fontSize: 11, fontFamily: theme.fonts.bold, color: "rgba(255,255,255,0.65)" },
 
   // Loading

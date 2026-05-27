@@ -713,7 +713,7 @@ export default function Layout() {
       <div className="app-shell flex min-h-screen flex-col">
 
         <div className="hidden border-b border-slate-200 bg-white xl:block">
-          <div className="mx-auto flex max-w-[90rem] items-center justify-between gap-4 px-6 py-2 text-[11px] font-bold text-slate-600">
+          <div className="mx-auto flex max-w-[90rem] items-center justify-between gap-4 px-6 py-1 text-[11px] font-bold text-slate-600">
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
                 <Truck className="h-3 w-3 text-[var(--primary)]" />
@@ -754,18 +754,22 @@ export default function Layout() {
         ══════════════════════════════════════════════════════════════════ */}
         <header
           className={cn(
-            "nav-professional sticky top-0 z-40 transition-all duration-300",
+            "nav-professional sticky top-0 z-40 transition-shadow duration-200",
+            // backdrop-blur is only applied after the user scrolls.
+            // Keeping it active at the top-of-page position means blurring on
+            // every scroll frame from the very first pixel — unnecessary cost.
+            // We use a fully opaque white background at rest (no blur needed)
+            // and add blur only once content is sliding beneath the header.
             scrolled
-              ? "border-b border-slate-200 bg-white/96 shadow-[0_4px_16px_rgba(15,23,42,0.08)] backdrop-blur-md"
-              : "border-b border-slate-100 bg-white/95 backdrop-blur-md",
+              ? "border-b border-slate-200 bg-white/97 shadow-[0_4px_16px_rgba(15,23,42,0.08)] backdrop-blur-md"
+              : "border-b border-slate-100 bg-white",
           )}
-          style={{ WebkitBackdropFilter: "blur(12px)" }}
         >
 
           {/* ── Main bar ────────────────────────────────────────────────── */}
           <div
             className={cn(
-              "mx-auto grid max-w-[90rem] items-center gap-2 px-3 py-2 md:px-5 md:py-2.5",
+              "mx-auto grid max-w-[90rem] items-center gap-2 px-3 py-1.5 md:px-5 md:py-2",
               "grid-cols-[auto_1fr_auto] xl:grid-cols-[minmax(14rem,17rem)_minmax(0,1fr)_auto]",
             )}
           >
@@ -773,10 +777,10 @@ export default function Layout() {
             {/* ── Brand / Logo ─────────────────────────────────────────── */}
             <Link
               to="/"
-              className="nav-brand-card group flex min-w-0 items-center gap-2.5 rounded-[1.4rem] border border-slate-200/80 bg-white px-2.5 py-1.5 shadow-[0_4px_20px_rgba(15,23,42,0.06)] transition-all duration-200 hover:border-teal-300/50 hover:shadow-[0_8px_28px_rgba(13,148,136,0.12)] md:gap-3 md:px-3 md:py-2"
+              className="nav-brand-card group flex min-w-0 items-center gap-2 rounded-[1.2rem] border border-slate-200/80 bg-white px-2 py-1 shadow-[0_4px_20px_rgba(15,23,42,0.06)] transition-all duration-200 hover:border-teal-300/50 hover:shadow-[0_8px_28px_rgba(13,148,136,0.12)] md:gap-2.5 md:px-2.5 md:py-1.5"
             >
               {/* Logo icon frame with gradient ring */}
-              <div className="site-logo-frame relative flex h-[2.6rem] w-[2.6rem] shrink-0 items-center justify-center rounded-[0.85rem] border border-teal-200/60 bg-gradient-to-br from-white to-teal-50/60 shadow-[0_2px_10px_rgba(13,148,136,0.10)] md:h-[3.5rem] md:w-[3.5rem] md:rounded-[1rem]">
+              <div className="site-logo-frame relative flex h-[2.2rem] w-[2.2rem] shrink-0 items-center justify-center rounded-[0.7rem] border border-teal-200/60 bg-gradient-to-br from-white to-teal-50/60 shadow-[0_2px_10px_rgba(13,148,136,0.10)] md:h-[2.8rem] md:w-[2.8rem] md:rounded-[0.85rem]">
                 {/* Subtle glow pulse on hover */}
                 <span className="absolute inset-0 rounded-[inherit] bg-teal-400/0 transition-all duration-300 group-hover:bg-teal-400/5" />
                 <img
@@ -792,8 +796,8 @@ export default function Layout() {
                   className={cn(
                     "min-w-0 font-black text-slate-950 leading-tight",
                     lang === "ar"
-                      ? "text-[0.9rem] md:text-[1.5rem]"
-                      : "max-w-[6rem] text-[0.95rem] leading-[0.9] tracking-[-0.04em] sm:max-w-[8rem] md:max-w-[10rem] md:text-[1.8rem]",
+                      ? "text-[0.85rem] md:text-[1.05rem]"
+                      : "max-w-[6rem] text-[0.85rem] leading-[0.9] tracking-[-0.04em] sm:max-w-[8rem] md:max-w-[9rem] md:text-[1.15rem]",
                   )}
                 >
                   {lang === "ar" ? BRAND_NAME_AR : BRAND_NAME_EN}
@@ -806,19 +810,19 @@ export default function Layout() {
 
             {/* ── Desktop Search ───────────────────────────────────────── */}
             <div className="hidden xl:flex xl:items-center xl:px-4 2xl:px-6">
-              <form onSubmit={handleSearch} className="site-search relative h-11 w-full">
+              <form onSubmit={handleSearch} className="site-search relative h-9 w-full">
                 <SiteSearchField
-                  className="h-11 w-full"
-                  inputClassName="h-11 w-full rounded-full border-slate-200 bg-white shadow-[0_2px_14px_rgba(15,23,42,0.06)] placeholder:text-slate-400 focus:border-teal-400/50 focus:ring-2 focus:ring-teal-400/15 focus:shadow-[0_4px_20px_rgba(13,148,136,0.12)] transition-all"
+                  className="h-9 w-full"
+                  inputClassName="h-9 w-full rounded-full border-slate-200 bg-white shadow-[0_2px_14px_rgba(15,23,42,0.06)] placeholder:text-slate-400 focus:border-teal-400/50 focus:ring-2 focus:ring-teal-400/15 focus:shadow-[0_4px_20px_rgba(13,148,136,0.12)] transition-all"
                 />
                 <button
                   type="submit"
                   aria-label={lang === "ar" ? "بحث" : "Search"}
                   className={cn(
-                    "absolute top-1/2 h-8 w-8 -translate-y-1/2 rounded-full transition-all",
+                    "absolute top-1/2 h-7 w-7 -translate-y-1/2 rounded-full transition-all",
                     "bg-[var(--primary)] text-white",
                     "hover:bg-[var(--primary-strong)] hover:shadow-[0_4px_14px_rgba(13,148,136,0.35)]",
-                    lang === "ar" ? "left-1.5" : "right-1.5",
+                    lang === "ar" ? "left-1" : "right-1",
                   )}
                 >
                   <Search className="mx-auto h-4 w-4" />
@@ -861,7 +865,7 @@ export default function Layout() {
                 aria-controls="mobile-search-panel"
                 aria-label={lang === "ar" ? "فتح البحث" : "Open search"}
                 className={cn(
-                  "inline-flex h-10 w-10 items-center justify-center rounded-[1.2rem] border border-slate-200 bg-white text-slate-600 shadow-[0_2px_10px_rgba(15,23,42,0.06)] transition-all xl:hidden",
+                  "inline-flex h-9 w-9 items-center justify-center rounded-[1.1rem] border border-slate-200 bg-white text-slate-600 shadow-[0_2px_10px_rgba(15,23,42,0.06)] transition-all xl:hidden",
                   "hover:border-teal-300/50 hover:bg-teal-50 hover:text-teal-700",
                   searchOpen && "border-teal-300/50 bg-teal-50 text-teal-700",
                 )}
@@ -880,7 +884,7 @@ export default function Layout() {
                       aria-haspopup="menu"
                       aria-controls="user-dropdown-menu"
                       className={cn(
-                        "inline-flex h-10 items-center gap-2 rounded-2xl border px-3 text-sm font-black transition-all duration-200",
+                        "inline-flex h-9 items-center gap-2 rounded-2xl border px-3 text-sm font-black transition-all duration-200",
                         userMenuOpen
                           ? "border-teal-300/50 bg-teal-50 text-teal-800"
                           : "border-slate-200 bg-white text-slate-700 shadow-[0_2px_10px_rgba(15,23,42,0.06)] hover:border-teal-300/50 hover:bg-teal-50 hover:text-teal-800",
@@ -979,7 +983,7 @@ export default function Layout() {
                   <button
                     type="button"
                     onClick={() => navigate("/login")}
-                    className="inline-flex h-10 items-center gap-2 rounded-2xl border border-teal-300/40 bg-teal-50 px-4 text-sm font-black text-teal-800 transition-all hover:bg-[var(--primary)] hover:text-white hover:border-transparent hover:shadow-[0_6px_20px_rgba(13,148,136,0.28)]"
+                    className="inline-flex h-9 items-center gap-2 rounded-2xl border border-teal-300/40 bg-teal-50 px-4 text-sm font-black text-teal-800 transition-all hover:bg-[var(--primary)] hover:text-white hover:border-transparent hover:shadow-[0_6px_20px_rgba(13,148,136,0.28)]"
                   >
                     <User className="h-4 w-4" />
                     <span>{t("login")}</span>
@@ -997,7 +1001,7 @@ export default function Layout() {
                     : `Open cart, ${cartItemsCount} items`
                 }
                 className={cn(
-                  "nav-cart-button inline-flex h-10 items-center gap-2 rounded-2xl px-3 text-sm font-black text-white xl:px-3.5",
+                  "nav-cart-button inline-flex h-9 items-center gap-2 rounded-2xl px-3 text-sm font-black text-white xl:px-3.5",
                   "bg-[var(--primary)] shadow-[0_4px_16px_rgba(13,148,136,0.28)]",
                   "transition-all duration-200 hover:-translate-y-0.5 hover:bg-[var(--primary-strong)] hover:shadow-[0_8px_24px_rgba(13,148,136,0.36)]",
                 )}
@@ -1023,7 +1027,7 @@ export default function Layout() {
                 aria-controls="mobile-menu"
                 aria-label={lang === "ar" ? "فتح القائمة" : "Open menu"}
                 className={cn(
-                  "inline-flex h-10 w-10 items-center justify-center rounded-[1.2rem] border border-slate-200 bg-white text-slate-700 shadow-[0_2px_10px_rgba(15,23,42,0.06)] transition-all xl:hidden",
+                  "inline-flex h-9 w-9 items-center justify-center rounded-[1.1rem] border border-slate-200 bg-white text-slate-700 shadow-[0_2px_10px_rgba(15,23,42,0.06)] transition-all xl:hidden",
                   "hover:border-teal-300/50 hover:bg-teal-50 hover:text-teal-700",
                 )}
               >
@@ -1062,7 +1066,7 @@ export default function Layout() {
           {/* ── Desktop Navigation Bar ───────────────────────────────────── */}
           <div className="hidden border-t border-slate-100/80 bg-white/50 xl:block">
             <div
-              className="mx-auto flex max-w-[90rem] items-center justify-between gap-4 px-6 py-2"
+              className="mx-auto flex max-w-[90rem] items-center justify-between gap-4 px-6 py-1.5"
               dir={lang === "ar" ? "rtl" : "ltr"}
             >
               <nav className="flex items-center gap-1">

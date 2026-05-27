@@ -204,7 +204,7 @@ function HomeDesktop() {
                 : "text-[2.4rem] leading-[1.1] tracking-tight sm:text-[3.8rem] sm:leading-[1.06]",
             )}>
               {isRtl ? (
-                <>دواؤك بكلمة واحدة<br /><span className="text-teal-300">+52,000 منتج دوائي</span></>
+                <>دواؤك بكلمة واحدة<br /><span className="text-teal-300">8,000+ منتج دوائي</span></>
               ) : (
                 <>Your medicine,<br /><span className="text-teal-300">one search away</span></>
               )}
@@ -311,7 +311,7 @@ function HomeDesktop() {
             {/* Stats strip */}
             <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-4 border-t border-white/10 pt-8">
               {[
-                { value: "+52K",  labelAr: "منتج متاح",         labelEn: "Products in stock"  },
+                { value: "8K+",   labelAr: "منتج متاح",         labelEn: "Products in stock"  },
                 { value: "5",     labelAr: "فروع في القاهرة",   labelEn: "Cairo branches"     },
                 { value: "100%",  labelAr: "أدوية أصلية",       labelEn: "Genuine medicines"  },
                 { value: "🚚",    labelAr: "توصيل لباب البيت",  labelEn: "Door-to-door delivery" },

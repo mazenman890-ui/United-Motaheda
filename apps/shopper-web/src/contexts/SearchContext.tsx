@@ -47,11 +47,13 @@ export type SearchResultsContextValue = {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const SUGGESTIONS_LIMIT  = 20;
-const COMMIT_DEBOUNCE    = 500;  // ms after last keystroke before query commits
-/** Debounce for the server-side suggestion fetch. Shorter than the main grid's
- *  300ms to make the dropdown feel faster. The LRU cache in shopperCatalogApi
- *  means repeated queries for the same string hit memory, not the network. */
-const SUGGESTION_SERVER_DEBOUNCE_MS = 200;
+/** Reduced from 500ms → 320ms — the user wants to see search results update
+ *  as they type, not half a second after they stop. */
+const COMMIT_DEBOUNCE    = 320;
+/** Reduced from 200ms → 140ms — the LRU cache in shopperCatalogApi means
+ *  repeated identical queries are free (memory hit); for net-new queries the
+ *  140ms gap still batches fast typists without an extra round-trip. */
+const SUGGESTION_SERVER_DEBOUNCE_MS = 140;
 
 // ─── Contexts ─────────────────────────────────────────────────────────────────
 
@@ -70,6 +72,17 @@ function getProductSearchFields(product: CatalogProduct) {
   };
 }
 
+/**
+ * Smart inline ranking on the already-loaded products slice (~24 items).
+ *
+ * Scoring bonuses (applied on top of the base fuzzyScore):
+ *   +200  exact match on either name
+ *   +100  one name starts with the query (prefix match)
+ *    +50  product is in stock   ← surfaced first to show immediately-orderable items
+ *    +20  query found in the category name (secondary signal)
+ *
+ * Results are stable-sorted: same score → original catalog order preserved.
+ */
 function rankInline(
   products: CatalogProduct[],
   query:    string,
@@ -77,11 +90,33 @@ function rankInline(
 ): string[] {
   type Entry = { id: string; score: number; index: number };
   const entries: Entry[] = [];
+  const lower = query.trim().toLowerCase();
 
   for (let i = 0; i < products.length; i++) {
-    const fields = getProductSearchFields(products[i]);
+    const p      = products[i];
+    const fields = getProductSearchFields(p);
     if (!fuzzyMatch(query, fields)) continue;
-    entries.push({ id: products[i].id, score: fuzzyScore(query, fields), index: i });
+
+    let score = fuzzyScore(query, fields);
+
+    // In-stock boost — show available items before out-of-stock
+    if (p.inStock) score += 50;
+
+    const nameEn = (fields.nameEn ?? "").toLowerCase();
+    const nameAr = (fields.nameAr ?? "").toLowerCase();
+
+    // Exact match
+    if (nameEn === lower || nameAr === lower) {
+      score += 200;
+    } else if (nameEn.startsWith(lower) || nameAr.startsWith(lower)) {
+      // Prefix match
+      score += 100;
+    }
+
+    // Category match bonus
+    if (fields.category?.toLowerCase().includes(lower)) score += 20;
+
+    entries.push({ id: p.id, score, index: i });
   }
 
   entries.sort((l, r) =>
@@ -274,14 +309,19 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     // ── Instant path: fuzzy match on already-loaded products ──────────────
     // This gives the dropdown immediate results without waiting for Supabase.
     // Products is only ~24 items so this runs in < 1 ms.
-    if (products.length > 0) {
-      const ids = rankInline(products, query, SUGGESTIONS_LIMIT);
-      if (ids.length > 0) {
-        startTransition(() => {
-          setSuggestions(mapIdsToProducts(ids, productsById, SUGGESTIONS_LIMIT));
-        });
-      }
-    }
+    //
+    // Always call setSuggestions — even with [] — so stale results from the
+    // previous keystroke are cleared immediately instead of lingering until the
+    // server response arrives and overwrites them (causing the brief-flash-then-
+    // disappear symptom the user sees).
+    const instantIds = products.length > 0 ? rankInline(products, query, SUGGESTIONS_LIMIT) : [];
+    startTransition(() => {
+      setSuggestions(
+        instantIds.length > 0
+          ? mapIdsToProducts(instantIds, productsById, SUGGESTIONS_LIMIT)
+          : [],
+      );
+    });
 
     setSuggestionsBusy(true);
 
@@ -290,13 +330,22 @@ export function SearchProvider({ children }: { children: ReactNode }) {
     if (suggestionDebounceRef.current) clearTimeout(suggestionDebounceRef.current);
     suggestionDebounceRef.current = setTimeout(() => {
       void fetchProductsPage(1, { searchQuery: query })
-        .then((result) => {
-          if (abortSignal.aborted) return;
-          startTransition(() => {
-            setSuggestions(result.products.slice(0, SUGGESTIONS_LIMIT));
-            setSuggestionsBusy(false);
-          });
-        })
+          .then((result) => {
+            if (abortSignal.aborted) return;
+            // Debug: log server suggestion results so we can trace disappearing results
+            try {
+              // eslint-disable-next-line no-console
+              console.debug("[SearchContext] suggestions server result", {
+                query,
+                count: result.products.length,
+                first: (result.products[0] as any)?.id,
+              });
+            } catch {}
+            startTransition(() => {
+              setSuggestions(result.products.slice(0, SUGGESTIONS_LIMIT));
+              setSuggestionsBusy(false);
+            });
+          })
         .catch(() => {
           if (abortSignal.aborted) return;
           startTransition(() => setSuggestionsBusy(false));

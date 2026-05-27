@@ -109,10 +109,10 @@ export interface UseInfiniteProductsResult {
 
 /**
  * Milliseconds to wait after the last keystroke before sending a search request.
- * 300ms is the sweet spot: fast enough to feel instant, slow enough to avoid
- * a Supabase call for every intermediate character typed.
+ * 220ms: slightly faster than the original 300ms — still avoids firing on every
+ * intermediate character on a fast typist while feeling more responsive.
  */
-const SEARCH_DEBOUNCE_MS = 300;
+const SEARCH_DEBOUNCE_MS = 220;
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
@@ -267,7 +267,10 @@ export function useInfiniteProducts(
         // Release the cascade guard after VirtuosoGrid has time to re-measure
         // its new height. Without this delay, endReached fires again immediately
         // after append (all new items still fit in viewport + overscan → cascade).
-        setTimeout(() => { fetchCooldownRef.current = false; }, 800);
+        // Reduced from 800ms → 450ms: VirtuosoGrid re-measures faster on modern
+        // devices; 450ms is enough to break the cascade without making the user
+        // wait noticeably before the next page triggers.
+        setTimeout(() => { fetchCooldownRef.current = false; }, 450);
       })
       .catch((err: unknown) => {
         if (generation !== generationRef.current) {

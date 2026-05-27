@@ -18,13 +18,20 @@ import {
   ShieldCheck,
   Smartphone,
   Truck,
+  Upload,
   User,
+  X,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useCart } from "../../contexts/CartContext";
 import { useCatalog } from "../../contexts/CatalogContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { createCheckoutOrder } from "../../services/shopperCheckoutApi";
+import {
+  isManualPaymentMethod,
+  patchWebOrderManualPayment,
+  uploadWebPaymentReceipt,
+} from "../../services/webPaymentApi";
 import {
   CheckoutFieldErrors,
   CheckoutFieldName,
@@ -55,7 +62,7 @@ import { cn } from "../components/UI";
 import { appendOrder } from "../orders";
 import { getCatalogProductImage } from "../catalog";
 import { getLocalizedProductName } from "../localization";
-import { GOVERNORATE_LOCK } from "../constants/location";
+import { GOVERNORATE_LOCK, DEFAULT_DELIVERY_FEE } from "../constants/location";
 import { useBranches } from "../hooks/useBranches";
 
 // ─── Field Components ─────────────────────────────────────────────────────────
@@ -151,7 +158,7 @@ export default function Checkout() {
   const idempotencyKeyRef = useRef(createIdempotencyKey());
   type PaymentMethodId = "cod" | "instapay" | "vodafone" | "online" | "banquemisr";
 
-  // ── Cairo lock + branch selection ───────────────────────────────────────
+  // ── Cairo-only branch selection ───────────────────────────────────────
   const { data: deliveryBranches = [] } = useBranches();
   const primaryDeliveryBranch = deliveryBranches[0] ?? null;
   const selectedArea = useLocationState((state) => state.selectedArea);
@@ -178,8 +185,13 @@ export default function Checkout() {
   });
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodId>("cod");
   const [requestPosMachine, setRequestPosMachine] = useState(false);
+  const [transferNumber, setTransferNumber] = useState("");
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+  const [manualPaymentError, setManualPaymentError] = useState<string | null>(null);
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
 
-  // Force Cairo-only city value in the form (read-only in UI).
+  // Force Cairo city value in the form (service is Cairo-only).
   useEffect(() => {
     setForm((current) => ({ ...current, city: GOVERNORATE_LOCK }));
   }, []);
@@ -224,6 +236,15 @@ export default function Checkout() {
     }));
   }, [user]);
 
+  // Clear manual payment state when the user switches payment methods so
+  // a stale receipt / transfer number never gets attached to a COD order.
+  useEffect(() => {
+    setTransferNumber("");
+    setReceiptFile(null);
+    setReceiptPreview(null);
+    setManualPaymentError(null);
+  }, [paymentMethod]);
+
   const selectedBranch = useMemo(
     () => deliveryBranches.find((branch) => branch.id === selectedBranchId),
     [deliveryBranches, selectedBranchId],
@@ -260,7 +281,9 @@ export default function Checkout() {
   );
   const deliveryQuote = useDeliveryQuote(cartSnapshot, form.streetName.trim(), selectedBranchId || undefined);
 
-  const dynamicDeliveryFee = deliveryQuote.data?.cost ?? 0;
+  // Use the dynamic quote cost when available; otherwise fall back to the
+  // flat DEFAULT_DELIVERY_FEE so checkout is usable without location permission.
+  const dynamicDeliveryFee = deliveryQuote.data?.cost ?? DEFAULT_DELIVERY_FEE;
   const dynamicFeeLabel = lang === "ar" ? `${dynamicDeliveryFee} ج.م` : `${dynamicDeliveryFee} EGP`;
 
   const pricing = useMemo(
@@ -393,15 +416,22 @@ export default function Checkout() {
     }
 
     if (!deliveryQuote.data) {
-      setSubmitError(
-        lang === "ar"
-          ? "يرجى تفعيل الموقع لتأكيد إمكانية التوصيل داخل نطاق الفرع."
-          : "Please enable location services to confirm delivery availability for the selected branch.",
-      );
-      return;
+      // Only block if location permission was never granted.
+      // When permission IS granted but the quote API is unreachable (CORS error,
+      // network failure, Railway down), the order still goes through — the team
+      // confirms deliverability manually and the flat DEFAULT_DELIVERY_FEE applies.
+      if (locationPermission !== "granted") {
+        setSubmitError(
+          lang === "ar"
+            ? "يرجى تفعيل خدمة الموقع في المتصفح لتأكيد إمكانية التوصيل."
+            : "Please enable location services in your browser to confirm delivery availability.",
+        );
+        return;
+      }
+      // Location granted but quote unavailable → fall through with flat fee.
     }
 
-    if (!deliveryQuote.data.isDeliverable) {
+    if (deliveryQuote.data && !deliveryQuote.data.isDeliverable) {
       setSubmitError(
         lang === "ar"
           ? "عنوانك خارج نطاق خدمة الفرع المختار حالياً."
@@ -424,8 +454,48 @@ export default function Checkout() {
       return;
     }
 
+    // Validate manual payment inputs before touching the server.
+    const isManual = isManualPaymentMethod(paymentMethod);
+    if (isManual) {
+      if (!transferNumber.trim()) {
+        setManualPaymentError(
+          lang === "ar"
+            ? "يرجى إدخال رقم هاتف المرسل أو معرف إنستاباي."
+            : "Please enter the sender's phone number or InstaPay ID.",
+        );
+        return;
+      }
+      if (!receiptFile) {
+        setManualPaymentError(
+          lang === "ar"
+            ? "يرجى رفع لقطة شاشة إيصال التحويل."
+            : "Please upload a screenshot of the transfer receipt.",
+        );
+        return;
+      }
+    }
+
+    setManualPaymentError(null);
     setSubmitError("");
     setIsSubmitting(true);
+
+    // Upload receipt before calling the Edge Function so the URL is available.
+    let paymentProofUrl: string | undefined;
+    if (isManual && receiptFile && user?.id) {
+      setUploadingReceipt(true);
+      try {
+        paymentProofUrl = await uploadWebPaymentReceipt(user.id, receiptFile);
+      } catch (uploadErr) {
+        setManualPaymentError(
+          uploadErr instanceof Error ? uploadErr.message : "تعذّر رفع الإيصال.",
+        );
+        setIsSubmitting(false);
+        setUploadingReceipt(false);
+        return;
+      } finally {
+        setUploadingReceipt(false);
+      }
+    }
 
     console.log("[Checkout] Starting order submission", {
       itemCount: items.length,
@@ -455,6 +525,8 @@ export default function Checkout() {
       paymentLabel: paymentMethodLabel,
       requestPosMachine,
       note: checkoutNote,
+      transferNumber: isManual ? transferNumber.trim() : undefined,
+      paymentProofUrl: isManual ? paymentProofUrl : undefined,
     });
 
     try {
@@ -474,6 +546,16 @@ export default function Checkout() {
       orderDate = response.createdAt;
       orderStatus = response.status;
       void refreshCatalog(true);
+
+      // Patch the order with proof fields if the Edge Function didn't persist them.
+      if (isManual && orderId && paymentProofUrl && isManualPaymentMethod(paymentMethod)) {
+        const needsPatch =
+          response.status !== "pending_payment"
+          || response.paymentStatus !== "pending_verification";
+        if (needsPatch) {
+          void patchWebOrderManualPayment(orderId, transferNumber.trim(), paymentProofUrl, paymentMethod);
+        }
+      }
 
       try {
         const localOrder = appendOrder(
@@ -654,6 +736,90 @@ export default function Checkout() {
     </div>
   );
 
+  // ── Manual payment upload panel ──────────────────────────────────────────
+  const manualPaymentUploadPanel = isManualPaymentMethod(paymentMethod) ? (
+    <div className="mt-4 space-y-4 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
+      <div>
+        <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
+          {lang === "ar" ? "تفاصيل التحويل" : "Transfer details"}
+        </p>
+        <h3 className="mt-1 text-sm font-black text-slate-900">
+          {paymentMethod === "instapay"
+            ? (lang === "ar" ? "إرسال عبر إنستاباي" : "Send via InstaPay")
+            : (lang === "ar" ? "إرسال عبر فودافون كاش" : "Send via Vodafone Cash")}
+        </h3>
+      </div>
+
+      {/* Transfer number */}
+      <div>
+        <label className="mb-2 block text-sm font-black text-slate-700">
+          {paymentMethod === "instapay"
+            ? (lang === "ar" ? "معرّف إنستاباي (IPA ID)" : "InstaPay ID (IPA ID)")
+            : (lang === "ar" ? "رقم هاتف المرسل" : "Sender phone number")}
+          <span className="ms-1 font-semibold text-rose-500">*</span>
+        </label>
+        <input
+          type={paymentMethod === "vodafone" ? "tel" : "text"}
+          value={transferNumber}
+          onChange={(e) => setTransferNumber(e.target.value)}
+          placeholder={paymentMethod === "instapay" ? "yourname@instapay" : "01XXXXXXXXX"}
+          dir="ltr"
+          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition-colors focus:border-teal-400 focus:ring-2 focus:ring-teal-500/15"
+        />
+      </div>
+
+      {/* Receipt upload */}
+      <div>
+        <label className="mb-2 block text-sm font-black text-slate-700">
+          {lang === "ar" ? "إيصال التحويل (لقطة شاشة)" : "Transfer receipt (screenshot)"}
+          <span className="ms-1 font-semibold text-rose-500">*</span>
+        </label>
+
+        {receiptPreview ? (
+          <div className="relative">
+            <img
+              src={receiptPreview}
+              alt="receipt preview"
+              className="h-48 w-full rounded-2xl border border-slate-200 object-cover"
+            />
+            <button
+              type="button"
+              onClick={() => { setReceiptFile(null); setReceiptPreview(null); }}
+              className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <label className="flex h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 bg-white text-slate-400 transition-colors hover:border-teal-400 hover:bg-teal-50 hover:text-teal-600">
+            <Upload className="h-6 w-6" />
+            <span className="text-xs font-bold">
+              {lang === "ar" ? "انقر لاختيار الصورة" : "Click to choose image"}
+            </span>
+            <span className="text-[11px] font-semibold text-slate-400">PNG, JPG – بحد أقصى 10 ميجابايت</span>
+            <input
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setReceiptFile(file);
+                setReceiptPreview(URL.createObjectURL(file));
+              }}
+            />
+          </label>
+        )}
+      </div>
+
+      {manualPaymentError && (
+        <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-bold text-rose-600">
+          {manualPaymentError}
+        </p>
+      )}
+    </div>
+  ) : null;
+
   // ── Checkout order summary sidebar ────────────────────────────────────────
   const checkoutSummary = (
     <div
@@ -832,7 +998,7 @@ export default function Checkout() {
         error={displayErrors.phone}
       />
 
-      {/* Cairo-only branch selection + map embed + geofence status */}
+      {/* Cairo-only branch + area selection */}
       <div className="sm:col-span-2">
         <BranchSelector
           lang={lang}
@@ -847,15 +1013,15 @@ export default function Checkout() {
       <div className="sm:col-span-2">
         {deliveryQuote.data ? (
           <GeofenceStatusBanner lang={lang} status={deliveryQuote.data} />
-        ) : locationPermission !== "granted" && cart.length > 0 ? (
+        ) : locationPermission === "denied" && cart.length > 0 ? (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
             <p className="text-sm font-black">
               {lang === "ar" ? "تحقق من الموقع" : "Confirm location"}
             </p>
             <p className="mt-1 text-sm font-semibold leading-relaxed text-amber-900">
               {lang === "ar"
-                ? "يرجى تفعيل الموقع لتأكيد إمكانية التوصيل داخل نطاق الفرع."
-                : "Please enable location services to confirm delivery availability for the selected branch."}
+                ? "يرجى السماح بالوصول إلى موقعك في المتصفح لتأكيد إمكانية التوصيل."
+                : "Please allow location access in your browser to confirm delivery availability."}
             </p>
           </div>
         ) : null}
@@ -1276,6 +1442,7 @@ export default function Checkout() {
                       title={lang === "ar" ? "طريقة الدفع" : "Payment method"}
                     />
                     {paymentMethodPanel}
+                    {manualPaymentUploadPanel}
                   </ShopperSurface>
                 </>
               )}
@@ -1308,7 +1475,7 @@ export default function Checkout() {
                   ? () => { if (validateBeforeNextStep()) setStep(2); }
                   : handlePlaceOrder
               }
-              disabled={isSubmitting}
+              disabled={isSubmitting || uploadingReceipt}
               className="flex h-12 w-full items-center justify-center gap-2 rounded-[1.25rem] bg-[#2563eb] text-sm font-black text-white shadow-[0_18px_34px_rgba(37,99,235,0.24)] disabled:opacity-60"
             >
               {step === 1 ? (
@@ -1504,6 +1671,7 @@ export default function Checkout() {
                   </div>
 
                   <div className="mt-5">{paymentMethodPanel}</div>
+                  {manualPaymentUploadPanel}
 
                   <div className="mt-6 flex flex-wrap gap-3">
                     <button
@@ -1516,7 +1684,7 @@ export default function Checkout() {
                     <button
                       type="button"
                       onClick={handlePlaceOrder}
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || uploadingReceipt}
                       className="inline-flex h-13 items-center justify-center gap-2 rounded-2xl bg-[var(--primary)] px-8 text-sm font-black text-white transition-colors hover:bg-[var(--primary-strong)] disabled:opacity-60"
                       style={{ height: "3.25rem" }}
                     >

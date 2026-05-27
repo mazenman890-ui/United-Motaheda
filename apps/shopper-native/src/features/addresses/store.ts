@@ -18,6 +18,7 @@ interface AddressState {
   update: (id: string, userId: string, form: Partial<AddressFormData>) => Promise<void>;
   remove: (id: string) => Promise<void>;
   setDefault: (id: string, userId: string) => Promise<void>;
+  reset: () => void;
 }
 
 export const useAddressStore = create<AddressState>((set, get) => ({
@@ -87,6 +88,8 @@ export const useAddressStore = create<AddressState>((set, get) => ({
       await get().fetch(userId);
     }
   },
+
+  reset: () => set({ addresses: [], loading: false, error: null }),
 }));
 
 export const selectDefaultAddress = (s: AddressState) =>

@@ -141,12 +141,16 @@ export default function NotificationPreferencesScreen() {
     <View style={styles.screen}>
       {/* Header */}
       <LinearGradient
-        colors={["#011826", "#032B42", "#064D6E"]}
+        colors={theme.gradients.heroPrimary as [string, string, string]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0.7, y: 1 }}
         style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <View style={styles.headerRow}>
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
+          <Pressable
+            onPress={() => router.back()}
+            style={styles.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel="رجوع">
             <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.8)" />
           </Pressable>
           <View style={{ flex: 1 }}>

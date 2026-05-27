@@ -1,5 +1,5 @@
 import React, { memo } from "react";
-import { Platform, Pressable, Text, View } from "react-native";
+import { Platform, Pressable, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -8,6 +8,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
+import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/theme";
 import type { NativeCategory } from "@/services/productsApi";
 
@@ -60,8 +61,9 @@ export const CategoryCard = memo(function CategoryCard({
   const scale = useSharedValue(1);
   const anim  = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
-  const onPressIn  = () => { scale.value = withSpring(0.93, theme.animation.spring.snappy); };
-  const onPressOut = () => { scale.value = withSpring(1,    theme.animation.spring.default); };
+  // Refined hardware-switch press — restrained, never bouncy
+  const onPressIn  = () => { scale.value = withSpring(0.96, theme.animation.spring.press); };
+  const onPressOut = () => { scale.value = withSpring(1,    theme.animation.spring.press); };
 
   const isPill = variant === "pill";
 
@@ -76,11 +78,11 @@ export const CategoryCard = memo(function CategoryCard({
       style={[
         anim,
         {
-          width:        isPill ? 100 : undefined,
-          height:       isPill ? 168 : 130,
+          width:        isPill ? 104 : undefined,
+          height:       isPill ? 168 : 132,
           borderRadius: theme.radius['2xl'],
           overflow:     "hidden",
-          ...theme.shadow.md,
+          ...theme.shadow.card,
         },
       ]}>
       <LinearGradient
@@ -92,25 +94,24 @@ export const CategoryCard = memo(function CategoryCard({
           alignItems:     "center",
           justifyContent: isPill ? "space-between" : "center",
           paddingTop:     isPill ? 20 : 0,
-          paddingBottom:  isPill ? 16 : 0,
-          gap:            isPill ? 0 : 8,
+          paddingBottom:  isPill ? 18 : 0,
+          gap:            isPill ? 0 : 10,
         }}>
 
-        {/* Decorative circles */}
-        <View style={{ position: "absolute", top: -18, right: -18, width: 66, height: 66, borderRadius: 33, backgroundColor: "rgba(255,255,255,0.10)" }} />
-        <View style={{ position: "absolute", bottom: -14, left: -14, width: 48, height: 48, borderRadius: 24, backgroundColor: "rgba(255,255,255,0.07)" }} />
+        {/* Single soft "lens-flare" — refined, no template circles */}
+        <View style={{ position: "absolute", top: -30, right: -30, width: 100, height: 100, borderRadius: 50, backgroundColor: "rgba(255,255,255,0.10)" }} />
 
         {/* Icon bubble */}
         <View
           style={{
-            width:           isPill ? 50 : 54,
-            height:          isPill ? 50 : 54,
+            width:           isPill ? 52 : 56,
+            height:          isPill ? 52 : 56,
             borderRadius:    isPill ? 16 : 17,
-            backgroundColor: "rgba(255,255,255,0.20)",
+            backgroundColor: "rgba(255,255,255,0.18)",
             alignItems:      "center",
             justifyContent:  "center",
             borderWidth:     1,
-            borderColor:     "rgba(255,255,255,0.28)",
+            borderColor:     "rgba(255,255,255,0.26)",
           }}>
           {icon.lib === "MCI" ? (
             <MaterialCommunityIcons name={icon.name} size={24} color="#fff" />
@@ -120,25 +121,20 @@ export const CategoryCard = memo(function CategoryCard({
         </View>
 
         {/* Label */}
-        <View style={{ alignItems: "center", paddingHorizontal: 6, gap: 3 }}>
-          <Text
+        <View style={{ alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
+          <UIText
+            variant="caption"
+            weight="bold"
+            color="inverse"
+            align="center"
             numberOfLines={2}
-            style={{
-              color:            "#fff",
-              fontSize:         isPill ? 11 : 12,
-              fontFamily:       theme.fonts.bold,
-              textAlign:        "center",
-              lineHeight:       isPill ? 15 : 16,
-              textShadowColor:  "rgba(0,0,0,0.18)",
-              textShadowOffset: { width: 0, height: 1 },
-              textShadowRadius: 3,
-            }}>
+            style={{ lineHeight: isPill ? 15 : 17 }}>
             {label}
-          </Text>
+          </UIText>
           {category.count > 0 && (
-            <Text style={{ color: "rgba(255,255,255,0.65)", fontSize: 9, fontFamily: theme.fonts.semibold }}>
+            <UIText variant="eyebrow" style={{ color: "rgba(255,255,255,0.72)" }}>
               {category.count} منتج
-            </Text>
+            </UIText>
           )}
         </View>
       </LinearGradient>

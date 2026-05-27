@@ -25,11 +25,17 @@ import { toast } from "sonner";
 import { useAuth } from "../../contexts/AuthContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import {
-  type AdminOrder,
+  type AdminOrder as LegacyAdminOrder,
   type OrderStatus as ApiOrderStatus,
-  getAdminOrders,
-  updateOrderStatus,
 } from "../../services/googleSheetsApi";
+import {
+  fetchAdminOrders,
+  adminUpdateOrderStatus,
+  adminVerifyPayment,
+  adminRejectPayment,
+  type AdminOrder as SupabaseAdminOrder,
+  type AdminOrderItem,
+} from "../../services/adminOrdersApi";
 import { cn } from "../components/UI";
 import {
   AdminEmptyState,
@@ -48,6 +54,68 @@ import {
 
 type OrderStatus = ApiOrderStatus;
 type Language = "ar" | "en";
+
+// Bridge: adapt SupabaseAdminOrder to the legacy AdminOrder shape so the
+// existing table / card components continue working while we progressively
+// upgrade the UI.
+type AdminOrder = LegacyAdminOrder & {
+  // Extended fields from the Supabase query
+  paymentStatus:   string;
+  paymentProofUrl: string | null;
+  transferNumber:  string | null;
+  items:           AdminOrderItem[];
+};
+
+function supabaseToAdminOrder(o: SupabaseAdminOrder): AdminOrder {
+  const addr = o.customerAddress as Record<string, string> | null;
+  const formattedAddress =
+    typeof addr?.formatted === "string"
+      ? addr.formatted
+      : [addr?.streetLine, addr?.city].filter(Boolean).join(", ");
+
+  // Map new lowercase statuses to the legacy capitalized enum.
+  const statusMap: Record<string, OrderStatus> = {
+    pending:         "Pending",
+    pending_payment: "Pending",
+    processing:      "Processing",
+    shipped:         "Out for Delivery",
+    delivered:       "Delivered",
+    cancelled:       "Cancelled",
+  };
+
+  return {
+    id:              o.id,
+    customerName:    o.customerName,
+    customerPhone:   o.customerPhone,
+    customerAddress: formattedAddress,
+    productCodes:    o.items.map((i) => i.productId),
+    totalPrice:      o.total,
+    address:         formattedAddress,
+    note:            o.note,
+    orderDate:       o.createdAt,
+    status:          statusMap[o.status] ?? "Pending",
+    paymentMethod:   o.paymentMethod ?? "cod",
+    paymentLabel:    getPaymentLabel(o.paymentMethod),
+    requestPosMachine: false,
+    assignedDriver:  undefined,
+    assignedDriverId: undefined,
+    // extended
+    paymentStatus:   o.paymentStatus,
+    paymentProofUrl: o.paymentProofUrl,
+    transferNumber:  o.transferNumber,
+    items:           o.items,
+  };
+}
+
+function getPaymentLabel(method: string | null): string {
+  switch (method) {
+    case "cod":           return "الدفع عند الاستلام";
+    case "vodafone":
+    case "vodafone_cash": return "فودافون كاش";
+    case "instapay":      return "إنستاباي";
+    default:              return method ?? "—";
+  }
+}
 type DatePreset = "all" | "today" | "last7" | "last30" | "custom";
 type TabKey = "all" | "attention" | "out" | "delivered" | "cancelled";
 
@@ -247,42 +315,260 @@ const OrderCard = memo(function OrderCard({
   );
 });
 
+// ─── Payment status helpers ───────────────────────────────────────────────────
+
+function getPaymentStatusBadge(status: string) {
+  switch (status) {
+    case "pending_verification":
+      return <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-700">⏳ بانتظار التحقق</span>;
+    case "verified":
+    case "paid":
+      return <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700">✓ تم التحقق</span>;
+    case "failed":
+      return <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-[11px] font-bold text-rose-700">✗ مرفوض</span>;
+    default:
+      return null;
+  }
+}
+
+// ─── Expandable order table row ───────────────────────────────────────────────
+
 const OrderTableRow = memo(function OrderTableRow({
   order,
   lang,
   updating,
   onStatusChange,
+  onVerifyPayment,
+  onRejectPayment,
 }: {
-  order: AdminOrder;
-  lang: Language;
-  updating: boolean;
-  onStatusChange: (order: AdminOrder, next: OrderStatus) => void;
+  order:           AdminOrder;
+  lang:            Language;
+  updating:        boolean;
+  onStatusChange:  (order: AdminOrder, next: OrderStatus) => void;
+  onVerifyPayment: (orderId: string) => void;
+  onRejectPayment: (orderId: string) => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const [proofOpen, setProofOpen] = useState(false);
+  const hasProof    = Boolean(order.paymentProofUrl);
+  const isManual    = order.paymentMethod !== "cod" && order.paymentMethod !== "";
+  const needsReview = isManual && order.paymentStatus === "pending_verification";
+
   return (
-    <tr className="border-b border-slate-100 transition-colors hover:bg-slate-50/60">
-      <td className="px-5 py-4"><p className="text-sm font-bold text-slate-900" dir="ltr">{order.id}</p></td>
-      <td className="px-5 py-4">
-        <p className="text-sm font-bold text-slate-900">{order.customerName || "—"}</p>
-        <p className="mt-0.5 text-xs font-semibold text-slate-500" dir="ltr">{order.customerPhone}</p>
-      </td>
-      <td className="px-5 py-4">
-        <span className={cn("admin-badge", getStatusClasses(order.status))}>
-          <span className={cn("h-1.5 w-1.5 rounded-full", getStatusDot(order.status))} />
-          {getStatusLabel(order.status, lang)}
-        </span>
-      </td>
-      <td className="px-5 py-4 text-sm font-bold text-slate-900">{formatCurrency(order.totalPrice, lang)}</td>
-      <td className="px-5 py-4 text-xs font-semibold text-slate-500">{formatDate(order.orderDate, lang)}</td>
-      <td className="px-5 py-4 text-xs font-semibold text-slate-500">
-        {order.assignedDriver || <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-400">{lang === "ar" ? "غير محدد" : "Not assigned"}</span>}
-      </td>
-      <td className="px-5 py-4">
-        <div className="flex items-center gap-2">
-          {updating && <ArrowPathIcon className="h-4 w-4 animate-spin text-teal-600" />}
-          <StatusSelect order={order} lang={lang} role="manager" disabled={updating} onChange={onStatusChange} />
-        </div>
-      </td>
-    </tr>
+    <>
+      <tr
+        className={cn(
+          "border-b border-slate-100 transition-colors hover:bg-slate-50/60 cursor-pointer",
+          expanded && "bg-slate-50/80",
+        )}
+        onClick={() => setExpanded((v) => !v)}>
+        {/* Order ID */}
+        <td className="px-5 py-4">
+          <p className="text-sm font-bold text-slate-900" dir="ltr">
+            #{order.id.slice(-8).toUpperCase()}
+          </p>
+          <p className="mt-0.5 truncate text-[10px] text-slate-400" dir="ltr">{order.id}</p>
+        </td>
+
+        {/* Customer */}
+        <td className="px-5 py-4">
+          <p className="text-sm font-bold text-slate-900">{order.customerName || "—"}</p>
+          <p className="mt-0.5 text-xs font-semibold text-slate-500" dir="ltr">{order.customerPhone}</p>
+        </td>
+
+        {/* Items preview */}
+        <td className="px-5 py-4">
+          {order.items.length > 0 ? (
+            <div className="flex items-center gap-2">
+              {order.items.slice(0, 3).map((item) => (
+                item.imageUrl ? (
+                  <img
+                    key={item.productId}
+                    src={item.imageUrl}
+                    alt={item.name}
+                    className="h-8 w-8 rounded-md border border-slate-100 object-contain bg-white"
+                  />
+                ) : (
+                  <div key={item.productId} className="h-8 w-8 rounded-md border border-slate-200 bg-slate-100 flex items-center justify-center">
+                    <span className="text-[10px] text-slate-400">💊</span>
+                  </div>
+                )
+              ))}
+              {order.items.length > 3 && (
+                <span className="text-xs font-semibold text-slate-400">+{order.items.length - 3}</span>
+              )}
+            </div>
+          ) : (
+            <span className="text-xs text-slate-400">—</span>
+          )}
+        </td>
+
+        {/* Status */}
+        <td className="px-5 py-4">
+          <span className={cn("admin-badge", getStatusClasses(order.status))}>
+            <span className={cn("h-1.5 w-1.5 rounded-full", getStatusDot(order.status))} />
+            {getStatusLabel(order.status, lang)}
+          </span>
+        </td>
+
+        {/* Payment */}
+        <td className="px-5 py-4">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-semibold text-slate-700">{order.paymentLabel}</span>
+            {getPaymentStatusBadge(order.paymentStatus)}
+          </div>
+        </td>
+
+        {/* Total */}
+        <td className="px-5 py-4 text-sm font-bold text-slate-900">
+          {formatCurrency(order.totalPrice, lang)}
+        </td>
+
+        {/* Date */}
+        <td className="px-5 py-4 text-xs font-semibold text-slate-500">
+          {formatDate(order.orderDate, lang)}
+        </td>
+
+        {/* Actions */}
+        <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-2">
+            {updating && <ArrowPathIcon className="h-4 w-4 animate-spin text-teal-600" />}
+            <StatusSelect order={order} lang={lang} role="manager" disabled={updating} onChange={onStatusChange} />
+          </div>
+        </td>
+      </tr>
+
+      {/* ── Expanded panel ──────────────────────────────────────────────── */}
+      {expanded && (
+        <tr className="border-b border-slate-100 bg-slate-50/60">
+          <td colSpan={8} className="px-6 py-5">
+            <div className="grid gap-6 sm:grid-cols-2">
+
+              {/* Items list */}
+              <div>
+                <p className="mb-3 text-[11px] font-black uppercase tracking-widest text-slate-400">
+                  {lang === "ar" ? "المنتجات" : "Items"}
+                </p>
+                {order.items.length === 0 ? (
+                  <p className="text-xs text-slate-400">{lang === "ar" ? "لا توجد منتجات" : "No items"}</p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {order.items.map((item) => (
+                      <div key={item.productId} className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2">
+                        {item.imageUrl ? (
+                          <img
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="h-10 w-10 rounded-md border border-slate-100 object-contain"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-md border border-slate-200 bg-slate-100 flex items-center justify-center text-lg">💊</div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate text-sm font-bold text-slate-900" dir="rtl">
+                            {item.name || (lang === "ar" ? "منتج" : "Product")}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {lang === "ar" ? "الكمية" : "Qty"}: {item.quantity} × {formatCurrency(item.unitPrice, lang)}
+                          </p>
+                        </div>
+                        <p className="text-sm font-bold text-slate-900">{formatCurrency(item.lineTotal, lang)}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Payment proof */}
+              <div>
+                <p className="mb-3 text-[11px] font-black uppercase tracking-widest text-slate-400">
+                  {lang === "ar" ? "الدفع والإيصال" : "Payment & Proof"}
+                </p>
+
+                {order.transferNumber && (
+                  <div className="mb-3 rounded-lg border border-slate-200 bg-white px-3 py-2">
+                    <p className="text-[10px] font-bold uppercase text-slate-400">{lang === "ar" ? "رقم المُرسِل" : "Transfer number"}</p>
+                    <p className="mt-1 text-sm font-bold text-slate-900" dir="ltr">{order.transferNumber}</p>
+                  </div>
+                )}
+
+                {hasProof ? (
+                  <div className="space-y-3">
+                    <button
+                      type="button"
+                      onClick={() => setProofOpen(true)}
+                      className="w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow">
+                      <img
+                        src={order.paymentProofUrl!}
+                        alt="payment proof"
+                        className="h-36 w-full object-cover"
+                      />
+                      <p className="py-2 text-center text-xs font-bold text-slate-600">
+                        {lang === "ar" ? "انقر لتكبير الإيصال" : "Click to enlarge"}
+                      </p>
+                    </button>
+
+                    {needsReview && (
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onVerifyPayment(order.id)}
+                          className="flex-1 rounded-xl border border-emerald-200 bg-emerald-50 py-2.5 text-sm font-bold text-emerald-700 hover:bg-emerald-100 transition-colors">
+                          ✓ {lang === "ar" ? "قبول الدفع" : "Verify Payment"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onRejectPayment(order.id)}
+                          className="flex-1 rounded-xl border border-rose-200 bg-rose-50 py-2.5 text-sm font-bold text-rose-700 hover:bg-rose-100 transition-colors">
+                          ✗ {lang === "ar" ? "رفض الدفع" : "Reject Payment"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : isManual ? (
+                  <div className="rounded-lg border border-amber-100 bg-amber-50 px-4 py-3">
+                    <p className="text-xs font-semibold text-amber-700">
+                      {lang === "ar" ? "لم يُرفع إيصال الدفع بعد" : "No payment proof uploaded yet"}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-slate-100 bg-white px-4 py-3">
+                    <p className="text-xs text-slate-400">
+                      {lang === "ar" ? "الدفع عند الاستلام — لا يوجد إيصال" : "Cash on delivery — no proof required"}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+
+      {/* ── Proof image lightbox ─────────────────────────────────────────── */}
+      {proofOpen && order.paymentProofUrl && (
+        <tr>
+          <td colSpan={8}>
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+              onClick={() => setProofOpen(false)}>
+              <div className="relative max-h-[90vh] max-w-[90vw] rounded-2xl overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                <img
+                  src={order.paymentProofUrl}
+                  alt="payment proof"
+                  className="max-h-[85vh] max-w-[88vw] object-contain"
+                />
+                <button
+                  type="button"
+                  onClick={() => setProofOpen(false)}
+                  className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70">
+                  ✕
+                </button>
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 });
 
@@ -313,15 +599,17 @@ export default function OrdersManager() {
   const debouncedSearch = useDebouncedValue(search, 250);
   const hasInvalidCustomRange = datePreset === "custom" && Boolean(dateFrom && dateTo && dateFrom > dateTo);
 
-  const loadOrders = useCallback(async (force = false) => {
+  const loadOrders = useCallback(async (_force = false) => {
     if (!firstLoadRef.current) setRefreshing(true);
     else setLoading(true);
     setError("");
 
     try {
-      const data = await getAdminOrders(force);
+      // Fetch all pages in one call (pageSize=200 covers most volumes).
+      const { orders: fetched } = await fetchAdminOrders({ pageSize: 200 });
+      const mapped = fetched.map(supabaseToAdminOrder);
       startTransition(() => {
-        setOrders(data);
+        setOrders(mapped);
         setLoading(false);
         setRefreshing(false);
         firstLoadRef.current = false;
@@ -351,6 +639,16 @@ export default function OrdersManager() {
   const handleStatusChange = useCallback(async (order: AdminOrder, nextStatus: OrderStatus) => {
     if (order.status === nextStatus || pendingById[order.id]) return;
 
+    // Map legacy capitalized status → new lowercase for Supabase
+    const statusMapReverse: Record<OrderStatus, string> = {
+      Pending:           "pending",
+      Processing:        "processing",
+      "Out for Delivery":"shipped",
+      Delivered:         "delivered",
+      Cancelled:         "cancelled",
+    };
+    const supabaseStatus = statusMapReverse[nextStatus] as import("../../services/adminOrdersApi").AdminOrderStatus;
+
     const previousOrder = order;
     setRowPending(order.id, true);
     startTransition(() => {
@@ -360,12 +658,7 @@ export default function OrdersManager() {
     });
 
     try {
-      const updatedOrder = await updateOrderStatus(order.id, nextStatus);
-      startTransition(() => {
-        setOrders((current) => current.map((entry) => (
-          entry.id === updatedOrder.id ? updatedOrder : entry
-        )));
-      });
+      await adminUpdateOrderStatus(order.id, supabaseStatus);
       toast.success(
         lang === "ar"
           ? `تم تحديث حالة الطلب إلى "${getStatusLabel(nextStatus, lang)}"`
@@ -382,6 +675,60 @@ export default function OrdersManager() {
       setRowPending(order.id, false);
     }
   }, [lang, pendingById, setRowPending]);
+
+  const handleVerifyPayment = useCallback(async (orderId: string) => {
+    if (pendingById[orderId]) return;
+    const previousOrder = orders.find((o) => o.id === orderId);
+    if (!previousOrder) return;
+
+    setRowPending(orderId, true);
+    startTransition(() => {
+      setOrders((current) => current.map((entry) =>
+        entry.id === orderId ? { ...entry, paymentStatus: "verified" } : entry,
+      ));
+    });
+
+    try {
+      await adminVerifyPayment(orderId);
+      toast.success(lang === "ar" ? "تم قبول الدفع بنجاح" : "Payment verified successfully");
+    } catch {
+      startTransition(() => {
+        setOrders((current) => current.map((entry) =>
+          entry.id === orderId ? previousOrder : entry,
+        ));
+      });
+      toast.error(lang === "ar" ? "فشل قبول الدفع" : "Failed to verify payment");
+    } finally {
+      setRowPending(orderId, false);
+    }
+  }, [lang, orders, pendingById, setRowPending]);
+
+  const handleRejectPayment = useCallback(async (orderId: string) => {
+    if (pendingById[orderId]) return;
+    const previousOrder = orders.find((o) => o.id === orderId);
+    if (!previousOrder) return;
+
+    setRowPending(orderId, true);
+    startTransition(() => {
+      setOrders((current) => current.map((entry) =>
+        entry.id === orderId ? { ...entry, paymentStatus: "failed" } : entry,
+      ));
+    });
+
+    try {
+      await adminRejectPayment(orderId);
+      toast.success(lang === "ar" ? "تم رفض الدفع" : "Payment rejected");
+    } catch {
+      startTransition(() => {
+        setOrders((current) => current.map((entry) =>
+          entry.id === orderId ? previousOrder : entry,
+        ));
+      });
+      toast.error(lang === "ar" ? "فشل رفض الدفع" : "Failed to reject payment");
+    } finally {
+      setRowPending(orderId, false);
+    }
+  }, [lang, orders, pendingById, setRowPending]);
 
   const filteredOrders = useMemo(() => {
     const query = debouncedSearch.trim().toLowerCase();
@@ -699,10 +1046,11 @@ export default function OrdersManager() {
                         <tr className="border-b border-slate-100 bg-slate-50/70">
                           <th className={thClass}>{lang === "ar" ? "رقم الطلب" : "Order ID"}</th>
                           <th className={thClass}>{lang === "ar" ? "العميل" : "Customer"}</th>
+                          <th className={thClass}>{lang === "ar" ? "المنتجات" : "Items"}</th>
                           <th className={thClass}>{lang === "ar" ? "الحالة" : "Status"}</th>
+                          <th className={thClass}>{lang === "ar" ? "الدفع" : "Payment"}</th>
                           <th className={thClass}>{lang === "ar" ? "الإجمالي" : "Total"}</th>
                           <th className={thClass}>{lang === "ar" ? "التاريخ" : "Date"}</th>
-                          <th className={thClass}>{lang === "ar" ? "السائق" : "Driver"}</th>
                           <th className={thClass}>{lang === "ar" ? "إجراء" : "Action"}</th>
                         </tr>
                       </thead>
@@ -714,6 +1062,8 @@ export default function OrdersManager() {
                             lang={lang}
                             updating={Boolean(pendingById[order.id])}
                             onStatusChange={handleStatusChange}
+                            onVerifyPayment={handleVerifyPayment}
+                            onRejectPayment={handleRejectPayment}
                           />
                         ))}
                       </tbody>

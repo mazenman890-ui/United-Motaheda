@@ -16,13 +16,19 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "@/theme";
+import { captureError } from "@/lib/crashReporter";
 
 interface Props {
   children: React.ReactNode;
-  /** Optional callback when an error is caught (e.g. for telemetry). */
+  /**
+   * Optional callback when an error is caught. If omitted, the error is
+   * reported through captureError() — the provider-agnostic crash shim.
+   */
   onError?: (error: Error, info: React.ErrorInfo) => void;
   /** Optional override for the recovery UI. */
   fallback?: (reset: () => void, error: Error) => React.ReactNode;
+  /** Identifies which surface threw — attached to the crash report. */
+  surface?: string;
 }
 
 interface State {
@@ -41,7 +47,14 @@ export class ErrorBoundary extends React.Component<Props, State> {
     if (__DEV__) {
       console.error("[ErrorBoundary] caught:", error, info);
     }
-    this.props.onError?.(error, info);
+    if (this.props.onError) {
+      this.props.onError(error, info);
+    } else {
+      captureError(error, {
+        surface:         this.props.surface ?? "root",
+        component_stack: info.componentStack ?? null,
+      });
+    }
   }
 
   reset = () => {

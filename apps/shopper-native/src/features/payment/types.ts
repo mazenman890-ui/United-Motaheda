@@ -16,6 +16,7 @@ export interface PaymentState {
   methods: PaymentMethod[];
   loading: boolean;
   setSelected: (type: PaymentMethodType) => void;
+  reset: () => void;
 }
 
 export const PAYMENT_METHODS: PaymentMethod[] = [
@@ -32,20 +33,20 @@ export const PAYMENT_METHODS: PaymentMethod[] = [
     id: "instapay",
     type: "instapay",
     label: "InstaPay",
-    description: "تحويل فوري عبر إنستاباي",
+    description: "تحويل عبر إنستاباي",
     icon: "flash-outline",
     is_active: true,
-    phone: "01XXXXXXXXX",
+    phone: "01124076520",
     details: "حوّل المبلغ وأرسل لنا صورة الإيصال",
   },
   {
     id: "vodafone_cash",
     type: "vodafone_cash",
     label: "فودافون كاش",
-    description: "ادفع من محفظتك الإلكترونية",
+    description: "تحويل عبر فودافون كاش",
     icon: "wallet-outline",
     is_active: true,
-    phone: "01XXXXXXXXX",
+    phone: "01124076520",
     details: "حوّل لرقم المحفظة وأرسل الإيصال",
   },
 ];

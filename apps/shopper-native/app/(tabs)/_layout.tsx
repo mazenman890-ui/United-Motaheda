@@ -11,7 +11,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { useCartStore } from "@/stores/cart";
+import { useTranslation } from "react-i18next";
 import { useUnreadCount } from "@/features/notifications";
 import { useAuth } from "@/features/auth";
 import { theme } from "@/theme";
@@ -21,15 +21,20 @@ type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 interface TabConfig {
   active:   IoniconsName;
   inactive: IoniconsName;
-  label:    string;
 }
 
-const TAB_CONFIG: Record<string, TabConfig> = {
-  index:    { active: "home",           inactive: "home-outline",          label: "الرئيسية" },
-  search:   { active: "search",         inactive: "search-outline",        label: "بحث"      },
-  products: { active: "grid",           inactive: "grid-outline",          label: "الأصناف"  },
-  cart:     { active: "bag",            inactive: "bag-outline",           label: "السلة"    },
-  profile:  { active: "person-circle", inactive: "person-circle-outline", label: "حسابي"    },
+const TAB_CONFIG: Record<string, Omit<TabConfig, "label">> = {
+  index:    { active: "home",          inactive: "home-outline" },
+  products: { active: "grid",          inactive: "grid-outline" },
+  orders:   { active: "cube",          inactive: "cube-outline" },
+  profile:  { active: "person-circle", inactive: "person-circle-outline" },
+};
+
+const TAB_I18N_KEY: Record<string, string> = {
+  index:    "tabs.home",
+  products: "tabs.products",
+  orders:   "tabs.orders",
+  profile:  "tabs.profile",
 };
 
 // ─── Tab Item ─────────────────────────────────────────────────────────────────
@@ -42,7 +47,9 @@ interface TabItemProps {
 }
 
 function TabItem({ name, focused, badge, onPress }: TabItemProps) {
+  const { t } = useTranslation();
   const cfg = TAB_CONFIG[name] ?? TAB_CONFIG.index;
+  const label = t(TAB_I18N_KEY[name] ?? "tabs.home");
 
   const scale      = useSharedValue(1);
   const pillOp     = useSharedValue(focused ? 1 : 0);
@@ -108,7 +115,7 @@ function TabItem({ name, focused, badge, onPress }: TabItemProps) {
           labelAnim,
         ]}
         numberOfLines={1}>
-        {cfg.label}
+        {label}
       </Animated.Text>
     </Pressable>
   );
@@ -118,7 +125,6 @@ function TabItem({ name, focused, badge, onPress }: TabItemProps) {
 
 function BottomTabBar({ state, navigation }: BottomTabBarProps) {
   const insets         = useSafeAreaInsets();
-  const cartCount      = useCartStore((s) => s.itemCount());
   const { user }       = useAuth();
   const unreadNotifs   = useUnreadCount(user?.id);
 
@@ -136,19 +142,22 @@ function BottomTabBar({ state, navigation }: BottomTabBarProps) {
     [navigation],
   );
 
+  // Only render visible tabs in the bottom bar — hidden routes (cart, search)
+  // are kept as files for back-compat but excluded from the bar.
+  const visibleRoutes = state.routes.filter((r) => r.name in TAB_CONFIG);
+
   return (
     <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
-      {state.routes.map((route, index) => {
-        const focused = state.index === index;
+      {visibleRoutes.map((route) => {
+        const realIndex = state.routes.findIndex((r) => r.key === route.key);
+        const focused   = state.index === realIndex;
         return (
           <TabItem
             key={route.key}
             name={route.name}
             focused={focused}
             badge={
-              route.name === "cart"    ? (cartCount    || undefined) :
-              route.name === "profile" ? (unreadNotifs || undefined) :
-              undefined
+              route.name === "profile" ? (unreadNotifs || undefined) : undefined
             }
             onPress={() => onPress(route, focused)}
           />
@@ -166,10 +175,14 @@ export default function TabLayout() {
       tabBar={(props) => <BottomTabBar {...props} />}
       screenOptions={{ headerShown: false }}>
       <Tabs.Screen name="index"    />
-      <Tabs.Screen name="search"   />
       <Tabs.Screen name="products" />
-      <Tabs.Screen name="cart"     />
+      <Tabs.Screen name="orders"   />
       <Tabs.Screen name="profile"  />
+
+      {/* Hidden routes — kept as files for back-compat (cart accessed from
+          header bag icon, search from the home hero glass search bar). */}
+      <Tabs.Screen name="cart"   options={{ href: null }} />
+      <Tabs.Screen name="search" options={{ href: null }} />
     </Tabs>
   );
 }

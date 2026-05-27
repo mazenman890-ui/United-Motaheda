@@ -5,10 +5,10 @@
  * shows the primary branch first.
  */
 
-import React, { useMemo } from "react";
+import React, { memo, useCallback, useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInDown, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 import { BranchCard } from "./BranchCard";
 import { useBranches } from "../branches/useBranches";
 import { sortBranchesByDistance, type Coordinates } from "../geofencing";
@@ -37,7 +37,6 @@ export function BranchSelector({
     if (customerCoords) {
       return sortBranchesByDistance(customerCoords, enabled);
     }
-    // Default: primary first, then preserve insertion order
     const primary = enabled.filter((b) => b.isPrimary).map((b) => ({ branch: b, distanceKm: undefined as number | undefined }));
     const rest    = enabled.filter((b) => !b.isPrimary).map((b) => ({ branch: b, distanceKm: undefined as number | undefined }));
     return [...primary, ...rest];
@@ -45,28 +44,33 @@ export function BranchSelector({
 
   const visible = maxItems ? ranked.slice(0, maxItems) : ranked;
 
+  const handleSelect = useCallback(
+    (branch: Branch) => onSelect(branch),
+    [onSelect],
+  );
+
   if (isLoading) {
     return <BranchSkeletons count={compact ? 2 : 3} />;
   }
 
   if (visible.length === 0) {
     return (
-      <View style={styles.emptyCard}>
+      <Animated.View entering={FadeIn.duration(200)} style={styles.emptyCard}>
         <Ionicons name="storefront-outline" size={20} color={theme.colors.slate[400]} />
         <Text style={styles.emptyText}>لا توجد فروع متاحة للتوصيل حالياً</Text>
-      </View>
+      </Animated.View>
     );
   }
 
   return (
-    <View style={{ gap: 8 }}>
+    <View style={{ gap: 8 }} accessibilityRole="radiogroup" accessibilityLabel="اختر فرع التوصيل">
       {visible.map(({ branch, distanceKm }, i) => (
         <Animated.View key={branch.id} entering={FadeInDown.delay(i * 50).duration(220)}>
           <BranchCard
             branch={branch}
             selected={branch.id === selectedId}
             distanceKm={distanceKm}
-            onPress={() => onSelect(branch)}
+            onPress={() => handleSelect(branch)}
             compact={compact}
           />
         </Animated.View>
@@ -75,11 +79,37 @@ export function BranchSelector({
   );
 }
 
+// ─── Animated shimmer skeleton ─────────────────────────────────────────────
+
+const SkeletonRow = memo(function SkeletonRow({ delay }: { delay: number }) {
+  const opacity = useSharedValue(1);
+
+  React.useEffect(() => {
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(0.4, { duration: 700 }),
+        withTiming(1,   { duration: 700 }),
+      ),
+      -1,
+      true,
+    );
+  }, [opacity]);
+
+  const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  return (
+    <Animated.View
+      entering={FadeIn.delay(delay).duration(200)}
+      style={[styles.skel, animStyle]}
+    />
+  );
+});
+
 function BranchSkeletons({ count }: { count: number }) {
   return (
-    <View style={{ gap: 8 }}>
+    <View style={{ gap: 8 }} accessibilityLabel="جارٍ تحميل الفروع">
       {Array.from({ length: count }).map((_, i) => (
-        <View key={i} style={styles.skel} />
+        <SkeletonRow key={i} delay={i * 80} />
       ))}
     </View>
   );

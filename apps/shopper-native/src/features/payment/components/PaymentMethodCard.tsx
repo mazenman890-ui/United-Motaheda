@@ -61,15 +61,21 @@ export function PaymentMethodCard({ method, selected, onSelect }: Props) {
             {method.label}
           </Text>
           <Text style={styles.desc}>{method.description}</Text>
-        </View>
+          {method.phone && (
+            <View style={styles.phoneRow}>
+              <Ionicons name="call-outline" size={12} color={colors.accent} />
+              <Text style={styles.phoneText}>{method.phone}</Text>
+            </View>
+          )}
 
-        {/* Security badge */}
-        {selected && (
-          <Animated.View entering={FadeIn.duration(200)} style={styles.secureBadge}>
-            <Ionicons name="shield-checkmark" size={10} color={theme.colors.green[600]} />
-            <Text style={styles.secureText}>آمن</Text>
-          </Animated.View>
-        )}
+          {/* Security badge */}
+          {selected && (
+            <Animated.View entering={FadeIn.duration(200)} style={styles.secureBadge}>
+              <Ionicons name="shield-checkmark" size={10} color={theme.colors.green[600]} />
+              <Text style={styles.secureText}>آمن</Text>
+            </Animated.View>
+          )}
+        </View>
       </Pressable>
 
       {/* Expanded details when selected */}
@@ -140,6 +146,18 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: theme.fonts.regular,
     color: theme.colors.slate[400],
+    textAlign: "right",
+  },
+  phoneRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 4,
+  },
+  phoneText: {
+    fontSize: 11,
+    fontFamily: theme.fonts.semibold,
+    color: theme.colors.slate[600],
     textAlign: "right",
   },
   secureBadge: {

@@ -10,7 +10,6 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
-import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -18,17 +17,24 @@ import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import Animated, {
-  FadeIn,
   FadeInDown,
   FadeInUp,
 } from "react-native-reanimated";
-import { fetchCategories, fetchFeaturedProducts, type NativeProduct } from "@/services/productsApi";
+import {
+  fetchCategories,
+  fetchFeaturedProducts,
+  type NativeProduct,
+  type NativeCategory,
+} from "@/services/productsApi";
 import { CategoryCard } from "@/components/CategoryCard";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductCardSkeleton, CategoryCardSkeleton } from "@/components/ui/Skeleton";
+import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/theme";
 import { useCartStore } from "@/stores/cart";
 import { useAuth } from "@/features/auth";
+import { AppLogo } from "@/shared/components/AppLogo";
+import { useMountTiming } from "@/lib/devTiming";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -103,39 +109,40 @@ const PromoCarousel = memo(function PromoCarousel({
         renderItem={({ item }) => (
           <Pressable
             onPress={() => onSlidePress(item.route)}
-            style={({ pressed }) => ({ opacity: pressed ? 0.92 : 1, width: screenW })}>
+            style={({ pressed }) => ({ opacity: pressed ? 0.94 : 1, width: screenW })}>
             <LinearGradient
               colors={item.gradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={{ marginHorizontal: 16, borderRadius: 20, padding: 22, overflow: "hidden", ...theme.shadow.lg }}>
-              {/* Decorative circles */}
-              <View style={{ position: "absolute", right: -28, top: -28, width: 110, height: 110, borderRadius: 55, backgroundColor: "rgba(255,255,255,0.06)" }} />
-              <View style={{ position: "absolute", left: 20, bottom: -36, width: 90, height: 90, borderRadius: 45, backgroundColor: "rgba(255,255,255,0.04)" }} />
-              <View style={{ position: "absolute", right: 80, top: 10, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.03)" }} />
+              style={promoStyles.slide}>
+              {/* Single subtle "lens-flare" — clinical premium, NOT marketing template */}
+              <View style={[promoStyles.flare, { backgroundColor: `${item.accent}1F` }]} />
 
-              <View style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" }}>
-                <View style={{ flex: 1, gap: 7 }}>
-                  {/* Tag */}
-                  <View style={{ flexDirection: "row-reverse" }}>
-                    <View style={{ backgroundColor: `${item.accent}30`, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: `${item.accent}50` }}>
-                      <Text style={{ color: item.accent, fontSize: 10, fontFamily: theme.fonts.black, letterSpacing: 0.8 }}>
-                        {item.tag}
-                      </Text>
+              <View style={promoStyles.row}>
+                <View style={promoStyles.copy}>
+                  <View style={promoStyles.tagRow}>
+                    <View style={[promoStyles.tag, { backgroundColor: `${item.accent}28`, borderColor: `${item.accent}48` }]}>
+                      <UIText variant="eyebrow" style={{ color: item.accent }}>{item.tag}</UIText>
                     </View>
                   </View>
-                  {/* Title */}
-                  <Text style={{ color: "#fff", fontSize: 22, fontFamily: theme.fonts.black, lineHeight: 30, textAlign: "right" }}>
+                  <UIText
+                    variant="sheet-title"
+                    color="inverse"
+                    align="right"
+                    style={promoStyles.title}>
                     {item.title}
-                  </Text>
-                  {/* Subtitle */}
-                  <Text style={{ color: "rgba(255,255,255,0.60)", fontSize: 11, fontFamily: theme.fonts.semibold, textAlign: "right", lineHeight: 16 }}>
+                  </UIText>
+                  <UIText
+                    variant="body-sm"
+                    color="inverse-muted"
+                    align="right"
+                    style={promoStyles.sub}>
                     {item.sub}
-                  </Text>
+                  </UIText>
                 </View>
 
-                {/* Icon pill */}
-                <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.25)", marginStart: 16 }}>
+                {/* Icon pill — refined glass tile */}
+                <View style={promoStyles.iconPill}>
                   <Ionicons name={item.icon} size={26} color="#fff" />
                 </View>
               </View>
@@ -144,17 +151,15 @@ const PromoCarousel = memo(function PromoCarousel({
         )}
       />
 
-      {/* Dot indicators */}
-      <View style={{ flexDirection: "row", justifyContent: "center", gap: 5, marginTop: 10 }}>
+      {/* Dot indicators — refined "page" pills */}
+      <View style={promoStyles.dotsRow}>
         {PROMO_SLIDES.map((_, i) => (
           <View
             key={i}
-            style={{
-              width:           i === current ? 20 : 6,
-              height:          6,
-              borderRadius:    3,
-              backgroundColor: i === current ? theme.colors.brand[600] : theme.colors.slate[200],
-            }}
+            style={[
+              promoStyles.dot,
+              i === current && promoStyles.dotActive,
+            ]}
           />
         ))}
       </View>
@@ -189,11 +194,11 @@ function useEndOfDayCountdown() {
 
 const CountdownUnit = memo(function CountdownUnit({ value, label }: { value: string; label: string }) {
   return (
-    <View style={{ alignItems: "center", gap: 2 }}>
-      <View style={{ backgroundColor: "#0F172A", borderRadius: 8, paddingHorizontal: 9, paddingVertical: 5, minWidth: 34, alignItems: "center" }}>
-        <Text style={{ color: "#fff", fontSize: 15, fontFamily: theme.fonts.black, letterSpacing: 0.5 }}>{value}</Text>
+    <View style={countdownStyles.unit}>
+      <View style={countdownStyles.cell}>
+        <UIText variant="card-title" weight="black" style={countdownStyles.value}>{value}</UIText>
       </View>
-      <Text style={{ fontSize: 8.5, fontFamily: theme.fonts.semibold, color: theme.colors.text.tertiary }}>{label}</Text>
+      <UIText variant="eyebrow" color="tertiary" style={countdownStyles.label}>{label}</UIText>
     </View>
   );
 });
@@ -213,23 +218,19 @@ const QuickAction = memo(function QuickAction({
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => ({ flex: 1, alignItems: "center", gap: 7, opacity: pressed ? 0.72 : 1 })}>
-      <View style={{
-        width:           54,
-        height:          54,
-        borderRadius:    17,
-        backgroundColor: bg,
-        alignItems:      "center",
-        justifyContent:  "center",
-        borderWidth:     1,
-        borderColor:     `${color}22`,
-        ...theme.shadow.sm,
-      }}>
+      style={({ pressed }) => ({
+        flex:       1,
+        alignItems: "center",
+        gap:        10,
+        opacity:    pressed ? 0.78 : 1,
+        transform:  [{ scale: pressed ? 0.98 : 1 }],
+      })}>
+      <View style={[quickStyles.tile, { backgroundColor: bg, borderColor: `${color}26` }]}>
         <Ionicons name={icon} size={22} color={color} />
       </View>
-      <Text style={{ fontSize: 11, fontFamily: theme.fonts.bold, color: theme.colors.text.secondary, textAlign: "center" }}>
+      <UIText variant="caption" weight="bold" align="center" color="secondary" style={quickStyles.label}>
         {label}
-      </Text>
+      </UIText>
     </Pressable>
   );
 });
@@ -237,8 +238,9 @@ const QuickAction = memo(function QuickAction({
 // ─── Section Header ───────────────────────────────────────────────────────────
 
 const SectionHeader = memo(function SectionHeader({
-  title, icon, accent = theme.colors.brand[600], onMore, rightSlot,
+  eyebrow, title, icon, accent = theme.colors.brand[700], onMore, rightSlot,
 }: {
+  eyebrow?: string;
   title:    string;
   icon:     IoniconsName;
   accent?:  string;
@@ -246,19 +248,26 @@ const SectionHeader = memo(function SectionHeader({
   rightSlot?: React.ReactNode;
 }) {
   return (
-    <View style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", paddingHorizontal: theme.layout.pagePaddingH }}>
-      <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>
-        <View style={{ width: 30, height: 30, borderRadius: 9, backgroundColor: `${accent}18`, alignItems: "center", justifyContent: "center" }}>
-          <Ionicons name={icon} size={14} color={accent} />
+    <View style={sectionHeaderStyles.row}>
+      <View style={sectionHeaderStyles.leftBlock}>
+        <View style={[sectionHeaderStyles.icon, { backgroundColor: `${accent}14`, borderColor: `${accent}28` }]}>
+          <Ionicons name={icon} size={15} color={accent} />
         </View>
-        <Text style={{ fontSize: theme.fontSize.xl, fontFamily: theme.fonts.black, color: theme.colors.text.primary }}>
-          {title}
-        </Text>
+        <View>
+          {eyebrow && (
+            <UIText variant="eyebrow" color="tertiary" align="right">
+              {eyebrow}
+            </UIText>
+          )}
+          <UIText variant="section-head" align="right" style={sectionHeaderStyles.title}>
+            {title}
+          </UIText>
+        </View>
       </View>
       {rightSlot ?? (onMore && (
-        <Pressable onPress={onMore} style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
-          <Ionicons name="chevron-back" size={13} color={theme.colors.brand[600]} />
-          <Text style={{ fontSize: 12, fontFamily: theme.fonts.bold, color: theme.colors.brand[600] }}>عرض الكل</Text>
+        <Pressable onPress={onMore} style={sectionHeaderStyles.moreBtn} hitSlop={6}>
+          <UIText variant="caption" weight="bold" color="brand">عرض الكل</UIText>
+          <Ionicons name="chevron-back" size={13} color={theme.colors.brand[700]} />
         </Pressable>
       ))}
     </View>
@@ -279,25 +288,22 @@ const FlashSaleSection = memo(function FlashSaleSection({
   if (items.length === 0) return null;
 
   return (
-    <View style={{ gap: 14 }}>
-      {/* Header row */}
-      <View style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", paddingHorizontal: theme.layout.pagePaddingH }}>
-        <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>
-          <View style={{ width: 30, height: 30, borderRadius: 9, backgroundColor: "#FEF2F2", alignItems: "center", justifyContent: "center" }}>
-            <Ionicons name="flash" size={15} color="#DC2626" />
+    <View style={{ gap: 16 }}>
+      <SectionHeader
+        eyebrow="ينتهي خلال ساعات"
+        title="عروض اليوم"
+        icon="flash"
+        accent={theme.colors.error.base}
+        rightSlot={
+          <View style={countdownStyles.timer}>
+            <CountdownUnit value={s} label="ث" />
+            <UIText variant="card-title" weight="black" color="tertiary" style={countdownStyles.colon}>:</UIText>
+            <CountdownUnit value={m} label="د" />
+            <UIText variant="card-title" weight="black" color="tertiary" style={countdownStyles.colon}>:</UIText>
+            <CountdownUnit value={h} label="س" />
           </View>
-          <Text style={{ fontSize: theme.fontSize.xl, fontFamily: theme.fonts.black, color: theme.colors.text.primary }}>عروض اليوم</Text>
-        </View>
-
-        {/* Countdown */}
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          <CountdownUnit value={s} label="ث" />
-          <Text style={{ color: theme.colors.text.tertiary, fontFamily: theme.fonts.black, marginBottom: 14 }}>:</Text>
-          <CountdownUnit value={m} label="د" />
-          <Text style={{ color: theme.colors.text.tertiary, fontFamily: theme.fonts.black, marginBottom: 14 }}>:</Text>
-          <CountdownUnit value={h} label="س" />
-        </View>
-      </View>
+        }
+      />
 
       {/* Horizontal product scroll */}
       <FlatList
@@ -306,9 +312,9 @@ const FlashSaleSection = memo(function FlashSaleSection({
         horizontal
         inverted
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: theme.layout.pagePaddingH, gap: 10 }}
+        contentContainerStyle={{ paddingHorizontal: theme.layout.pagePaddingH, gap: 12 }}
         renderItem={({ item, index }) => (
-          <View style={{ width: 158 }}>
+          <View style={{ width: 162 }}>
             <ProductCard
               product={item}
               badge="sale"
@@ -325,6 +331,7 @@ const FlashSaleSection = memo(function FlashSaleSection({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
+  useMountTiming("HomeScreen");
   const router        = useRouter();
   const insets        = useSafeAreaInsets();
   const cartCount     = useCartStore((s) => s.itemCount());
@@ -339,6 +346,35 @@ export default function HomeScreen() {
   const onRefresh = useCallback(async () => {
     await Promise.all([refCats(), refFeat()]);
   }, [refCats, refFeat]);
+
+  // Stable renderItem callbacks — keeps FlatList's prop comparison stable
+  // across HomeScreen rerenders so the memo'd row cells skip work.
+  const renderCategory = useCallback(
+    ({ item, index }: { item: NativeCategory; index: number }) => (
+      <CategoryCard
+        category={item}
+        gradientIdx={index}
+        lang="ar"
+        variant="pill"
+        onPress={() => router.push({ pathname: "/category/[id]", params: { id: item.id } })}
+      />
+    ),
+    [router],
+  );
+
+  const renderFeatured = useCallback(
+    ({ item, index }: { item: NativeProduct; index: number }) => (
+      <View style={featuredCellStyle}>
+        <ProductCard
+          product={item}
+          lang="ar"
+          badge={index === 0 ? "hot" : index === 2 ? "new" : undefined}
+          onPress={() => router.push({ pathname: "/product/[id]", params: { id: item.id } })}
+        />
+      </View>
+    ),
+    [router],
+  );
 
   const greeting = user?.name ? `مرحباً، ${user.name.split(" ")[0]}` : "مرحباً بك";
 
@@ -364,38 +400,38 @@ export default function HomeScreen() {
         colors={theme.gradients.heroPrimary as [string, string, string]}
         start={{ x: 0.1, y: 0 }}
         end={{ x: 0.9, y: 1 }}
-        style={{
-          paddingTop:        insets.top + 16,
-          paddingBottom:     32,
-          paddingHorizontal: theme.layout.pagePaddingH,
-          overflow:          "hidden",
-        }}>
+        style={[
+          homeStyles.hero,
+          { paddingTop: insets.top + 18 },
+        ]}>
 
-        {/* Subtle grid lines */}
+        {/* Subtle grid lines — restraint, very faint */}
         {[0, 1, 2].map((i) => (
-          <View key={i} style={{ position: "absolute", left: `${i * 33 + 5}%` as unknown as number, top: 0, bottom: 0, width: 1, backgroundColor: "rgba(255,255,255,0.025)" }} />
+          <View
+            key={i}
+            style={[
+              homeStyles.heroGrid,
+              { left: `${i * 33 + 5}%` as unknown as number },
+            ]}
+          />
         ))}
 
         {/* Top bar */}
         <View style={homeStyles.topBar}>
-          {/* Brand logo */}
           <View style={homeStyles.logoWrap}>
-            <Image
-              source={require("../../assets/logo.png")}
-              style={{ width: 100, height: 36 }}
-              contentFit="contain"
-            />
+            <AppLogo size="sm" />
           </View>
 
-          {/* Action buttons */}
           <View style={homeStyles.actionBtns}>
             <Pressable
               onPress={() => {
                 if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
                 router.push("/(tabs)/cart");
               }}
+              accessibilityRole="button"
+              accessibilityLabel="عربة التسوق"
               style={homeStyles.headerBtn}>
-              <Ionicons name="bag-outline" size={17} color="rgba(255,255,255,0.90)" />
+              <Ionicons name="bag-outline" size={18} color="rgba(255,255,255,0.92)" />
               {cartCount > 0 && (
                 <View style={homeStyles.headerBtnBadge}>
                   <Text style={homeStyles.headerBtnBadgeText}>{cartCount > 9 ? "9+" : cartCount}</Text>
@@ -405,63 +441,70 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Greeting + headline */}
-        <Animated.View entering={FadeInUp.duration(400).delay(100)} style={{ gap: 6, marginBottom: 20 }}>
-          <Text style={{ color: theme.colors.brand[300], fontSize: 12, fontFamily: theme.fonts.semibold, textAlign: "right" }}>
+        {/* Editorial headline — premium hierarchy */}
+        <Animated.View
+          entering={FadeInUp.duration(440).delay(80)}
+          style={homeStyles.heroHeadingStack}>
+          <UIText variant="eyebrow" align="right" style={homeStyles.heroEyebrow}>
             {greeting}
-          </Text>
-          <Text style={{ color: "#fff", fontSize: 22, fontFamily: theme.fonts.black, lineHeight: 30, textAlign: "right" }}>
+          </UIText>
+          <UIText
+            variant="hero"
+            color="inverse"
+            align="right"
+            style={homeStyles.heroTitle}>
             {"ابحث عن\nدوائك بسهولة"}
-          </Text>
+          </UIText>
+          <UIText
+            variant="body-sm"
+            color="inverse-muted"
+            align="right"
+            style={homeStyles.heroSub}>
+            توصيل خلال 30–60 دقيقة  •  أدوية أصلية  •  دفع عند الاستلام
+          </UIText>
         </Animated.View>
 
-        {/* Search bar */}
-        <Pressable
-          onPress={() => router.push("/(tabs)/search")}
-          style={{
-            flexDirection:     "row-reverse",
-            alignItems:        "center",
-            gap:               10,
-            backgroundColor:   "rgba(255,255,255,0.13)",
-            borderRadius:      theme.radius["2xl"],
-            paddingHorizontal: 14,
-            paddingVertical:   13,
-            borderWidth:       1,
-            borderColor:       "rgba(255,255,255,0.20)",
-          }}>
-          <Ionicons name="search-outline" size={17} color="rgba(255,255,255,0.70)" />
-          <Text style={{ flex: 1, color: "rgba(255,255,255,0.45)", fontSize: 13, fontFamily: theme.fonts.regular, textAlign: "right" }}>
-            ابحث عن دواء، كود، أو مستحضر…
-          </Text>
-          <View style={{ backgroundColor: "rgba(255,255,255,0.16)", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}>
-            <Text style={{ color: "rgba(255,255,255,0.60)", fontSize: 10, fontFamily: theme.fonts.bold }}>بحث</Text>
-          </View>
-        </Pressable>
+        {/* Premium glass search bar */}
+        <Animated.View entering={FadeInUp.duration(440).delay(140)}>
+          <Pressable
+            onPress={() => router.push("/(tabs)/search")}
+            accessibilityRole="button"
+            accessibilityLabel="ابحث عن دواء، كود، أو مستحضر"
+            style={homeStyles.search}>
+            <Ionicons name="search-outline" size={18} color="rgba(255,255,255,0.78)" />
+            <Text style={homeStyles.searchPlaceholder}>
+              ابحث عن دواء، كود، أو مستحضر…
+            </Text>
+            <View style={homeStyles.searchKbd}>
+              <UIText variant="eyebrow" style={{ color: "rgba(255,255,255,0.72)" }}>بحث</UIText>
+            </View>
+          </Pressable>
+        </Animated.View>
       </LinearGradient>
 
-      {/* ── Trust strip ──────────────────────────────────────────────────────── */}
-      <Animated.View entering={FadeInDown.duration(400).delay(80)} style={{ marginTop: -20, marginHorizontal: 16, marginBottom: 4 }}>
-        <View style={{
-          backgroundColor:   theme.colors.surface,
-          borderRadius:      theme.radius["2xl"],
-          paddingVertical:   12,
-          paddingHorizontal: 8,
-          flexDirection:     "row-reverse",
-          ...theme.shadow.lg,
-          borderWidth:       StyleSheet.hairlineWidth,
-          borderColor:       theme.colors.border.default,
-        }}>
+      {/* ── Trust strip — overlapping clinical commitment row ──────────────── */}
+      <Animated.View
+        entering={FadeInDown.duration(440).delay(120)}
+        style={homeStyles.trustWrap}>
+        <View style={homeStyles.trustCard}>
           {([
-            { icon: "flash-outline" as IoniconsName,            label: "توصيل سريع",         accent: theme.colors.amber[600],  bg: theme.colors.amber[50]  },
-            { icon: "shield-checkmark-outline" as IoniconsName, label: "أدوية أصلية",        accent: theme.colors.green[600],  bg: theme.colors.green[50]  },
-            { icon: "wallet-outline" as IoniconsName,           label: "الدفع عند الاستلام",   accent: theme.colors.brand[600],  bg: theme.colors.brand[50]  },
-            { icon: "refresh-outline" as IoniconsName,          label: "إرجاع مضمون",        accent: theme.colors.purple[600], bg: theme.colors.purple[50] },
+            { icon: "flash-outline" as IoniconsName,            label: "توصيل سريع",      accent: theme.colors.amber[700],  bg: theme.colors.amber[50]  },
+            { icon: "shield-checkmark-outline" as IoniconsName, label: "أدوية أصلية",     accent: theme.colors.success.strong, bg: theme.colors.success.bg },
+            { icon: "wallet-outline" as IoniconsName,           label: "دفع عند الاستلام", accent: theme.colors.brand[700],  bg: theme.colors.brand.lighter },
+            { icon: "refresh-outline" as IoniconsName,          label: "إرجاع مضمون",     accent: theme.colors.purple[700], bg: theme.colors.purple[50] },
           ]).map((t, i, arr) => (
-            <View key={t.label} style={{ flex: 1, alignItems: "center", gap: 5, borderRightWidth: i < arr.length - 1 ? StyleSheet.hairlineWidth : 0, borderRightColor: theme.colors.border.default, paddingHorizontal: 2 }}>
-              <View style={{ width: 30, height: 30, borderRadius: 9, backgroundColor: t.bg, alignItems: "center", justifyContent: "center" }}>
-                <Ionicons name={t.icon} size={14} color={t.accent} />
+            <View
+              key={t.label}
+              style={[
+                homeStyles.trustCell,
+                i < arr.length - 1 && homeStyles.trustCellDivider,
+              ]}>
+              <View style={[homeStyles.trustIcon, { backgroundColor: t.bg }]}>
+                <Ionicons name={t.icon} size={15} color={t.accent} />
               </View>
-              <Text style={{ fontSize: 9, fontFamily: theme.fonts.bold, color: theme.colors.text.secondary, textAlign: "center", lineHeight: 12 }}>{t.label}</Text>
+              <UIText variant="eyebrow" color="secondary" align="center" style={homeStyles.trustLabel}>
+                {t.label}
+              </UIText>
             </View>
           ))}
         </View>
@@ -478,11 +521,13 @@ export default function HomeScreen() {
       </Animated.View>
 
       {/* ── Quick Actions ─────────────────────────────────────────────────────── */}
-      <Animated.View entering={FadeInDown.duration(380).delay(150)} style={{ paddingTop: 24, paddingHorizontal: theme.layout.pagePaddingH, gap: 12 }}>
-        <Text style={{ fontSize: theme.fontSize.xl, fontFamily: theme.fonts.black, color: theme.colors.text.primary, textAlign: "right" }}>
-          تسوق بسرعة
-        </Text>
-        <View style={{ flexDirection: "row-reverse", gap: 8 }}>
+      <Animated.View entering={FadeInDown.duration(420).delay(190)} style={homeStyles.sectionBlock}>
+        <SectionHeader
+          eyebrow="مفضّلات سريعة"
+          title="تسوق بسرعة"
+          icon="apps-outline"
+        />
+        <View style={homeStyles.quickRow}>
           {QUICK_ACTIONS.map((qa) => (
             <QuickAction
               key={qa.label}
@@ -497,8 +542,9 @@ export default function HomeScreen() {
       </Animated.View>
 
       {/* ── Categories ───────────────────────────────────────────────────────── */}
-      <Animated.View entering={FadeInDown.duration(380).delay(185)} style={{ paddingTop: 28, gap: 14 }}>
+      <Animated.View entering={FadeInDown.duration(420).delay(230)} style={homeStyles.sectionBlock}>
         <SectionHeader
+          eyebrow="جميع الأقسام"
           title="تسوق حسب القسم"
           icon="grid-outline"
           onMore={() => router.push("/(tabs)/products")}
@@ -523,22 +569,14 @@ export default function HomeScreen() {
             contentContainerStyle={{ paddingHorizontal: theme.layout.pagePaddingH, paddingTop: 4, gap: 10 }}
             removeClippedSubviews
             initialNumToRender={6}
-            renderItem={({ item, index }) => (
-              <CategoryCard
-                category={item}
-                gradientIdx={index}
-                lang="ar"
-                variant="pill"
-                onPress={() => router.push({ pathname: "/category/[id]", params: { id: item.id } })}
-              />
-            )}
+            renderItem={renderCategory}
           />
         )}
       </Animated.View>
 
       {/* ── Flash Sale ───────────────────────────────────────────────────────── */}
       {!featLoading && featured.length > 0 && (
-        <Animated.View entering={FadeInDown.duration(380).delay(220)} style={{ paddingTop: 28 }}>
+        <Animated.View entering={FadeInDown.duration(420).delay(270)} style={homeStyles.sectionBlockTall}>
           <FlashSaleSection
             products={featured}
             onProductPress={(id) => router.push({ pathname: "/product/[id]", params: { id } })}
@@ -547,11 +585,12 @@ export default function HomeScreen() {
       )}
 
       {/* ── Featured Products ─────────────────────────────────────────────────── */}
-      <Animated.View entering={FadeInDown.duration(380).delay(255)} style={{ paddingTop: 28, gap: 14 }}>
+      <Animated.View entering={FadeInDown.duration(420).delay(310)} style={homeStyles.sectionBlock}>
         <SectionHeader
+          eyebrow="موصى به من فريقنا الصيدلاني"
           title="منتجات مميزة"
           icon="star-outline"
-          accent={theme.colors.amber[600]}
+          accent={theme.colors.amber[700]}
           onMore={() => router.push("/(tabs)/search")}
         />
         {featLoading ? (
@@ -570,51 +609,53 @@ export default function HomeScreen() {
             numColumns={2}
             scrollEnabled={false}
             keyExtractor={(p) => p.id}
-            columnWrapperStyle={{ gap: 10, flexDirection: "row-reverse" }}
-            contentContainerStyle={{ paddingHorizontal: theme.layout.pagePaddingH, gap: 10 }}
-            renderItem={({ item, index }) => (
-              <View style={{ flex: 1 }}>
-                <ProductCard
-                  product={item}
-                  lang="ar"
-                  badge={index === 0 ? "hot" : index === 2 ? "new" : undefined}
-                  onPress={() => router.push({ pathname: "/product/[id]", params: { id: item.id } })}
-                />
-              </View>
-            )}
+            columnWrapperStyle={{ gap: 12, flexDirection: "row-reverse" }}
+            contentContainerStyle={{ paddingHorizontal: theme.layout.pagePaddingH, gap: 12 }}
+            renderItem={renderFeatured}
           />
         )}
       </Animated.View>
 
-      {/* ── WhatsApp CTA ─────────────────────────────────────────────────────── */}
-      <Animated.View entering={FadeInDown.duration(380).delay(290)} style={{ paddingHorizontal: theme.layout.pagePaddingH, paddingTop: 28 }}>
+      {/* ── Pharmacist Support — calm editorial card ──────────────────────── */}
+      <Animated.View entering={FadeInDown.duration(420).delay(360)} style={homeStyles.supportWrap}>
         <LinearGradient
           colors={theme.gradients.heroPrimary as [string, string, string]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={{ borderRadius: theme.radius["2xl"], padding: 20, alignItems: "center", gap: 10, overflow: "hidden", ...theme.shadow.brand }}>
-          <View style={{ position: "absolute", right: -20, top: -20, width: 90, height: 90, borderRadius: 45, backgroundColor: "rgba(255,255,255,0.05)" }} />
-          <Text style={{ color: theme.colors.brand[300], fontSize: 10, fontFamily: theme.fonts.extrabold, letterSpacing: 1.8 }}>دعم صيدلاني</Text>
-          <Text style={{ fontSize: 18, fontFamily: theme.fonts.black, color: "#fff", textAlign: "center" }}>تحتاج مساعدة؟</Text>
-          <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", textAlign: "center", lineHeight: 18 }}>فريقنا الصيدلاني جاهز للرد</Text>
+          style={homeStyles.supportCard}>
+          {/* Single soft glow accent — no decorative geometry */}
+          <View style={homeStyles.supportGlow} />
+
+          <View style={homeStyles.supportRow}>
+            <View style={homeStyles.supportIconTile}>
+              <Ionicons name="medkit-outline" size={22} color={theme.colors.brand[200]} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <UIText variant="eyebrow" align="right" style={{ color: theme.colors.brand[300] }}>
+                دعم صيدلاني  •  ٢٤ ساعة
+              </UIText>
+              <UIText variant="section-head" color="inverse" align="right" style={homeStyles.supportTitle}>
+                تحتاج استشارة سريعة؟
+              </UIText>
+              <UIText variant="body-sm" color="inverse-muted" align="right" style={homeStyles.supportSub}>
+                فريقنا الصيدلاني يردّ خلال دقائق على واتساب
+              </UIText>
+            </View>
+          </View>
+
           <Pressable
             onPress={() => Linking.openURL("https://wa.me/201112343212?text=مرحباً،%20أود%20الاستفسار").catch(() => {})}
-            style={({ pressed }) => ({
-              flexDirection:     "row",
-              alignItems:        "center",
-              gap:               8,
-              backgroundColor:   "#fff",
-              borderRadius:      theme.radius.xl,
-              paddingHorizontal: 22,
-              paddingVertical:   11,
-              marginTop:         4,
-              opacity:           pressed ? 0.88 : 1,
-              ...theme.shadow.md,
-            })}>
-            <Ionicons name="logo-whatsapp" size={17} color="#25D366" />
-            <Text style={{ color: theme.colors.text.primary, fontFamily: theme.fonts.black, fontSize: 13 }}>
-              تواصل معنا
-            </Text>
+            accessibilityRole="button"
+            accessibilityLabel="تواصل عبر واتساب"
+            style={({ pressed }) => [
+              homeStyles.supportCTA,
+              { opacity: pressed ? 0.92 : 1 },
+            ]}>
+            <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
+            <UIText variant="body-sm" weight="extrabold" style={{ color: theme.colors.text.primary }}>
+              تواصل عبر واتساب
+            </UIText>
+            <Ionicons name="chevron-back" size={14} color={theme.colors.text.secondary} />
           </Pressable>
         </LinearGradient>
       </Animated.View>
@@ -624,80 +665,374 @@ export default function HomeScreen() {
   );
 }
 
+// Module-level constants — created once, prevents per-render object creation
+// in hot renderItem closures.
+const featuredCellStyle = { flex: 1 } as const;
+
 const homeStyles = StyleSheet.create({
+  // ── Hero ─────────────────────────────────────────────────────────────
+  hero: {
+    paddingBottom:     46,   // larger bottom area — trust strip overlaps gracefully
+    paddingHorizontal: theme.layout.pagePaddingH,
+    overflow:          "hidden",
+  },
+  heroGrid: {
+    position:        "absolute",
+    top:             0,
+    bottom:          0,
+    width:           1,
+    backgroundColor: "rgba(255,255,255,0.025)",
+  },
   topBar: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
+    flexDirection:  "row-reverse",
+    alignItems:     "center",
     justifyContent: "space-between",
-    marginBottom: 20,
+    marginBottom:   28,
   },
   logoWrap: {
+    width:           54,
+    height:          54,
+    borderRadius:    16,
     backgroundColor: "#fff",
-    borderRadius: 13,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    ...theme.shadow.sm,
+    alignItems:      "center",
+    justifyContent:  "center",
+    ...theme.shadow.md,
   },
   actionBtns: {
     flexDirection: "row-reverse",
-    alignItems: "center",
-    gap: 10,
+    alignItems:    "center",
+    gap:           10,
   },
   headerBtn: {
-    position: "relative",
-    width: 40,
-    height: 40,
-    borderRadius: 13,
+    position:        "relative",
+    width:           42,
+    height:          42,
+    borderRadius:    14,
     backgroundColor: "rgba(255,255,255,0.10)",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.16)",
+    alignItems:      "center",
+    justifyContent:  "center",
+    borderWidth:     1,
+    borderColor:     "rgba(255,255,255,0.18)",
   },
   headerBtnBadge: {
-    position: "absolute",
-    top: -4,
-    left: -4,
+    position:        "absolute",
+    top:             -5,
+    left:            -5,
     backgroundColor: theme.colors.error.base,
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 3,
-    borderWidth: 1.5,
-    borderColor: "#021D2E",
+    borderRadius:    9,
+    minWidth:        18,
+    height:          18,
+    alignItems:      "center",
+    justifyContent:  "center",
+    paddingHorizontal: 4,
+    borderWidth:     1.5,
+    borderColor:     "#021D2E",
   },
-  headerBtnBadgeText: { color: "#fff", fontSize: 8, fontFamily: theme.fonts.black },
-  fab: {
-    position: "absolute",
-    zIndex: 50,
+  headerBtnBadgeText: { color: "#fff", fontSize: 9, fontFamily: theme.fonts.black },
+
+  heroHeadingStack: {
+    gap:          8,
+    marginBottom: 22,
   },
-  fabInner: {
-    width: 52,
-    height: 52,
-    borderRadius: 17,
+  heroEyebrow: {
+    color: theme.colors.brand[300],
+  },
+  heroTitle: {
+    fontSize:      32,
+    lineHeight:    40,
+    letterSpacing: -0.8,
+  },
+  heroSub: {
+    marginTop: 4,
+    lineHeight: 20,
+  },
+
+  // ── Glass search ──────────────────────────────────────────────────────
+  search: {
+    flexDirection:     "row-reverse",
+    alignItems:        "center",
+    gap:               12,
+    backgroundColor:   theme.colors.glass,
+    borderRadius:      theme.radius["2xl"],
+    paddingHorizontal: 16,
+    paddingVertical:   15,
+    borderWidth:       1,
+    borderColor:       theme.colors.glassBorder,
+  },
+  searchPlaceholder: {
+    flex:       1,
+    color:      "rgba(255,255,255,0.55)",
+    fontSize:   13.5,
+    fontFamily: theme.fonts.regular,
+    textAlign:  "right",
+  },
+  searchKbd: {
+    backgroundColor:   "rgba(255,255,255,0.18)",
+    borderRadius:      9,
+    paddingHorizontal: 10,
+    paddingVertical:   6,
+  },
+
+  // ── Trust strip ───────────────────────────────────────────────────────
+  trustWrap: {
+    marginTop:        -28,   // overlap into the hero
+    marginHorizontal: theme.layout.pagePaddingH,
+    marginBottom:     6,
+  },
+  trustCard: {
+    backgroundColor:   theme.colors.surface,
+    borderRadius:      theme.radius["2xl"],
+    paddingVertical:   14,
+    paddingHorizontal: 4,
+    flexDirection:     "row-reverse",
+    ...theme.shadow.lg,
+    shadowOpacity:     0.10,
+  },
+  trustCell: {
+    flex:           1,
+    alignItems:     "center",
+    gap:            8,
+    paddingHorizontal: 4,
+  },
+  trustCellDivider: {
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderRightColor: theme.colors.border.hairline,
+  },
+  trustIcon: {
+    width:           34,
+    height:          34,
+    borderRadius:    11,
+    alignItems:      "center",
+    justifyContent:  "center",
+  },
+  trustLabel: {
+    lineHeight: 13,
+  },
+
+  // ── Section rhythm ────────────────────────────────────────────────────
+  sectionBlock: {
+    paddingTop: 32,
+    gap:        16,
+  },
+  sectionBlockTall: {
+    paddingTop: 36,
+  },
+
+  // ── Quick actions row ─────────────────────────────────────────────────
+  quickRow: {
+    flexDirection:    "row-reverse",
+    gap:              10,
+    paddingHorizontal: theme.layout.pagePaddingH,
+  },
+
+  // ── Pharmacist support card ───────────────────────────────────────────
+  supportWrap: {
+    paddingHorizontal: theme.layout.pagePaddingH,
+    paddingTop:        36,
+  },
+  supportCard: {
+    borderRadius:      theme.radius["2xl"],
+    padding:           18,
+    gap:               16,
+    overflow:          "hidden",
+    ...theme.shadow.lg,
+    shadowOpacity:     0.12,
+  },
+  supportGlow: {
+    position:        "absolute",
+    right:           -40,
+    top:             -40,
+    width:           120,
+    height:          120,
+    borderRadius:    60,
+    backgroundColor: "rgba(13,184,168,0.10)",
+  },
+  supportRow: {
+    flexDirection: "row-reverse",
+    alignItems:    "center",
+    gap:           14,
+  },
+  supportIconTile: {
+    width:           48,
+    height:          48,
+    borderRadius:    14,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth:     1,
+    borderColor:     "rgba(255,255,255,0.16)",
+    alignItems:      "center",
+    justifyContent:  "center",
+  },
+  supportTitle: {
+    marginTop:     4,
+    letterSpacing: -0.3,
+  },
+  supportSub: {
+    marginTop:  4,
+    lineHeight: 20,
+  },
+  supportCTA: {
+    flexDirection:     "row",
+    alignItems:        "center",
+    justifyContent:    "center",
+    gap:               10,
+    backgroundColor:   "#fff",
+    borderRadius:      theme.radius.xl,
+    paddingHorizontal: 18,
+    paddingVertical:   13,
+    ...theme.shadow.sm,
+  },
+});
+
+// ── Promo carousel styles ──────────────────────────────────────────────
+const promoStyles = StyleSheet.create({
+  slide: {
+    marginHorizontal: 16,
+    borderRadius:     22,
+    padding:          22,
+    overflow:         "hidden",
+    ...theme.shadow.lg,
+    shadowOpacity:    0.12,
+  },
+  flare: {
+    position:     "absolute",
+    right:        -50,
+    top:          -50,
+    width:        160,
+    height:       160,
+    borderRadius: 80,
+  },
+  row: {
+    flexDirection:  "row-reverse",
+    alignItems:     "center",
+    justifyContent: "space-between",
+  },
+  copy: {
+    flex: 1,
+    gap:  8,
+  },
+  tagRow: {
+    flexDirection: "row-reverse",
+  },
+  tag: {
+    borderRadius:    999,
+    paddingHorizontal: 12,
+    paddingVertical:   5,
+    borderWidth:     1,
+  },
+  title: {
+    letterSpacing: -0.5,
+    lineHeight:    32,
+  },
+  sub: {
+    lineHeight: 18,
+  },
+  iconPill: {
+    width:           58,
+    height:          58,
+    borderRadius:    18,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    alignItems:      "center",
+    justifyContent:  "center",
+    borderWidth:     1,
+    borderColor:     "rgba(255,255,255,0.22)",
+    marginStart:     18,
+  },
+  dotsRow: {
+    flexDirection: "row",
+    justifyContent:"center",
+    gap:           5,
+    marginTop:     14,
+  },
+  dot: {
+    width:           6,
+    height:          6,
+    borderRadius:    3,
+    backgroundColor: theme.colors.slate[200],
+  },
+  dotActive: {
+    width:           22,
     backgroundColor: theme.colors.brand[600],
-    alignItems: "center",
-    justifyContent: "center",
-    ...theme.shadow.brand,
-    borderWidth: 1,
-    borderColor: theme.colors.brand[500],
   },
-  fabBadge: {
-    position: "absolute",
-    top: -5,
-    right: -5,
-    backgroundColor: theme.colors.error.base,
-    borderRadius: 9,
-    minWidth: 18,
-    height: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 3,
-    borderWidth: 2,
-    borderColor: "#fff",
+});
+
+// ── Countdown styles ───────────────────────────────────────────────────
+const countdownStyles = StyleSheet.create({
+  timer: {
+    flexDirection: "row",
+    alignItems:    "center",
+    gap:           4,
   },
-  fabBadgeText: { color: "#fff", fontSize: 8.5, fontFamily: theme.fonts.black },
+  colon: {
+    color:        theme.colors.text.tertiary,
+    marginBottom: 14,
+  },
+  unit: {
+    alignItems: "center",
+    gap:        3,
+  },
+  cell: {
+    backgroundColor:   theme.colors.brand[700],
+    borderRadius:      10,
+    paddingHorizontal: 9,
+    paddingVertical:   5,
+    minWidth:          36,
+    alignItems:        "center",
+  },
+  value: {
+    color:         "#fff",
+    fontSize:      15,
+    letterSpacing: 0.4,
+  },
+  label: {
+    color:    theme.colors.text.tertiary,
+  },
+});
+
+// ── Section header styles ──────────────────────────────────────────────
+const sectionHeaderStyles = StyleSheet.create({
+  row: {
+    flexDirection:  "row-reverse",
+    alignItems:     "center",
+    justifyContent: "space-between",
+    paddingHorizontal: theme.layout.pagePaddingH,
+  },
+  leftBlock: {
+    flexDirection: "row-reverse",
+    alignItems:    "center",
+    gap:           12,
+  },
+  icon: {
+    width:           36,
+    height:          36,
+    borderRadius:    11,
+    alignItems:      "center",
+    justifyContent:  "center",
+    borderWidth:     1,
+  },
+  title: {
+    letterSpacing: -0.3,
+  },
+  moreBtn: {
+    flexDirection: "row-reverse",
+    alignItems:    "center",
+    gap:           4,
+    paddingHorizontal: 4,
+  },
+});
+
+// ── Quick action styles ────────────────────────────────────────────────
+const quickStyles = StyleSheet.create({
+  tile: {
+    width:           58,
+    height:          58,
+    borderRadius:    18,
+    alignItems:      "center",
+    justifyContent:  "center",
+    borderWidth:     1,
+    ...theme.shadow.xs,
+  },
+  label: {
+    lineHeight: 14,
+  },
 });
 

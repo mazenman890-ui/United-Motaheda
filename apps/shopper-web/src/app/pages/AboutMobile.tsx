@@ -1,7 +1,7 @@
 ﻿import { Link } from "react-router-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowUpRight, Clock, Globe2, HeartPulse, MapPin, Phone, ShieldCheck, Store, Truck, Users } from "lucide-react";
-import unitedIcon from "../../assets/united-icon.png";
+import unitedIcon from "@assets/brand/about-icon.png";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { images, locations } from "../data";
 import { getServiceHoursSentence } from "../config";

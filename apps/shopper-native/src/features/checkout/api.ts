@@ -40,46 +40,73 @@ interface EdgeFunctionResponse {
 /**
  * Ensures a profiles row exists for the authenticated user before we call
  * the Edge Function. Self-heals users whose signup trigger was broken.
- * Silent on failure — Edge Function will surface its own 403 if it can't
- * find a profile and we couldn't create one.
+ *
+ * Behavior (changed from prior silent-fail version):
+ *   - select fails → log + still attempt upsert (RLS quirks shouldn't block
+ *     a write attempt; if the row exists, on-conflict makes it a no-op)
+ *   - upsert fails → THROW a typed CheckoutRequestError(code: "AUTH") so
+ *     checkout shows a precise error instead of letting the Edge Function
+ *     return a generic 403 "profile not found"
+ *
+ * Previously this function swallowed both kinds of failure in dev-only
+ * console warnings, which meant users hit the misleading
+ * "sign out and sign back in" UI even when the real problem was a NOT NULL
+ * constraint or RLS policy needing attention.
  */
 async function ensureUserProfile(command: CheckoutSubmitCommand): Promise<void> {
   const { userId, email, fullName, phone } = command.customer;
   if (!userId) return;
 
+  // Step 1: probe for an existing row. We log selectError but DO NOT bail —
+  // the upsert below would have worked even if the select failed (e.g.,
+  // transient network blip, edge RLS denial on read-but-not-write).
+  let exists = false;
   try {
-    const { data: existing, error: selectError } = await supabase
+    const { data, error } = await supabase
       .from("profiles")
       .select("id")
       .eq("id", userId)
       .maybeSingle();
-
-    if (selectError) {
-      if (__DEV__) console.warn("[checkout] ensureUserProfile select failed:", selectError.message);
-      return;
+    if (error && __DEV__) {
+      console.warn("[checkout] ensureUserProfile select failed:", error.message);
     }
-    if (existing) return;
-
-    if (__DEV__) console.warn("[checkout] Profile row missing for user", userId, "— creating it.");
-
-    const { error: upsertError } = await supabase.from("profiles").upsert(
-      {
-        id: userId,
-        email: email ?? "",
-        full_name: fullName,
-        phone,
-        role: "customer",
-        status: "Active",
-        created_at: new Date().toISOString(),
-      },
-      { onConflict: "id", ignoreDuplicates: true },
-    );
-
-    if (upsertError && __DEV__) {
-      console.error("[checkout] ensureUserProfile upsert failed:", upsertError.message);
-    }
+    exists = !!data;
   } catch (err) {
-    if (__DEV__) console.error("[checkout] ensureUserProfile unexpected:", err);
+    if (__DEV__) console.warn("[checkout] ensureUserProfile select threw:", err);
+  }
+
+  if (exists) return;
+
+  if (__DEV__) console.warn("[checkout] Profile row missing for user", userId, "— creating it.");
+
+  // Step 2: upsert with the column set the handle_new_user trigger uses.
+  // role / status / phone_verified have DB-level defaults from the
+  // 20260518_fix_signup_trigger migration, so we don't need to set them
+  // here (and shouldn't, to avoid trampling values the trigger may have set
+  // for older accounts).
+  const { error: upsertError } = await supabase.from("profiles").upsert(
+    {
+      id:        userId,
+      email:     email ?? "",
+      full_name: fullName,
+      phone:     phone ?? null,
+    },
+    { onConflict: "id", ignoreDuplicates: false },
+  );
+
+  if (upsertError) {
+    if (__DEV__) console.error("[checkout] ensureUserProfile upsert failed:", upsertError);
+    // Surface a specific error instead of falling through to the Edge
+    // Function's generic 403. The caller's catch block routes "AUTH" codes
+    // to the user-facing error banner.
+    throw new CheckoutRequestError(
+      "تعذّر تهيئة ملفك الشخصي. حاول مجدداً أو تواصل مع الدعم.\n" +
+        `Could not initialize your profile: ${upsertError.message}`,
+      [],
+      false,
+      "AUTH",
+      false,
+    );
   }
 }
 

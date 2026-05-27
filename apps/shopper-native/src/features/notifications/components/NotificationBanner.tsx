@@ -94,7 +94,11 @@ export function NotificationBanner() {
   const handlePress = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
     dismissBanner();
-    router.push(`/notifications/${banner.id}` as never);
+    // Use the notification's own actionUrl (e.g. "/orders", "/wallet") when
+    // present. Fall back to the notifications list — there is no per-notification
+    // detail screen, so the old /notifications/${id} pattern was a dead route.
+    const dest = (banner.actionUrl ?? "/notifications") as Parameters<typeof router.push>[0];
+    router.push(dest);
   };
 
   const handleDismiss = () => {
@@ -104,8 +108,8 @@ export function NotificationBanner() {
 
   return (
     <Animated.View
-      style={[styles.container, { top: insets.top + 8 }, containerAnim]}
-      pointerEvents="box-none">
+      style={[styles.container, { top: insets.top + 8, pointerEvents: "box-none" }, containerAnim]}
+    >
 
       <Pressable
         onLayout={(e) => setBannerWidth(e.nativeEvent.layout.width)}

@@ -76,6 +76,10 @@ export type CheckoutSubmitCommand = {
     method: CheckoutPaymentMethod;
     label: string;
     requestPosMachine: boolean;
+    /** Sender phone or InstaPay handle — required for manual wallet methods. */
+    transferNumber?: string;
+    /** Public URL of uploaded transfer screenshot. */
+    paymentProofUrl?: string;
   };
   promoCode?: string;
   note: string;

@@ -5,17 +5,26 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
-import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { signUp } from "@/features/auth";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import {
+  signUp,
+  authErrorToArabic,
+  sendPhoneOtp,
+  PhoneVerifyModal,
+  PHONE_VERIFICATION_ENABLED,
+} from "@/features/auth";
+import { AppLogo } from "@/shared/components/AppLogo";
+import { track } from "@/lib/analytics";
+import { captureError } from "@/lib/crashReporter";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { Text } from "@/shared/ui";
 import { theme } from "@/theme";
 
 export default function RegisterScreen() {
@@ -31,6 +40,11 @@ export default function RegisterScreen() {
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState<string | null>(null);
 
+  // OTP modal state — opens after a successful email signup if the user
+  // supplied a phone. The modal handles resend + verify internally; we just
+  // hand it the E.164-normalized phone and a "verified → go to tabs" handler.
+  const [otpPhone, setOtpPhone] = useState<string | null>(null);
+
   const handleRegister = async () => {
     setError(null);
     if (!name.trim()) { setError("يرجى إدخال اسمك الكامل"); return; }
@@ -42,20 +56,78 @@ export default function RegisterScreen() {
       setError("رقم الهاتف غير صحيح. يجب أن يبدأ بـ 01");
       return;
     }
+    const hasPhone = !skipPhone && phoneClean.length > 0;
     setLoading(true);
+    track("signup_attempted", { has_phone: hasPhone });
     try {
-      await signUp(
+      const result = await signUp(
         email.trim().toLowerCase(),
         password,
         name.trim(),
         skipPhone ? undefined : phoneClean || undefined,
       );
-      router.replace("/(tabs)");
+      track("signup_completed");
+
+      // If the Supabase dashboard has "Confirm email" enabled, signUp
+      // returns no session — the user must click the email link first.
+      // We CAN'T send a phone OTP yet because updateUser requires a
+      // session. Show a clear "check your email" state instead of failing
+      // silently with "Auth session missing!".
+      if (!result.hasSession) {
+        setError(
+          "تم إنشاء حسابك! يرجى فتح بريدك الإلكتروني وتأكيد الحساب، ثم سجّل دخولك" +
+            (hasPhone ? " لإكمال التحقق برقم هاتفك." : "."),
+        );
+        // Don't navigate to tabs — the user has no session and would just
+        // see a signed-out home screen. Stay on this screen so they can see
+        // the message + tap "تسجيل الدخول" once they've confirmed.
+        return;
+      }
+
+      // Has session → proceed to phone OTP if a phone was provided AND
+      // phone verification is currently enabled. While the feature flag is
+      // off (Twilio not yet provisioned for prod), we skip the OTP step
+      // and drop the user into the app with phone stored but unverified.
+      if (hasPhone && PHONE_VERIFICATION_ENABLED) {
+        try {
+          const e164 = await sendPhoneOtp(phoneClean);
+          setOtpPhone(e164);
+        } catch (e) {
+          captureError(e, { surface: "register", step: "send_otp" });
+          if (__DEV__) console.warn("[register] sendPhoneOtp failed:", e);
+          // Surface the failure instead of silently navigating to tabs.
+          // The user can still finish their phone verification later from
+          // the profile screen, but they should know it didn't happen now.
+          setError(
+            "تم إنشاء الحساب، لكن تعذّر إرسال رمز التحقق إلى هاتفك. يمكنك المتابعة وإكمال التحقق لاحقاً.",
+          );
+          // Brief delay so the message is readable before navigating.
+          setTimeout(() => router.replace("/(tabs)"), 2200);
+        }
+      } else {
+        router.replace("/(tabs)");
+      }
     } catch (e) {
-      setError("حدث خطأ أثناء إنشاء الحساب. حاول مرة أخرى");
+      if (__DEV__) console.warn("[register] signUp failed:", e);
+      captureError(e, { surface: "register" });
+      track("signup_failed", { reason: e instanceof Error ? e.message.slice(0, 80) : "unknown" });
+      setError(authErrorToArabic(e));
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOtpVerified = (_verifiedPhone: string) => {
+    track("signup_completed", { phone_verified: true });
+    setOtpPhone(null);
+    router.replace("/(tabs)");
+  };
+
+  const handleOtpCancel = () => {
+    // User dismissed the OTP modal. Account already exists; they can verify
+    // the phone later. Send them into the app.
+    setOtpPhone(null);
+    router.replace("/(tabs)");
   };
 
   return (
@@ -66,39 +138,51 @@ export default function RegisterScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
 
-        {/* Hero header */}
+        {/* ── Hero ─────────────────────────────────────────────────────── */}
         <LinearGradient
           colors={theme.gradients.heroPrimary as [string, string, string]}
           style={[styles.hero, { paddingTop: insets.top + 20 }]}>
-          {/* Close button */}
           <Pressable onPress={() => router.back()} style={styles.closeBtn} hitSlop={10}>
-            <Ionicons name="close" size={20} color="rgba(255,255,255,0.80)" />
+            <Ionicons name="close" size={20} color="rgba(255,255,255,0.85)" />
           </Pressable>
 
-          {/* Logo */}
-          <View style={{ alignItems: "center", marginTop: 16 }}>
-            <View style={styles.logoCard}>
-              <Image
-                source={require("../../assets/logo.png")}
-                style={styles.logo}
-                contentFit="contain"
-              />
+          <Animated.View
+            entering={FadeInDown.duration(420).delay(60).springify().damping(18)}
+            style={styles.logoWrap}>
+            <View style={styles.logoTile}>
+              <AppLogo size="lg" />
             </View>
-          </View>
+          </Animated.View>
 
-          <View style={{ alignItems: "center", marginTop: 20, paddingBottom: 32 }}>
-            <Text style={{ color: "#fff", fontSize: 22, fontFamily: theme.fonts.black }}>إنشاء حساب جديد</Text>
-            <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, marginTop: 4 }}>أنشئ حسابك في ثوانٍ</Text>
-          </View>
+          <Animated.View
+            entering={FadeInDown.duration(420).delay(140)}
+            style={styles.heroTextWrap}>
+            <Text variant="screen-title" color="inverse" align="center" style={styles.heroTitle}>
+              إنشاء حساب جديد
+            </Text>
+            <Text
+              variant="body"
+              color="inverse-muted"
+              align="center"
+              style={{ marginTop: 6 }}>
+              أنشئ حسابك في ثوانٍ — كل ما تحتاجه هو بريدك الإلكتروني
+            </Text>
+          </Animated.View>
         </LinearGradient>
 
-        {/* Form card */}
-        <View style={styles.formCard}>
+        {/* ── Form card ────────────────────────────────────────────────── */}
+        <Animated.View
+          entering={FadeInUp.duration(460).delay(180)}
+          style={styles.formCard}>
           {error && (
-            <View style={styles.errorBox}>
-              <Ionicons name="alert-circle-outline" size={16} color={theme.colors.error.base} />
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
+            <Animated.View entering={FadeInDown.duration(200)} style={styles.errorBox}>
+              <View style={styles.errorIcon}>
+                <Ionicons name="alert-circle" size={16} color={theme.colors.error.base} />
+              </View>
+              <Text variant="body-sm" align="right" style={styles.errorText}>
+                {error}
+              </Text>
+            </Animated.View>
           )}
 
           <Input
@@ -132,16 +216,20 @@ export default function RegisterScreen() {
               optional
               editable={!skipPhone}
               leftIcon={<Ionicons name="call-outline" size={18} color={theme.colors.text.tertiary} />}
-              hint="اختياري — يمكنك إضافته لاحقاً للتأكيدات وتنبيهات الطلبات"
+              hint="يستخدم للتأكيدات وتنبيهات الطلبات"
             />
             <Pressable
               onPress={() => { setSkipPhone((v) => !v); if (!skipPhone) setPhone(""); }}
               hitSlop={6}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: skipPhone }}
               style={styles.skipRow}>
               <View style={[styles.skipCheck, skipPhone && styles.skipCheckActive]}>
-                {skipPhone && <Ionicons name="checkmark" size={11} color="#fff" />}
+                {skipPhone && <Ionicons name="checkmark" size={12} color="#fff" />}
               </View>
-              <Text style={styles.skipText}>تخطي الآن — سأضيف رقمي لاحقاً</Text>
+              <Text variant="caption" color={skipPhone ? "brand" : "secondary"} weight="semibold">
+                تخطي الآن — سأضيف رقمي لاحقاً
+              </Text>
             </Pressable>
           </View>
 
@@ -159,51 +247,173 @@ export default function RegisterScreen() {
             }
           />
 
-          <Button variant="primary" size="lg" fullWidth loading={loading} onPress={handleRegister} gradient style={{ marginTop: 8 }}>
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            loading={loading}
+            onPress={handleRegister}
+            gradient
+            style={{ marginTop: 6 }}>
             إنشاء الحساب
           </Button>
 
           <View style={styles.dividerRow}>
             <View style={styles.divider} />
-            <Text style={styles.dividerText}>أو</Text>
+            <Text variant="caption" color="tertiary" style={{ paddingHorizontal: 4 }}>
+              أو
+            </Text>
             <View style={styles.divider} />
           </View>
 
-          <View style={{ alignItems: "center", gap: 4 }}>
-            <Text style={{ fontSize: 14, color: theme.colors.text.secondary }}>لديك حساب بالفعل؟</Text>
+          <View style={styles.footer}>
+            <Text variant="body-sm" color="secondary">
+              لديك حساب بالفعل؟
+            </Text>
             <Link href="/(auth)/login" asChild>
-              <Pressable>
-                <Text style={{ fontSize: 14, fontFamily: theme.fonts.black, color: theme.colors.brand[700] }}>
+              <Pressable hitSlop={6}>
+                <Text variant="body-sm" weight="extrabold" color="brand">
                   تسجيل الدخول
                 </Text>
               </Pressable>
             </Link>
           </View>
 
-          <Text style={styles.terms}>
+          <Text variant="eyebrow" color="tertiary" align="center" style={styles.terms}>
             بإنشاء حساب فأنت توافق على سياسة الخصوصية وشروط الاستخدام
           </Text>
-        </View>
+        </Animated.View>
       </ScrollView>
+
+      <PhoneVerifyModal
+        visible={otpPhone !== null}
+        initialPhone={otpPhone ?? ""}
+        onVerified={handleOtpVerified}
+        onCancel={handleOtpCancel}
+      />
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen:      { flex: 1, backgroundColor: theme.colors.bg },
-  hero:        { paddingHorizontal: theme.layout.pagePaddingH, paddingBottom: 0, overflow: "hidden", position: "relative" },
-  closeBtn:    { position: "absolute", top: 16, left: theme.layout.pagePaddingH, width: 36, height: 36, borderRadius: 12, backgroundColor: theme.colors.glass, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: theme.colors.glassBorder },
-  logoCard:    { backgroundColor: "#fff", borderRadius: 20, paddingHorizontal: 20, paddingVertical: 12, ...theme.shadow.lg },
-  logo:        { width: 180, height: 72 },
-  formCard:    { backgroundColor: theme.colors.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, marginTop: -20, flex: 1, padding: theme.layout.pagePaddingH, paddingTop: 28, gap: 16, ...theme.shadow.xl },
-  errorBox:    { flexDirection: "row-reverse", alignItems: "center", gap: 8, backgroundColor: theme.colors.error.bg, borderRadius: theme.radius.lg, padding: 12, borderWidth: 1, borderColor: theme.colors.error.light },
-  errorText:   { fontSize: 13, fontFamily: theme.fonts.semibold, color: theme.colors.error.text, flex: 1, textAlign: "right" },
-  dividerRow:  { flexDirection: "row", alignItems: "center", gap: 12 },
-  divider:     { flex: 1, height: 1, backgroundColor: theme.colors.border.default },
-  dividerText: { fontSize: 12, color: theme.colors.text.tertiary, fontFamily: theme.fonts.semibold },
-  terms:       { fontSize: 11, color: theme.colors.text.disabled, textAlign: "center", lineHeight: 16, paddingTop: 4 },
-  skipRow:     { flexDirection: "row-reverse", alignItems: "center", gap: 8, marginTop: 6, paddingHorizontal: 2 },
-  skipCheck:   { width: 16, height: 16, borderRadius: 5, borderWidth: 1.5, borderColor: theme.colors.border.medium, alignItems: "center", justifyContent: "center" },
-  skipCheckActive: { backgroundColor: theme.colors.brand[600], borderColor: theme.colors.brand[600] },
-  skipText:    { fontSize: 11, fontFamily: theme.fonts.semibold, color: theme.colors.text.secondary },
+  screen: {
+    flex: 1,
+    backgroundColor: theme.colors.bg,
+  },
+  hero: {
+    paddingHorizontal: theme.layout.pagePaddingH,
+    paddingBottom:     40,
+    overflow:          "hidden",
+    position:          "relative",
+  },
+  closeBtn: {
+    position:        "absolute",
+    top:             16,
+    left:            theme.layout.pagePaddingH,
+    width:           38,
+    height:          38,
+    borderRadius:    12,
+    backgroundColor: theme.colors.glass,
+    alignItems:      "center",
+    justifyContent:  "center",
+    borderWidth:     1,
+    borderColor:     theme.colors.glassBorder,
+  },
+  logoWrap: {
+    alignItems: "center",
+    marginTop:  20,
+  },
+  logoTile: {
+    width:           116,
+    height:          116,
+    borderRadius:    28,
+    backgroundColor: "#fff",
+    alignItems:      "center",
+    justifyContent:  "center",
+    ...theme.shadow.lg,
+  },
+  heroTextWrap: {
+    alignItems: "center",
+    marginTop:  22,
+  },
+  heroTitle: {
+    letterSpacing: -0.5,
+  },
+  formCard: {
+    backgroundColor:      theme.colors.surface,
+    borderTopLeftRadius:  28,
+    borderTopRightRadius: 28,
+    marginTop:            -22,
+    flex:                 1,
+    padding:              theme.layout.pagePaddingH,
+    paddingTop:           28,
+    gap:                  14,
+    ...theme.shadow.lg,
+  },
+  errorBox: {
+    flexDirection:   "row-reverse",
+    alignItems:      "center",
+    gap:             10,
+    backgroundColor: theme.colors.error.bg,
+    borderRadius:    theme.radius.lg,
+    padding:         12,
+    borderWidth:     1,
+    borderColor:     theme.colors.error.light,
+  },
+  errorIcon: {
+    width: 24, height: 24, borderRadius: 12,
+    backgroundColor: "rgba(239,68,68,0.10)",
+    alignItems: "center", justifyContent: "center",
+  },
+  errorText: {
+    flex: 1,
+    color: theme.colors.error.text,
+    fontFamily: theme.fonts.semibold,
+  },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems:    "center",
+    gap:           12,
+    marginTop:     6,
+  },
+  divider: {
+    flex:            1,
+    height:          1,
+    backgroundColor: theme.colors.border.hairline,
+  },
+  footer: {
+    flexDirection: "row-reverse",
+    alignItems:    "center",
+    justifyContent:"center",
+    gap:           6,
+    marginTop:     2,
+  },
+  terms: {
+    lineHeight: 16,
+    paddingTop: 8,
+    textTransform: "none",   // disable widest tracking that eyebrow normally has
+    letterSpacing: 0,
+  },
+  // Skip-phone toggle — refined "premium checkbox"
+  skipRow: {
+    flexDirection: "row-reverse",
+    alignItems:    "center",
+    gap:           8,
+    marginTop:     8,
+    paddingHorizontal: 2,
+  },
+  skipCheck: {
+    width:          18,
+    height:         18,
+    borderRadius:   6,
+    borderWidth:    1.5,
+    borderColor:    theme.colors.border.medium,
+    alignItems:     "center",
+    justifyContent: "center",
+    backgroundColor: theme.colors.surface,
+  },
+  skipCheckActive: {
+    backgroundColor: theme.colors.brand[600],
+    borderColor:     theme.colors.brand[600],
+  },
 });

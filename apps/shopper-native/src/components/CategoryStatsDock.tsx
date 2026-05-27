@@ -168,7 +168,7 @@ export function CategoryStatsDock({ categoriesCount }: CategoryStatsDockProps) {
     );
   }
 
-  const catCount = categoriesCount ?? stats?.totalCategories ?? 0;
+  const catCount  = categoriesCount    ?? 0;
   const prodCount = stats?.totalProducts ?? 0;
 
   const statItems: Omit<StatCellProps, "index" | "isLast">[] = [

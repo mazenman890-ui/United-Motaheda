@@ -21,7 +21,7 @@ import {
   Volume2,
   VolumeX,
 } from "lucide-react";
-import unitedIcon from "../../assets/united-icon.png";
+import unitedIcon from "@assets/brand/about-icon.png";
 import { useCatalog } from "../../contexts/CatalogContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { images, locations, promoVideoGallery, siteContact } from "../data";

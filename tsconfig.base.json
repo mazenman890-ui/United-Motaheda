@@ -21,6 +21,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["apps/shopper-web/src/*"],
+      "@assets/*": ["assets/*"],
       "@pharmacy/contracts": ["packages/contracts/src/index.ts"],
       "@pharmacy/types": ["packages/types/src/index.ts"],
       "@pharmacy/api-client": ["packages/api-client/src/index.ts"],

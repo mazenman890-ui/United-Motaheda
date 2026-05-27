@@ -78,6 +78,7 @@ class PageCache {
       inStock: filters.inStock ?? false,
       minPrice: filters.minPrice ?? 0,
       maxPrice: filters.maxPrice ?? 0,
+      sortBy: filters.sortBy ?? "relevant",
     });
   }
 
@@ -189,37 +190,69 @@ function buildSupabaseQuery(
     .select("*", { count: "exact" });
 
   // Full-text search across name (AR + EN), product code, and barcode.
-  // Arabic is searched with the original (un-lowercased) term because Arabic
-  // has no case distinction and toLowerCase() can mangle Unicode normalisation
-  // in some JS runtimes. English / code columns use the lowercased term.
+  //
+  // IMPORTANT — why we search the "Name" column:
+  //   Products in this catalog are stored in English.  Many rows have only a
+  //   "Name" column (the primary product name), with "Name_En" either null or
+  //   identical to "Name".  If we only search "Name_En" for English expansion
+  //   terms, those rows are invisible to Arabic searchers even when the
+  //   dictionary correctly maps "بنادول" → "panadol".
+  //
+  //   Fix: every English expansion term (including the raw query when it is
+  //   already in English) is searched in BOTH "Name_En" AND "Name".  Arabic
+  //   terms are searched in "Name_Ar" AND "Name" (catches stores that write
+  //   Arabic product names in the primary Name column).
+  //
+  //   We also search "Category_Name_En" with English expansion terms so that
+  //   a user typing "مضاد حيوي" (antibiotic) finds products categorised as
+  //   "Antibiotics" even when the dictionary maps to a category word.
   if (filters.searchQuery) {
     const raw = filters.searchQuery.trim();
 
     // Expand with Arabic normalisation + bidirectional drug dictionary so that:
-    //  • "بنادول" also searches for "panadol", "paracetamol" in Name_En
-    //  • "panadol" also searches for "بنادول" in Name_Ar
+    //  • "بنادول" also searches for "panadol", "paracetamol" in Name_En / Name
+    //  • "panadol" also searches for "بنادول" in Name_Ar / Name
     //  • "بندول"  (typo, edit-dist 1) finds the "بنادول" dictionary entry
     //    and its English synonyms — catches typos even on the ilike path.
     const { arTerms, enTerms } = expandSearchTerms(raw);
 
     const orParts: string[] = [];
 
-    // Arabic terms → search Name_Ar column
+    // Deduplicate terms across Name to avoid sending identical ilike conditions.
+    const nameColTerms = new Set<string>();
+
+    // Arabic terms → Name_Ar + Name (primary) columns
     for (const ar of arTerms) {
       const safe = ar.replace(/[%_]/g, "\\$&"); // escape SQL wildcards
       orParts.push(`"Name_Ar".ilike.%${safe}%`);
+      const key = ar.toLowerCase();
+      if (!nameColTerms.has(key)) {
+        nameColTerms.add(key);
+        orParts.push(`"Name".ilike.%${safe}%`);
+      }
     }
 
-    // English terms → search Name_En column
+    // English terms → Name_En + Name (primary) + Category_Name_En columns
     for (const en of enTerms) {
       const safe = en.replace(/[%_]/g, "\\$&");
       orParts.push(`"Name_En".ilike.%${safe}%`);
+      if (!nameColTerms.has(en)) {
+        nameColTerms.add(en);
+        orParts.push(`"Name".ilike.%${safe}%`);
+      }
+      // Category-level English match — catches generic searches like
+      // "antibiotic", "painkiller", "vitamin" mapped from Arabic queries.
+      orParts.push(`"Category_Name_En".ilike.%${safe}%`);
     }
 
-    // Code / Barcode — always search with the raw lowercased term
-    const lower = raw.toLowerCase().replace(/[%_]/g, "\\$&");
-    orParts.push(`"Code".ilike.%${lower}%`);
-    orParts.push(`"Barcode".ilike.%${lower}%`);
+    // Always include raw query against Name_Ar, Name_En, Name, Code + Barcode.
+    // This ensures Arabic/English text queries work even if the dictionary doesn't have an entry.
+    const safRaw = raw.replace(/[%_]/g, "\\$&");
+    orParts.push(`"Name_Ar".ilike.%${safRaw}%`);
+    orParts.push(`"Name_En".ilike.%${safRaw}%`);
+    orParts.push(`"Name".ilike.%${safRaw}%`);
+    orParts.push(`"Code".ilike.%${safRaw}%`);
+    orParts.push(`"Barcode".ilike.%${safRaw}%`);
 
     // PostgREST OR filter (column names must be double-quoted because they
     // contain mixed case and PostgreSQL would fold them to lowercase otherwise).
@@ -366,12 +399,11 @@ export async function fetchShopperCatalogSnapshot(
  * Fetch a single page of products with server-side filtering and pagination.
  *
  * When a `searchQuery` is present the request is routed through the
- * `search_products_fuzzy` Supabase RPC (pg_trgm similarity — tolerates Arabic
- * typos like "بنادول" → "بانادول").  All other filters and pagination behave
- * identically for both paths.
+ * `search_products` Supabase RPC (bilingual exact/prefix/fuzzy search).
+ * All other filters and pagination behave identically for both paths.
  *
- * Fallback: if the RPC is not yet deployed the function transparently retries
- * with the standard ilike query so the UI never goes blank.
+ * Fallback: if the RPC is not yet deployed or fails, the function transparently
+ * retries with the standard ilike query so the UI never goes blank.
  *
  * Results are kept in the in-memory LRU page cache (TTL: 5 min for filtered
  * results, 15 min for unfiltered).
@@ -387,13 +419,19 @@ export async function fetchProductsPage(
   let totalCount: number;
 
   if (filters.searchQuery?.trim()) {
-    // ── Fuzzy path: pg_trgm RPC ──────────────────────────────────────────────
+    // ── Search path: server-side search_products RPC ────────────────────────
     try {
-      const result = await fetchProductsPageFuzzy(pageNumber, filters);
+      const result = await fetchProductsPageRpc(pageNumber, filters);
       products   = result.products;
       totalCount = result.totalCount;
-    } catch {
-      // RPC not yet deployed — fall back to ilike silently.
+    } catch (rpcError) {
+      if (import.meta.env.DEV) {
+        console.debug("[shopperCatalogApi] search_products RPC failed, falling back to ilike", {
+          pageNumber,
+          filters,
+          rpcError,
+        });
+      }
       const result = await fetchProductsPageIlike(pageNumber, filters);
       products   = result.products;
       totalCount = result.totalCount;
@@ -437,40 +475,69 @@ async function fetchProductsPageIlike(
   return { products, totalCount: count ?? 0 };
 }
 
-async function fetchProductsPageFuzzy(
+async function fetchProductsPageRpc(
   pageNumber: number,
   filters: ProductFilters,
 ): Promise<{ products: CatalogProduct[]; totalCount: number }> {
   const supabase = getSupabaseClient();
 
-  // Resolve category slug → display names for the RPC filter parameters.
   let categoryAr: string | null = null;
   let categoryEn: string | null = null;
   if (filters.categoryId) {
     const names = getCategoryNamesById(filters.categoryId);
     if (names) { categoryAr = names.name; categoryEn = names.nameEn; }
   }
+  const category = categoryAr ?? categoryEn;
 
-  // Send the normalised form (diacritics removed, hamza unified) so pg_trgm
-  // similarity works on a clean string instead of a diacritic-heavy one.
-  const { arTerms } = expandSearchTerms(filters.searchQuery!.trim());
-  const normalisedTerm = arTerms[0] ?? filters.searchQuery!.trim();
+  const rawQuery = filters.searchQuery!.trim();
+  const sort = filters.sortBy === "relevant" || !filters.sortBy ? "relevance" : filters.sortBy;
 
-  const { data, error } = await supabase.rpc("search_products_fuzzy", {
-    search_term:    normalisedTerm,
-    page_number:    pageNumber,
-    page_size:      PAGE_SIZE,
-    category_ar:    categoryAr,
-    category_en:    categoryEn,
-    in_stock_only:  filters.inStock  ?? null,
-    sort_order:     filters.sortBy   ?? "relevant",
-    min_similarity: 0.15,
+  // Always log an informational payload for debugging disappearing suggestions.
+  try {
+    // eslint-disable-next-line no-console
+    console.info("[shopperCatalogApi] fetchProductsPageRpc called", {
+      pageNumber,
+      rawQuery,
+      category,
+      inStock: filters.inStock,
+      minPrice: filters.minPrice,
+      maxPrice: filters.maxPrice,
+      sort,
+    });
+  } catch {}
+
+  const { data, error } = await supabase.rpc("search_products", {
+    p_query:     rawQuery,
+    p_category:  category ?? null,
+    p_in_stock:  filters.inStock ?? false,
+    p_min_price: filters.minPrice ?? null,
+    p_max_price: filters.maxPrice ?? null,
+    p_sort:      sort,
+    p_limit:     PAGE_SIZE,
+    p_offset:    (pageNumber - 1) * PAGE_SIZE,
   });
 
-  if (error) throw new Error(`Fuzzy RPC failed: ${error.message}`);
-  if (!data || !Array.isArray(data)) return { products: [], totalCount: 0 };
+  if (error) {
+    // eslint-disable-next-line no-console
+    console.warn("[shopperCatalogApi] search_products RPC error", error);
+    throw new Error(`RPC failed: ${error.message}`);
+  }
 
-  const totalCount = (data[0] as Record<string, unknown> | undefined)?.total_count as number ?? 0;
+  if (!data || !Array.isArray(data)) {
+    // eslint-disable-next-line no-console
+    console.info("[shopperCatalogApi] search_products returned no data", { data });
+    return { products: [], totalCount: 0 };
+  }
+
+  try {
+    // eslint-disable-next-line no-console
+    console.info("[shopperCatalogApi] search_products returned", {
+      rows: data.length,
+      firstRow: data[0],
+    });
+  } catch {}
+
+  const totalCount = Number((data[0] as Record<string, unknown> | undefined)?.total_count ?? 0);
   const products   = (data as Record<string, unknown>[])
     .map((row, i) => normalizeSupabaseProduct(row, (pageNumber - 1) * PAGE_SIZE + i + 2))
     .filter((p): p is CatalogProduct => p !== null);

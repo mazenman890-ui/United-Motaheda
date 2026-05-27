@@ -3,5 +3,9 @@
   "include": [
     "apps",
     "packages"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/node_modules"
   ]
 }

@@ -1,219 +1,516 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Dimensions,
+  FlatList,
+  I18nManager,
+  ListRenderItemInfo,
   Pressable,
-  ScrollView,
-  Text,
+  StyleSheet,
   View,
+  ViewToken,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
+  Easing,
   FadeIn,
-  FadeInDown,
-  FadeInUp,
+  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
   withSequence,
   withSpring,
   withTiming,
-  cancelAnimation,
-  interpolate,
-  Extrapolation,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { BrandMark } from "@/components/ui/BrandMark";
+import { AppLogo } from "@/shared/components/AppLogo";
+import { Text } from "@/shared/ui";
 import { theme } from "@/theme";
 import { ONBOARDING_KEY } from "./index";
 
-const { width: W } = Dimensions.get("window");
+// ──────────────────────────────────────────
+// Dimensions & helpers
+// ──────────────────────────────────────────
+const { width: W, height: H } = Dimensions.get("window");
+// Visual takes 44% — gives the content panel enough room for all text + controls
+const VISUAL_H = Math.round(H * 0.44);
+const TRACK_W = W - theme.spacing[3] * 2 - theme.spacing[2] * 2;
+const isRTL = I18nManager.isRTL;
 
-type SlideColors = [string, string, string];
+// ──────────────────────────────────────────
+// Types
+// ──────────────────────────────────────────
+type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
 interface Slide {
-  id:       number;
-  colors:   SlideColors;
-  accent:   string;
-  icon?:    React.ComponentProps<typeof Ionicons>["name"];
-  eyebrow:  string;
-  title:    string;
-  body:     string;
+  id: number;
+  eyebrow: string;
+  title: string;
+  body: string;
+  icon?: IoniconsName;
+  gradient: readonly [string, string, string];
+  ringColor: string;
+  accent: string;
+  logoSlide: boolean;
 }
 
+// ──────────────────────────────────────────
+// Data
+// ──────────────────────────────────────────
 const SLIDES: Slide[] = [
   {
-    id:      1,
-    colors:  [theme.colors.hero, theme.colors.heroMid, theme.colors.heroBright],
-    accent:  theme.colors.brand[400],
-    eyebrow: "صيدليات المتحدة",
-    title:   "صحتك\nأولويتنا",
-    body:    "أكثر من 52,000 منتج صيدلاني أصلي في متناول يدك في أي وقت",
+    id: 1,
+    eyebrow: "صيدلية المتحدة",
+    title: "صحتك\nأولويتنا",
+    body: "أكثر من 52,000 منتج صيدلاني أصلي في متناول يدك في أي وقت",
+    gradient: ["#044039", "#087A6F", "#0DB8A8"],
+    ringColor: "rgba(92, 224, 210, 0.28)",
+    accent: "#5CE0D2",
+    logoSlide: true,
   },
   {
-    id:      2,
-    colors:  ["#062040", "#0a3a6e", "#0d5fa0"],
-    accent:  "#22d3ee",
-    icon:    "flash-outline",
+    id: 2,
+    icon: "flash" as IoniconsName,
     eyebrow: "توصيل سريع",
-    title:   "في بابك\nبأسرع وقت",
-    body:    "أدوية أصلية توصّل إلى باب منزلك في نفس اليوم مع دفع مريح عند الاستلام",
+    title: "في بابك\nبأسرع وقت",
+    body: "أدوية أصلية توصّل إلى باب منزلك في نفس اليوم مع دفع مريح عند الاستلام",
+    gradient: ["#07152A", "#0C2240", "#1A4570"],
+    ringColor: "rgba(8, 145, 178, 0.30)",
+    accent: "#2CCCBD",
+    logoSlide: false,
   },
   {
-    id:      3,
-    colors:  ["#061e2e", "#0c3d55", "#0e5875"],
-    accent:  "#67e8f9",
-    icon:    "shield-checkmark-outline",
+    id: 3,
+    icon: "shield-checkmark" as IoniconsName,
     eyebrow: "ضمان الجودة",
-    title:   "أصلي ومضمون\n100%",
-    body:    "فريق صيدلاني محترف وأدوية معتمدة ومضمونة — لكل داء دواء",
+    title: "أصلي ومضمون\n100%",
+    body: "فريق صيدلاني محترف وأدوية معتمدة ومضمونة — لكل داء دواء",
+    gradient: ["#022C27", "#044039", "#065C54"],
+    ringColor: "rgba(153, 240, 230, 0.25)",
+    accent: "#99F0E6",
+    logoSlide: false,
   },
 ];
 
-function PulseRing({ color, delay = 0 }: { color: string; delay?: number }) {
-  const scale   = useSharedValue(1);
-  const opacity = useSharedValue(0.5);
+// ──────────────────────────────────────────
+// Sub‑components (memoized where beneficial)
+// ──────────────────────────────────────────
 
-  useEffect(() => {
-    const run = () => {
-      scale.value   = withRepeat(withSequence(withTiming(1, { duration: delay }), withTiming(1.8, { duration: 1400 })), -1, false);
-      opacity.value = withRepeat(withSequence(withTiming(0.5, { duration: delay }), withTiming(0, { duration: 1400 })), -1, false);
-    };
-    run();
-    return () => { cancelAnimation(scale); cancelAnimation(opacity); };
-  }, [delay, opacity, scale]);
+// Floating ambient circle
+const DecoCircle = React.memo(
+  ({
+    top,
+    right,
+    left,
+    bottom,
+    size,
+    opacity,
+  }: {
+    top?: number;
+    right?: number;
+    left?: number;
+    bottom?: number;
+    size: number;
+    opacity: number;
+  }) => (
+    <View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        top,
+        right,
+        left,
+        bottom,
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: `rgba(255,255,255,${opacity})`,
+      }}
+    />
+  ),
+);
 
-  const style = useAnimatedStyle(() => ({
-    transform:  [{ scale: scale.value }],
-    opacity:    opacity.value,
-    borderColor: color,
-  }));
+// Pulsating ring around the medallion
+const PulseRing = React.memo(
+  ({ color, delay = 0 }: { color: string; delay?: number }) => {
+    const scale = useSharedValue(0.5);
+    const opacity = useSharedValue(0.8);
 
-  return (
-    <Animated.View style={[{
-      position:     "absolute",
-      width:        130,
-      height:       130,
-      borderRadius: 65,
-      borderWidth:  1.5,
-    }, style]} />
-  );
-}
+    useEffect(() => {
+      scale.value = withRepeat(
+        withSequence(
+          withTiming(0.5, { duration: delay, easing: Easing.linear }),
+          withTiming(2.4, { duration: 1900, easing: Easing.out(Easing.quad) }),
+        ),
+        -1,
+        false,
+      );
+      opacity.value = withRepeat(
+        withSequence(
+          withTiming(0.8, { duration: delay, easing: Easing.linear }),
+          withTiming(0, { duration: 1900, easing: Easing.out(Easing.ease) }),
+        ),
+        -1,
+        false,
+      );
+      return () => {
+        cancelAnimation(scale);
+        cancelAnimation(opacity);
+      };
+    }, [delay]);
 
-function FloatDot({ x, y, color, size, delay }: { x: number; y: number; color: string; size: number; delay: number }) {
-  const translateY = useSharedValue(0);
-  useEffect(() => {
-    translateY.value = withRepeat(
-      withSequence(
-        withTiming(0, { duration: delay }),
-        withTiming(-14, { duration: 2200 }),
-        withTiming(0, { duration: 2200 }),
-      ), -1, false,
+    const animatedStyle = useAnimatedStyle(() => ({
+      transform: [{ scale: scale.value }],
+      opacity: opacity.value,
+    }));
+
+    return (
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          {
+            position: "absolute",
+            width: 96,
+            height: 96,
+            borderRadius: 48,
+            backgroundColor: color,
+          },
+          animatedStyle,
+        ]}
+      />
     );
-    return () => cancelAnimation(translateY);
-  }, [delay, translateY]);
-  const s = useAnimatedStyle(() => ({ transform: [{ translateY: translateY.value }] }));
-  return (
-    <Animated.View style={[{ position: "absolute", left: x, top: y, width: size, height: size, borderRadius: size / 2, backgroundColor: color }, s]} />
-  );
-}
+  },
+);
 
+// Medallion: glass layers + staggered pulse rings
+const Medallion = React.memo(({ slide }: { slide: Slide }) => {
+  const isLogo = slide.logoSlide;
+  return (
+    <View style={styles.medallionWrap}>
+      <PulseRing color={slide.ringColor} delay={0} />
+      <PulseRing color={slide.ringColor} delay={650} />
+      <PulseRing color={slide.ringColor} delay={1300} />
+
+      <View style={styles.medallionOuter}>
+        <View
+          style={[
+            styles.medallionInner,
+            isLogo && {
+              backgroundColor: "#FFFFFF",
+              borderColor: "rgba(255,255,255,0.6)",
+            },
+          ]}
+        >
+          {isLogo ? (
+            <AppLogo size="md" />
+          ) : (
+            <Ionicons
+              name={slide.icon as IoniconsName}
+              size={46}
+              color="#FFFFFF"
+            />
+          )}
+        </View>
+      </View>
+    </View>
+  );
+});
+
+// Full‑screen gradient visual for each slide
+const SlideVisual = React.memo(
+  ({
+    slide,
+    width,
+    height,
+    topInset,
+  }: {
+    slide: Slide;
+    width: number;
+    height: number;
+    topInset: number;
+  }) => (
+    <LinearGradient
+      colors={slide.gradient}
+      start={{ x: 0.35, y: 0 }}
+      end={{ x: 0.65, y: 1 }}
+      style={{ width, height }}
+    >
+      {/* Subtle ambient decorations */}
+      <DecoCircle top={-70} right={-70} size={220} opacity={0.04} />
+      <DecoCircle bottom={-30} right={-30} size={130} opacity={0.04} />
+
+      {/* Soft border ring for texture */}
+      <View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          top: -140,
+          alignSelf: "center",
+          width: width + 80,
+          height: width + 80,
+          borderRadius: (width + 80) / 2,
+          borderWidth: 1,
+          borderColor: "rgba(255,255,255,0.06)",
+        }}
+      />
+
+      {/* Medallion centered, pushed below status bar */}
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingTop: topInset,
+        }}
+      >
+        <Medallion slide={slide} />
+      </View>
+    </LinearGradient>
+  ),
+);
+
+// Animated progress dot
+const ProgressDot = React.memo(
+  ({ active, onPress }: { active: boolean; onPress: () => void }) => {
+    const width = useSharedValue(active ? 28 : 8);
+
+    useEffect(() => {
+      width.value = withSpring(active ? 28 : 8, theme.animation.spring.snappy);
+    }, [active]);
+
+    const dotStyle = useAnimatedStyle(() => ({
+      width: width.value,
+      backgroundColor: active
+        ? theme.colors.brand.base
+        : theme.colors.slate[200],
+    }));
+
+    return (
+      <Pressable onPress={onPress} hitSlop={10} accessibilityRole="button">
+        <Animated.View style={[styles.dot, dotStyle]} />
+      </Pressable>
+    );
+  },
+);
+
+// ──────────────────────────────────────────
+// Main screen
+// ──────────────────────────────────────────
 export default function OnboardingScreen() {
-  const router  = useRouter();
-  const insets  = useSafeAreaInsets();
-  const scrollRef = useRef<ScrollView>(null);
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const flatRef = useRef<FlatList<Slide>>(null);
+
   const [current, setCurrent] = useState(0);
+  const progress = useSharedValue(1 / SLIDES.length);
   const btnScale = useSharedValue(1);
 
+  // Smooth content animation (no re‑mounting)
+  const contentOpacity = useSharedValue(1);
+  const contentTranslateY = useSharedValue(0);
+
+  // Finish onboarding
   const finish = useCallback(async () => {
+    btnScale.value = withSpring(0.91, theme.animation.spring.press, () => {
+      btnScale.value = withSpring(1, theme.animation.spring.gentle);
+    });
     await AsyncStorage.setItem(ONBOARDING_KEY, "1");
     router.replace("/(tabs)");
-  }, [router]);
+  }, [btnScale, router]);
 
-  const goNext = useCallback(() => {
+  // Navigate to a specific slide
+  const goTo = useCallback((idx: number) => {
+    if (idx < 0 || idx >= SLIDES.length) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    flatRef.current?.scrollToIndex({ index: idx, animated: true });
+  }, []);
+
+  // Next / start
+  const goNext = useCallback(() => {
     if (current < SLIDES.length - 1) {
-      scrollRef.current?.scrollTo({ x: (current + 1) * W, animated: true });
+      goTo(current + 1);
     } else {
-      btnScale.value = withSpring(0.94, { damping: 10, stiffness: 400 }, () => {
-        btnScale.value = withSpring(1, { damping: 12, stiffness: 300 });
-      });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
       finish();
     }
-  }, [btnScale, current, finish]);
+  }, [current, finish, goTo]);
 
-  const handleScroll = useCallback((e: { nativeEvent: { contentOffset: { x: number } } }) => {
-    const idx = Math.round(e.nativeEvent.contentOffset.x / W);
-    if (idx !== current) setCurrent(idx);
+  // Animate content when slide changes
+  useEffect(() => {
+    // Quick exit animation
+    contentOpacity.value = withTiming(0, { duration: 150 });
+    contentTranslateY.value = withTiming(10, { duration: 150 });
+    // After a tiny delay, enter with the new content
+    setTimeout(() => {
+      contentOpacity.value = withTiming(1, { duration: 400 });
+      contentTranslateY.value = withTiming(0, { duration: 400, easing: Easing.out(Easing.cubic) });
+    }, 160);
   }, [current]);
 
-  const btnStyle = useAnimatedStyle(() => ({ transform: [{ scale: btnScale.value }] }));
+  const contentAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.value,
+    transform: [{ translateY: contentTranslateY.value }],
+  }));
 
+  // Viewability configuration for accurate slide tracking
+  const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 55 });
+  const onViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+      if (viewableItems.length > 0 && viewableItems[0].index != null) {
+        const idx = viewableItems[0].index;
+        setCurrent(idx);
+        progress.value = withTiming((idx + 1) / SLIDES.length, {
+          duration: 380,
+          easing: Easing.out(Easing.cubic),
+        });
+      }
+    },
+  );
+
+  // FlatList helpers
+  const renderItem = useCallback(
+    ({ item }: ListRenderItemInfo<Slide>) => (
+      <SlideVisual
+        slide={item}
+        width={W}
+        height={VISUAL_H}
+        topInset={insets.top}
+      />
+    ),
+    [insets.top],
+  );
+
+  const getItemLayout = useCallback(
+    (_: unknown, index: number) => ({
+      length: W,
+      offset: W * index,
+      index,
+    }),
+    [],
+  );
+
+  // Derived values
+  const btnStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: btnScale.value }],
+  }));
+
+  const barStyle = useAnimatedStyle(() => ({
+    width: progress.value * TRACK_W,
+  }));
+
+  const isLast = current === SLIDES.length - 1;
   const slide = SLIDES[current];
 
+  // Next/start icon – RTL‑aware
+  const nextIcon = useMemo(() => {
+    if (isLast) return "checkmark";
+    return "chevron-forward";
+  }, [isLast]);
+  const nextIconStyle = useMemo(
+    () => (!isLast && isRTL ? { transform: [{ scaleX: -1 }] } : undefined),
+    [isLast],
+  );
+
   return (
-    <View style={{ flex: 1 }}>
-      {/* Paged scroll */}
-      <ScrollView
-        ref={scrollRef}
+    <View style={styles.root}>
+      {/* Visual area: full‑width horizontal slide deck */}
+      <FlatList
+        ref={flatRef}
+        data={SLIDES}
+        keyExtractor={(s) => String(s.id)}
+        renderItem={renderItem}
+        getItemLayout={getItemLayout}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={handleScroll}
         scrollEventThrottle={16}
-        style={{ flex: 1 }}>
-        {SLIDES.map((s, i) => (
-          <SlideView key={s.id} slide={s} active={current === i} width={W} insets={insets} />
-        ))}
-      </ScrollView>
+        decelerationRate="fast"
+        bounces={false}
+        windowSize={3}
+        maxToRenderPerBatch={3}
+        removeClippedSubviews
+        viewabilityConfig={viewabilityConfig.current}
+        onViewableItemsChanged={onViewableItemsChanged.current}
+        style={{ height: VISUAL_H, flexGrow: 0 }}
+      />
 
-      {/* Bottom controls — float above slides */}
-      <View
-        style={{
-          position:          "absolute",
-          bottom:            0,
-          left:              0,
-          right:             0,
-          paddingHorizontal: 28,
-          paddingBottom:     insets.bottom + 28,
-          gap:               20,
-          alignItems:        "center",
-        }}
-        pointerEvents="box-none">
-
-        {/* Dot indicators */}
-        <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
-          {SLIDES.map((s, i) => {
-            const active = current === i;
-            return (
-              <View
-                key={s.id}
-                style={{
-                  width:           active ? 24 : 6,
-                  height:          6,
-                  borderRadius:    3,
-                  backgroundColor: active ? "#fff" : "rgba(255,255,255,0.30)",
-                }}
-              />
-            );
-          })}
+      {/* Content panel with rounded top overlap */}
+      <Animated.View
+        entering={FadeIn.duration(280)}
+        style={[
+          styles.panel,
+          { paddingBottom: Math.max(insets.bottom, theme.spacing[1]) + theme.spacing[2] },
+        ]}
+      >
+        {/* Progress bar */}
+        <View style={styles.progressTrack}>
+          <Animated.View style={[styles.progressFill, barStyle]} />
         </View>
 
-        {/* CTA row */}
+        {/* Dot navigation */}
         <View
-          style={{
-            flexDirection:  "row",
-            width:          "100%",
-            alignItems:     "center",
-            justifyContent: "space-between",
-          }}>
-          {/* Skip */}
-          {current < SLIDES.length - 1 ? (
-            <Pressable onPress={finish} hitSlop={12}>
-              <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 13, fontFamily: theme.fonts.semibold }}>
+          style={styles.dotsRow}
+          accessibilityRole="progressbar"
+          accessibilityLabel={`الشريحة ${current + 1} من ${SLIDES.length}`}
+          accessibilityValue={{ min: 0, max: SLIDES.length - 1, now: current }}
+        >
+          {SLIDES.map((s, i) => (
+            <ProgressDot
+              key={s.id}
+              active={current === i}
+              onPress={() => goTo(i)}
+            />
+          ))}
+        </View>
+
+        {/* Slide content – smoothly animated via shared values */}
+        <View style={styles.contentArea}>
+          <Animated.View style={[{ alignItems: "center", gap: theme.spacing[1.5] }, contentAnimatedStyle]}>
+            {/* Eyebrow pill */}
+            <View style={[styles.eyebrowPill, { backgroundColor: `${slide.accent}28` }]}>
+              <Text
+                variant="caption"
+                weight="extrabold"
+                style={{ color: theme.colors.brand.strong, letterSpacing: 0.3 }}
+              >
+                {slide.eyebrow}
+              </Text>
+            </View>
+
+            {/* Title */}
+            <Text style={styles.title}>{slide.title}</Text>
+
+            {/* Body */}
+            <Text
+              variant="body"
+              color="secondary"
+              align="center"
+              style={{ lineHeight: 29 }}
+            >
+              {slide.body}
+            </Text>
+          </Animated.View>
+        </View>
+
+        {/* Controls */}
+        <View style={styles.ctaRow}>
+          {!isLast ? (
+            <Pressable
+              onPress={finish}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="تخطى الإعداد التمهيدي"
+            >
+              <Text variant="caption" color="tertiary" style={{ letterSpacing: 0.3 }}>
                 تخطى
               </Text>
             </Pressable>
@@ -221,176 +518,160 @@ export default function OnboardingScreen() {
             <View />
           )}
 
-          {/* Next / Get Started */}
           <Animated.View style={btnStyle}>
             <Pressable
               onPress={goNext}
-              style={({ pressed }) => ({
-                flexDirection:     "row",
-                alignItems:        "center",
-                gap:               10,
-                backgroundColor:   "#fff",
-                borderRadius:      20,
-                paddingHorizontal: 28,
-                paddingVertical:   15,
-                opacity:           pressed ? 0.88 : 1,
-                ...theme.shadow.brand,
-              })}>
-              <Text style={{ color: slide.colors[1], fontSize: 15, fontFamily: theme.fonts.black }}>
-                {current === SLIDES.length - 1 ? "ابدأ الآن" : "التالي"}
+              accessibilityRole="button"
+              accessibilityLabel={isLast ? "ابدأ الآن" : "التالي"}
+              style={({ pressed }) => [styles.cta, pressed && { opacity: 0.88 }]}
+            >
+              <Text variant="body" weight="extrabold" style={{ color: "#fff" }}>
+                {isLast ? "ابدأ الآن" : "التالي"}
               </Text>
-              <Ionicons
-                name={current === SLIDES.length - 1 ? "checkmark-circle" : "arrow-back"}
-                size={18}
-                color={slide.colors[1]}
-              />
+              <View style={styles.ctaIconWrap}>
+                <Ionicons
+                  name={nextIcon}
+                  size={16}
+                  color={isLast ? "#fff" : theme.colors.brand.base}
+                  style={nextIconStyle}
+                />
+              </View>
             </Pressable>
           </Animated.View>
         </View>
-      </View>
+      </Animated.View>
     </View>
   );
 }
 
-function SlideView({
-  slide,
-  active,
-  width,
-  insets,
-}: {
-  slide:  Slide;
-  active: boolean;
-  width:  number;
-  insets: { top: number; bottom: number };
-}) {
-  return (
-    <LinearGradient
-      colors={slide.colors}
-      start={{ x: 0.1, y: 0 }}
-      end={{ x: 0.9, y: 1 }}
-      style={{ width, flex: 1, position: "relative", overflow: "hidden" }}>
+// ──────────────────────────────────────────
+// Styles
+// ──────────────────────────────────────────
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+  },
 
-      {/* Ambient floating dots */}
-      <FloatDot x={width * 0.08} y={insets.top + 80}  color="rgba(255,255,255,0.07)" size={60}  delay={0}    />
-      <FloatDot x={width * 0.70} y={insets.top + 40}  color="rgba(255,255,255,0.05)" size={90}  delay={600}  />
-      <FloatDot x={width * 0.15} y={insets.top + 320} color="rgba(255,255,255,0.04)" size={44}  delay={300}  />
-      <FloatDot x={width * 0.75} y={insets.top + 260} color="rgba(255,255,255,0.06)" size={30}  delay={900}  />
+  // Medallion
+  medallionWrap: {
+    width: 160,
+    height: 160,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  medallionOuter: {
+    width: 148,
+    height: 148,
+    borderRadius: 74,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.14)",
+  },
+  medallionInner: {
+    width: 108,
+    height: 108,
+    borderRadius: 54,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.16)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.28)",
+    ...theme.shadow.xl,
+  },
 
-      {/* Grid overlay */}
-      {[0, 1, 2, 3, 4].map((i) => (
-        <View
-          key={i}
-          style={{
-            position:        "absolute",
-            left:            `${i * 25}%` as unknown as number,
-            top:             0,
-            bottom:          0,
-            width:           1,
-            backgroundColor: "rgba(255,255,255,0.025)",
-          }}
-        />
-      ))}
+  // Content panel
+  panel: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    marginTop: -30,
+    paddingTop: theme.spacing[2],
+    paddingHorizontal: theme.spacing[3],
+    gap: theme.spacing[1],
+    ...theme.shadow["2xl"],
+  },
 
-      {/* Content — vertically centered in upper 65% */}
-      <View
-        style={{
-          position:          "absolute",
-          top:               insets.top + 40,
-          left:              0,
-          right:             0,
-          bottom:            200,
-          alignItems:        "center",
-          justifyContent:    "center",
-          paddingHorizontal: 36,
-          gap:               28,
-        }}>
+  // Progress bar
+  progressTrack: {
+    height: 3,
+    backgroundColor: theme.colors.slate[100],
+    borderRadius: 2,
+    overflow: "hidden",
+    marginHorizontal: theme.spacing[2],
+  },
+  progressFill: {
+    height: 3,
+    backgroundColor: theme.colors.brand.base,
+    borderRadius: 2,
+  },
 
-        {/* Icon area */}
-        {slide.id === 1 ? (
-          active ? (
-            <Animated.View entering={FadeIn.duration(600)}>
-              <BrandMark size="xl" variant="onHero" showText={false} />
-            </Animated.View>
-          ) : (
-            <BrandMark size="xl" variant="onHero" showText={false} />
-          )
-        ) : (
-          <View style={{ alignItems: "center", justifyContent: "center" }}>
-            <PulseRing color={slide.accent} delay={0}    />
-            <PulseRing color={slide.accent} delay={700}  />
-            <View
-              style={{
-                width:           96,
-                height:          96,
-                borderRadius:    32,
-                backgroundColor: "rgba(255,255,255,0.12)",
-                alignItems:      "center",
-                justifyContent:  "center",
-                borderWidth:     1.5,
-                borderColor:     "rgba(255,255,255,0.22)",
-              }}>
-              <Ionicons name={slide.icon!} size={46} color="#fff" />
-            </View>
-          </View>
-        )}
+  // Navigation dots
+  dotsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: theme.spacing[0.5],
+  },
+  dot: {
+    height: 8,
+    borderRadius: 4,
+  },
 
-        {/* Text */}
-        <View style={{ alignItems: "center", gap: 12 }}>
-          {active ? (
-            <Animated.Text
-              entering={FadeInDown.duration(400).delay(100)}
-              style={{
-                color:         slide.accent,
-                fontSize:      11,
-                fontFamily:    theme.fonts.extrabold,
-                letterSpacing: 2.5,
-                textTransform: "uppercase",
-              }}>
-              {slide.eyebrow}
-            </Animated.Text>
-          ) : (
-            <Text style={{ color: slide.accent, fontSize: 11, fontFamily: theme.fonts.extrabold, letterSpacing: 2.5 }}>
-              {slide.eyebrow}
-            </Text>
-          )}
+  // Text content area
+  contentArea: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: theme.spacing[1],
+  },
 
-          {active ? (
-            <Animated.Text
-              entering={FadeInDown.duration(500).delay(180)}
-              style={{
-                color:      "#fff",
-                fontSize:   36,
-                fontFamily: theme.fonts.black,
-                lineHeight: 46,
-                textAlign:  "center",
-              }}>
-              {slide.title}
-            </Animated.Text>
-          ) : (
-            <Text style={{ color: "#fff", fontSize: 36, fontFamily: theme.fonts.black, lineHeight: 46, textAlign: "center" }}>
-              {slide.title}
-            </Text>
-          )}
+  // Eyebrow pill
+  eyebrowPill: {
+    paddingHorizontal: theme.spacing[1.5],
+    paddingVertical: 5,
+    borderRadius: theme.radius.full,
+    marginBottom: theme.spacing[0.5],
+  },
 
-          {active ? (
-            <Animated.Text
-              entering={FadeInUp.duration(500).delay(260)}
-              style={{
-                color:      "rgba(255,255,255,0.65)",
-                fontSize:   15,
-                fontFamily: theme.fonts.regular,
-                lineHeight: 26,
-                textAlign:  "center",
-              }}>
-              {slide.body}
-            </Animated.Text>
-          ) : (
-            <Text style={{ color: "rgba(255,255,255,0.65)", fontSize: 15, fontFamily: theme.fonts.regular, lineHeight: 26, textAlign: "center" }}>
-              {slide.body}
-            </Text>
-          )}
-        </View>
-      </View>
-    </LinearGradient>
-  );
-}
+  // Title
+  title: {
+    color: theme.colors.text.primary,
+    fontSize: theme.typography.size["7xl"].fontSize,
+    lineHeight: 48,
+    fontFamily: theme.fonts.black,
+    textAlign: "center",
+    // Removed letterSpacing for better Arabic rendering
+  },
+
+  // Controls row
+  ctaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: theme.spacing[0.5],
+  },
+
+  // CTA pill
+  cta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing[1],
+    backgroundColor: theme.colors.brand.base,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: theme.spacing[3],
+    paddingVertical: theme.spacing[1.5],
+    ...theme.shadow.teal,
+  },
+  ctaIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.22)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

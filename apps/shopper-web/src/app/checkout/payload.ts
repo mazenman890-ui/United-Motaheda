@@ -78,6 +78,8 @@ export function buildCheckoutSubmitCommand(input: {
   paymentLabel: string;
   requestPosMachine: boolean;
   note: string;
+  transferNumber?: string;
+  paymentProofUrl?: string;
 }): CheckoutSubmitCommand {
   const address = buildCheckoutAddressSnapshot(input.form, {
     region: input.region,
@@ -97,6 +99,8 @@ export function buildCheckoutSubmitCommand(input: {
       method: input.paymentMethod,
       label: input.paymentLabel,
       requestPosMachine: input.requestPosMachine,
+      transferNumber: input.transferNumber || undefined,
+      paymentProofUrl: input.paymentProofUrl || undefined,
     },
     promoCode: input.form.promoCode.trim() || undefined,
     note: input.note,

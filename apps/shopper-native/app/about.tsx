@@ -1,6 +1,5 @@
 import React from "react";
 import {
-  Image,
   Linking,
   Platform,
   Pressable,
@@ -16,6 +15,8 @@ import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { theme } from "@/theme";
+import { AppLogo } from "@/shared/components/AppLogo";
+import { BranchAddressList } from "@/components/BranchAddressCard";
 
 const APP_VERSION = "1.0.0";
 const APP_BUILD   = "100";
@@ -37,6 +38,8 @@ function ContactRow({ icon, label, value, color, onPress }: ContactRowProps) {
   return (
     <Pressable
       onPress={handlePress}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}: ${value}`}
       style={({ pressed }) => [styles.contactRow, pressed && { opacity: 0.75 }]}>
       <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 12, flex: 1 }}>
         <View style={[styles.contactIcon, { backgroundColor: `${color}14` }]}>
@@ -73,7 +76,12 @@ export default function AboutScreen() {
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={10}>
+        <Pressable
+          onPress={() => router.back()}
+          style={styles.backBtn}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="رجوع">
           <Ionicons name="arrow-forward" size={18} color={theme.colors.text.primary} />
         </Pressable>
         <Text style={styles.title}>عن التطبيق</Text>
@@ -91,12 +99,8 @@ export default function AboutScreen() {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.brandHero}>
-            <View style={styles.logoCard}>
-              <Image
-                source={require("../assets/logo.png")}
-                style={styles.logo}
-                resizeMode="contain"
-              />
+            <View style={styles.logoTile}>
+              <AppLogo size="lg" />
             </View>
             <Text style={styles.heroTagline}>صيدليتك الموثوقة — في متناول يدك</Text>
             <View style={styles.versionBadge}>
@@ -133,6 +137,12 @@ export default function AboutScreen() {
               </View>
             ))}
           </View>
+        </Animated.View>
+
+        {/* Branch locations */}
+        <Animated.View entering={FadeInDown.duration(350).delay(170)} style={styles.section}>
+          <Text style={styles.sectionTitle}>فروعنا · Our branches</Text>
+          <BranchAddressList />
         </Animated.View>
 
         {/* Contact */}
@@ -194,8 +204,7 @@ const styles = StyleSheet.create({
   title:        { fontSize: theme.fontSize["2xl"], fontFamily: theme.fonts.black, color: theme.colors.text.primary },
   content:      { gap: 0 },
   brandHero:    { alignItems: "center", gap: 14, paddingVertical: 36, paddingHorizontal: theme.layout.pagePaddingH },
-  logoCard:     { backgroundColor: "#fff", borderRadius: 20, paddingHorizontal: 24, paddingVertical: 14, ...theme.shadow.lg },
-  logo:         { width: 200, height: 72 },
+  logoTile:     { width: 116, height: 116, borderRadius: 26, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", ...theme.shadow.lg },
   heroTagline:  { fontSize: theme.fontSize.base, fontFamily: theme.fonts.semibold, color: "rgba(255,255,255,0.65)", textAlign: "center" },
   versionBadge: { backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 99, paddingHorizontal: 16, paddingVertical: 5, borderWidth: 1, borderColor: "rgba(255,255,255,0.22)" },
   versionText:  { fontSize: theme.fontSize.sm, fontFamily: theme.fonts.bold, color: "rgba(255,255,255,0.85)" },

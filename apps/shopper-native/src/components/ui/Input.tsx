@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   Text,
   TextInput,
-  TouchableOpacity,
   View,
   type StyleProp,
   type TextInputProps,
@@ -38,10 +37,23 @@ export function Input({
   optional,
   onFocus,
   onBlur,
+  multiline,
+  numberOfLines,
   ...rest
 }: InputProps) {
   const [focused, setFocused] = useState(false);
   const progress              = useSharedValue(0);
+
+  // Single-line layout uses a fixed inputHeight and vertically-centered
+  // content. Multi-line needs a min-height proportional to numberOfLines,
+  // top-aligned text on Android (textAlignVertical), and real vertical
+  // padding so the placeholder/cursor don't float in the middle.
+  const lineCount   = numberOfLines ?? 1;
+  const lineHeight  = 22; // matches theme.typography.size.lg line height
+  const verticalPad = 12;
+  const minHeight   = multiline
+    ? lineHeight * lineCount + verticalPad * 2
+    : theme.layout.inputHeight;
 
   const borderAnim = useAnimatedStyle(() => ({
     borderColor: interpolateColor(
@@ -86,37 +98,48 @@ export function Input({
         </View>
       )}
 
-      {/* Input box */}
+      {/* Input box — soft brand glow when focused gives the "trust" UX
+          signal without being loud. Error state overrides with no glow. */}
       <AnimView
         style={[
           {
-            flexDirection:   "row-reverse",
-            alignItems:      "center",
-            height:          theme.layout.inputHeight,
-            borderRadius:    theme.radius.lg,
-            backgroundColor: focused ? theme.colors.surface : theme.colors.muted,
+            flexDirection:     "row-reverse",
+            alignItems:        multiline ? "flex-start" : "center",
+            minHeight,
+            borderRadius:      theme.radius.lg,
+            backgroundColor:   focused ? theme.colors.surface : theme.colors.muted,
             paddingHorizontal: 14,
-            gap:             10,
-            ...theme.shadow.xs,
+            paddingVertical:   multiline ? verticalPad : 0,
+            gap:               10,
+            ...(focused && !error ? theme.shadow.brandGlow : theme.shadow.xs),
           },
           borderAnim,
         ]}>
         {/* Right icon (RTL: left side) */}
         {leftIcon && (
-          <View style={{ opacity: focused ? 1 : 0.55 }}>
+          <View style={{ opacity: focused ? 1 : 0.55, marginTop: multiline ? 2 : 0 }}>
             {leftIcon}
           </View>
         )}
 
         <TextInput
           style={{
-            flex:        1,
-            fontSize:    theme.fontSize.md,
-            fontFamily:  theme.fonts.regular,
-            color:       theme.colors.text.primary,
-            textAlign:   "right",
+            flex:           1,
+            fontSize:       theme.fontSize.md,
+            fontFamily:     theme.fonts.regular,
+            color:          theme.colors.text.primary,
+            textAlign:      "right",
+            // Android: pin cursor + text to the top of the textarea.
+            // iOS ignores this prop (already top-aligns by default).
+            textAlignVertical: multiline ? "top" : "center",
+            // Set lineHeight + paddingVertical:0 so the textarea height
+            // exactly matches our minHeight calculation above (no double
+            // padding from the platform default).
+            lineHeight:     multiline ? lineHeight : undefined,
             paddingVertical: 0,
           }}
+          multiline={multiline}
+          numberOfLines={numberOfLines}
           placeholderTextColor={theme.colors.text.tertiary}
           onFocus={handleFocus}
           onBlur={handleBlur}

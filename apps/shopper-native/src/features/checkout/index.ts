@@ -10,3 +10,5 @@ export * from "./validation";
 export * from "./payload";
 export * from "./schema";
 export { createCheckoutOrder } from "./api";
+export { isManualWalletPayment } from "./manualPayment";
+export { patchOrderManualPayment } from "./patchManualPayment";

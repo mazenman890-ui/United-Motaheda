@@ -1,9 +1,9 @@
-import babyMotherCareImage from "../assets/categories/baby-mother-care.svg";
-import generalHealthcareImage from "../assets/categories/general-healthcare.svg";
-import medicalDevicesImage from "../assets/categories/medical-devices.svg";
-import medicationsImage from "../assets/categories/medications.svg";
-import personalCareImage from "../assets/categories/personal-care.svg";
-import wellnessSupplementsImage from "../assets/categories/wellness-supplements.svg";
+import babyMotherCareImage from "@assets/categories/baby-mother-care.svg";
+import generalHealthcareImage from "@assets/categories/general-healthcare.svg";
+import medicalDevicesImage from "@assets/categories/medical-devices.svg";
+import medicationsImage from "@assets/categories/medications.svg";
+import personalCareImage from "@assets/categories/personal-care.svg";
+import wellnessSupplementsImage from "@assets/categories/wellness-supplements.svg";
 import { getSupabaseClient } from "../lib/supabaseClient";
 
 type CatalogLanguage = "ar" | "en";
@@ -1053,9 +1053,74 @@ function truncate(value: string, maxLength: number) {
   return value.length <= maxLength ? value : `${value.slice(0, maxLength - 1)}…`;
 }
 
+// ─── M8: Image pipeline helpers ──────────────────────────────────────────────
+
+const SUPABASE_STORAGE_ORIGIN = "supabase.co";
+
+/**
+ * Convert a Supabase Storage object URL to an image-transform URL so the
+ * browser receives a correctly sized, WebP-encoded image instead of the
+ * raw (often large) original.
+ *
+ * Original:    https://[ref].supabase.co/storage/v1/object/public/[bucket]/[path]
+ * Transformed: https://[ref].supabase.co/storage/v1/render/image/public/[bucket]/[path]?width=N&quality=80&format=webp
+ *
+ * Falls through unchanged for:
+ *   • Non-Supabase URLs (CDN, external host)
+ *   • data: URIs (our SVG placeholders)
+ *   • Already-transformed render URLs
+ */
+function toSupabaseTransformUrl(url: string, width: number): string {
+  if (!url || url.startsWith("data:")) return url;
+  try {
+    const u = new URL(url);
+    if (!u.hostname.includes(SUPABASE_STORAGE_ORIGIN)) return url;
+    if (u.pathname.includes("/render/image/")) return url; // already transformed
+    // Replace /object/public/ with /render/image/public/
+    const transformed = u.pathname.replace("/object/public/", "/render/image/public/");
+    if (transformed === u.pathname) return url; // path pattern didn't match
+    u.pathname = transformed;
+    u.searchParams.set("width",   String(width));
+    u.searchParams.set("quality", "80");
+    u.searchParams.set("format",  "webp");
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Generate a responsive `srcset` string for a Supabase-hosted product image.
+ * Uses widths matched to the product grid breakpoints (see GRID_CLASSES in
+ * ProductGrid.tsx):
+ *   320w  — mobile single-column (2-col grid, ~160px per card on 375px screen)
+ *   480w  — 2-col grid on tablet / dense mobile
+ *   640w  — card images on desktop 3-col grid
+ *   960w  — 2× retina of 480w, covers high-DPI tablets
+ *
+ * Returns null for:
+ *   • Non-Supabase URLs (we don't know the transform API supports them)
+ *   • data: URIs (SVG placeholders — already vector, no srcset needed)
+ */
+export function getCatalogProductImageSrcSet(url: string | undefined): string | undefined {
+  if (!url || url.startsWith("data:")) return undefined;
+  try {
+    const u = new URL(url);
+    if (!u.hostname.includes(SUPABASE_STORAGE_ORIGIN)) return undefined;
+  } catch {
+    return undefined;
+  }
+  const widths = [320, 480, 640, 960] as const;
+  return widths.map((w) => `${toSupabaseTransformUrl(url, w)} ${w}w`).join(", ");
+}
+
 export function getCatalogProductImage(product: CatalogProduct) {
   if (product.imageUrl && isValidHttpUrl(product.imageUrl)) {
-    return product.imageUrl;
+    // Serve an appropriately sized image (640px width = 2× retina for typical
+    // product card on a desktop 3-column grid). The srcset in the <img> element
+    // will pick the right size; this is the fallback src for browsers without
+    // srcset support and for the LCP pre-fetch.
+    return toSupabaseTransformUrl(product.imageUrl, 640);
   }
 
   const theme = getCategoryTheme(product.category);

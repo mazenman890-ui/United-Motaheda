@@ -63,7 +63,6 @@ import { getLocalizedCategoryName, getLocalizedProductName } from "../localizati
 import { cn } from "../components/UI";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useCatalogCategorySearch } from "../hooks/useCatalogCategorySearch";
-import { useCatalogProductSearch } from "../hooks/useCatalogProductSearch";
 import { getMaxPriceCeiled } from "../hooks/useCatalogFilters";
 
 const SORT_OPTIONS = [
@@ -327,6 +326,7 @@ export function MobileProductsView() {
     loadNextPage,
     hasNextPage,
     totalProductCount,
+    search,
   } = useCatalog();
   const { lang } = useLanguage();
   const { searchQuery, setSearchQuery } = useSearchInput();
@@ -381,17 +381,11 @@ export function MobileProductsView() {
     ],
     [categories, lang],
   );
-  const { products: sortedProducts, resultCount, isSearching } = useCatalogProductSearch(
+  const { products: sortedProducts, resultCount, isSearching } = {
     products,
-    {
-      category: activeCategory,
-      query: searchQuery,
-      onlyInStock,
-      priceCap: priceRange,
-    },
-    sortBy,
-    lang,
-  );
+    resultCount: totalProductCount,
+    isSearching: isLoading,
+  };
   const hasFilters =
     activeCategory !== "all"
     || onlyInStock
@@ -409,6 +403,25 @@ export function MobileProductsView() {
     });
     setSearchParams(next);
   };
+
+  useEffect(() => {
+    const filters = {
+      categoryId: activeCategory !== "all" ? activeCategory : undefined,
+      inStock: onlyInStock ? true : undefined,
+      maxPrice: priceRange > 0 ? priceRange : undefined,
+      sortBy: sortBy !== "relevant" ? sortBy : undefined,
+    };
+
+    if (
+      debouncedSearch
+      || filters.categoryId
+      || filters.inStock !== undefined
+      || filters.maxPrice !== undefined
+      || filters.sortBy !== undefined
+    ) {
+      void search(debouncedSearch, filters);
+    }
+  }, [activeCategory, debouncedSearch, onlyInStock, priceRange, sortBy, search]);
 
   const clearAll = () => {
     setSortBy("relevant");
@@ -874,9 +887,11 @@ export function MobileCategoryDetailsView() {
     isLoading,
     isLoadingMore,
     isFullCatalogReady,
+    totalProductCount,
     filterByCategory,
     loadNextPage,
     hasNextPage,
+    search,
   } = useCatalog();
   const { searchQuery, setSearchQuery } = useSearchInput();
   const [sortBy, setSortBy] =
@@ -884,6 +899,7 @@ export function MobileCategoryDetailsView() {
   const [sortOpen, setSortOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [onlyInStock, setOnlyInStock] = useState(false);
+  const debouncedSearch = useDebouncedValue(searchQuery, 180);
   const category = id ? categoriesById[id] : undefined;
 
   // Server-side filter only needed before full catalog loads; afterwards the
@@ -891,6 +907,20 @@ export function MobileCategoryDetailsView() {
   useEffect(() => {
     if (id && !isFullCatalogReady) void filterByCategory(id);
   }, [id, isFullCatalogReady, filterByCategory]);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const filters = {
+      categoryId: id,
+      onlyInStock: onlyInStock ? true : undefined,
+      sortBy: sortBy !== "relevant" ? sortBy : undefined,
+    };
+
+    if (debouncedSearch || filters.onlyInStock !== undefined || filters.sortBy !== undefined) {
+      void search(debouncedSearch, filters);
+    }
+  }, [id, debouncedSearch, onlyInStock, sortBy, search]);
 
   if (!category) {
     return (
@@ -918,15 +948,11 @@ export function MobileCategoryDetailsView() {
   }
   const displayName = getLocalizedCategoryName(category, lang);
   // products is already server-filtered to this category by the effect above
-  const { products: sortedProducts, resultCount, isSearching } = useCatalogProductSearch(
+  const { products: sortedProducts, resultCount, isSearching } = {
     products,
-    {
-      query: searchQuery,
-      onlyInStock,
-    },
-    sortBy,
-    lang,
-  );
+    resultCount: totalProductCount,
+    isSearching: isLoading,
+  };
   const relatedCategories = categories.filter((entry) => entry.id !== category.id).slice(0, 5);
   return (
     <ShopperPage className="w-full">

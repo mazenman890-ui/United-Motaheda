@@ -26,7 +26,7 @@ export default function FAQScreen() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const counts = useMemo(() => {
-    const c: Record<FAQCategory | "all", number> = { all: FAQ_DATA.length } as any;
+    const c = { all: FAQ_DATA.length } as Record<FAQCategory | "all", number>;
     FAQ_CATEGORIES.forEach((cat) => {
       c[cat.key] = FAQ_DATA.filter((f) => f.category === cat.key).length;
     });
@@ -64,14 +64,18 @@ export default function FAQScreen() {
     <View style={styles.screen}>
       {/* ── Header ── */}
       <LinearGradient
-        colors={["#011826", "#032B42", "#064D6E"]}
+        colors={theme.gradients.heroPrimary as [string, string, string]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0.7, y: 1 }}
         style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <View style={styles.decoCircle} />
 
         <View style={styles.headerTopRow}>
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
+          <Pressable
+            onPress={() => router.back()}
+            style={styles.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel="رجوع">
             <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.8)" />
           </Pressable>
           <View style={{ flex: 1 }}>
@@ -95,7 +99,7 @@ export default function FAQScreen() {
             textAlign="right"
           />
           {query.length > 0 && (
-            <Pressable onPress={() => setQuery("")} hitSlop={8}>
+            <Pressable onPress={() => setQuery("")} hitSlop={8} accessibilityRole="button" accessibilityLabel="مسح البحث">
               <Ionicons name="close-circle" size={16} color="rgba(255,255,255,0.50)" />
             </Pressable>
           )}

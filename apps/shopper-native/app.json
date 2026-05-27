@@ -1,34 +1,40 @@
 {
   "expo": {
     "name": "صيدليات المتحدة",
-    "slug": "shopper-native",
+    "slug": "united-pharmacy",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/app-icon.png",
     "scheme": "shopper",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/logo.png",
+      "image": "./assets/splash-mark.png",
       "resizeMode": "contain",
-      "backgroundColor": "#021D2E"
+      "backgroundColor": "#ffffff"
     },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.unitedpharmacy.app",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
+        "foregroundImage": "./assets/adaptive-icon-foreground.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.unitedpharmacy.app",
-      "versionCode": 1
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "bundler": "metro",
       "output": "single",
-      "favicon": "./assets/icon.png"
+      "favicon": "./assets/brand-mark.png"
     },
     "plugins": [
       "expo-router",
@@ -36,10 +42,10 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/logo.png",
-          "imageWidth": 280,
+          "image": "./assets/splash-mark.png",
+          "imageWidth": 160,
           "resizeMode": "contain",
-          "backgroundColor": "#021D2E"
+          "backgroundColor": "#ffffff"
         }
       ],
       [
@@ -48,6 +54,19 @@
           "android": {
             "kotlinVersion": "2.0.21"
           }
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "نحتاج إذن الكاميرا لمسح ملصق الوصفة. يتم استخراج النص على جهازك فقط — لا نرفع الصور أو نحفظها.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "نحتاج الوصول إلى الصور لرفع إيصال التحويل عند الدفع بفودافون كاش أو إنستاباي."
         }
       ]
     ],
@@ -59,8 +78,14 @@
         "origin": false
       },
       "eas": {
-        "projectId": "4eeb1af1-7d2b-4893-ac23-11feb4d06fcd"
+        "projectId": "1f6bee7a-6298-40a9-bf47-23e2254814ab"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/1f6bee7a-6298-40a9-bf47-23e2254814ab"
     }
   }
 }

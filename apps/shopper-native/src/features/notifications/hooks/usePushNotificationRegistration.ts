@@ -93,6 +93,7 @@ export function usePushNotificationRegistration({
 
   // Token registration
   useEffect(() => {
+    if (Platform.OS === "web") return; // push registration not supported on web
     if (!enabled || !userId) return;
 
     let cancelled = false;
@@ -123,6 +124,7 @@ export function usePushNotificationRegistration({
 
   // Response listener — fires on notification tap (foreground OR background)
   useEffect(() => {
+    if (Platform.OS === "web") return; // response listeners are not supported on web reliably
     if (!enabled) return;
 
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {

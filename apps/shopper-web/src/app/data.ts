@@ -1,7 +1,7 @@
-import brandLogo from "../assets/united-pharmacy-logo.png";
-import brandMark from "../assets/united-pharmacy-mark.png";
-import heroIcon from "../assets/united-pharmacy-hero-icon.png";
-import heroLogo from "../assets/united-pharmacy-hero-logo.png";
+import brandLogo from "@assets/brand/logo.png";
+import brandMark from "@assets/brand/mark.png";
+import heroIcon from "@assets/brand/hero-icon.png";
+import heroLogo from "@assets/brand/hero-logo.png";
 import pharmacyInterior from "../assets/pharmacy-interior.jpg";
 import pharmacyInteriorBrand from "../assets/pharmacy-interior-brand.jpg";
 import pharmacyInteriorCounter from "../assets/pharmacy-interior-counter.jpg";
@@ -91,12 +91,12 @@ export type SiteLocation = {
 export const locations = [
   {
     id: "gardenia",
-    nameAr: "Cairo",
+    nameAr: "القاهرة",
     nameEn: "Cairo",
-    fullNameAr: "صيدليات المتحدة - Cairo",
+    fullNameAr: "صيدليات المتحدة - القاهرة",
     fullNameEn: "United Pharmacies - Cairo",
-    addressAr: "القاهرة الجديدة، القاهرة، مصر",
-    addressEn: "New Cairo, Cairo, Egypt",
+    addressAr: "القاهرة، مصر",
+    addressEn: "Cairo, Egypt",
     phones: [supportLine, whatsappSupportLine],
     hoursAr: sharedBranchHoursAr,
     hoursEn: sharedBranchHoursEn,
@@ -107,7 +107,7 @@ export const locations = [
     mapZoom: 16,
     isPrimary: true,
     governorate: "Cairo",
-    area: "القاهرة الجديدة",
+    area: "القاهرة",
     deliveryEnabled: true,
     mapEmbedSrc:
       "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3452.31!2d31.3853!3d30.0827!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzDCsDA0JzU3LjciTiAzMcKwMjMnMDcuMSJF!5e0!3m2!1sen!2seg!4v1",

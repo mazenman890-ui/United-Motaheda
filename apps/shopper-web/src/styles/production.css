@@ -27,7 +27,6 @@ body {
     radial-gradient(circle at 85% 15%, rgba(148, 163, 184, 0.08), transparent 22%),
     linear-gradient(180deg, #f9fbfc 0%, #f6f8fb 100%);
   color: var(--text);
-  font-family: "IBM Plex Sans Arabic", "Manrope", sans-serif;
   text-rendering: optimizeLegibility;
 }
 

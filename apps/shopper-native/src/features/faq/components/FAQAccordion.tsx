@@ -1,15 +1,18 @@
-import React, { useCallback, useState } from "react";
-import { LayoutAnimation, Platform, Pressable, StyleSheet, Text, UIManager, View } from "react-native";
+import React, { memo, useCallback } from "react";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
 import { theme } from "@/theme";
-import type { FAQItem, FAQCategoryConfig } from "../data";
+import type { FAQItem } from "../data";
 import { FAQ_CATEGORIES } from "../data";
-
-if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 interface Props {
   item: FAQItem;
@@ -18,38 +21,62 @@ interface Props {
   onToggle: () => void;
 }
 
-export function FAQAccordion({ item, index, expanded, onToggle }: Props) {
+const TIMING = { duration: 220, easing: Easing.out(Easing.cubic) };
+
+export const FAQAccordion = memo(function FAQAccordion({
+  item,
+  index,
+  expanded,
+  onToggle,
+}: Props) {
   const cat = FAQ_CATEGORIES.find((c) => c.key === item.category) ?? FAQ_CATEGORIES[0];
 
-  const handlePress = () => {
+  // Reanimated chevron rotation — consistent with rest of app's motion system
+  const rotation = useSharedValue(expanded ? 1 : 0);
+
+  React.useEffect(() => {
+    rotation.value = withTiming(expanded ? 1 : 0, TIMING);
+  }, [expanded, rotation]);
+
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value * 180}deg` }],
+  }));
+
+  const handlePress = useCallback(() => {
     if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     onToggle();
-  };
+  }, [onToggle]);
 
   return (
     <Animated.View entering={FadeInDown.delay(index * 40).duration(220)}>
       <Pressable
         onPress={handlePress}
+        accessibilityRole="button"
+        accessibilityLabel={item.question}
+        accessibilityState={{ expanded }}
+        accessibilityHint={expanded ? "اضغط لإغلاق الإجابة" : "اضغط لعرض الإجابة"}
         style={[styles.card, expanded && styles.cardExpanded]}>
+
         {/* Question row */}
         <View style={styles.questionRow}>
           <View style={[styles.catDot, { backgroundColor: cat.color }]} />
-          <Text style={[styles.question, expanded && styles.questionExpanded]} numberOfLines={expanded ? undefined : 2}>
+          <Text
+            style={[styles.question, expanded && styles.questionExpanded]}
+            numberOfLines={expanded ? undefined : 2}>
             {item.question}
           </Text>
-          <View style={[styles.chevronWrap, expanded && styles.chevronWrapExpanded]}>
+          <Animated.View style={[styles.chevronWrap, expanded && styles.chevronWrapExpanded, chevronStyle]}>
             <Ionicons
-              name={expanded ? "chevron-up" : "chevron-down"}
+              name="chevron-down"
               size={14}
               color={expanded ? theme.colors.brand[600] : theme.colors.slate[400]}
             />
-          </View>
+          </Animated.View>
         </View>
 
         {/* Answer (progressive disclosure) */}
         {expanded && (
-          <Animated.View entering={FadeIn.duration(200)} style={styles.answerWrap}>
+          <Animated.View entering={FadeIn.duration(180)} style={styles.answerWrap}>
             <View style={styles.answerDivider} />
             <Text style={styles.answer}>{item.answer}</Text>
             <View style={styles.catPill}>
@@ -60,7 +87,7 @@ export function FAQAccordion({ item, index, expanded, onToggle }: Props) {
       </Pressable>
     </Animated.View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

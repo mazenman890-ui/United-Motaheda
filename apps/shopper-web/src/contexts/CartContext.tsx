@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import { emitWorkflowEvent } from "@pharmacy/domain-core";
 import type { CatalogProduct } from "../app/catalog";
 import { createCheckoutPricing } from "../app/checkout/pricing";
-import { useCatalog } from "./CatalogContext";
+import { useCatalogOptional } from "./CatalogContext";
 import { fetchProductsByIds } from "../services/shopperCatalogApi";
 
 export type CartItem = {
@@ -152,7 +152,16 @@ function inflateEntries(entries: StoredCartEntry[], productsById: Record<string,
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const { productsById } = useCatalog();
+  const catalog = useCatalogOptional();
+  const productsById = catalog?.productsById ?? {};
+
+  if (process.env.NODE_ENV !== "production" && !catalog) {
+    console.warn(
+      "[CartContext] CartProvider rendered without a CatalogProvider. " +
+      "Cart hydration will continue once catalog data is available.",
+    );
+  }
+
   const [entries, setEntries] = useState<StoredCartEntry[]>(() => readLocalCart());
 
   // Products fetched from Supabase for cart entries whose IDs are not in the
@@ -181,7 +190,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const cart = useMemo(() => inflateEntries(entries, mergedProductsById), [entries, mergedProductsById]);
 
+  // TRUE once we have loaded at least one product from the catalog or a
+  // direct fetch. Used to gate the entry-sync effect below.
+  const hasProductData = Object.keys(mergedProductsById).length > 0;
+
   useEffect(() => {
+    // ─── Guard: never wipe stored entries before product data has loaded. ───
+    // On a hard reload, `entries` comes from localStorage but `mergedProductsById`
+    // is empty because the catalog hasn't hydrated yet.  Without this guard the
+    // inflated `cart` is [] (no products found), which overwrites localStorage
+    // with an empty array and permanently loses the user's cart.
+    if (!hasProductData) return;
+
     const normalizedCartEntries = cart.map((item) => ({
       product_id: item.product_id,
       quantity: item.quantity,
@@ -192,7 +212,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const nextSerialized = JSON.stringify(normalizedCartEntries);
       return currentSerialized === nextSerialized ? current : normalizedCartEntries;
     });
-  }, [cart]);
+  }, [cart, hasProductData]);
 
   useEffect(() => {
     writeLocalCart(entries);

@@ -8,16 +8,14 @@
  *   - Submit:     createCheckoutOrder (@/features/checkout/api) — real Edge
  *                 Function call; falls back to local orders store on network
  *                 failure so the user always gets a confirmation.
- *   - Delivery:   useDeliveryQuote (@/features/delivery) — Cairo-only v1;
- *                 Phase 4 will swap the hook implementation without touching
- *                 this screen.
+ *   - Delivery:   useDeliveryQuote (@/features/delivery) — Cairo-only v1.
  *
  * Flow:
  *   details → review → success
  *   (with empty-cart guard as a pre-render branch)
  */
 
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -26,8 +24,8 @@ import {
   StyleSheet,
   Text,
   View,
+  type DimensionValue,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -38,7 +36,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { useCartStore, selectItemCount } from "@/stores/cart";
 import { useOrderStore } from "@/stores/orders";
-import { useAuth } from "@/features/auth";
+import { useCheckoutStore } from "@/stores/checkout";
+import {
+  useAuth,
+  sendPhoneOtp,
+  normalizeEgyptianPhone,
+  PhoneVerifyModal,
+  PHONE_VERIFICATION_ENABLED,
+} from "@/features/auth";
+import { supabase } from "@/lib/supabase";
 
 import {
   checkoutFormSchema,
@@ -50,21 +56,35 @@ import {
   createCheckoutOrder,
   CheckoutRequestError,
   formatCheckoutError,
+  isManualWalletPayment,
+  patchOrderManualPayment,
   type CheckoutFormInput,
   type CheckoutPaymentMethod,
   type CheckoutPricing,
 } from "@/features/checkout";
 import {
-  useDeliveryQuote,
+  ManualPaymentPanel,
+  pickPaymentReceiptImage,
+  uploadPaymentReceipt,
+} from "@/features/payment";
+import {
+  useDeliveryContext,
+  useLocationStore,
   SUPPORTED_GOVERNORATE,
   FREE_DELIVERY_THRESHOLD,
   BranchSelector,
   BranchCard,
   type Branch,
 } from "@/features/delivery";
+import {
+  useAddressStore,
+  selectDefaultAddress,
+  type Address,
+} from "@/features/addresses";
 
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/theme";
 import { formatPrice } from "@/utils/format";
 
@@ -92,7 +112,7 @@ const PAYMENT_METHODS: ReadonlyArray<{
   {
     id: "instapay",
     title: "إنستاباي",
-    description: "تحويل فوري من حسابك البنكي",
+    description: "تحويل عبر إنستاباي",
     icon: "flash-outline",
     color: theme.colors.purple[600],
     bg: theme.colors.purple[50],
@@ -100,7 +120,7 @@ const PAYMENT_METHODS: ReadonlyArray<{
   {
     id: "vodafone",
     title: "فودافون كاش",
-    description: "ادفع من محفظتك الإلكترونية",
+    description: "تحويل عبر فودافون كاش",
     icon: "wallet-outline",
     color: theme.colors.red[500],
     bg: theme.colors.red[50],
@@ -137,8 +157,12 @@ export default function CheckoutScreen() {
   const itemCount = useCartStore(selectItemCount);
   const promoCodeFromStore = useCartStore((s) => s.promoCode);
   const setPromoCodeStore = useCartStore((s) => s.setPromoCode);
-  const clearCart = useCartStore((s) => s.clearCart);
-  const addOrder = useOrderStore((s) => s.addOrder);
+  const clearCart       = useCartStore((s) => s.clearCart);
+  const ensureReservations  = useCartStore((s) => s.ensureReservations);
+  const commitReservations  = useCartStore((s) => s.commitReservations);
+  // After the Edge Function creates the order, we re-fetch the user's
+  // orders so the new row shows up in the local cache + Orders tab.
+  const refreshOrders   = useOrderStore((s) => s.hydrate);
 
   const cartLines = useMemo(
     () =>
@@ -154,20 +178,47 @@ export default function CheckoutScreen() {
     [items],
   );
 
-  const cartSubtotal = useMemo(
-    () => cartLines.reduce((acc, l) => acc + l.unitPrice * l.quantity, 0),
-    [cartLines],
-  );
+  // Payment state lives in the store so it survives accidental back-navigation.
+  const paymentMethod     = useCheckoutStore((s) => s.paymentMethod);
+  const transferNumber    = useCheckoutStore((s) => s.transferNumber);
+  const receiptUri        = useCheckoutStore((s) => s.receiptUri);
+  const setPaymentMethod  = useCheckoutStore((s) => s.setPaymentMethod);
+  const setTransferNumber = useCheckoutStore((s) => s.setTransferNumber);
+  const setReceiptUri     = useCheckoutStore((s) => s.setReceiptUri);
+  const resetCheckout     = useCheckoutStore((s) => s.reset);
 
   const [step, setStep] = useState<Step>("details");
-  const [paymentMethod, setPaymentMethod] = useState<CheckoutPaymentMethod>("cod");
   const [requestPos, setRequestPos] = useState(false);
   const [promoError, setPromoError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [placedOrderId, setPlacedOrderId] = useState<string | null>(null);
-  const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
+  const [manualPaymentError, setManualPaymentError] = useState<string | null>(null);
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+
+  const [savedProfilePhone, setSavedProfilePhone] = useState<string | null>(null);
+  const [useAccountProfile, setUseAccountProfile] = useState(false);
+  const [useSavedAddress, setUseSavedAddress] = useState(false);
+
+  const defaultAddress = useAddressStore(selectDefaultAddress);
+  const fetchAddresses = useAddressStore((s) => s.fetch);
+
+  // ── Selected branch — sourced from the global location store so the
+  //    Cart screen and CartDrawer reflect the same branch the user picks
+  //    here. Writes propagate through useDeliveryContext to every screen. ──
+  const selectedBranchId    = useLocationStore((s) => s.selectedBranchId);
+  const setSelectedBranchId = useLocationStore((s) => s.setSelectedBranchId);
+
   const idempotencyKeyRef = useRef(createIdempotencyKey());
+
+  // Phone verification gate. When the user hits "Place order" with an
+  // unverified phone, we stash the form, send an OTP to the form's phone,
+  // and open the modal. On verify success → resume placement with the
+  // stashed form. On cancel → block the order.
+  const [otpPending, setOtpPending] = useState<{
+    phone: string;
+    form:  CheckoutFormSchema;
+  } | null>(null);
 
   const {
     control,
@@ -182,10 +233,58 @@ export default function CheckoutScreen() {
     mode: "onChange",
   });
 
-  const deliveryQuote = useDeliveryQuote({
-    subtotal: cartSubtotal,
-    branchId: selectedBranchId,
-  });
+  useEffect(() => {
+    if (!user?.id) return;
+    let isMounted = true;
+
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("phone")
+          .eq("id", user.id)
+          .single();
+
+        if (!isMounted) return;
+        if (!error && data?.phone) {
+          setSavedProfilePhone(data.phone as string);
+        }
+      } catch {
+        // ignore; fallback is manual input
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    fetchAddresses(user.id);
+  }, [user?.id, fetchAddresses]);
+
+  useEffect(() => {
+    if (!useAccountProfile) return;
+    if (user?.name) {
+      setValue("fullName", user.name, { shouldValidate: true, shouldDirty: true });
+    }
+    if (savedProfilePhone) {
+      setValue("phone", savedProfilePhone, { shouldValidate: true, shouldDirty: true });
+    }
+  }, [useAccountProfile, user?.name, savedProfilePhone, setValue]);
+
+  useEffect(() => {
+    if (!useSavedAddress || !defaultAddress) return;
+    setValue("streetName", defaultAddress.street, { shouldValidate: true, shouldDirty: true });
+    setValue("buildingNumber", defaultAddress.building, { shouldValidate: true, shouldDirty: true });
+    setValue("floor", defaultAddress.floor ?? "", { shouldValidate: true, shouldDirty: true });
+    setValue("apartmentNumber", defaultAddress.apartment ?? "", { shouldValidate: true, shouldDirty: true });
+  }, [useSavedAddress, defaultAddress, setValue]);
+
+  // Canonical delivery quote — branch-aware, address-aware, GPS-aware.
+  // Identical source as Cart tab + CartDrawer so all three screens agree.
+  const deliveryQuote = useDeliveryContext();
 
   const pricing: CheckoutPricing = useMemo(
     () =>
@@ -237,11 +336,31 @@ export default function CheckoutScreen() {
     }
   }, [cartLines, getValues, setPromoCodeStore, setValue]);
 
-  const onSubmit = useCallback(
-    async (form: CheckoutFormSchema) => {
-      if (cartLines.length === 0) return;
-      setSubmitting(true);
-      setSubmitError(null);
+  /**
+   * Actual order placement — builds the command and calls the Edge Function.
+   * Called either directly from onSubmit (when phone is already verified)
+   * or from the OTP-verified callback (after the user passes the phone
+   * verification gate).
+   */
+  const placeOrderForForm = useCallback(
+    async (form: CheckoutFormSchema): Promise<void> => {
+      if (!user?.id) return; // onSubmit already guarded; defensive
+
+      // ── Inventory pre-flight ────────────────────────────────────────────
+      // Every cart line must have an active reservation BEFORE the order
+      // hits the DB. If any item can't be reserved (out of stock since the
+      // user added it), abort with a clear error — we won't place an order
+      // that we can't deliver. Items already reserved during browsing keep
+      // their existing reservations; only missing ones are reserved now.
+      const reservationFailures = await ensureReservations();
+      if (reservationFailures.length > 0) {
+        const first = reservationFailures[0];
+        setSubmitError(`${first.message} — يرجى تعديل سلتك`);
+        if (Platform.OS !== "web")
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+        setSubmitting(false);
+        return;
+      }
 
       const checkoutNote = buildCheckoutNote({
         note: form.note ?? "",
@@ -250,6 +369,35 @@ export default function CheckoutScreen() {
         requestPosMachine: requestPos,
         lang: "ar",
       });
+
+      const manual = isManualWalletPayment(paymentMethod);
+      let paymentProofUrl: string | undefined;
+
+      if (manual) {
+        if (!transferNumber.trim()) {
+          setManualPaymentError("يرجى إدخال رقم هاتف المرسل أو معرف إنستاباي.");
+          setSubmitting(false);
+          return;
+        }
+        if (!receiptUri) {
+          setManualPaymentError("يرجى رفع لقطة شاشة التحويل.");
+          setSubmitting(false);
+          return;
+        }
+        setUploadingReceipt(true);
+        try {
+          paymentProofUrl = await uploadPaymentReceipt(user.id, receiptUri);
+        } catch (uploadErr) {
+          setManualPaymentError(
+            uploadErr instanceof Error ? uploadErr.message : "تعذّر رفع إيصال التحويل.",
+          );
+          setSubmitting(false);
+          setUploadingReceipt(false);
+          return;
+        }
+        setUploadingReceipt(false);
+        setManualPaymentError(null);
+      }
 
       const command = buildCheckoutSubmitCommand({
         idempotencyKey: idempotencyKeyRef.current,
@@ -260,51 +408,56 @@ export default function CheckoutScreen() {
         paymentLabel: paymentLabel(paymentMethod),
         requestPosMachine: requestPos,
         note: checkoutNote,
+        transferNumber: manual ? transferNumber : undefined,
+        paymentProofUrl: manual ? paymentProofUrl : undefined,
       });
 
-      let orderId: string | null = null;
-
+      let orderId: string;
       try {
         const result = await createCheckoutOrder(command);
         orderId = result.orderId;
-      } catch (err) {
-        if (err instanceof CheckoutRequestError && err.code === "AUTH") {
-          setSubmitError(formatCheckoutError(err, "ar"));
-          if (Platform.OS !== "web")
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
-          setSubmitting(false);
-          return;
+
+        // Ensure proof fields + pending_payment are persisted (Edge Function or RLS patch).
+        if (isManualWalletPayment(paymentMethod) && paymentProofUrl) {
+          const needsPatch =
+            result.status !== "pending_payment"
+            || result.paymentStatus !== "pending_verification";
+          if (needsPatch) {
+            await patchOrderManualPayment(
+              orderId,
+              {
+                transferNumber: transferNumber.trim(),
+                paymentProofUrl,
+              },
+              paymentMethod,
+            );
+          }
         }
-        if (__DEV__) console.warn("[checkout] Edge Function failed, falling back to local:", err);
+      } catch (err) {
+        if (__DEV__) console.warn("[checkout] createCheckoutOrder failed:", err);
+        if (err instanceof CheckoutRequestError) {
+          setSubmitError(formatCheckoutError(err, "ar"));
+        } else {
+          setSubmitError("تعذّر حفظ الطلب. حاول مجدداً.");
+        }
+        if (Platform.OS !== "web")
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+        setSubmitting(false);
+        return;
       }
 
-      const localOrder = addOrder({
-        items: pricing.lines.map((l) => ({
-          productId: l.productId,
-          name: l.name,
-          price: l.unitPrice,
-          quantity: l.quantity,
-          imageUrl: items.find((i) => i.productId === l.productId)?.product.imageUrl,
-        })),
-        subtotal: pricing.subtotal,
-        delivery: pricing.shipping,
-        total: pricing.total,
-        address: {
-          name: form.fullName,
-          phone: form.phone,
-          city: form.city,
-          street: form.streetName,
-          building: form.buildingNumber || undefined,
-          floor: form.floor || undefined,
-          notes:
-            [form.apartmentNumber ? `شقة ${form.apartmentNumber}` : "", form.note]
-              .filter(Boolean)
-              .join("\n") || undefined,
-        },
-      });
+      // ── Inventory commit ────────────────────────────────────────────────
+      // Order is now in the DB. Convert every cart line's reservation from
+      // 'reserved' to 'committed' atomically. Failures here are logged but
+      // do not block the success path — the order is already placed; the
+      // operations team will reconcile via the audit log.
+      void commitReservations(orderId);
 
-      setPlacedOrderId(orderId ?? localOrder.id);
+      void refreshOrders(user.id);
+
+      setPlacedOrderId(orderId);
       clearCart();
+      resetCheckout();
       idempotencyKeyRef.current = createIdempotencyKey();
 
       if (Platform.OS !== "web")
@@ -313,8 +466,147 @@ export default function CheckoutScreen() {
       scrollToTop();
       setSubmitting(false);
     },
-    [cartLines, paymentMethod, requestPos, pricing, user, addOrder, items, clearCart, scrollToTop],
+    [user, paymentMethod, requestPos, pricing, refreshOrders, clearCart, scrollToTop, ensureReservations, commitReservations, transferNumber, receiptUri, resetCheckout],
   );
+
+  const handlePickReceipt = useCallback(async () => {
+    setManualPaymentError(null);
+    const picked = await pickPaymentReceiptImage();
+    if (picked.ok) {
+      setReceiptUri(picked.localUri);
+      return;
+    }
+    if (!picked.cancelled) {
+      setManualPaymentError(picked.message);
+    }
+  }, []);
+
+  const onSubmit = useCallback(
+    async (form: CheckoutFormSchema) => {
+      if (cartLines.length === 0) return;
+      setSubmitting(true);
+      setSubmitError(null);
+
+      // Auth guard.
+      if (!user?.id) {
+        setSubmitError("يرجى تسجيل الدخول لإتمام الطلب");
+        if (Platform.OS !== "web")
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+        setSubmitting(false);
+        return;
+      }
+
+      // Phone-verification gate. Order placement is blocked until the user
+      // has a verified phone number — the delivery driver needs to be able
+      // to reach a number we KNOW the customer owns, not a typed-in string
+      // that could be wrong / a typo / someone else's.
+      //
+      // Strict-match rule: even when profile.phone_verified is true, if the
+      // user typed a *different* phone into the checkout form for THIS order,
+      // we re-verify that new number. Otherwise the delivery driver gets a
+      // contact number we never confirmed the customer actually owns.
+      //
+      // While PHONE_VERIFICATION_ENABLED is OFF (Twilio not yet provisioned
+      // for prod), the whole gate is bypassed and we place the order using
+      // whatever phone the user typed in the form — no SMS round-trip.
+      if (!PHONE_VERIFICATION_ENABLED) {
+        await placeOrderForForm(form);
+        return;
+      }
+
+      let phoneVerified = false;
+      let profilePhone: string | null = null;
+      try {
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("phone, phone_verified")
+          .eq("id", user.id)
+          .single();
+        if (error) {
+          if (__DEV__) console.warn("[checkout] profile lookup failed:", error.message);
+        } else {
+          phoneVerified = profile?.phone_verified === true;
+          profilePhone  = (profile?.phone ?? null) as string | null;
+        }
+      } catch (e) {
+        if (__DEV__) console.warn("[checkout] profile lookup threw:", e);
+      }
+
+      // If the form's phone doesn't match the profile's verified phone,
+      // treat as unverified so we force re-verification of the new number.
+      const formPhoneE164 = normalizeEgyptianPhone((form.phone ?? "").trim());
+      const profilePhoneE164 = profilePhone ? normalizeEgyptianPhone(profilePhone) : null;
+      if (phoneVerified && formPhoneE164 && formPhoneE164 !== profilePhoneE164) {
+        phoneVerified = false;
+      }
+
+      if (!phoneVerified) {
+        // Pick which phone to verify: prefer the one the user typed in the
+        // form for THIS order (so the verified number matches the delivery
+        // contact). Fall back to whatever's on the profile if the form is
+        // somehow empty.
+        const candidate = (form.phone ?? "").trim() || profilePhone || "";
+        const e164 = normalizeEgyptianPhone(candidate);
+        if (!e164) {
+          setSubmitError("يرجى إدخال رقم هاتف مصري صحيح للتحقق منه");
+          if (Platform.OS !== "web")
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+          setSubmitting(false);
+          return;
+        }
+
+        try {
+          await sendPhoneOtp(candidate);
+          // Stash the form so we can resume placement after OTP success.
+          setOtpPending({ phone: e164, form });
+          // submitting stays true while the modal is open — the user sees
+          // the place-order button disabled until verification completes
+          // or they cancel.
+        } catch (err) {
+          if (__DEV__) console.warn("[checkout] sendPhoneOtp failed:", err);
+          setSubmitError(
+            "تعذّر إرسال رمز التحقق إلى هاتفك. تحقق من الرقم وحاول مجدداً.",
+          );
+          if (Platform.OS !== "web")
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+          setSubmitting(false);
+        }
+        return;
+      }
+
+      // Phone already verified → straight to order placement.
+      await placeOrderForForm(form);
+    },
+    [cartLines, user, placeOrderForForm],
+  );
+
+  const handleOtpVerified = useCallback((verifiedPhone: string): void => {
+    if (!otpPending) return;
+    const stashedForm = otpPending.form;
+    setOtpPending(null);
+    // If the user changed the number inside the modal, the verified phone
+    // differs from the one originally on the form. Sync the form field so
+    // the order we're about to place uses the contact number we actually
+    // verified — not the stale typed-in one.
+    const stashedE164 = normalizeEgyptianPhone(stashedForm.phone ?? "");
+    if (verifiedPhone && verifiedPhone !== stashedE164) {
+      const local = verifiedPhone.replace(/^\+20/, "0");
+      setValue("phone", local, { shouldValidate: true, shouldDirty: true });
+      stashedForm.phone = local;
+    }
+    // The sync_profile_phone_from_auth trigger fires inside the auth.users
+    // UPDATE that verifyOtp performs server-side, so by the time we get
+    // here profiles.phone_verified is already true. Resume placement.
+    void placeOrderForForm(stashedForm);
+  }, [otpPending, placeOrderForForm, setValue]);
+
+  const handleOtpCancel = useCallback((): void => {
+    setOtpPending(null);
+    setSubmitting(false);
+    setSubmitError(
+      "لا يمكن إتمام الطلب بدون التحقق من رقم الهاتف. حاول مجدداً.",
+    );
+  }, []);
 
   // ──── Empty cart guard ─────────────────────────────────────────────────────
 
@@ -343,18 +635,20 @@ export default function CheckoutScreen() {
       style={{ flex: 1, backgroundColor: theme.colors.bg }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <Pressable onPress={() => router.back()} style={styles.headerBtn}>
+        <Pressable onPress={() => router.back()} style={styles.headerBtn} hitSlop={8}>
           <Ionicons name="chevron-forward" size={18} color={theme.colors.slate[700]} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>إتمام الطلب</Text>
-          <Text style={styles.headerSub}>
-            {step === "details" ? "خطوة 1 من 2 • تفاصيل التوصيل" : "خطوة 2 من 2 • مراجعة الطلب"}
-          </Text>
+          <UIText variant="card-title" align="right" style={styles.headerTitleNew}>
+            إتمام الطلب
+          </UIText>
+          <UIText variant="eyebrow" color="tertiary" align="right">
+            {step === "details" ? "خطوة 1 من 2  •  تفاصيل التوصيل" : "خطوة 2 من 2  •  مراجعة الطلب"}
+          </UIText>
         </View>
         <View style={styles.headerBadge}>
-          <Ionicons name="shield-checkmark" size={12} color={theme.colors.green[600]} />
-          <Text style={styles.headerBadgeText}>آمن</Text>
+          <Ionicons name="shield-checkmark" size={12} color={theme.colors.green[700]} />
+          <UIText variant="eyebrow" style={{ color: theme.colors.green[700] }}>آمن</UIText>
         </View>
       </View>
 
@@ -371,29 +665,30 @@ export default function CheckoutScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
         {!deliveryQuote.isFree && pricing.subtotal > 0 && (
-          <Animated.View entering={FadeInDown.duration(280)}>
-            <LinearGradient
-              colors={["#FEF3C7", "#FDE68A"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.freeBanner}>
-              <View style={styles.freeBannerHead}>
-                <Ionicons name="gift-outline" size={16} color={theme.colors.amber[700]} />
-                <Text style={styles.freeBannerTitle}>
+          <Animated.View entering={FadeInDown.duration(320)} style={styles.freeBanner}>
+            <View style={styles.freeBannerHead}>
+              <View style={styles.freeBannerIcon}>
+                <Ionicons name="gift-outline" size={14} color={theme.colors.amber[700]} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <UIText variant="eyebrow" style={{ color: theme.colors.amber[800] }}>
+                  توصيل مجاني
+                </UIText>
+                <UIText variant="body-sm" align="right" style={styles.freeBannerTitleNew}>
                   أضف منتجات بقيمة {formatPrice(deliveryQuote.amountToFreeDelivery)} لتوصيل مجاني
-                </Text>
+                </UIText>
               </View>
-              <View style={styles.freeBarTrack}>
-                <View
-                  style={[
-                    styles.freeBarFill,
-                    {
-                      width: `${Math.min(100, (pricing.subtotal / FREE_DELIVERY_THRESHOLD) * 100)}%` as any,
-                    },
-                  ]}
-                />
-              </View>
-            </LinearGradient>
+            </View>
+            <View style={styles.freeBarTrack}>
+              <View
+                style={[
+                  styles.freeBarFill,
+                  {
+                    width: `${Math.min(100, (pricing.subtotal / FREE_DELIVERY_THRESHOLD) * 100)}%` as DimensionValue,
+                  },
+                ]}
+              />
+            </View>
           </Animated.View>
         )}
 
@@ -405,6 +700,19 @@ export default function CheckoutScreen() {
             onSelectBranch={(b: Branch) => setSelectedBranchId(b.id)}
             deliveryBranch={deliveryQuote.branch}
             outOfServiceMessage={deliveryQuote.outOfServiceMessage}
+            user={user}
+            savedProfilePhone={savedProfilePhone}
+            useAccountProfile={useAccountProfile}
+            onToggleAccountProfile={setUseAccountProfile}
+            defaultAddress={defaultAddress}
+            useSavedAddress={useSavedAddress}
+            onToggleSavedAddress={setUseSavedAddress}
+            paymentMethod={paymentMethod}
+            onPaymentChange={(m) => {
+              if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
+              setPaymentMethod(m);
+            }}
+            subtotal={pricing.subtotal}
           />
         ) : (
           <ReviewStep
@@ -416,11 +724,20 @@ export default function CheckoutScreen() {
             pricing={pricing}
             deliveryQuote={deliveryQuote}
             submitError={submitError}
+            transferNumber={transferNumber}
+            onTransferNumberChange={setTransferNumber}
+            receiptUri={receiptUri}
+            onPickReceipt={handlePickReceipt}
+            manualPaymentError={manualPaymentError}
+            uploadingReceipt={uploadingReceipt}
             onEditAddress={backToDetails}
             onEditPayment={backToDetails}
             onPaymentChange={(m) => {
               if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
               setPaymentMethod(m);
+              if (!isManualWalletPayment(m)) {
+                setManualPaymentError(null);
+              }
             }}
             onTogglePos={() => {
               if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
@@ -435,30 +752,50 @@ export default function CheckoutScreen() {
       <View style={[styles.cta, { paddingBottom: insets.bottom + 12 }]}>
         <View style={styles.ctaTotals}>
           <View>
-            <Text style={styles.ctaTotalLabel}>الإجمالي</Text>
-            <Text style={styles.ctaTotalValue}>{formatPrice(pricing.total)}</Text>
+            <UIText variant="eyebrow" color="tertiary" align="right">الإجمالي المستحق</UIText>
+            <UIText variant="sheet-title" align="right" style={styles.ctaTotalValueNew}>
+              {formatPrice(pricing.total)}
+            </UIText>
           </View>
           <View style={styles.ctaCount}>
-            <Ionicons name="bag-handle" size={11} color={theme.colors.brand[600]} />
-            <Text style={styles.ctaCountText}>{itemCount} منتج</Text>
+            <Ionicons name="bag-handle" size={12} color={theme.colors.brand[700]} />
+            <UIText variant="eyebrow" style={{ color: theme.colors.brand[700] }}>
+              {itemCount} منتج
+            </UIText>
           </View>
         </View>
         <Button
           variant="primary"
-          size="md"
+          size="lg"
           fullWidth
           gradient
-          loading={submitting}
-          disabled={pricing.subtotal === 0 || !deliveryQuote.isDeliverable}
+          loading={submitting || uploadingReceipt}
+          disabled={
+            pricing.subtotal === 0
+            || !deliveryQuote.isDeliverable
+            || (step === "review"
+              && isManualWalletPayment(paymentMethod)
+              && (!transferNumber.trim() || !receiptUri))
+          }
           onPress={step === "details" ? goToReview : handleSubmit(onSubmit)}>
           <View style={styles.ctaBtnInner}>
             <Text style={styles.ctaBtnText}>
               {step === "details" ? "متابعة للمراجعة" : "تأكيد الطلب"}
             </Text>
-            <Ionicons name={step === "details" ? "arrow-back" : "checkmark"} size={15} color="#fff" />
+            <Ionicons name={step === "details" ? "arrow-back" : "checkmark"} size={16} color="#fff" />
           </View>
         </Button>
       </View>
+
+      {/* Phone verification gate — opens when the user submits with an
+          unverified phone. Modal handles SMS resend + 6-digit verify; on
+          success we resume order placement with the stashed form. */}
+      <PhoneVerifyModal
+        visible={otpPending !== null}
+        initialPhone={otpPending?.phone ?? ""}
+        onVerified={handleOtpVerified}
+        onCancel={handleOtpCancel}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -472,6 +809,16 @@ function DetailsStep({
   onSelectBranch,
   deliveryBranch,
   outOfServiceMessage,
+  user,
+  savedProfilePhone,
+  useAccountProfile,
+  onToggleAccountProfile,
+  defaultAddress,
+  useSavedAddress,
+  onToggleSavedAddress,
+  paymentMethod,
+  onPaymentChange,
+  subtotal,
 }: {
   control: any;
   errors: any;
@@ -479,7 +826,29 @@ function DetailsStep({
   onSelectBranch: (b: Branch) => void;
   deliveryBranch: Branch | null;
   outOfServiceMessage: string | null;
+  user: { name?: string | null } | null;
+  savedProfilePhone: string | null;
+  useAccountProfile: boolean;
+  onToggleAccountProfile: (value: boolean) => void;
+  defaultAddress: Address | null;
+  useSavedAddress: boolean;
+  onToggleSavedAddress: (value: boolean) => void;
+  paymentMethod: CheckoutPaymentMethod;
+  onPaymentChange: (m: CheckoutPaymentMethod) => void;
+  subtotal: number;
 }) {
+  const hasSavedAccount = Boolean(user?.name || savedProfilePhone);
+  const addressSummary = defaultAddress
+    ? [
+        defaultAddress.street,
+        defaultAddress.building ? `عمارة ${defaultAddress.building}` : null,
+        defaultAddress.floor ? `طابق ${defaultAddress.floor}` : null,
+        defaultAddress.apartment ? `شقة ${defaultAddress.apartment}` : null,
+      ]
+        .filter(Boolean)
+        .join("، ")
+    : null;
+
   return (
     <Animated.View entering={FadeIn.duration(220)}>
       <SectionCard title="فرع التوصيل" icon="storefront-outline" delay={20}>
@@ -499,7 +868,44 @@ function DetailsStep({
         )}
       </SectionCard>
 
-      <SectionCard title="المعلومات الشخصية" icon="person-outline" delay={50}>
+      {hasSavedAccount && (
+        <SectionCard title="بيانات الحساب المحفوظة" icon="person-circle-outline" delay={50}>
+          <Text style={styles.savedHint}>
+            يمكنك استخدام بيانات الحساب الحالية لهذا الطلب أو تعديلها يدوياً دون فقدانها.
+          </Text>
+          <View style={styles.toggleRow}>
+            <Button
+              variant={useAccountProfile ? "success" : "outline"}
+              size="sm"
+              onPress={() => onToggleAccountProfile(true)}
+              style={{ flex: 1 }}>
+              استخدم بيانات الحساب
+            </Button>
+            <Button
+              variant={!useAccountProfile ? "secondary" : "ghost"}
+              size="sm"
+              onPress={() => onToggleAccountProfile(false)}
+              style={{ flex: 1 }}>
+              أدخل بيانات جديدة
+            </Button>
+          </View>
+          <View style={styles.savedMetaRow}>
+            <Text style={styles.savedMetaLabel}>الاسم</Text>
+            <Text style={styles.savedMetaValue}>{user?.name ?? "غير محدد"}</Text>
+          </View>
+          <View style={styles.savedMetaRow}>
+            <Text style={styles.savedMetaLabel}>رقم الهاتف</Text>
+            <Text style={styles.savedMetaValue}>{savedProfilePhone ?? "غير محفوظ بعد"}</Text>
+          </View>
+          <Text style={styles.savedHelp}>
+            {useAccountProfile
+              ? "سيتم استخدام بيانات الحساب الحالية في حقول الاسم والهاتف. يمكنك تعديلها قبل إتمام الطلب."
+              : "اكتب بيانات مختلفة لهذا الطلب. سيبقى حسابك دون تغيير."}
+          </Text>
+        </SectionCard>
+      )}
+
+      <SectionCard title="المعلومات الشخصية" icon="person-outline" delay={hasSavedAccount ? 90 : 50}>
         <Controller
           control={control}
           name="fullName"
@@ -532,6 +938,36 @@ function DetailsStep({
       </SectionCard>
 
       <SectionCard title="عنوان التوصيل" icon="location-outline" delay={120}>
+        {defaultAddress ? (
+          <View style={styles.savedAddressBanner}>
+            <Text style={styles.savedAddressTitle}>العنوان الافتراضي الخاص بك</Text>
+            <Text style={styles.savedAddressText}>
+              هذا العنوان محفوظ في حسابك ويمكن استخدامه مباشرة أو تغييره لطلب جديد.
+            </Text>
+            <Text style={styles.savedAddressSummary}>{addressSummary}</Text>
+            <View style={styles.toggleRow}>
+              <Button
+                variant={useSavedAddress ? "success" : "outline"}
+                size="sm"
+                onPress={() => onToggleSavedAddress(true)}
+                style={{ flex: 1 }}>
+                استخدم العنوان الافتراضي
+              </Button>
+              <Button
+                variant={!useSavedAddress ? "secondary" : "ghost"}
+                size="sm"
+                onPress={() => onToggleSavedAddress(false)}
+                style={{ flex: 1 }}>
+                أدخل عنواناً جديداً
+              </Button>
+            </View>
+          </View>
+        ) : (
+          <Text style={styles.savedAddressText}>
+            لا يوجد عنوان افتراضي محفوظ. اختر عنواناً جديداً أو قم بحفظ عنوانك في صفحة العناوين.
+          </Text>
+        )}
+
         <View style={styles.cityCard}>
           <View style={styles.cityHead}>
             <View style={styles.cityIcon}>
@@ -629,7 +1065,87 @@ function DetailsStep({
           )}
         />
       </SectionCard>
+
+      <SectionCard title="طريقة الدفع" icon="card-outline" delay={160}>
+        <PaymentMethodCards
+          selected={paymentMethod}
+          subtotal={subtotal}
+          onChange={onPaymentChange}
+        />
+      </SectionCard>
     </Animated.View>
+  );
+}
+
+// ─── Payment method cards ─────────────────────────────────────────────────────
+
+function PaymentMethodCards({
+  selected,
+  subtotal,
+  onChange,
+}: {
+  selected:  CheckoutPaymentMethod;
+  subtotal:  number;
+  onChange:  (m: CheckoutPaymentMethod) => void;
+}) {
+  // Recommend InstaPay for larger orders (smoother for driver handoff);
+  // otherwise COD is the simplest path.
+  const recommended: CheckoutPaymentMethod = subtotal >= 500 ? "instapay" : "cod";
+
+  return (
+    <View style={styles.payCardsWrapper}>
+      {PAYMENT_METHODS.map((m, idx) => {
+        const active = selected === m.id;
+        const isRec  = m.id === recommended && !active;
+
+        return (
+          <Animated.View
+            key={m.id}
+            entering={FadeInDown.delay(idx * 70).duration(320).springify().damping(22)}>
+            <Pressable
+              onPress={() => onChange(m.id)}
+              style={[
+                styles.payCard,
+                active && {
+                  borderColor: m.color,
+                  borderWidth: 2,
+                  backgroundColor: m.bg + "28",
+                },
+              ]}>
+              {isRec && (
+                <View style={[styles.payCardBadge, { backgroundColor: m.color + "18", borderColor: m.color + "40" }]}>
+                  <Ionicons name="star" size={8} color={m.color} />
+                  <Text style={[styles.payCardBadgeText, { color: m.color }]}>موصى به</Text>
+                </View>
+              )}
+
+              <View style={styles.payCardRow}>
+                {/* Check indicator on the right (RTL layout) */}
+                <View style={[
+                  styles.payCardCheck,
+                  active && { backgroundColor: m.color, borderColor: m.color },
+                ]}>
+                  {active && <Ionicons name="checkmark" size={12} color="#fff" />}
+                </View>
+
+                {/* Icon + text */}
+                <View style={styles.payCardMeta}>
+                  <View style={styles.payCardTextBlock}>
+                    <Text style={[styles.payCardTitle, active && { color: m.color }]}>
+                      {m.title}
+                    </Text>
+                    <Text style={styles.payCardSub}>{m.description}</Text>
+                  </View>
+                  <View style={[styles.payCardIcon, { backgroundColor: m.bg }]}>
+                    <Ionicons name={m.icon} size={22} color={m.color} />
+                  </View>
+                </View>
+              </View>
+            </Pressable>
+          </Animated.View>
+        );
+      })}
+    </View>
   );
 }
 
@@ -644,6 +1160,12 @@ function ReviewStep({
   pricing,
   deliveryQuote,
   submitError,
+  transferNumber,
+  onTransferNumberChange,
+  receiptUri,
+  onPickReceipt,
+  manualPaymentError,
+  uploadingReceipt,
   onEditAddress,
   onEditPayment,
   onPaymentChange,
@@ -657,8 +1179,14 @@ function ReviewStep({
   promoApplied: boolean;
   promoError: string | null;
   pricing: CheckoutPricing;
-  deliveryQuote: ReturnType<typeof useDeliveryQuote>;
+  deliveryQuote: ReturnType<typeof useDeliveryContext>;
   submitError: string | null;
+  transferNumber: string;
+  onTransferNumberChange: (v: string) => void;
+  receiptUri: string | null;
+  onPickReceipt: () => void;
+  manualPaymentError: string | null;
+  uploadingReceipt: boolean;
   onEditAddress: () => void;
   onEditPayment: () => void;
   onPaymentChange: (m: CheckoutPaymentMethod) => void;
@@ -751,6 +1279,19 @@ function ReviewStep({
             </View>
             <Text style={styles.posLabel}>أطلب ماكينة دفع (POS) مع المندوب</Text>
           </Pressable>
+        )}
+
+        {isManualWalletPayment(paymentMethod) && (
+          <View style={{ marginTop: 12 }}>
+            <ManualPaymentPanel
+              transferNumber={transferNumber}
+              onTransferNumberChange={onTransferNumberChange}
+              receiptUri={receiptUri}
+              onPickReceipt={onPickReceipt}
+              uploading={uploadingReceipt}
+              error={manualPaymentError}
+            />
+          </View>
         )}
 
         <View style={styles.comingSoon}>
@@ -853,19 +1394,27 @@ function StepPill({
   active: boolean;
   done: boolean;
 }) {
+  // Color routing:
+  //   done   → success-tinted (locked-in stage)
+  //   active → brand-tinted + subtle brand glow (current focus)
+  //   idle   → quiet slate (waiting in line)
   const bg = done
-    ? theme.colors.green[100]
+    ? theme.colors.success.bg
     : active
-    ? theme.colors.brand[100]
-    : theme.colors.slate[100];
+    ? theme.colors.brand.lighter
+    : theme.colors.slate[50];
   const fg = done
-    ? theme.colors.green[700]
+    ? theme.colors.success.strong
     : active
     ? theme.colors.brand[700]
     : theme.colors.slate[500];
 
   return (
-    <View style={[styles.stepPill, { backgroundColor: bg }]}>
+    <View style={[
+      styles.stepPill,
+      { backgroundColor: bg },
+      active && styles.stepPillActive,
+    ]}>
       <View style={[styles.stepNum, { backgroundColor: fg }]}>
         {done ? (
           <Ionicons name="checkmark" size={11} color="#fff" />
@@ -880,7 +1429,7 @@ function StepPill({
 
 function StepLine({ done }: { done: boolean }) {
   return (
-    <View style={[styles.stepLine, done && { backgroundColor: theme.colors.green[200] }]} />
+    <View style={[styles.stepLine, done && { backgroundColor: theme.colors.success.base }]} />
   );
 }
 
@@ -898,17 +1447,20 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <Animated.View entering={FadeInDown.delay(delay).duration(320)} style={styles.section}>
+    <Animated.View entering={FadeInDown.delay(delay).duration(360)} style={styles.section}>
       <View style={styles.sectionHead}>
         <View style={styles.sectionTitleWrap}>
           <View style={styles.sectionIcon}>
-            <Ionicons name={icon} size={13} color={theme.colors.brand[600]} />
+            <Ionicons name={icon} size={14} color={theme.colors.brand[700]} />
           </View>
-          <Text style={styles.sectionTitle}>{title}</Text>
+          <UIText variant="card-title" align="right" style={styles.sectionTitleNew}>
+            {title}
+          </UIText>
         </View>
         {action && (
-          <Pressable onPress={action.onPress} hitSlop={6}>
-            <Text style={styles.sectionAction}>{action.label}</Text>
+          <Pressable onPress={action.onPress} hitSlop={6} style={styles.sectionActionWrap}>
+            <UIText variant="caption" color="brand" weight="bold">{action.label}</UIText>
+            <Ionicons name="chevron-back" size={12} color={theme.colors.brand[700]} />
           </Pressable>
         )}
       </View>
@@ -928,8 +1480,13 @@ function SummaryRow({
 }) {
   return (
     <View style={styles.summaryRow}>
-      <Text style={styles.summaryLabel}>{label}</Text>
-      <Text style={[styles.summaryValue, valueColor && { color: valueColor }]}>{value}</Text>
+      <UIText variant="body-sm" color="secondary">{label}</UIText>
+      <UIText
+        variant="body-sm"
+        weight="bold"
+        style={{ color: valueColor ?? theme.colors.text.primary }}>
+        {value}
+      </UIText>
     </View>
   );
 }
@@ -945,19 +1502,31 @@ function EmptyCartScreen({
 }) {
   return (
     <View style={[styles.emptyScreen, { paddingTop: insets.top + 80 }]}>
-      <View style={styles.emptyIcon}>
-        <Ionicons name="cart-outline" size={42} color={theme.colors.brand[400]} />
-      </View>
-      <Text style={styles.emptyTitle}>السلة فارغة</Text>
-      <Text style={styles.emptyDesc}>أضف منتجات لإتمام عملية الشراء</Text>
-      <View style={{ marginTop: 24, alignSelf: "stretch", paddingHorizontal: 32 }}>
-        <Button variant="primary" size="md" fullWidth gradient onPress={onBrowse}>
+      <Animated.View
+        entering={FadeInDown.duration(420).springify().damping(18)}
+        style={styles.emptyIcon}>
+        <Ionicons name="cart-outline" size={36} color={theme.colors.brand[600]} />
+      </Animated.View>
+      <Animated.View
+        entering={FadeInDown.duration(380).delay(80)}
+        style={styles.emptyTextStack}>
+        <UIText variant="sheet-title" align="center" style={styles.emptyTitleNew}>
+          السلة فارغة
+        </UIText>
+        <UIText variant="body" color="secondary" align="center" style={styles.emptyDescNew}>
+          أضف منتجات من المتجر لتظهر هنا، ثم تابع لإتمام الطلب
+        </UIText>
+      </Animated.View>
+      <Animated.View
+        entering={FadeInUp.duration(380).delay(180)}
+        style={{ marginTop: 32, alignSelf: "stretch", paddingHorizontal: 32 }}>
+        <Button variant="primary" size="lg" fullWidth gradient onPress={onBrowse}>
           <View style={styles.ctaBtnInner}>
             <Text style={styles.ctaBtnText}>تصفح المنتجات</Text>
-            <Ionicons name="arrow-back" size={14} color="#fff" />
+            <Ionicons name="arrow-back" size={16} color="#fff" />
           </View>
         </Button>
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -978,57 +1547,99 @@ function SuccessScreen({
   onViewOrders: () => void;
 }) {
   return (
-    <View style={[styles.successScreen, { paddingTop: insets.top + 30 }]}>
-      <Animated.View entering={FadeInDown.duration(360)} style={styles.successIconWrap}>
+    <View style={[styles.successScreen, { paddingTop: insets.top + 40 }]}>
+      {/* Hero confirmation — brand-glow tile, NOT loud solid-green.
+          Clinical "the action was received" not a victory parade. */}
+      <Animated.View
+        entering={FadeInDown.duration(460).springify().damping(18)}
+        style={styles.successIconWrap}>
         <View style={styles.successIcon}>
-          <Ionicons name="checkmark" size={40} color="#fff" />
-        </View>
-      </Animated.View>
-      <Animated.Text entering={FadeInDown.delay(120).duration(320)} style={styles.successTitle}>
-        تم استلام طلبك
-      </Animated.Text>
-      <Animated.Text entering={FadeInDown.delay(180).duration(320)} style={styles.successDesc}>
-        سيتواصل معك المندوب لتأكيد التفاصيل
-      </Animated.Text>
-
-      <Animated.View entering={FadeInDown.delay(240).duration(320)} style={styles.successCard}>
-        <View style={styles.successCardRow}>
-          <Text style={styles.successCardLabel}>رقم الطلب</Text>
-          <Text style={styles.successCardValue}>
-            {orderId ? orderId.slice(-8).toUpperCase() : "—"}
-          </Text>
-        </View>
-        <View style={styles.successCardRow}>
-          <Text style={styles.successCardLabel}>الإجمالي</Text>
-          <Text style={[styles.successCardValue, { color: theme.colors.brand[600] }]}>
-            {formatPrice(total)}
-          </Text>
-        </View>
-        <View style={styles.successCardRow}>
-          <Text style={styles.successCardLabel}>التوصيل المتوقع</Text>
-          <Text style={styles.successCardValue}>30–60 دقيقة</Text>
+          <Ionicons name="checkmark" size={34} color={theme.colors.brand[700]} />
         </View>
       </Animated.View>
 
       <Animated.View
-        entering={FadeInUp.delay(320).duration(320)}
+        entering={FadeInDown.delay(100).duration(420)}
+        style={styles.successHeadingStack}>
+        <UIText variant="screen-title" align="center" style={styles.successTitleNew}>
+          تم استلام طلبك
+        </UIText>
+        <UIText variant="body" color="secondary" align="center" style={styles.successDescNew}>
+          سيتواصل معك المندوب لتأكيد التفاصيل خلال دقائق
+        </UIText>
+      </Animated.View>
+
+      {/* Total — strongest signal on the screen, anchored above the metadata */}
+      <Animated.View
+        entering={FadeInDown.delay(180).duration(420)}
+        style={styles.successTotalStack}>
+        <UIText variant="eyebrow" color="tertiary" align="center">
+          المبلغ الإجمالي
+        </UIText>
+        <UIText variant="metric" align="center" style={styles.successTotalValue}>
+          {formatPrice(total)}
+        </UIText>
+      </Animated.View>
+
+      {/* Compact metadata card — refined dividers, no heavy borders */}
+      <Animated.View
+        entering={FadeInDown.delay(260).duration(420)}
+        style={styles.successCard}>
+        <View style={styles.successCardRow}>
+          <UIText variant="body-sm" color="secondary">رقم الطلب</UIText>
+          <UIText variant="body-sm" weight="extrabold">
+            {orderId ? orderId.slice(-8).toUpperCase() : "—"}
+          </UIText>
+        </View>
+        <View style={styles.successCardDivider} />
+        <View style={styles.successCardRow}>
+          <UIText variant="body-sm" color="secondary">التوصيل المتوقع</UIText>
+          <View style={styles.successEtaPill}>
+            <Ionicons name="time-outline" size={12} color={theme.colors.brand[700]} />
+            <UIText variant="eyebrow" style={{ color: theme.colors.brand[700] }}>
+              30–60 دقيقة
+            </UIText>
+          </View>
+        </View>
+        <View style={styles.successCardDivider} />
+        <View style={styles.successCardRow}>
+          <UIText variant="body-sm" color="secondary">حالة الطلب</UIText>
+          <View style={styles.successStatusPill}>
+            <View style={styles.successStatusDot} />
+            <UIText variant="eyebrow" style={{ color: theme.colors.success.strong }}>
+              قيد التحضير
+            </UIText>
+          </View>
+        </View>
+      </Animated.View>
+
+      {/* Trust footnote — soft reassurance under the card */}
+      <Animated.View
+        entering={FadeInDown.delay(340).duration(360)}
+        style={styles.successTrustRow}>
+        <Ionicons name="shield-checkmark" size={12} color={theme.colors.text.tertiary} />
+        <UIText variant="eyebrow" color="tertiary">
+          الدفع آمن  •  بياناتك محمية
+        </UIText>
+      </Animated.View>
+
+      <Animated.View
+        entering={FadeInUp.delay(380).duration(420)}
         style={{
           marginTop: "auto",
-          paddingBottom: insets.bottom + 12,
+          paddingBottom: insets.bottom + 16,
           alignSelf: "stretch",
           paddingHorizontal: 24,
           gap: 10,
         }}>
-        <Button variant="primary" size="md" fullWidth gradient onPress={onViewOrders}>
+        <Button variant="primary" size="lg" fullWidth gradient onPress={onViewOrders}>
           <View style={styles.ctaBtnInner}>
-            <Text style={styles.ctaBtnText}>عرض طلباتي</Text>
-            <Ionicons name="receipt-outline" size={14} color="#fff" />
+            <Text style={styles.ctaBtnText}>تتبع الطلب</Text>
+            <Ionicons name="receipt-outline" size={15} color="#fff" />
           </View>
         </Button>
-        <Button variant="ghost" size="md" fullWidth onPress={onContinue}>
-          <Text style={{ fontSize: 13, fontFamily: theme.fonts.bold, color: theme.colors.slate[600] }}>
-            متابعة التسوق
-          </Text>
+        <Button variant="subtle" size="md" fullWidth onPress={onContinue}>
+          متابعة التسوق
         </Button>
       </Animated.View>
     </View>
@@ -1044,113 +1655,158 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     paddingHorizontal: 16,
-    paddingBottom: 12,
-    backgroundColor: "#fff",
+    paddingBottom: 14,
+    backgroundColor: theme.colors.surface,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.slate[100],
+    borderBottomColor: theme.colors.border.hairline,
   },
   headerBtn: {
-    width: 38,
-    height: 38,
+    width: 40,
+    height: 40,
     borderRadius: 12,
-    backgroundColor: theme.colors.slate[50],
+    backgroundColor: theme.colors.subtle,
     alignItems: "center",
     justifyContent: "center",
   },
-  headerTitle: {
-    fontSize: 18,
-    fontFamily: theme.fonts.black,
-    color: theme.colors.text.primary,
-    textAlign: "right",
-  },
-  headerSub: {
-    fontSize: 11,
-    fontFamily: theme.fonts.semibold,
-    color: theme.colors.slate[400],
-    textAlign: "right",
+  headerTitleNew: {
+    letterSpacing: -0.3,
   },
   headerBadge: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    gap: 4,
+    gap: 5,
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: theme.colors.green[50],
+    backgroundColor: theme.colors.success.bg,
+    borderWidth: 1,
+    borderColor: theme.colors.success.light,
   },
-  headerBadgeText: { fontSize: 10, fontFamily: theme.fonts.bold, color: theme.colors.green[700] },
 
-  // Steps
+  // Steps — guided progression bar
   stepBar: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "#fff",
+    paddingVertical: 14,
+    backgroundColor: theme.colors.surface,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.slate[100],
+    borderBottomColor: theme.colors.border.hairline,
   },
   stepPill: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    gap: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderRadius: 999,
   },
-  stepNum: { width: 18, height: 18, borderRadius: 9, alignItems: "center", justifyContent: "center" },
-  stepNumText: { fontSize: 10, fontFamily: theme.fonts.black, color: "#fff" },
-  stepLabel: { fontSize: 11, fontFamily: theme.fonts.bold },
-  stepLine: { flex: 1, height: 2, backgroundColor: theme.colors.slate[100], borderRadius: 1 },
+  // Active state — soft brand glow signals "this is where you are"
+  stepPillActive: {
+    ...theme.shadow.brandGlow,
+    shadowOpacity: 0.14,
+  },
+  stepNum: {
+    width:          20,
+    height:         20,
+    borderRadius:   10,
+    alignItems:     "center",
+    justifyContent: "center",
+  },
+  stepNumText: { fontSize: 11, fontFamily: theme.fonts.black, color: "#fff" },
+  stepLabel:   { fontSize: 12, fontFamily: theme.fonts.bold, letterSpacing: 0.2 },
+  stepLine:    {
+    flex:            1,
+    height:          2,
+    backgroundColor: theme.colors.slate[200],
+    borderRadius:    1,
+  },
 
-  // Free banner
-  freeBanner: { borderRadius: 16, padding: 14, gap: 8, marginBottom: 12 },
-  freeBannerHead: { flexDirection: "row-reverse", alignItems: "center", gap: 8 },
-  freeBannerTitle: {
-    flex: 1,
-    fontSize: 12,
-    fontFamily: theme.fonts.bold,
-    color: theme.colors.amber[800],
-    textAlign: "right",
+  // Free-delivery banner — refined chip card (no loud gradient)
+  freeBanner: {
+    borderRadius:    16,
+    padding:         14,
+    gap:             10,
+    marginBottom:    14,
+    backgroundColor: theme.colors.amber[50],
+    borderWidth:     1,
+    borderColor:     "rgba(245,158,11,0.18)",
+  },
+  freeBannerHead: {
+    flexDirection: "row-reverse",
+    alignItems:    "center",
+    gap:           10,
+  },
+  freeBannerIcon: {
+    width:           30,
+    height:          30,
+    borderRadius:    10,
+    backgroundColor: theme.colors.amber[100],
+    alignItems:      "center",
+    justifyContent:  "center",
+  },
+  freeBannerTitleNew: {
+    color:      theme.colors.amber[900],
+    fontFamily: theme.fonts.semibold,
+    marginTop:  2,
   },
   freeBarTrack: {
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: "rgba(217,119,6,0.15)",
-    overflow: "hidden",
+    height:          4,
+    borderRadius:    2,
+    backgroundColor: "rgba(245,158,11,0.18)",
+    overflow:        "hidden",
   },
-  freeBarFill: { height: "100%", backgroundColor: theme.colors.amber[600], borderRadius: 3 },
+  freeBarFill: {
+    height:          "100%",
+    backgroundColor: theme.colors.amber[500],
+    borderRadius:    2,
+  },
 
-  // Section
+  // Section — clinical elevated card (no double border + shadow stack)
   section: {
-    backgroundColor: "#fff",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: theme.colors.border.default,
-    marginBottom: 12,
-    ...theme.shadow.xs,
+    backgroundColor: theme.colors.surface,
+    borderRadius:    18,
+    marginBottom:    14,
+    ...theme.shadow.card,
   },
   sectionHead: {
     flexDirection: "row-reverse",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 4,
+    alignItems:    "center",
+    justifyContent:"space-between",
+    paddingHorizontal: 16,
+    paddingTop:        14,
+    paddingBottom:     6,
   },
-  sectionTitleWrap: { flexDirection: "row-reverse", alignItems: "center", gap: 8 },
+  sectionTitleWrap: {
+    flexDirection: "row-reverse",
+    alignItems:    "center",
+    gap:           10,
+  },
   sectionIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: 8,
-    backgroundColor: theme.colors.brand[50],
-    alignItems: "center",
-    justifyContent: "center",
+    width:           30,
+    height:          30,
+    borderRadius:    10,
+    backgroundColor: theme.colors.brand.lighter,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
+    alignItems:      "center",
+    justifyContent:  "center",
   },
-  sectionTitle: { fontSize: 13, fontFamily: theme.fonts.black, color: theme.colors.text.primary },
-  sectionAction: { fontSize: 11, fontFamily: theme.fonts.bold, color: theme.colors.brand[600] },
-  sectionBody: { padding: 14, gap: 10 },
+  sectionTitleNew: {
+    letterSpacing: -0.2,
+  },
+  sectionActionWrap: {
+    flexDirection: "row-reverse",
+    alignItems:    "center",
+    gap:           2,
+  },
+  sectionBody: {
+    paddingHorizontal: 16,
+    paddingTop:        4,
+    paddingBottom:     16,
+    gap:               10,
+  },
 
   // City card
   cityCard: {
@@ -1217,6 +1873,78 @@ const styles = StyleSheet.create({
     color: theme.colors.amber[800],
     textAlign: "right",
     lineHeight: 16,
+  },
+  savedHint: {
+    fontSize: 11,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.slate[500],
+    textAlign: "right",
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  toggleRow: {
+    flexDirection: "row-reverse",
+    gap: 10,
+    marginBottom: 14,
+  },
+  savedMetaRow: {
+    flexDirection: "row-reverse",
+    justifyContent: "space-between",
+    gap: 10,
+    paddingVertical: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.slate[100],
+  },
+  savedMetaLabel: {
+    fontSize: 11,
+    fontFamily: theme.fonts.semibold,
+    color: theme.colors.slate[500],
+    textAlign: "right",
+  },
+  savedMetaValue: {
+    fontSize: 12,
+    fontFamily: theme.fonts.black,
+    color: theme.colors.text.primary,
+    textAlign: "right",
+    flex: 1,
+  },
+  savedHelp: {
+    marginTop: 8,
+    fontSize: 11,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.slate[500],
+    textAlign: "right",
+    lineHeight: 18,
+  },
+  savedAddressBanner: {
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: theme.colors.slate[50],
+    borderWidth: 1,
+    borderColor: theme.colors.border.default,
+    marginBottom: 16,
+  },
+  savedAddressTitle: {
+    fontSize: 12,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.text.primary,
+    textAlign: "right",
+    marginBottom: 4,
+  },
+  savedAddressText: {
+    fontSize: 11,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.slate[500],
+    textAlign: "right",
+    lineHeight: 18,
+    marginBottom: 10,
+  },
+  savedAddressSummary: {
+    fontSize: 12,
+    fontFamily: theme.fonts.semibold,
+    color: theme.colors.text.primary,
+    textAlign: "right",
+    marginBottom: 12,
   },
   etaPillInline: {
     flexDirection: "row-reverse",
@@ -1338,6 +2066,77 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
 
+  // Premium payment cards (DetailsStep PaymentMethodCards)
+  payCardsWrapper: {
+    gap: 10,
+  },
+  payCard: {
+    borderRadius:    16,
+    borderWidth:     1.5,
+    borderColor:     theme.colors.border.default,
+    backgroundColor: theme.colors.surface,
+    overflow:        "hidden",
+  },
+  payCardBadge: {
+    flexDirection:   "row-reverse",
+    alignItems:      "center",
+    gap:             4,
+    paddingHorizontal: 10,
+    paddingVertical:   5,
+    borderBottomWidth: 1,
+  },
+  payCardBadgeText: {
+    fontSize:   9,
+    fontFamily: theme.fonts.black,
+    letterSpacing: 0.4,
+    textAlign: "right",
+  },
+  payCardRow: {
+    flexDirection:  "row-reverse",
+    alignItems:     "center",
+    gap:            12,
+    paddingHorizontal: 14,
+    paddingVertical:   14,
+  },
+  payCardMeta: {
+    flex:           1,
+    flexDirection:  "row-reverse",
+    alignItems:     "center",
+    gap:            12,
+  },
+  payCardIcon: {
+    width:           44,
+    height:          44,
+    borderRadius:    13,
+    alignItems:      "center",
+    justifyContent:  "center",
+  },
+  payCardTextBlock: {
+    flex:    1,
+    gap:     2,
+  },
+  payCardTitle: {
+    fontSize:   13,
+    fontFamily: theme.fonts.bold,
+    color:      theme.colors.text.primary,
+    textAlign:  "right",
+  },
+  payCardSub: {
+    fontSize:   11,
+    fontFamily: theme.fonts.regular,
+    color:      theme.colors.slate[400],
+    textAlign:  "right",
+  },
+  payCardCheck: {
+    width:           22,
+    height:          22,
+    borderRadius:    11,
+    borderWidth:     2,
+    borderColor:     theme.colors.slate[300],
+    alignItems:      "center",
+    justifyContent:  "center",
+  },
+
   // Promo
   promoRow: { flexDirection: "row-reverse", alignItems: "flex-end", gap: 8 },
   promoBtn: {
@@ -1363,26 +2162,36 @@ const styles = StyleSheet.create({
   },
   promoSuccessText: { fontSize: 11, fontFamily: theme.fonts.bold, color: theme.colors.green[700] },
 
-  // Summary
-  summaryRow: { flexDirection: "row-reverse", justifyContent: "space-between", paddingVertical: 3 },
-  summaryLabel: { fontSize: 12, fontFamily: theme.fonts.semibold, color: theme.colors.slate[500] },
-  summaryValue: { fontSize: 12, fontFamily: theme.fonts.bold, color: theme.colors.slate[700] },
+  // Summary — refined financial rhythm
+  summaryRow: {
+    flexDirection: "row-reverse",
+    justifyContent:"space-between",
+    paddingVertical: 5,
+  },
+  summaryLabel: { fontSize: 12, fontFamily: theme.fonts.semibold, color: theme.colors.text.secondary },
+  summaryValue: { fontSize: 12, fontFamily: theme.fonts.bold,     color: theme.colors.text.primary },
   summaryDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: theme.colors.slate[200],
-    marginVertical: 8,
+    height:          StyleSheet.hairlineWidth,
+    backgroundColor: theme.colors.border.hairline,
+    marginVertical:  10,
   },
   summaryTotalRow: {
-    flexDirection: "row-reverse",
+    flexDirection:  "row-reverse",
     justifyContent: "space-between",
-    alignItems: "baseline",
+    alignItems:     "baseline",
   },
   summaryTotalLabel: {
-    fontSize: 13,
-    fontFamily: theme.fonts.black,
-    color: theme.colors.text.primary,
+    fontSize:   14,
+    fontFamily: theme.fonts.extrabold,
+    color:      theme.colors.text.primary,
+    letterSpacing: -0.2,
   },
-  summaryTotalValue: { fontSize: 18, fontFamily: theme.fonts.black, color: theme.colors.brand[600] },
+  summaryTotalValue: {
+    fontSize:      22,
+    fontFamily:    theme.fonts.black,
+    color:         theme.colors.brand[700],
+    letterSpacing: -0.5,
+  },
   etaPill: {
     alignSelf: "flex-end",
     flexDirection: "row-reverse",
@@ -1416,46 +2225,50 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  // CTA
+  // CTA bar — premium anchor (upward shadow, tightly stacked)
   cta: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.slate[100],
+    position:        "absolute",
+    bottom:          0,
+    left:            0,
+    right:           0,
+    backgroundColor: theme.colors.surface,
+    borderTopWidth:  StyleSheet.hairlineWidth,
+    borderTopColor:  theme.colors.border.hairline,
     paddingHorizontal: 16,
-    paddingTop: 12,
-    gap: 10,
-    ...theme.shadow.lg,
+    paddingTop:        14,
+    gap:               12,
+    // Subtle upward lift — not a billboard shadow
+    shadowColor:   "#0C2240",
+    shadowOffset:  { width: 0, height: -4 },
+    shadowOpacity: 0.06,
+    shadowRadius:  12,
+    elevation:     8,
   },
   ctaTotals: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
+    flexDirection:  "row-reverse",
+    alignItems:     "center",
     justifyContent: "space-between",
   },
-  ctaTotalLabel: {
-    fontSize: 10,
-    fontFamily: theme.fonts.semibold,
-    color: theme.colors.slate[400],
-    textAlign: "right",
+  ctaTotalValueNew: {
+    color:         theme.colors.brand[700],
+    letterSpacing: -0.6,
+    marginTop:     2,
   },
-  ctaTotalValue: { fontSize: 18, fontFamily: theme.fonts.black, color: theme.colors.brand[600] },
   ctaCount: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: theme.colors.brand[50],
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
+    flexDirection:   "row-reverse",
+    alignItems:      "center",
+    gap:             6,
+    backgroundColor: theme.colors.brand.lighter,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
+    paddingHorizontal: 12,
+    paddingVertical:   7,
+    borderRadius:      999,
   },
-  ctaCountText: { fontSize: 10, fontFamily: theme.fonts.bold, color: theme.colors.brand[700] },
   ctaBtnInner: { flexDirection: "row-reverse", alignItems: "center", gap: 6 },
-  ctaBtnText: { fontSize: 14, fontFamily: theme.fonts.black, color: "#fff" },
+  ctaBtnText: { fontSize: 15, fontFamily: theme.fonts.black, color: "#fff", letterSpacing: -0.2 },
 
-  // Empty
+  // Empty cart — premium empty state
   emptyScreen: {
     flex: 1,
     backgroundColor: theme.colors.bg,
@@ -1463,65 +2276,121 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   emptyIcon: {
-    width: 96,
-    height: 96,
-    borderRadius: 30,
-    backgroundColor: theme.colors.brand[50],
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 16,
+    width:           96,
+    height:          96,
+    borderRadius:    28,
+    backgroundColor: theme.colors.brand.lighter,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
+    alignItems:      "center",
+    justifyContent:  "center",
+    marginBottom:    20,
+    ...theme.shadow.brandGlow,
+    shadowOpacity:   0.12,
   },
-  emptyTitle: { fontSize: 18, fontFamily: theme.fonts.black, color: theme.colors.text.primary },
-  emptyDesc: {
-    fontSize: 12,
-    fontFamily: theme.fonts.regular,
-    color: theme.colors.slate[400],
-    marginTop: 4,
-    textAlign: "center",
+  emptyTextStack: {
+    alignItems: "center",
+    gap:        8,
+    maxWidth:   320,
+  },
+  emptyTitleNew: {
+    letterSpacing: -0.4,
+  },
+  emptyDescNew: {
+    lineHeight: 22,
   },
 
-  // Success
+  // Success — clinical confirmation (NOT loud green)
   successScreen: {
     flex: 1,
     backgroundColor: theme.colors.bg,
     alignItems: "center",
     paddingHorizontal: 24,
   },
-  successIconWrap: { marginBottom: 16 },
+  successIconWrap: {
+    marginBottom: 24,
+  },
   successIcon: {
-    width: 84,
-    height: 84,
-    borderRadius: 26,
-    backgroundColor: theme.colors.green[500],
+    width:           80,
+    height:          80,
+    borderRadius:    26,
+    backgroundColor: theme.colors.brand.lighter,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
+    alignItems:      "center",
+    justifyContent:  "center",
+    ...theme.shadow.brandGlow,
+  },
+  successHeadingStack: {
     alignItems: "center",
-    justifyContent: "center",
-    ...theme.shadow.lg,
+    gap:        8,
+    maxWidth:   340,
   },
-  successTitle: {
-    fontSize: 22,
-    fontFamily: theme.fonts.black,
-    color: theme.colors.text.primary,
-    textAlign: "center",
+  successTitleNew: {
+    letterSpacing: -0.5,
   },
-  successDesc: {
-    fontSize: 12,
-    fontFamily: theme.fonts.regular,
-    color: theme.colors.slate[500],
-    textAlign: "center",
-    marginTop: 6,
+  successDescNew: {
+    lineHeight: 22,
   },
+  // Metric stack — the biggest number on the screen
+  successTotalStack: {
+    alignItems: "center",
+    marginTop:  28,
+    gap:        4,
+  },
+  successTotalValue: {
+    color:         theme.colors.brand[700],
+    letterSpacing: -0.8,
+  },
+  // Metadata card — clean, dividers, no heavy border
   successCard: {
-    backgroundColor: "#fff",
-    borderRadius: 18,
-    padding: 16,
-    marginTop: 24,
-    alignSelf: "stretch",
-    gap: 10,
-    borderWidth: 1,
-    borderColor: theme.colors.border.default,
-    ...theme.shadow.sm,
+    backgroundColor: theme.colors.surface,
+    borderRadius:    18,
+    padding:         18,
+    marginTop:       28,
+    alignSelf:       "stretch",
+    ...theme.shadow.card,
   },
-  successCardRow: { flexDirection: "row-reverse", justifyContent: "space-between" },
-  successCardLabel: { fontSize: 11, fontFamily: theme.fonts.semibold, color: theme.colors.slate[500] },
-  successCardValue: { fontSize: 13, fontFamily: theme.fonts.black, color: theme.colors.text.primary },
+  successCardRow: {
+    flexDirection: "row-reverse",
+    justifyContent:"space-between",
+    alignItems:    "center",
+  },
+  successCardDivider: {
+    height:          StyleSheet.hairlineWidth,
+    backgroundColor: theme.colors.border.hairline,
+    marginVertical:  12,
+  },
+  successEtaPill: {
+    flexDirection:   "row-reverse",
+    alignItems:      "center",
+    gap:             6,
+    backgroundColor: theme.colors.brand.lighter,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
+    paddingHorizontal: 10,
+    paddingVertical:   5,
+    borderRadius:      999,
+  },
+  successStatusPill: {
+    flexDirection:   "row-reverse",
+    alignItems:      "center",
+    gap:             6,
+    backgroundColor: theme.colors.success.bg,
+    borderWidth:     1,
+    borderColor:     theme.colors.success.light,
+    paddingHorizontal: 10,
+    paddingVertical:   5,
+    borderRadius:      999,
+  },
+  successStatusDot: {
+    width: 6, height: 6, borderRadius: 3,
+    backgroundColor: theme.colors.success.base,
+  },
+  successTrustRow: {
+    flexDirection: "row-reverse",
+    alignItems:    "center",
+    gap:           6,
+    marginTop:     16,
+  },
 });

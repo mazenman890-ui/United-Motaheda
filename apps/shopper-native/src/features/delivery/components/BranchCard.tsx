@@ -3,7 +3,7 @@
  * Selectable / non-selectable. Shows name, area, hours, distance.
  */
 
-import React from "react";
+import React, { memo, useCallback } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -19,18 +19,27 @@ interface BranchCardProps {
   compact?: boolean;
 }
 
-export function BranchCard({ branch, selected, distanceKm, onPress, compact }: BranchCardProps) {
+export const BranchCard = memo(function BranchCard({
+  branch,
+  selected,
+  distanceKm,
+  onPress,
+  compact,
+}: BranchCardProps) {
   const interactive = !!onPress;
 
-  const handlePress = () => {
+  const handlePress = useCallback(() => {
     if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
     onPress?.();
-  };
+  }, [onPress]);
 
   return (
     <Pressable
       onPress={interactive ? handlePress : undefined}
       disabled={!interactive}
+      accessibilityRole={interactive ? "radio" : undefined}
+      accessibilityLabel={`${branch.nameAr}، ${branch.area}${typeof distanceKm === "number" ? `، على بُعد ${distanceKm.toFixed(1)} كم` : ""}`}
+      accessibilityState={interactive ? { checked: !!selected } : undefined}
       style={[
         styles.card,
         selected && styles.cardSelected,
@@ -84,7 +93,7 @@ export function BranchCard({ branch, selected, distanceKm, onPress, compact }: B
       </View>
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

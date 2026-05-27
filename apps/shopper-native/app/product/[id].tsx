@@ -1,11 +1,10 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
 import { Image } from "expo-image";
@@ -14,7 +13,10 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { fetchProductById, fetchProducts } from "@/services/productsApi";
+import { fetchProductById } from "@/services/productsApi";
+import { useRecentlyViewedStore } from "@/features/products";
+import { useRelatedProducts } from "@/features/recommendations";
+import { useScreenTrace } from "@/features/observability";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
@@ -28,6 +30,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ProductCard } from "@/components/ProductCard";
+import { Text as UIText } from "@/shared/ui";
 import { useCartStore } from "@/stores/cart";
 import { useWishlistStore } from "@/stores/wishlist";
 import { theme } from "@/theme";
@@ -69,11 +72,13 @@ const TRUST_BADGES: { icon: React.ComponentProps<typeof Ionicons>["name"]; label
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function ProductDetailScreen() {
+  useScreenTrace("product-detail");
   const { id }    = useLocalSearchParams<{ id: string }>();
   const router    = useRouter();
   const insets    = useSafeAreaInsets();
   const [qty, setQty] = useState(1);
-  const [addedPulse, setAddedPulse] = useState(false);
+
+  const pushRecentlyViewed = useRecentlyViewedStore((s) => s.push);
 
   const addItem        = useCartStore((s) => s.addItem);
   const cartItems      = useCartStore((s) => s.items);
@@ -96,16 +101,29 @@ export default function ProductDetailScreen() {
     enabled:  !!id,
   });
 
-  const { data: relatedData } = useQuery({
-    queryKey: ["related", product?.category],
-    queryFn:  () => fetchProducts({ categoryId: product?.category, pageSize: 8 }),
-    enabled:  !!product?.category,
-    staleTime: 5 * 60_000,
-  });
+  // Max quantity the user is allowed to add — capped at live stock.
+  const maxQty = product?.inStock ? Math.max(1, Math.ceil(product.stock)) : 0;
 
-  const relatedProducts = (relatedData?.products ?? [])
-    .filter((p) => p.id !== id)
-    .slice(0, 6);
+  // If product reloads with a lower stock than the current qty selector, clamp down.
+  useEffect(() => {
+    if (maxQty > 0) setQty((q) => Math.min(q, maxQty));
+  }, [maxQty]);
+
+  // Persist to the MMKV-backed recently-viewed LRU once the product loads.
+  // Lightweight projection (id/name/price/image) — full row stays in the
+  // React Query cache and is re-fetched on next view via useProduct.
+  useEffect(() => {
+    if (!product) return;
+    pushRecentlyViewed({
+      id:       product.id,
+      name:     product.name,
+      price:    product.price,
+      imageUrl: product.imageUrl,
+    });
+  }, [product, pushRecentlyViewed]);
+
+  const { data: relatedProductsRaw } = useRelatedProducts(product?.id, 8);
+  const relatedProducts = (relatedProductsRaw ?? []).slice(0, 6);
 
   const rating = deterministicRating(id ?? "");
 
@@ -116,14 +134,13 @@ export default function ProductDetailScreen() {
   const handleAdd = useCallback(() => {
     if (!product) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    // Restrained 3-leg pop on the unified `press` spring — pop, not bounce
     btnScale.value = withSequence(
-      withSpring(0.92, theme.animation.spring.stiff),
-      withSpring(1.04, theme.animation.spring.bouncy),
-      withSpring(1.0,  theme.animation.spring.default),
+      withSpring(0.94, theme.animation.spring.press),
+      withSpring(1.04, theme.animation.spring.press),
+      withSpring(1.0,  theme.animation.spring.press),
     );
     addItem(product, qty);
-    setAddedPulse(true);
-    setTimeout(() => setAddedPulse(false), 100);
   }, [product, qty, addItem, btnScale]);
 
   const handleWishlist = useCallback(() => {
@@ -132,10 +149,12 @@ export default function ProductDetailScreen() {
       ? Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
       : Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
     ).catch(() => {});
+    // Wishlist heart — slightly more pop than cart-add (emotional moment),
+    // but still on the unified `press` spring — never bouncy
     hrtScale.value = withSequence(
-      withSpring(0.70, theme.animation.spring.stiff),
-      withSpring(1.35, theme.animation.spring.bouncy),
-      withSpring(1.0,  theme.animation.spring.default),
+      withSpring(0.82, theme.animation.spring.press),
+      withSpring(1.18, theme.animation.spring.press),
+      withSpring(1.0,  theme.animation.spring.press),
     );
     toggleWishlist(product);
   }, [product, inWishlist, hrtScale, toggleWishlist]);
@@ -143,43 +162,49 @@ export default function ProductDetailScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
 
-      {/* ── Sticky mini-header (appears when scrolled) ── */}
+      {/* ── Sticky mini-header — refined hairline divider ── */}
       <Animated.View
         style={[stickyHdr, {
-          position:        "absolute",
-          top:             0,
-          left:            0,
-          right:           0,
-          zIndex:          50,
-          backgroundColor: "rgba(255,255,255,0.96)",
-          paddingTop:      insets.top,
+          position:          "absolute",
+          top:               0,
+          left:              0,
+          right:             0,
+          zIndex:            50,
+          backgroundColor:   "rgba(255,255,255,0.97)",
+          paddingTop:        insets.top,
           paddingHorizontal: 16,
-          paddingBottom:   12,
+          paddingBottom:     12,
           borderBottomWidth: StyleSheet.hairlineWidth,
-          borderBottomColor: theme.colors.border.medium,
+          borderBottomColor: theme.colors.border.hairline,
         }]}>
         <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 12 }}>
           <Pressable
             onPress={() => router.back()}
-            style={{ width: 36, height: 36, borderRadius: 11, backgroundColor: theme.colors.subtle, alignItems: "center", justifyContent: "center" }}>
+            style={{
+              width: 38, height: 38, borderRadius: 12,
+              backgroundColor: theme.colors.surfaceSunken,
+              alignItems: "center", justifyContent: "center",
+            }}>
             <Ionicons name="arrow-forward" size={17} color={theme.colors.slate[700]} />
           </Pressable>
-          <Text style={{ flex: 1, fontSize: 14, fontFamily: theme.fonts.bold, color: theme.colors.text.primary, textAlign: "right" }} numberOfLines={1}>
+          <UIText variant="body-sm" weight="bold" align="right" numberOfLines={1} style={{ flex: 1 }}>
             {product?.nameAr ?? product?.name ?? ""}
-          </Text>
+          </UIText>
         </View>
       </Animated.View>
 
-      {/* ── Floating action buttons ── */}
-      <View style={{ position: "absolute", top: insets.top + 10, right: 16, zIndex: 20, gap: 8 }}>
+      {/* ── Floating action buttons — premium glass tiles ── */}
+      <View style={{ position: "absolute", top: insets.top + 12, right: 16, zIndex: 20, gap: 10 }}>
         <Pressable
           onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="رجوع"
           style={({ pressed }) => ({
             width: 44, height: 44, borderRadius: 14,
-            backgroundColor: "rgba(255,255,255,0.95)",
+            backgroundColor: "rgba(255,255,255,0.97)",
             alignItems: "center", justifyContent: "center",
-            opacity: pressed ? 0.82 : 1, ...theme.shadow.md,
-            borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border.medium,
+            opacity: pressed ? 0.86 : 1,
+            ...theme.shadow.card,
           })}>
           <Ionicons name="arrow-forward" size={18} color={theme.colors.slate[700]} />
         </Pressable>
@@ -187,18 +212,21 @@ export default function ProductDetailScreen() {
           <Animated.View style={hrtAnim}>
             <Pressable
               onPress={handleWishlist}
+              accessibilityRole="button"
+              accessibilityLabel={inWishlist ? "إزالة من المفضلة" : "إضافة للمفضلة"}
               style={({ pressed }) => ({
                 width: 44, height: 44, borderRadius: 14,
-                backgroundColor: inWishlist ? "#FFF1F2" : "rgba(255,255,255,0.95)",
+                backgroundColor: inWishlist ? theme.colors.rose[50] : "rgba(255,255,255,0.97)",
                 alignItems: "center", justifyContent: "center",
-                opacity: pressed ? 0.82 : 1, ...theme.shadow.md,
-                borderWidth: StyleSheet.hairlineWidth,
-                borderColor: inWishlist ? "#FECDD3" : theme.colors.border.medium,
+                opacity: pressed ? 0.86 : 1,
+                ...theme.shadow.card,
+                borderWidth: inWishlist ? 1 : 0,
+                borderColor: theme.colors.rose[100],
               })}>
               <Ionicons
                 name={inWishlist ? "heart" : "heart-outline"}
                 size={18}
-                color={inWishlist ? theme.colors.rose[500] : theme.colors.slate[500]}
+                color={inWishlist ? theme.colors.rose[500] : theme.colors.slate[600]}
               />
             </Pressable>
           </Animated.View>
@@ -226,8 +254,7 @@ export default function ProductDetailScreen() {
               {/* Bottom gradient — blends into white content area */}
               <LinearGradient
                 colors={["transparent", "rgba(255,255,255,0.70)", "#ffffff"]}
-                style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 100 }}
-                pointerEvents="none"
+                style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 100, pointerEvents: "none" }}
               />
             </>
           ) : (
@@ -246,8 +273,7 @@ export default function ProductDetailScreen() {
               </View>
               <LinearGradient
                 colors={["transparent", "rgba(255,255,255,0.70)", "#ffffff"]}
-                style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 90 }}
-                pointerEvents="none"
+                style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 90, pointerEvents: "none" }}
               />
             </LinearGradient>
           )}
@@ -264,112 +290,130 @@ export default function ProductDetailScreen() {
             </>
           ) : product ? (
             <>
-              {/* ── Category + stock ── */}
-              <View style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" }}>
-                <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6 }}>
-                  <View style={{ width: 3, height: 14, borderRadius: 2, backgroundColor: theme.colors.brand[500] }} />
-                  <Text style={{ fontSize: 12, color: theme.colors.brand[600], fontFamily: theme.fonts.bold }}>
+              {/* ── Category strip + stock indicator ── */}
+              <View style={pdStyles.metaRow}>
+                <View style={pdStyles.categoryStrip}>
+                  <View style={pdStyles.categoryBar} />
+                  <UIText variant="eyebrow" color="brand">
                     {product.categoryName}
-                  </Text>
+                  </UIText>
                 </View>
                 <Badge variant={product.inStock ? "success" : "error"} size="sm">
-                  {product.inStock ? "متاح" : "نفذ"}
+                  {product.inStock ? "متاح للشحن" : "نفذ المخزون"}
                 </Badge>
               </View>
 
-              {/* ── Name ── */}
-              <View style={{ gap: 5 }}>
-                <Text style={{ fontSize: 22, fontFamily: theme.fonts.black, color: theme.colors.text.primary, lineHeight: 30, textAlign: "right" }}>
+              {/* ── Name — editorial 2-tier ── */}
+              <View style={pdStyles.nameStack}>
+                <UIText variant="screen-title" align="right" style={pdStyles.nameAr}>
                   {product.nameAr ?? product.name}
-                </Text>
+                </UIText>
                 {product.nameEn && (
-                  <Text style={{ fontSize: 13, color: theme.colors.slate[400], textAlign: "right", fontFamily: theme.fonts.regular }}>
+                  <UIText variant="body-sm" color="tertiary" align="right" style={pdStyles.nameEn}>
                     {product.nameEn}
-                  </Text>
+                  </UIText>
                 )}
               </View>
 
-              {/* ── Rating ── */}
-              <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>
+              {/* ── Rating row — premium hierarchy ── */}
+              <View style={pdStyles.ratingRow}>
                 <Stars value={rating.value} />
-                <Text style={{ fontSize: 13, fontFamily: theme.fonts.bold, color: theme.colors.text.secondary }}>
+                <UIText variant="body-sm" weight="bold">
                   {rating.value}
-                </Text>
-                <Text style={{ fontSize: 12, color: theme.colors.text.tertiary, fontFamily: theme.fonts.regular }}>
+                </UIText>
+                <UIText variant="caption" color="tertiary">
                   ({rating.count} تقييم)
-                </Text>
+                </UIText>
               </View>
 
-              {/* ── Price + Qty stepper ── */}
-              <View style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" }}>
-                <View style={{ flexDirection: "row-reverse", alignItems: "baseline", gap: 4 }}>
-                  <Text style={{ fontSize: 32, fontFamily: theme.fonts.black, color: theme.colors.amber[600] }}>
-                    {formatPrice(product.price * qty)}
-                  </Text>
+              {/* ── Price + Qty stepper — premium metric typography ── */}
+              <View style={pdStyles.priceRow}>
+                <View style={{ flex: 1, gap: 4 }}>
+                  <UIText variant="eyebrow" color="tertiary" align="right">
+                    السعر
+                  </UIText>
+                  <View style={{ flexDirection: "row-reverse", alignItems: "baseline", gap: 6 }}>
+                    <UIText variant="metric" align="right" style={pdStyles.priceMetric}>
+                      {formatPrice(product.price * qty)}
+                    </UIText>
+                  </View>
                   {qty > 1 && (
-                    <Text style={{ fontSize: 13, color: theme.colors.slate[400], fontFamily: theme.fonts.regular }}>
-                      ({formatPrice(product.price)} × {qty})
-                    </Text>
+                    <UIText variant="caption" color="tertiary" align="right">
+                      {formatPrice(product.price)} × {qty}
+                    </UIText>
                   )}
                 </View>
 
-                {/* Qty stepper */}
-                <View style={{
-                  flexDirection: "row-reverse",
-                  alignItems:    "center",
-                  backgroundColor: theme.colors.slate[50],
-                  borderRadius:  16,
-                  borderWidth:   StyleSheet.hairlineWidth,
-                  borderColor:   theme.colors.border.medium,
-                  overflow:      "hidden",
-                }}>
-                  <Pressable
-                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); setQty((q) => q + 1); }}
-                    style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center", backgroundColor: theme.colors.brand[600] }}>
-                    <Ionicons name="add" size={20} color="#fff" />
-                  </Pressable>
-                  <Text style={{ fontSize: 17, fontFamily: theme.fonts.black, color: theme.colors.slate[900], paddingHorizontal: 18 }}>
-                    {qty}
-                  </Text>
-                  <Pressable
-                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); setQty((q) => Math.max(1, q - 1)); }}
-                    style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
-                    <Ionicons name="remove" size={20} color={theme.colors.slate[500]} />
-                  </Pressable>
+                {/* Qty stepper — stock-capped */}
+                <View style={{ gap: 4 }}>
+                  <View style={pdStyles.stepperWrap}>
+                    <Pressable
+                      onPress={() => {
+                        if (qty >= maxQty) {
+                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+                          return;
+                        }
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                        setQty((q) => Math.min(q + 1, maxQty));
+                      }}
+                      disabled={qty >= maxQty}
+                      style={[pdStyles.stepperBtn, pdStyles.stepperBtnInc, qty >= maxQty && { opacity: 0.45 }]}>
+                      <Ionicons name="add" size={20} color="#fff" />
+                    </Pressable>
+                    <View style={pdStyles.stepperValueWrap}>
+                      <UIText variant="card-title" weight="black" style={pdStyles.stepperValue}>
+                        {qty}
+                      </UIText>
+                    </View>
+                    <Pressable
+                      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); setQty((q) => Math.max(1, q - 1)); }}
+                      disabled={qty === 1}
+                      style={[pdStyles.stepperBtn, qty === 1 && { opacity: 0.4 }]}>
+                      <Ionicons name="remove" size={20} color={theme.colors.slate[600]} />
+                    </Pressable>
+                  </View>
+                  {/* Stock availability indicator */}
+                  {product.inStock && product.stock > 0 && product.stock <= 10 && (
+                    <UIText
+                      variant="eyebrow"
+                      align="center"
+                      style={{ color: qty >= maxQty ? theme.colors.error.strong : theme.colors.amber[600] }}>
+                      {qty >= maxQty ? "وصلت للحد الأقصى" : `باقي ${product.stock} قطعة فقط`}
+                    </UIText>
+                  )}
                 </View>
               </View>
 
-              {/* ── Trust badges ── */}
-              <View style={{ flexDirection: "row-reverse", gap: 8 }}>
-                {TRUST_BADGES.map((b) => (
-                  <View key={b.label} style={{
-                    flex: 1, backgroundColor: theme.colors.brand[50],
-                    borderRadius: theme.radius.lg, padding: 10,
-                    alignItems: "center", gap: 5,
-                    borderWidth: 1, borderColor: theme.colors.brand[100],
-                  }}>
-                    <Ionicons name={b.icon} size={20} color={theme.colors.brand[600]} />
-                    <Text style={{ fontSize: 10, fontFamily: theme.fonts.bold, color: theme.colors.brand[700], textAlign: "center" }}>
+              {/* ── Trust badges — clinical commitment row ── */}
+              <View style={pdStyles.trustRow}>
+                {TRUST_BADGES.map((b, i, arr) => (
+                  <View
+                    key={b.label}
+                    style={[
+                      pdStyles.trustCell,
+                      i < arr.length - 1 && pdStyles.trustCellDivider,
+                    ]}>
+                    <View style={pdStyles.trustIcon}>
+                      <Ionicons name={b.icon} size={18} color={theme.colors.brand[700]} />
+                    </View>
+                    <UIText variant="eyebrow" color="secondary" align="center" style={pdStyles.trustLabel}>
                       {b.label}
-                    </Text>
+                    </UIText>
                   </View>
                 ))}
               </View>
 
-              {/* ── Details card ── */}
-              <View style={{
-                backgroundColor: theme.colors.slate[50],
-                borderRadius:    theme.radius.xl,
-                overflow:        "hidden",
-                borderWidth:     StyleSheet.hairlineWidth,
-                borderColor:     theme.colors.border.medium,
-              }}>
-                <View style={{ paddingHorizontal: 16, paddingVertical: 14, backgroundColor: theme.colors.slate[100], borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border.default }}>
-                  <Text style={{ fontSize: 12, fontFamily: theme.fonts.black, color: theme.colors.slate[700], textAlign: "right", letterSpacing: 0.5 }}>
+              {/* ── Details card — editorial layout ── */}
+              <View style={pdStyles.detailsCard}>
+                <View style={pdStyles.detailsHeader}>
+                  <UIText variant="eyebrow" color="tertiary" align="right">
+                    معلومات المنتج
+                  </UIText>
+                  <UIText variant="card-title" align="right" style={pdStyles.detailsTitle}>
                     تفاصيل المنتج
-                  </Text>
+                  </UIText>
                 </View>
-                <View style={{ paddingHorizontal: 16 }}>
+                <View style={pdStyles.detailsBody}>
                   <DetailRow label="الكود"           value={product.code    ?? "-"} />
                   <DetailRow label="الباركود"        value={product.barcode ?? "-"} />
                   <DetailRow label="القسم"           value={product.categoryName ?? "-"} />
@@ -377,16 +421,21 @@ export default function ProductDetailScreen() {
                 </View>
               </View>
 
-              {/* ── Related products ── */}
+              {/* ── Related products — editorial section ── */}
               {relatedProducts.length > 0 && (
                 <View style={{ gap: 14 }}>
-                  <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>
-                    <View style={{ width: 28, height: 28, borderRadius: 9, backgroundColor: theme.colors.brand[50], alignItems: "center", justifyContent: "center" }}>
-                      <Ionicons name="grid-outline" size={13} color={theme.colors.brand[600]} />
+                  <View style={pdStyles.sectionHeader}>
+                    <View style={pdStyles.sectionIcon}>
+                      <Ionicons name="grid-outline" size={14} color={theme.colors.brand[700]} />
                     </View>
-                    <Text style={{ fontSize: 16, fontFamily: theme.fonts.black, color: theme.colors.text.primary }}>
-                      منتجات من نفس القسم
-                    </Text>
+                    <View>
+                      <UIText variant="eyebrow" color="tertiary" align="right">
+                        قد يعجبك أيضاً
+                      </UIText>
+                      <UIText variant="card-title" align="right" style={pdStyles.sectionTitle}>
+                        منتجات من نفس القسم
+                      </UIText>
+                    </View>
                   </View>
                   <ScrollView
                     horizontal
@@ -409,29 +458,18 @@ export default function ProductDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* ── Sticky CTA ── */}
+      {/* ── Sticky CTA — premium anchor with metric typography ── */}
       {product && (
-        <View style={{
-          position:        "absolute",
-          bottom:          0,
-          left:            0,
-          right:           0,
-          backgroundColor: "#fff",
-          padding:         16,
-          paddingBottom:   insets.bottom + 14,
-          borderTopWidth:  StyleSheet.hairlineWidth,
-          borderTopColor:  theme.colors.border.medium,
-          gap:             10,
-          ...theme.shadow.lg,
-        }}>
+        <View style={[pdStyles.cta, { paddingBottom: insets.bottom + 14 }]}>
           {inCart && (
             <Pressable
               onPress={() => router.push("/(tabs)/cart")}
-              style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 6 }}>
-              <Ionicons name="cart-outline" size={14} color={theme.colors.brand[600]} />
-              <Text style={{ fontSize: 13, color: theme.colors.brand[600], fontFamily: theme.fonts.bold }}>
+              style={pdStyles.viewCartLink}>
+              <Ionicons name="cart-outline" size={14} color={theme.colors.brand[700]} />
+              <UIText variant="caption" weight="bold" color="brand">
                 عرض السلة
-              </Text>
+              </UIText>
+              <Ionicons name="chevron-back" size={12} color={theme.colors.brand[700]} />
             </Pressable>
           )}
           <Animated.View style={btnAnim}>
@@ -439,6 +477,7 @@ export default function ProductDetailScreen() {
               variant={inCart ? "secondary" : "primary"}
               size="lg"
               fullWidth
+              gradient={!inCart}
               disabled={!product.inStock}
               onPress={handleAdd}>
               {inCart
@@ -458,20 +497,200 @@ export default function ProductDetailScreen() {
 
 function DetailRow({ label, value, last = false }: { label: string; value: string; last?: boolean }) {
   return (
-    <View style={{
-      flexDirection:    "row-reverse",
-      justifyContent:   "space-between",
-      alignItems:       "center",
-      paddingVertical:  11,
-      borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth,
-      borderBottomColor: theme.colors.border.default,
-    }}>
-      <Text style={{ fontSize: 12, color: theme.colors.slate[400], fontFamily: theme.fonts.semibold }}>
-        {label}
-      </Text>
-      <Text style={{ fontSize: 12, color: theme.colors.slate[800], fontFamily: theme.fonts.bold, maxWidth: "60%", textAlign: "left" }} numberOfLines={1}>
+    <View style={[pdStyles.detailRow, last && { borderBottomWidth: 0 }]}>
+      <UIText variant="body-sm" color="secondary">{label}</UIText>
+      <UIText variant="body-sm" weight="bold" align="left" numberOfLines={1} style={pdStyles.detailValue}>
         {value}
-      </Text>
+      </UIText>
     </View>
   );
 }
+
+const pdStyles = StyleSheet.create({
+  // ── Category + stock row ─────────────────────────────────────────
+  metaRow: {
+    flexDirection:  "row-reverse",
+    alignItems:     "center",
+    justifyContent: "space-between",
+  },
+  categoryStrip: {
+    flexDirection: "row-reverse",
+    alignItems:    "center",
+    gap:           8,
+  },
+  categoryBar: {
+    width:           3,
+    height:          16,
+    borderRadius:    2,
+    backgroundColor: theme.colors.brand[600],
+  },
+
+  // ── Name ─────────────────────────────────────────────────────────
+  nameStack: {
+    gap: 6,
+  },
+  nameAr: {
+    letterSpacing: -0.4,
+    lineHeight:    32,
+  },
+  nameEn: {
+    fontStyle: "italic",
+  },
+
+  // ── Rating ───────────────────────────────────────────────────────
+  ratingRow: {
+    flexDirection: "row-reverse",
+    alignItems:    "center",
+    gap:           8,
+  },
+
+  // ── Price + Stepper ─────────────────────────────────────────────
+  priceRow: {
+    flexDirection:  "row-reverse",
+    alignItems:     "center",
+    justifyContent: "space-between",
+    gap:            16,
+  },
+  priceMetric: {
+    color:         theme.colors.brand[700],
+    letterSpacing: -0.8,
+  },
+  stepperWrap: {
+    flexDirection:   "row-reverse",
+    alignItems:      "center",
+    backgroundColor: theme.colors.surface,
+    borderRadius:    14,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
+    overflow:        "hidden",
+  },
+  stepperBtn: {
+    width:           44,
+    height:          44,
+    alignItems:      "center",
+    justifyContent:  "center",
+  },
+  stepperBtnInc: {
+    backgroundColor: theme.colors.brand[700],
+  },
+  stepperValueWrap: {
+    minWidth:        44,
+    alignItems:      "center",
+    justifyContent:  "center",
+  },
+  stepperValue: {
+    letterSpacing: -0.2,
+  },
+
+  // ── Trust row ────────────────────────────────────────────────────
+  trustRow: {
+    flexDirection:    "row-reverse",
+    backgroundColor:  theme.colors.surface,
+    borderRadius:     18,
+    paddingVertical:  16,
+    paddingHorizontal: 4,
+    ...theme.shadow.card,
+  },
+  trustCell: {
+    flex:       1,
+    alignItems: "center",
+    gap:        8,
+    paddingHorizontal: 4,
+  },
+  trustCellDivider: {
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderRightColor: theme.colors.border.hairline,
+  },
+  trustIcon: {
+    width:           42,
+    height:          42,
+    borderRadius:    13,
+    backgroundColor: theme.colors.brand.lighter,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
+    alignItems:      "center",
+    justifyContent:  "center",
+  },
+  trustLabel: {
+    lineHeight: 13,
+  },
+
+  // ── Details card ────────────────────────────────────────────────
+  detailsCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius:    18,
+    overflow:        "hidden",
+    ...theme.shadow.card,
+  },
+  detailsHeader: {
+    paddingHorizontal: 18,
+    paddingVertical:   14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.border.hairline,
+    gap:               2,
+  },
+  detailsTitle: {
+    letterSpacing: -0.2,
+  },
+  detailsBody: {
+    paddingHorizontal: 18,
+  },
+  detailRow: {
+    flexDirection:    "row-reverse",
+    justifyContent:   "space-between",
+    alignItems:       "center",
+    paddingVertical:  13,
+    borderBottomWidth:StyleSheet.hairlineWidth,
+    borderBottomColor:theme.colors.border.hairline,
+  },
+  detailValue: {
+    maxWidth: "60%",
+  },
+
+  // ── Section header for "Related" ────────────────────────────────
+  sectionHeader: {
+    flexDirection: "row-reverse",
+    alignItems:    "center",
+    gap:           12,
+  },
+  sectionIcon: {
+    width:           34,
+    height:          34,
+    borderRadius:    11,
+    backgroundColor: theme.colors.brand.lighter,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
+    alignItems:      "center",
+    justifyContent:  "center",
+  },
+  sectionTitle: {
+    letterSpacing: -0.2,
+    marginTop:     1,
+  },
+
+  // ── Sticky CTA ──────────────────────────────────────────────────
+  cta: {
+    position:        "absolute",
+    bottom:          0,
+    left:            0,
+    right:           0,
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: 16,
+    paddingTop:      14,
+    gap:             10,
+    borderTopWidth:  StyleSheet.hairlineWidth,
+    borderTopColor:  theme.colors.border.hairline,
+    shadowColor:     "#0C2240",
+    shadowOffset:    { width: 0, height: -4 },
+    shadowOpacity:   0.06,
+    shadowRadius:    12,
+    elevation:       8,
+  },
+  viewCartLink: {
+    flexDirection:  "row-reverse",
+    alignItems:     "center",
+    justifyContent: "center",
+    gap:            6,
+    paddingVertical: 4,
+  },
+});

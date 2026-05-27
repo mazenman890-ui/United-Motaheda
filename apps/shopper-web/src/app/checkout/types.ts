@@ -71,6 +71,8 @@ export type CheckoutSubmitCommand = {
     method: CheckoutPaymentMethod;
     label: string;
     requestPosMachine: boolean;
+    transferNumber?: string;
+    paymentProofUrl?: string;
   };
   promoCode?: string;
   note: string;

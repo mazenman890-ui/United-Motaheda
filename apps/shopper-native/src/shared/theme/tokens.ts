@@ -157,20 +157,28 @@ export const colors = {
   text: {
     primary:   '#0F1724',
     secondary: '#4A5568',
+    muted:     '#647488',      // between secondary and tertiary — for body
     tertiary:  '#8896A4',
     disabled:  '#B8C4CF',
     inverse:   '#FFFFFF',
+    inverseSoft: 'rgba(255,255,255,0.72)', // muted-on-dark for hero subcopy
     brand:     palette.teal[700],
     link:      palette.cyan[600],
   },
   // ── Border
   border: {
+    hairline: 'rgba(15, 23, 42, 0.05)',   // refined 1px separator (premium)
     default:  'rgba(15, 23, 42, 0.08)',
     medium:   'rgba(15, 23, 42, 0.12)',
     strong:   'rgba(15, 23, 42, 0.20)',
     focus:    palette.cyan[600],
     brand:    palette.teal[400],
+    brandSoft:'rgba(13, 184, 168, 0.18)', // clinical brand-tinted hairline
   },
+  // ── Extended surfaces (clinical layering — opt-in, doesn't touch `surface`)
+  surfaceSunken:   '#FAFBFD',  // for muted wells / nested sections
+  surfaceElevated: '#FFFFFF',  // explicit-elevation intent
+  surfaceAccent:   '#F0FDFB',  // brand-tinted surface (teal[25])
   // ── Semantic
   success: {
     bg:     palette.green[50],
@@ -331,6 +339,8 @@ export const radius = {
   '3xl': 28,
   '4xl': 36,
   full: 9999,
+  // Semantic alias — for buttons, badges, chips that should read as "pill"
+  pill: 9999,
 } as const;
 
 export const fontWeight = {
@@ -344,83 +354,85 @@ export const fontWeight = {
 
 // ─── Shadows (elevation system) ───────────────────────────────────────────────
 
+function hexToRgba(hex: string, alpha: number) {
+  const h = hex.replace('#', '');
+  const bigint = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+// React Native 0.76+ accepts the unified `boxShadow` CSS-like string on both
+// platforms (Android/iOS via Fabric, web via react-native-web). The legacy
+// shadowColor/Offset/Opacity/Radius quartet is deprecated in 0.78+; emitting
+// both surfaces a console warning per shadow token on every web render.
+//
+// Tokens below use `boxShadow` for the visual + `elevation` for Android's
+// Material elevation (separate concern — drives surface stacking, not just
+// drop-shadow). This silences the deprecation across the entire app.
 export const shadow = {
   none: {
-    shadowColor: 'transparent',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0,
-    shadowRadius: 0,
     elevation: 0,
+    boxShadow: `0px 0px 0px rgba(0,0,0,0)`,
+  },
+  // Hairline — almost invisible, just enough to read a card edge against
+  // a same-color background. Use for inline cards / list rows.
+  hairline: {
+    elevation: 0,
+    boxShadow: `0px 1px 1.5px ${hexToRgba('#0C2240', 0.03)}`,
   },
   xs: {
-    shadowColor: '#0C2240',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
     elevation: 1,
+    boxShadow: `0px 1px 2px ${hexToRgba('#0C2240', 0.05)}`,
   },
   sm: {
-    shadowColor: '#0C2240',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 6,
     elevation: 2,
+    boxShadow: `0px 2px 6px ${hexToRgba('#0C2240', 0.07)}`,
   },
   md: {
-    shadowColor: '#0C2240',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.09,
-    shadowRadius: 12,
     elevation: 4,
+    boxShadow: `0px 4px 12px ${hexToRgba('#0C2240', 0.09)}`,
   },
   lg: {
-    shadowColor: '#0C2240',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.11,
-    shadowRadius: 20,
     elevation: 8,
+    boxShadow: `0px 8px 20px ${hexToRgba('#0C2240', 0.11)}`,
   },
   xl: {
-    shadowColor: '#0C2240',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.14,
-    shadowRadius: 32,
     elevation: 12,
+    boxShadow: `0px 12px 32px ${hexToRgba('#0C2240', 0.14)}`,
   },
   '2xl': {
-    shadowColor: '#0C2240',
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.18,
-    shadowRadius: 48,
     elevation: 20,
+    boxShadow: `0px 20px 48px ${hexToRgba('#0C2240', 0.18)}`,
   },
   brand: {
-    shadowColor: '#0891B2',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.30,
-    shadowRadius: 16,
     elevation: 8,
+    boxShadow: `0px 6px 16px ${hexToRgba('#0891B2', 0.30)}`,
   },
   teal: {
-    shadowColor: '#0DB8A8',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.28,
-    shadowRadius: 12,
     elevation: 6,
+    boxShadow: `0px 4px 12px ${hexToRgba('#0DB8A8', 0.28)}`,
   },
   float: {
-    shadowColor: '#021D2E',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.20,
-    shadowRadius: 32,
     elevation: 16,
+    boxShadow: `0px 12px 32px ${hexToRgba('#021D2E', 0.20)}`,
   },
   card: {
-    shadowColor: '#0C2240',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
     elevation: 3,
+    boxShadow: `0px 2px 8px ${hexToRgba('#0C2240', 0.06)}`,
+  },
+  // Modern "lift on press" — for interactive cards (e.g. ProductCard hover).
+  // Subtle, premium, doesn't dominate the layout.
+  cardLifted: {
+    elevation: 6,
+    boxShadow: `0px 6px 18px ${hexToRgba('#0C2240', 0.10)}`,
+  },
+  // Brand-tinted glow used as a focus ring on Inputs / primary CTAs in
+  // "trust" moments (e.g. payment confirmation, verify-phone). Clinical.
+  brandGlow: {
+    elevation: 6,
+    boxShadow: `0px 0px 14px ${hexToRgba('#0DB8A8', 0.22)}`,
   },
 } as const;
 
@@ -441,6 +453,9 @@ export const animation = {
     gentle:   { damping: 20, stiffness: 180, mass: 1.2 },
     bouncy:   { damping: 10, stiffness: 320, mass: 0.9 },
     stiff:    { damping: 24, stiffness: 500, mass: 0.7 },
+    // Refined press-down for buttons / pressable cards. Just shy of an
+    // audible click — enough to confirm the press, never bouncy.
+    press:    { damping: 22, stiffness: 420, mass: 0.7 },
   },
   // Timing (easing) for Reanimated
   easing: {
@@ -448,6 +463,12 @@ export const animation = {
     decelerate:  [0.0, 0.0, 0.2, 1.0]  as [number,number,number,number],
     accelerate:  [0.4, 0.0, 1.0, 1.0]  as [number,number,number,number],
     sharp:       [0.4, 0.0, 0.6, 1.0]  as [number,number,number,number],
+    // ── Premium curves (clinical/trust motion language) ────────────────
+    // Soft, "settling" decelerate — feels expensive on sheet/modal entries.
+    smoothOut:   [0.32, 0.72, 0, 1]    as [number,number,number,number],
+    // Emphasized "Material 3" curve — for hero transitions and important
+    // attention shifts (e.g. step pill activation, checkout step change).
+    emphasize:   [0.16, 1, 0.3, 1]     as [number,number,number,number],
   },
 } as const;
 

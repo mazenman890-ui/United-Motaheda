@@ -1,22 +1,22 @@
 import React, { useCallback, useState } from "react";
-import { ActivityIndicator, FlatList, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Platform, Pressable, ScrollView, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useInfiniteQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import Animated, { FadeInDown } from "react-native-reanimated";
-import { fetchProducts } from "@/services/productsApi";
-import { ProductCard } from "@/components/ProductCard";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/theme";
-import type { NativeProduct, ProductFilters } from "@/services/productsApi";
+import {
+  ProductGrid,
+  useInfiniteProducts,
+  type NativeProduct,
+  type ProductSortMode,
+} from "@/features/products";
 
-type SortOption = ProductFilters["sortBy"];
-
-const SORT_OPTIONS: { id: SortOption; label: string; icon: React.ComponentProps<typeof Ionicons>["name"] }[] = [
+const SORT_OPTIONS: { id: ProductSortMode; label: string; icon: React.ComponentProps<typeof Ionicons>["name"] }[] = [
   { id: "newest",     label: "الأحدث",      icon: "time-outline" },
   { id: "price_asc",  label: "الأقل سعراً",  icon: "arrow-down-outline" },
   { id: "price_desc", label: "الأعلى سعراً", icon: "arrow-up-outline" },
@@ -24,50 +24,38 @@ const SORT_OPTIONS: { id: SortOption; label: string; icon: React.ComponentProps<
 ];
 
 export default function CategoryScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const rawId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const id = typeof rawId === "string" && rawId.length > 0 ? decodeURIComponent(rawId) : undefined;
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [sortBy, setSortBy] = useState<SortOption>("newest");
+  const [sortBy, setSortBy]           = useState<ProductSortMode>("newest");
   const [inStockOnly, setInStockOnly] = useState(false);
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError, refetch } =
-    useInfiniteQuery({
-      queryKey: ["category", id, sortBy, inStockOnly],
-      queryFn: ({ pageParam = 1 }) =>
-        fetchProducts({
-          categoryId: id,
-          page: pageParam,
-          pageSize: 24,
-          sortBy,
-          inStock: inStockOnly || undefined,
-        }),
-      initialPageParam: 1,
-      getNextPageParam: (last) => (last.hasNextPage ? last.currentPage + 1 : undefined),
-      enabled: !!id,
-      staleTime: 5 * 60 * 1000,
-    });
+  const {
+    products,
+    totalCount,
+    isLoading,
+    isError,
+    isFetchingNextPage,
+    isRefreshing,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+  } = useInfiniteProducts({
+    categoryId: id,
+    sortBy,
+    inStock:    inStockOnly || undefined,
+    pageSize:   20,
+    enabled:    Boolean(id),
+  });
 
-  const products = data?.pages.flatMap((p) => p.products) ?? [];
-  const totalCount = data?.pages[0]?.totalCount ?? 0;
-
-  const loadMore = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
-
-  const renderItem = useCallback(
-    ({ item }: { item: NativeProduct }) => (
-      <View style={{ flex: 1 }}>
-        <ProductCard
-          product={item}
-          lang="ar"
-          onPress={() => router.push({ pathname: "/product/[id]", params: { id: item.id } })}
-        />
-      </View>
-    ),
+  const handleProductPress = useCallback(
+    (p: NativeProduct) => {
+      router.push({ pathname: "/product/[id]", params: { id: p.id } });
+    },
     [router],
   );
-
-  const keyExtractor = useCallback((p: NativeProduct) => p.id, []);
 
   const gradientIdx = (id?.length ?? 0) % theme.catGradients.length;
   const [g1, g2] = theme.catGradients[gradientIdx];
@@ -80,8 +68,8 @@ export default function CategoryScreen() {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{
-          paddingTop: insets.top + 8,
-          paddingBottom: 20,
+          paddingTop:        insets.top + 8,
+          paddingBottom:     20,
           paddingHorizontal: 16,
         }}>
         <View style={{ position: "absolute", right: -24, top: -24, width: 100, height: 100, borderRadius: 50, backgroundColor: "rgba(255,255,255,0.06)" }} />
@@ -92,38 +80,41 @@ export default function CategoryScreen() {
             onPress={() => router.back()}
             hitSlop={10}
             style={{
-              width: 38,
-              height: 38,
-              borderRadius: 12,
+              width:           38,
+              height:          38,
+              borderRadius:    12,
               backgroundColor: "rgba(255,255,255,0.18)",
-              alignItems: "center",
-              justifyContent: "center",
-              borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.25)",
+              alignItems:      "center",
+              justifyContent:  "center",
+              borderWidth:     1,
+              borderColor:     "rgba(255,255,255,0.25)",
             }}>
             <Ionicons name="arrow-forward" size={16} color="#fff" />
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 20, fontFamily: theme.fonts.black, color: "#fff", textAlign: "right" }} numberOfLines={1}>
+            <UIText variant="eyebrow" align="right" style={{ color: "rgba(255,255,255,0.55)" }}>
+              تصفح القسم
+            </UIText>
+            <UIText variant="sheet-title" color="inverse" align="right" numberOfLines={1} style={{ letterSpacing: -0.3, marginTop: 2 }}>
               {id ?? "القسم"}
-            </Text>
+            </UIText>
             {totalCount > 0 && (
-              <Text style={{ fontSize: 11, fontFamily: theme.fonts.semibold, color: "rgba(255,255,255,0.55)", textAlign: "right" }}>
+              <UIText variant="body-sm" color="inverse-muted" align="right" style={{ marginTop: 2 }}>
                 {totalCount.toLocaleString()} منتج
-              </Text>
+              </UIText>
             )}
           </View>
           <Pressable
             onPress={() => router.push("/(tabs)/cart")}
             style={{
-              width: 38,
-              height: 38,
-              borderRadius: 12,
+              width:           38,
+              height:          38,
+              borderRadius:    12,
               backgroundColor: "rgba(255,255,255,0.18)",
-              alignItems: "center",
-              justifyContent: "center",
-              borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.25)",
+              alignItems:      "center",
+              justifyContent:  "center",
+              borderWidth:     1,
+              borderColor:     "rgba(255,255,255,0.25)",
             }}>
             <Ionicons name="bag-outline" size={16} color="#fff" />
           </Pressable>
@@ -141,20 +132,18 @@ export default function CategoryScreen() {
               setInStockOnly((v) => !v);
             }}
             style={{
-              flexDirection: "row-reverse",
-              alignItems: "center",
-              gap: 5,
+              flexDirection:    "row-reverse",
+              alignItems:       "center",
+              gap:              5,
               paddingHorizontal: 12,
-              paddingVertical: 7,
-              borderRadius: 12,
-              backgroundColor: inStockOnly ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.10)",
-              borderWidth: 1,
-              borderColor: inStockOnly ? "rgba(255,255,255,0.40)" : "rgba(255,255,255,0.15)",
+              paddingVertical:   7,
+              borderRadius:     12,
+              backgroundColor:  inStockOnly ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.10)",
+              borderWidth:      1,
+              borderColor:      inStockOnly ? "rgba(255,255,255,0.40)" : "rgba(255,255,255,0.15)",
             }}>
             <Ionicons name={inStockOnly ? "checkmark-circle" : "cube-outline"} size={14} color="#fff" />
-            <Text style={{ fontSize: 11, fontFamily: theme.fonts.bold, color: "#fff" }}>
-              متوفر فقط
-            </Text>
+            <UIText variant="caption" weight="bold" color="inverse">متوفر فقط</UIText>
           </Pressable>
 
           {/* Sort options */}
@@ -168,20 +157,23 @@ export default function CategoryScreen() {
                   setSortBy(opt.id);
                 }}
                 style={{
-                  flexDirection: "row-reverse",
-                  alignItems: "center",
-                  gap: 5,
+                  flexDirection:    "row-reverse",
+                  alignItems:       "center",
+                  gap:              5,
                   paddingHorizontal: 12,
-                  paddingVertical: 7,
-                  borderRadius: 12,
-                  backgroundColor: active ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.10)",
-                  borderWidth: 1,
-                  borderColor: active ? "rgba(255,255,255,0.40)" : "rgba(255,255,255,0.15)",
+                  paddingVertical:   7,
+                  borderRadius:     12,
+                  backgroundColor:  active ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.10)",
+                  borderWidth:      1,
+                  borderColor:      active ? "rgba(255,255,255,0.40)" : "rgba(255,255,255,0.15)",
                 }}>
                 <Ionicons name={opt.icon} size={13} color="#fff" />
-                <Text style={{ fontSize: 11, fontFamily: active ? theme.fonts.black : theme.fonts.semibold, color: "#fff" }}>
+                <UIText
+                  variant="caption"
+                  weight={active ? "black" : "semibold"}
+                  color="inverse">
                   {opt.label}
-                </Text>
+                </UIText>
               </Pressable>
             );
           })}
@@ -209,7 +201,7 @@ export default function CategoryScreen() {
           title="تعذر التحميل"
           description="تحقق من اتصالك بالإنترنت وحاول مرة أخرى"
           actionLabel="إعادة المحاولة"
-          onAction={() => refetch()}
+          onAction={refetch}
         />
       ) : products.length === 0 ? (
         <EmptyState
@@ -220,20 +212,13 @@ export default function CategoryScreen() {
           onAction={() => (inStockOnly ? setInStockOnly(false) : router.back())}
         />
       ) : (
-        <FlatList
-          data={products}
-          numColumns={2}
-          keyExtractor={keyExtractor}
+        <ProductGrid
+          products={products}
+          onProductPress={handleProductPress}
+          onEndReached={hasNextPage && !isFetchingNextPage ? fetchNextPage : undefined}
+          refreshing={isRefreshing}
+          onRefresh={refetch}
           contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 90 }}
-          columnWrapperStyle={{ gap: 10, marginBottom: 10, flexDirection: "row-reverse" }}
-          onEndReached={loadMore}
-          onEndReachedThreshold={0.4}
-          showsVerticalScrollIndicator={false}
-          removeClippedSubviews
-          maxToRenderPerBatch={10}
-          initialNumToRender={8}
-          windowSize={5}
-          renderItem={renderItem}
           ListFooterComponent={
             isFetchingNextPage ? (
               <View style={{ paddingVertical: 24, alignItems: "center" }}>

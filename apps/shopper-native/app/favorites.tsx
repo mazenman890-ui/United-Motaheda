@@ -1,28 +1,28 @@
-import React, { useCallback, useEffect } from "react";
+import React, { memo, useCallback } from "react";
 import {
   Alert,
-  FlatList,
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
+import { FlashList } from "@shopify/flash-list";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown, FadeOutRight, Layout } from "react-native-reanimated";
-import { useWishlistStore } from "@/stores/wishlist";
+import { useWishlistStore, clearUserWishlist } from "@/stores/wishlist";
 import { useCartStore } from "@/stores/cart";
 import type { NativeProduct } from "@/services/productsApi";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
+import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/theme";
 import { formatPrice } from "@/utils/format";
 
-function FavoriteCard({ product, index }: { product: NativeProduct; index: number }) {
+const FavoriteCard = memo(function FavoriteCard({ product, index }: { product: NativeProduct; index: number }) {
   const router   = useRouter();
   const toggle   = useWishlistStore((s) => s.toggle);
   const addItem  = useCartStore((s) => s.addItem);
@@ -56,7 +56,7 @@ function FavoriteCard({ product, index }: { product: NativeProduct; index: numbe
           )}
           {!product.inStock && (
             <View style={styles.outOfStockOverlay}>
-              <Text style={styles.outOfStockText}>نفذ</Text>
+              <UIText variant="eyebrow" color="inverse">نفذ</UIText>
             </View>
           )}
         </View>
@@ -64,21 +64,35 @@ function FavoriteCard({ product, index }: { product: NativeProduct; index: numbe
 
       {/* Info */}
       <View style={{ flex: 1, gap: 4 }}>
-        <Text style={styles.catLabel} numberOfLines={1}>{product.categoryName}</Text>
+        <UIText variant="eyebrow" color="tertiary" align="right" numberOfLines={1}>
+          {product.categoryName}
+        </UIText>
         <Pressable onPress={() => router.push({ pathname: "/product/[id]", params: { id: product.id } })}>
-          <Text style={styles.nameLabel} numberOfLines={2}>{name}</Text>
+          <UIText variant="body-sm" weight="bold" align="right" numberOfLines={2} style={styles.nameLabelNew}>
+            {name}
+          </UIText>
         </Pressable>
-        <Text style={styles.priceLabel}>{formatPrice(product.price)}</Text>
+        <UIText variant="card-title" weight="black" align="right" style={styles.priceLabelNew}>
+          {formatPrice(product.price)}
+        </UIText>
       </View>
 
       {/* Actions */}
       <View style={styles.actions}>
-        <Pressable onPress={handleRemove} hitSlop={8} style={styles.removeBtn}>
+        <Pressable
+          onPress={handleRemove}
+          hitSlop={8}
+          style={styles.removeBtn}
+          accessibilityRole="button"
+          accessibilityLabel={`إزالة ${name} من المفضلة`}>
           <Ionicons name="heart" size={18} color={theme.colors.rose[500]} />
         </Pressable>
         <Pressable
           onPress={handleAddToCart}
           disabled={!product.inStock}
+          accessibilityRole="button"
+          accessibilityLabel={!product.inStock ? `${name} غير متوفر` : inCart ? `${name} موجود في السلة` : `إضافة ${name} إلى السلة`}
+          accessibilityState={{ disabled: !product.inStock }}
           style={[styles.cartBtn, inCart && styles.cartBtnActive, !product.inStock && styles.cartBtnDisabled]}>
           <Ionicons
             name={inCart ? "checkmark" : "cart-outline"}
@@ -89,18 +103,34 @@ function FavoriteCard({ product, index }: { product: NativeProduct; index: numbe
       </View>
     </Animated.View>
   );
-}
+});
 
 export default function FavoritesScreen() {
   const router   = useRouter();
   const insets   = useSafeAreaInsets();
-  const { items, isHydrated, hydrate, clear } = useWishlistStore();
+  // Per-field selectors — avoids whole-store subscription.
+  const items      = useWishlistStore((s) => s.items);
+  const isHydrated = useWishlistStore((s) => s.isHydrated);
+  const userId     = useWishlistStore((s) => s.userId);
+  const clear      = useWishlistStore((s) => s.clear);
 
-  useEffect(() => { hydrate(); }, [hydrate]);
+  // Initial hydrate is owned by PharmacyBootstrap (auth-aware). No call here.
 
   const handleClearAll = useCallback(() => {
-    if (Platform.OS === "web") {
+    const doClear = () => {
+      // Clear local immediately for snappy UI.
       clear();
+      // If authed, also wipe server-side so the empty wishlist syncs across
+      // devices and survives sign-out/sign-in. Fire-and-forget.
+      if (userId) {
+        void clearUserWishlist(userId).catch((e) => {
+          if (__DEV__) console.warn("[favorites] clearUserWishlist failed:", e);
+        });
+      }
+    };
+
+    if (Platform.OS === "web") {
+      doClear();
       return;
     }
     Alert.alert(
@@ -113,24 +143,39 @@ export default function FavoritesScreen() {
           style: "destructive",
           onPress: () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-            clear();
+            doClear();
           },
         },
       ],
     );
-  }, [clear]);
+  }, [clear, userId]);
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={10}>
+        <Pressable
+          onPress={() => router.back()}
+          style={styles.backBtn}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="رجوع">
           <Ionicons name="arrow-forward" size={18} color={theme.colors.text.primary} />
         </Pressable>
-        <Text style={styles.title}>المفضلة</Text>
+        <View style={{ flex: 1, alignItems: "center" }}>
+          <UIText variant="eyebrow" color="tertiary">المفضلة الخاصة بك</UIText>
+          <UIText variant="card-title" align="center" style={styles.titleNew}>المفضلة</UIText>
+        </View>
         {items.length > 0 ? (
-          <Pressable onPress={handleClearAll} hitSlop={8}>
-            <Text style={styles.clearBtn}>مسح الكل</Text>
+          <Pressable
+            onPress={handleClearAll}
+            hitSlop={8}
+            style={{ minWidth: 60, alignItems: "flex-start" }}
+            accessibilityRole="button"
+            accessibilityLabel="مسح جميع المفضلات">
+            <UIText variant="caption" weight="bold" style={{ color: theme.colors.error.base }}>
+              مسح الكل
+            </UIText>
           </Pressable>
         ) : (
           <View style={{ width: 60 }} />
@@ -146,41 +191,136 @@ export default function FavoritesScreen() {
           onAction={() => router.push("/(tabs)/products")}
         />
       ) : (
-        <FlatList
+        <FlashList<NativeProduct>
           data={items}
-          keyExtractor={(p) => p.id}
-          contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}
+          keyExtractor={favoriteKeyExtractor}
+          getItemType={favoriteItemType}
+          contentContainerStyle={{
+            padding:       theme.layout.pagePaddingH,
+            paddingBottom: insets.bottom + 24,
+          }}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
             <View style={styles.listHeader}>
               <Badge variant="brand" size="sm">{`${items.length} منتج`}</Badge>
             </View>
           }
-          renderItem={({ item, index }) => <FavoriteCard product={item} index={index} />}
+          renderItem={({ item, index }) => (
+            <View style={styles.cardWrap}>
+              <FavoriteCard product={item} index={index} />
+            </View>
+          )}
         />
       )}
     </View>
   );
 }
 
+// Stable refs so React doesn't reallocate them on every render — FlashList
+// pools cells by getItemType so a stable identifier keeps the recycler happy.
+const favoriteKeyExtractor = (p: NativeProduct) => p.id;
+const favoriteItemType     = () => "favorite-card";
+
 const styles = StyleSheet.create({
-  screen:            { flex: 1, backgroundColor: theme.colors.bg },
-  header:            { flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", paddingHorizontal: theme.layout.pagePaddingH, paddingVertical: 14, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border.default, ...theme.shadow.xs },
-  backBtn:           { width: 38, height: 38, borderRadius: 12, backgroundColor: theme.colors.subtle, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: theme.colors.border.default },
-  title:             { fontSize: theme.fontSize['2xl'], fontFamily: theme.fonts.black, color: theme.colors.text.primary },
-  clearBtn:          { fontSize: theme.fontSize.sm, fontFamily: theme.fonts.bold, color: theme.colors.error.base },
-  list:              { padding: theme.layout.pagePaddingH, gap: 10 },
-  listHeader:        { flexDirection: "row-reverse", marginBottom: 4 },
-  card:              { flexDirection: "row-reverse", alignItems: "center", gap: 12, backgroundColor: theme.colors.surface, borderRadius: theme.layout.cardRadius, padding: 12, ...theme.shadow.card, borderWidth: 1, borderColor: theme.colors.border.default },
-  imgBox:            { width: 72, height: 72, borderRadius: theme.radius.lg, backgroundColor: theme.colors.subtle, alignItems: "center", justifyContent: "center", overflow: "hidden" },
-  outOfStockOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center" },
-  outOfStockText:    { fontSize: 10, fontFamily: theme.fonts.black, color: "#fff" },
-  catLabel:          { fontSize: theme.fontSize.xs, fontFamily: theme.fonts.regular, color: theme.colors.text.tertiary, textAlign: "right" },
-  nameLabel:         { fontSize: theme.fontSize.base, fontFamily: theme.fonts.bold, color: theme.colors.text.primary, textAlign: "right", lineHeight: 18 },
-  priceLabel:        { fontSize: theme.fontSize.lg, fontFamily: theme.fonts.black, color: theme.colors.brand[700], textAlign: "right" },
-  actions:           { alignItems: "center", gap: 10 },
-  removeBtn:         { width: 36, height: 36, borderRadius: 10, backgroundColor: theme.colors.rose[50], alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: theme.colors.rose[100] },
-  cartBtn:           { width: 36, height: 36, borderRadius: 10, backgroundColor: theme.colors.brand[50], alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: theme.colors.brand[100] },
-  cartBtnActive:     { backgroundColor: theme.colors.brand[600], borderColor: theme.colors.brand[600] },
-  cartBtnDisabled:   { backgroundColor: theme.colors.subtle, borderColor: theme.colors.border.default },
+  screen: {
+    flex: 1,
+    backgroundColor: theme.colors.bg,
+  },
+  cardWrap: {
+    paddingBottom: 12,
+  },
+  header: {
+    flexDirection:    "row-reverse",
+    alignItems:       "center",
+    justifyContent:   "space-between",
+    paddingHorizontal: theme.layout.pagePaddingH,
+    paddingVertical:   14,
+    backgroundColor:   theme.colors.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.border.hairline,
+  },
+  backBtn: {
+    width:           40,
+    height:          40,
+    borderRadius:    12,
+    backgroundColor: theme.colors.surfaceSunken,
+    alignItems:      "center",
+    justifyContent:  "center",
+  },
+  titleNew: {
+    letterSpacing: -0.2,
+    marginTop:     1,
+  },
+  list: {
+    padding: theme.layout.pagePaddingH,
+    gap:     12,
+  },
+  listHeader: {
+    flexDirection: "row-reverse",
+    marginBottom:  6,
+  },
+  card: {
+    flexDirection:   "row-reverse",
+    alignItems:      "center",
+    gap:             14,
+    backgroundColor: theme.colors.surface,
+    borderRadius:    16,
+    padding:         14,
+    ...theme.shadow.card,
+  },
+  imgBox: {
+    width:           76,
+    height:          76,
+    borderRadius:    theme.radius.lg,
+    backgroundColor: theme.colors.surfaceSunken,
+    alignItems:      "center",
+    justifyContent:  "center",
+    overflow:        "hidden",
+  },
+  outOfStockOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.50)",
+    alignItems:      "center",
+    justifyContent:  "center",
+  },
+  nameLabelNew: {
+    lineHeight: 20,
+  },
+  priceLabelNew: {
+    color:         theme.colors.brand[700],
+    letterSpacing: -0.3,
+    marginTop:     2,
+  },
+  actions: {
+    alignItems: "center",
+    gap:        10,
+  },
+  removeBtn: {
+    width:           38,
+    height:          38,
+    borderRadius:    11,
+    backgroundColor: theme.colors.rose[50],
+    borderWidth:     1,
+    borderColor:     theme.colors.rose[100],
+    alignItems:      "center",
+    justifyContent:  "center",
+  },
+  cartBtn: {
+    width:           38,
+    height:          38,
+    borderRadius:    11,
+    backgroundColor: theme.colors.brand.lighter,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
+    alignItems:      "center",
+    justifyContent:  "center",
+  },
+  cartBtnActive: {
+    backgroundColor: theme.colors.brand[700],
+    borderColor:     theme.colors.brand[700],
+  },
+  cartBtnDisabled: {
+    backgroundColor: theme.colors.subtle,
+    borderColor:     theme.colors.border.default,
+  },
 });

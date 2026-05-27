@@ -73,8 +73,14 @@ import { cn } from "./UI";
 // Shared across the live grid, skeleton grid, and empty state so layout is
 // always consistent regardless of which state is rendered.
 
+// auto-rows-fr removed: in CSS grid, fr in grid-auto-rows is relative to the
+// container's explicit height. When the container has no fixed height (which
+// is always the case inside VirtuosoGrid's List component), fr resolves to
+// auto. Keeping it caused VirtuosoGrid's row-height measurement to be
+// non-deterministic on some browsers, producing subtle scroll jitter.
+// Plain "auto" rows (the browser default) are measured once, stably.
 const GRID_CLASSES = cn(
-  "catalog-products-grid grid auto-rows-fr gap-3 sm:gap-4",
+  "catalog-products-grid grid gap-3 sm:gap-4",
   "grid-cols-2 lg:grid-cols-3",
   "xl:[grid-template-columns:repeat(auto-fill,minmax(14.5rem,1fr))]",
   "2xl:[grid-template-columns:repeat(auto-fill,minmax(15.5rem,1fr))]",
@@ -362,7 +368,9 @@ export const ProductGrid = memo(function ProductGrid({
       <VirtuosoGrid
         useWindowScroll
         totalCount={products.length}
-        overscan={400}
+        // Increased from 400px → 800px: renders one extra card-row above and
+        // below the viewport so rapid scrolling never shows a blank gap.
+        overscan={800}
         components={VIRTUOSO_COMPONENTS}
         itemContent={itemContent}
         endReached={onEndReached ? (_index) => onEndReached() : undefined}

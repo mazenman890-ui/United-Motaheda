@@ -1,9 +1,8 @@
-import React, { memo, useCallback, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
 import { Image } from "expo-image";
@@ -20,6 +19,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { theme } from "@/theme";
 import { Badge } from "./ui/Badge";
+import { Text as UIText } from "@/shared/ui";
 import { useCartStore } from "@/stores/cart";
 import { useWishlistStore } from "@/stores/wishlist";
 import type { NativeProduct } from "@/services/productsApi";
@@ -62,6 +62,110 @@ function Stars({ value, size = 11 }: { value: number; size?: number }) {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
+// ─── Placeholder palette — maps category to a warm gradient pair ──────────────
+
+const CATEGORY_PALETTE: Record<string, [string, string, string]> = {
+  // [gradient-start, gradient-end, icon-color]
+  "العناية بالشعر":                ["#f0fdf4", "#dcfce7", "#16a34a"],
+  "Hair Care":                     ["#f0fdf4", "#dcfce7", "#16a34a"],
+  "العناية بالبشرة":               ["#fdf4ff", "#fae8ff", "#a855f7"],
+  "Skincare":                      ["#fdf4ff", "#fae8ff", "#a855f7"],
+  "مستحضرات التجميل والمكياج":    ["#fff0f6", "#ffe4ee", "#e11d6c"],
+  "Cosmetics & Makeup":            ["#fff0f6", "#ffe4ee", "#e11d6c"],
+  "العناية بالفم والأسنان":        ["#eff6ff", "#dbeafe", "#2563eb"],
+  "Dental & Oral":                  ["#eff6ff", "#dbeafe", "#2563eb"],
+  "الفيتامينات والمكملات الغذائية": ["#fffbeb", "#fef3c7", "#d97706"],
+  "Vitamins & Supplements":        ["#fffbeb", "#fef3c7", "#d97706"],
+  "أدوية":                         ["#ecfdf5", "#d1fae5", "#059669"],
+  "Medications":                   ["#ecfdf5", "#d1fae5", "#059669"],
+  "المستلزمات الطبية":             ["#f0f9ff", "#e0f2fe", "#0284c7"],
+  "Medical Supplies":              ["#f0f9ff", "#e0f2fe", "#0284c7"],
+  "الرعاية الصحية العامة":         ["#f8fafc", "#f1f5f9", "#475569"],
+  "General Healthcare":            ["#f8fafc", "#f1f5f9", "#475569"],
+  "العناية بالجسم":                ["#fff7ed", "#ffedd5", "#ea580c"],
+  "Body Care":                     ["#fff7ed", "#ffedd5", "#ea580c"],
+  "صحة المرأة":                    ["#fdf2f8", "#fce7f3", "#db2777"],
+  "Women's Health":                ["#fdf2f8", "#fce7f3", "#db2777"],
+  "الأطفال والرضع":                ["#fefce8", "#fef9c3", "#ca8a04"],
+  "Baby & Child":                  ["#fefce8", "#fef9c3", "#ca8a04"],
+  "العناية بالرجل":                ["#f1f5f9", "#e2e8f0", "#334155"],
+  "Men's Care":                    ["#f1f5f9", "#e2e8f0", "#334155"],
+  "العناية بالعيون":               ["#ecfeff", "#cffafe", "#0891b2"],
+  "Eye Care":                      ["#ecfeff", "#cffafe", "#0891b2"],
+};
+
+const DEFAULT_PALETTE: [string, string, string] = ["#f0f9ff", "#e0f2fe", "#0284c7"];
+
+type PlaceholderSize = "lg" | "sm";
+
+interface ProductImagePlaceholderProps {
+  category: string;
+  size:     PlaceholderSize;
+}
+
+function ProductImagePlaceholder({ category, size }: ProductImagePlaceholderProps) {
+  const [g1, g2, iconColor] = CATEGORY_PALETTE[category] ?? DEFAULT_PALETTE;
+  const iconName  = categoryIcon(category);
+  const iconSize  = size === "lg" ? 44 : 28;
+  const circleSize = size === "lg" ? 88 : 56;
+
+  return (
+    <LinearGradient
+      colors={[g1, g2]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={StyleSheet.absoluteFill}>
+      {/* Decorative corner arc — top-right */}
+      <View style={[
+        styles.placeholderArc,
+        {
+          width:  circleSize * 1.6,
+          height: circleSize * 1.6,
+          borderRadius: circleSize * 0.8,
+          backgroundColor: iconColor + "0C",
+          top:    -circleSize * 0.55,
+          right:  -circleSize * 0.55,
+        },
+      ]} />
+      {/* Centre glow disc */}
+      <View style={styles.placeholderInner}>
+        <View style={[
+          styles.placeholderCircle,
+          {
+            width:        circleSize,
+            height:       circleSize,
+            borderRadius: circleSize / 2,
+            backgroundColor: iconColor + "18",
+          },
+        ]}>
+          <Ionicons name={iconName} size={iconSize} color={iconColor} />
+        </View>
+      </View>
+    </LinearGradient>
+  );
+}
+
+function categoryIcon(cat: string): React.ComponentProps<typeof Ionicons>["name"] {
+  const c = cat.toLowerCase();
+  if (c.includes("hair") || c.includes("شعر"))                              return "sparkles-outline";
+  if (c.includes("skin") || c.includes("بشرة"))                             return "leaf-outline";
+  if (c.includes("makeup") || c.includes("تجميل") || c.includes("cosmetic"))return "color-palette-outline";
+  if (c.includes("dental") || c.includes("أسنان") || c.includes("oral"))    return "medical-outline";
+  if (c.includes("vitamin") || c.includes("فيتامين") || c.includes("supplement") || c.includes("مكمل")) return "fitness-outline";
+  if (c.includes("medic") || c.includes("دواء") || c.includes("أدوية"))     return "medkit-outline";
+  if (c.includes("suppli") || c.includes("مستلزم"))                         return "medkit-outline";
+  if (c.includes("body") || c.includes("جسم"))                              return "body-outline";
+  if (c.includes("women") || c.includes("مرأة") || c.includes("woman"))     return "heart-outline";
+  if (c.includes("baby") || c.includes("طفل") || c.includes("رضيع") || c.includes("infant")) return "happy-outline";
+  if (c.includes("men") || c.includes("رجل") || c.includes("man's"))        return "person-outline";
+  if (c.includes("eye") || c.includes("عيون"))                              return "eye-outline";
+  if (c.includes("general") || c.includes("رعاية"))                         return "shield-checkmark-outline";
+  if (c.includes("nutrition") || c.includes("تغذية"))                       return "nutrition-outline";
+  if (c.includes("fragrance") || c.includes("عطر") || c.includes("perfume"))return "flower-outline";
+  if (c.includes("first aid") || c.includes("إسعاف"))                       return "bandage-outline";
+  return "medkit-outline";
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export const ProductCard = memo(function ProductCard({
@@ -72,15 +176,31 @@ export const ProductCard = memo(function ProductCard({
   badge,
   discountPercent,
 }: ProductCardProps) {
-  const addItem   = useCartStore((s) => s.addItem);
-  const cartItems = useCartStore((s) => s.items);
-  const inCart    = cartItems.some((i) => i.productId === product.id);
-  const cartQty   = cartItems.find((i) => i.productId === product.id)?.quantity ?? 0;
+  // Primitive selectors only — the card re-renders ONLY when its own line
+  // changes, not when any other cart item mutates. Previously this card
+  // subscribed to the entire `items` array, so toggling a single item
+  // re-rendered every visible card in the grid (50+ at a time on tablets).
+  const addItem  = useCartStore((s) => s.addItem);
+  const cartQty  = useCartStore(
+    (s) => s.items.find((i) => i.productId === product.id)?.quantity ?? 0,
+  );
+  const inCart   = cartQty > 0;
 
   const toggleWishlist = useWishlistStore((s) => s.toggle);
   const inWishlist     = useWishlistStore((s) => s.has(product.id));
 
-  const [showAdded, setShowAdded] = useState(false);
+  const [showAdded, setShowAdded]   = useState(false);
+  const [showMaxed, setShowMaxed]   = useState(false);
+
+  // Tracked so we can (a) clear the prior timer on spam-tap so the card
+  // doesn't oscillate, and (b) clear on unmount so setShowAdded(false)
+  // doesn't fire on an unmounted component when the user navigates away
+  // during the 1400ms confirmation window.
+  const showAddedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (showAddedTimerRef.current !== null) clearTimeout(showAddedTimerRef.current);
+  }, []);
+
   const scale    = useSharedValue(1);
   const btnScale = useSharedValue(1);
   const hrtScale = useSharedValue(1);
@@ -92,21 +212,43 @@ export const ProductCard = memo(function ProductCard({
   }));
   const hrtAnim  = useAnimatedStyle(() => ({ transform: [{ scale: hrtScale.value }] }));
 
-  const handlePressIn  = () => { scale.value = withSpring(0.97, theme.animation.spring.snappy); };
-  const handlePressOut = () => { scale.value = withSpring(1.0,  theme.animation.spring.snappy); };
+  // Refined hardware-switch feel — subtle, never bouncy
+  const handlePressIn  = () => { scale.value = withSpring(0.985, theme.animation.spring.press); };
+  const handlePressOut = () => { scale.value = withSpring(1.0,   theme.animation.spring.press); };
+
+  // Max quantity allowed — capped at live stock so the button stops at the shelf limit.
+  const maxQty = product.inStock && product.stock > 0 ? Math.ceil(product.stock) : 0;
+  const isAtMax = maxQty > 0 && cartQty >= maxQty;
 
   const handleAddToCart = useCallback(() => {
     if (!product.inStock) return;
+
+    if (isAtMax) {
+      // Already at stock limit — give error haptic + show "الكمية القصوى" flash.
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      setShowMaxed(true);
+      if (showAddedTimerRef.current !== null) clearTimeout(showAddedTimerRef.current);
+      showAddedTimerRef.current = setTimeout(() => {
+        setShowMaxed(false);
+        showAddedTimerRef.current = null;
+      }, 1400);
+      return;
+    }
+
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     btnScale.value = withSequence(
-      withSpring(0.80, theme.animation.spring.stiff),
-      withSpring(1.18, theme.animation.spring.bouncy),
-      withSpring(1.0,  theme.animation.spring.default),
+      withSpring(0.90, theme.animation.spring.press),
+      withSpring(1.06, theme.animation.spring.press),
+      withSpring(1.0,  theme.animation.spring.press),
     );
     addItem(product, 1);
     setShowAdded(true);
-    setTimeout(() => setShowAdded(false), 1400);
-  }, [product, addItem, btnScale]);
+    if (showAddedTimerRef.current !== null) clearTimeout(showAddedTimerRef.current);
+    showAddedTimerRef.current = setTimeout(() => {
+      setShowAdded(false);
+      showAddedTimerRef.current = null;
+    }, 1400);
+  }, [product, addItem, btnScale, isAtMax]);
 
   const handleWishlist = useCallback(() => {
     if (Platform.OS !== "web") {
@@ -115,10 +257,12 @@ export const ProductCard = memo(function ProductCard({
         : Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       ).catch(() => {});
     }
+    // Wishlist heart — emotional moment gets slightly more pop, but
+    // still restrained on the unified `press` spring
     hrtScale.value = withSequence(
-      withSpring(0.72, theme.animation.spring.stiff),
-      withSpring(1.32, theme.animation.spring.bouncy),
-      withSpring(1.0,  theme.animation.spring.default),
+      withSpring(0.82, theme.animation.spring.press),
+      withSpring(1.18, theme.animation.spring.press),
+      withSpring(1.0,  theme.animation.spring.press),
     );
     toggleWishlist(product);
   }, [product, toggleWishlist, hrtScale, inWishlist]);
@@ -127,21 +271,22 @@ export const ProductCard = memo(function ProductCard({
     ? (product.nameAr ?? product.name)
     : (product.nameEn ?? product.name);
 
-  const rating      = deterministicRating(product.id);
+  // product.id is stable for the lifetime of this card instance; memoize so
+  // the 36-char reduce loop doesn't run on every render.
+  const rating = useMemo(() => deterministicRating(product.id), [product.id]);
   const isLowStock  = product.stock > 0 && product.stock <= 3;
   const origPrice   = discountPercent ? product.price / (1 - discountPercent / 100) : null;
 
   const badgeMeta =
-    badge === "new"  ? { label: "جديد",                       bg: "#EEF2FF", color: "#4F46E5" } :
-    badge === "hot"  ? { label: "الأكثر مبيعاً",               bg: "#FEF2F2", color: "#DC2626" } :
-    badge === "sale" ? { label: `${discountPercent ?? 0}% خصم`, bg: "#FFFBEB", color: "#B45309" } :
+    badge === "new"  ? { label: "جديد",                       bg: theme.colors.info.bg,    color: theme.colors.info.strong } :
+    badge === "hot"  ? { label: "الأكثر مبيعاً",               bg: theme.colors.error.bg,   color: theme.colors.error.strong } :
+    badge === "sale" ? { label: `${discountPercent ?? 0}%- خصم`, bg: theme.colors.amber[50], color: theme.colors.amber[800] } :
     null;
 
   // ── Grid variant ───────────────────────────────────────────────────────────
   if (variant === "grid") {
     return (
       <AnimatedPressable
-        entering={FadeIn.duration(220)}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         onPress={onPress}
@@ -157,16 +302,13 @@ export const ProductCard = memo(function ProductCard({
               transition={240}
             />
           ) : (
-            <View style={styles.imgPlaceholder}>
-              <Ionicons name="medkit-outline" size={38} color={theme.colors.slate[300]} />
-            </View>
+            <ProductImagePlaceholder category={product.categoryName} size="lg" />
           )}
 
           {/* Gradient fade at bottom */}
           <LinearGradient
             colors={["transparent", "rgba(255,255,255,0.92)"]}
-            style={styles.imgGrad}
-            pointerEvents="none"
+            style={[styles.imgGrad, { pointerEvents: "none" }]}
           />
 
           {/* Out of stock overlay */}
@@ -174,7 +316,7 @@ export const ProductCard = memo(function ProductCard({
             <View style={styles.oos}>
               <View style={styles.oosPill}>
                 <Ionicons name="alert-circle-outline" size={13} color={theme.colors.slate[500]} />
-                <Text style={styles.oosText}>نفذ المخزون</Text>
+                <UIText variant="eyebrow" color="secondary">نفذ المخزون</UIText>
               </View>
             </View>
           )}
@@ -182,21 +324,27 @@ export const ProductCard = memo(function ProductCard({
           {/* Low stock warning */}
           {isLowStock && product.inStock && (
             <View style={styles.lowStockPill}>
-              <Text style={styles.lowStockText}>آخر {product.stock} قطع!</Text>
+              <UIText variant="eyebrow" style={{ color: theme.colors.error.strong }}>
+                آخر {product.stock} قطع
+              </UIText>
             </View>
           )}
 
           {/* Cart qty badge */}
           {inCart && (
-            <Animated.View entering={FadeIn.duration(160)} style={styles.qtyBadge}>
-              <Text style={styles.qtyText}>{cartQty}</Text>
+            <Animated.View style={styles.qtyBadge}>
+              <UIText variant="eyebrow" color="inverse" style={styles.qtyTextNew}>
+                {cartQty}
+              </UIText>
             </Animated.View>
           )}
 
-          {/* Feature badge (top-left) – conflicts with qty badge so only when not in cart */}
+          {/* Feature badge — only when not in cart */}
           {badgeMeta && !inCart && (
-            <View style={[styles.topBadge, { backgroundColor: badgeMeta.bg }]}>
-              <Text style={[styles.topBadgeText, { color: badgeMeta.color }]}>{badgeMeta.label}</Text>
+            <View style={[styles.topBadge, { backgroundColor: badgeMeta.bg, borderColor: `${badgeMeta.color}22` }]}>
+              <UIText variant="eyebrow" style={{ color: badgeMeta.color }}>
+                {badgeMeta.label}
+              </UIText>
             </View>
           )}
 
@@ -208,54 +356,74 @@ export const ProductCard = memo(function ProductCard({
               style={[styles.heartPressable, inWishlist && styles.heartActive]}>
               <Ionicons
                 name={inWishlist ? "heart" : "heart-outline"}
-                size={14}
-                color={inWishlist ? theme.colors.rose[500] : theme.colors.slate[400]}
+                size={15}
+                color={inWishlist ? theme.colors.rose[500] : theme.colors.slate[500]}
               />
             </Pressable>
           </Animated.View>
 
-          {/* "Added!" flash confirmation */}
-          {showAdded && (
+          {/* Added / Max flash */}
+          {(showAdded || showMaxed) && (
             <Animated.View
-              entering={FadeIn.duration(120)}
-              exiting={FadeOut.duration(350)}
-              style={styles.addedFlash}>
-              <Ionicons name="checkmark-circle" size={12} color={theme.colors.brand[600]} />
-              <Text style={styles.addedFlashText}>تمت الإضافة ✓</Text>
+              entering={FadeIn.duration(140)}
+              exiting={FadeOut.duration(380)}
+              style={[styles.addedFlash, showMaxed && styles.addedFlashMax]}>
+              <Ionicons
+                name={showMaxed ? "alert-circle" : "checkmark-circle"}
+                size={12}
+                color={showMaxed ? theme.colors.error.strong : theme.colors.brand[700]}
+              />
+              <UIText variant="eyebrow" style={{ color: showMaxed ? theme.colors.error.strong : theme.colors.brand[700] }}>
+                {showMaxed ? "الكمية القصوى" : "تمت الإضافة"}
+              </UIText>
             </Animated.View>
           )}
         </View>
 
         {/* ── Info ── */}
         <View style={styles.gridInfo}>
-          <Text style={styles.catLabel} numberOfLines={1}>{product.categoryName}</Text>
-          <Text style={styles.nameLabel} numberOfLines={2}>{displayName}</Text>
+          <UIText variant="eyebrow" color="tertiary" align="right" numberOfLines={1}>
+            {product.categoryName}
+          </UIText>
+          <UIText variant="body-sm" weight="bold" align="right" numberOfLines={2} style={styles.nameLabelNew}>
+            {displayName}
+          </UIText>
 
           {/* Rating stars */}
           <View style={styles.ratingRow}>
             <Stars value={rating.value} />
-            <Text style={styles.ratingCount}>{rating.value} ({rating.count})</Text>
+            <UIText variant="eyebrow" color="tertiary">
+              {rating.value} ({rating.count})
+            </UIText>
           </View>
 
           {/* Price + Add button */}
           <View style={styles.priceRow}>
             <View style={{ alignItems: "flex-end", gap: 1 }}>
-              <View style={{ flexDirection: "row-reverse", alignItems: "baseline", gap: 2 }}>
-                <Text style={styles.price}>{product.price.toFixed(2)}</Text>
-                <Text style={styles.priceCur}>ج.م</Text>
+              <View style={{ flexDirection: "row-reverse", alignItems: "baseline", gap: 3 }}>
+                <UIText variant="card-title" weight="black" style={styles.priceNew}>
+                  {product.price.toFixed(2)}
+                </UIText>
+                <UIText variant="eyebrow" style={styles.priceCurNew}>ج.م</UIText>
               </View>
-              {origPrice && (
-                <Text style={styles.origPrice}>{origPrice.toFixed(0)} ج.م</Text>
+              {!!origPrice && (
+                <UIText variant="eyebrow" color="tertiary" align="right" style={styles.origPriceNew}>
+                  {origPrice.toFixed(0)} ج.م
+                </UIText>
               )}
             </View>
-            <Animated.View style={[btnAnim, styles.addBtn]}>
+            <Animated.View style={[btnAnim, styles.addBtn, isAtMax && styles.addBtnMax]}>
               <Pressable onPress={handleAddToCart} disabled={!product.inStock} hitSlop={8}>
                 {showAdded ? (
                   <Ionicons name="checkmark" size={18} color="#fff" />
+                ) : isAtMax ? (
+                  <Ionicons name="lock-closed" size={14} color={theme.colors.error.strong} />
                 ) : inCart ? (
-                  <Text style={styles.addBtnQty}>{cartQty}</Text>
+                  <UIText variant="caption" weight="black" style={styles.addBtnQtyNew}>
+                    {cartQty}
+                  </UIText>
                 ) : (
-                  <Ionicons name="add" size={18} color={theme.colors.brand[600]} />
+                  <Ionicons name="add" size={18} color={theme.colors.brand[700]} />
                 )}
               </Pressable>
             </Animated.View>
@@ -277,30 +445,39 @@ export const ProductCard = memo(function ProductCard({
         {product.imageUrl ? (
           <Image source={{ uri: product.imageUrl }} style={StyleSheet.absoluteFill} contentFit="contain" transition={200} />
         ) : (
-          <View style={styles.imgPlaceholder}>
-            <Ionicons name="medkit-outline" size={28} color={theme.colors.slate[300]} />
-          </View>
+          <ProductImagePlaceholder category={product.categoryName} size="sm" />
         )}
         {badgeMeta && (
-          <View style={[styles.thumbBadge, { backgroundColor: badgeMeta.bg }]}>
-            <Text style={[styles.thumbBadgeText, { color: badgeMeta.color }]}>{discountPercent}%</Text>
+          <View style={[styles.thumbBadge, { backgroundColor: badgeMeta.bg, borderColor: `${badgeMeta.color}22` }]}>
+            <UIText variant="eyebrow" style={{ color: badgeMeta.color }}>{discountPercent}%</UIText>
           </View>
         )}
       </View>
 
       <View style={styles.rowInfo}>
-        <Text style={styles.catLabel} numberOfLines={1}>{product.categoryName}</Text>
-        <Text style={[styles.nameLabel, { fontSize: theme.fontSize.md, lineHeight: 20 }]} numberOfLines={2}>{displayName}</Text>
-        <View style={[styles.ratingRow, { marginTop: 2 }]}>
+        <UIText variant="eyebrow" color="tertiary" align="right" numberOfLines={1}>
+          {product.categoryName}
+        </UIText>
+        <UIText variant="body-sm" weight="bold" align="right" numberOfLines={2} style={styles.nameLabelRowNew}>
+          {displayName}
+        </UIText>
+        <View style={[styles.ratingRow, { marginTop: 4 }]}>
           <Stars value={rating.value} size={10} />
-          <Text style={styles.ratingCount}>({rating.count})</Text>
+          <UIText variant="eyebrow" color="tertiary">({rating.count})</UIText>
         </View>
-        <View style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", marginTop: 4 }}>
+        <View style={styles.rowPriceRow}>
           <View>
-            <Text style={styles.price}>
-              {product.price.toFixed(2)} <Text style={styles.priceCur}>ج.م</Text>
-            </Text>
-            {origPrice && <Text style={styles.origPrice}>{origPrice.toFixed(0)} ج.م</Text>}
+            <View style={{ flexDirection: "row-reverse", alignItems: "baseline", gap: 3 }}>
+              <UIText variant="card-title" weight="black" style={styles.priceNew}>
+                {product.price.toFixed(2)}
+              </UIText>
+              <UIText variant="eyebrow" style={styles.priceCurNew}>ج.م</UIText>
+            </View>
+            {!!origPrice && (
+              <UIText variant="eyebrow" color="tertiary" align="right" style={styles.origPriceNew}>
+                {origPrice.toFixed(0)} ج.م
+              </UIText>
+            )}
           </View>
           {!product.inStock && <Badge variant="neutral" size="sm">نفذ</Badge>}
         </View>
@@ -315,18 +492,22 @@ export const ProductCard = memo(function ProductCard({
             <Ionicons
               name={inWishlist ? "heart" : "heart-outline"}
               size={16}
-              color={inWishlist ? theme.colors.rose[500] : theme.colors.slate[400]}
+              color={inWishlist ? theme.colors.rose[500] : theme.colors.slate[500]}
             />
           </Pressable>
         </Animated.View>
-        <Animated.View style={[btnAnim, styles.rowActionBtn]}>
+        <Animated.View style={[btnAnim, styles.rowActionBtn, isAtMax && styles.addBtnMax]}>
           <Pressable onPress={handleAddToCart} disabled={!product.inStock} hitSlop={6}>
             {showAdded ? (
               <Ionicons name="checkmark" size={18} color="#fff" />
+            ) : isAtMax ? (
+              <Ionicons name="lock-closed" size={14} color={theme.colors.error.strong} />
             ) : inCart ? (
-              <Text style={styles.addBtnQty}>{cartQty}</Text>
+              <UIText variant="caption" weight="black" style={styles.addBtnQtyNew}>
+                {cartQty}
+              </UIText>
             ) : (
-              <Ionicons name="add" size={18} color={theme.colors.brand[600]} />
+              <Ionicons name="add" size={18} color={theme.colors.brand[700]} />
             )}
           </Pressable>
         </Animated.View>
@@ -338,51 +519,250 @@ export const ProductCard = memo(function ProductCard({
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  /* ── Grid ── */
-  gridCard:        { backgroundColor: theme.colors.surface, borderRadius: theme.layout.cardRadius, overflow: "hidden", ...theme.shadow.md, borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border.medium },
-  imgBox:          { height: 165, backgroundColor: theme.colors.subtle, position: "relative" },
-  imgGrad:         { position: "absolute", bottom: 0, left: 0, right: 0, height: 56 },
-  imgPlaceholder:  { flex: 1, alignItems: "center", justifyContent: "center" },
+  /* ── Grid — premium clinical card ─────────────────────────────────── */
+  gridCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius:    18,
+    overflow:        "hidden",
+    ...theme.shadow.card,
+  },
+  imgBox: {
+    height:          170,
+    backgroundColor: theme.colors.surfaceSunken,
+    position:        "relative",
+  },
+  imgGrad: {
+    position: "absolute",
+    bottom:   0,
+    left:     0,
+    right:    0,
+    height:   60,
+  },
+  placeholderArc: {
+    position: "absolute",
+  },
+  placeholderInner: {
+    flex:           1,
+    alignItems:     "center",
+    justifyContent: "center",
+  },
+  placeholderCircle: {
+    alignItems:     "center",
+    justifyContent: "center",
+  },
 
-  oos:             { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(248,250,252,0.90)", alignItems: "center", justifyContent: "center" },
-  oosPill:         { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: theme.colors.slate[100], borderRadius: 9, paddingHorizontal: 10, paddingVertical: 5, borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.slate[200] },
-  oosText:         { fontSize: 11, fontFamily: theme.fonts.bold, color: theme.colors.slate[500] },
+  /* Out-of-stock — calmer, non-alarming */
+  oos: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(248,250,252,0.92)",
+    alignItems:      "center",
+    justifyContent:  "center",
+  },
+  oosPill: {
+    flexDirection:    "row",
+    alignItems:       "center",
+    gap:              6,
+    backgroundColor:  theme.colors.surface,
+    borderRadius:     9,
+    paddingHorizontal:10,
+    paddingVertical:  6,
+    borderWidth:      StyleSheet.hairlineWidth,
+    borderColor:      theme.colors.border.hairline,
+  },
 
-  lowStockPill:    { position: "absolute", bottom: 6, left: 6, backgroundColor: "#FEF2F2", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, borderWidth: 1, borderColor: "#FECDD3" },
-  lowStockText:    { fontSize: 9, fontFamily: theme.fonts.black, color: "#DC2626" },
+  /* Low-stock pill — softer error tint */
+  lowStockPill: {
+    position:        "absolute",
+    bottom:          8,
+    left:            8,
+    backgroundColor: theme.colors.error.bg,
+    borderRadius:    8,
+    paddingHorizontal: 8,
+    paddingVertical:   4,
+    borderWidth:     1,
+    borderColor:     theme.colors.error.light,
+  },
 
-  qtyBadge:        { position: "absolute", top: 8, left: 8, backgroundColor: theme.colors.brand[600], borderRadius: theme.radius.full, minWidth: 22, height: 22, alignItems: "center", justifyContent: "center", paddingHorizontal: 5 },
-  qtyText:         { color: "#fff", fontSize: 10, fontFamily: theme.fonts.black },
+  /* Cart-qty badge — premium brand pill */
+  qtyBadge: {
+    position:        "absolute",
+    top:             10,
+    left:            10,
+    backgroundColor: theme.colors.brand[700],
+    borderRadius:    999,
+    minWidth:        24,
+    height:          24,
+    alignItems:      "center",
+    justifyContent:  "center",
+    paddingHorizontal: 7,
+    borderWidth:     1.5,
+    borderColor:     "#fff",
+  },
+  qtyTextNew: {
+    color:   "#fff",
+  },
 
-  topBadge:        { position: "absolute", top: 8, left: 8, borderRadius: 7, paddingHorizontal: 7, paddingVertical: 3 },
-  topBadgeText:    { fontSize: 9, fontFamily: theme.fonts.black, letterSpacing: 0.3 },
+  topBadge: {
+    position:        "absolute",
+    top:             10,
+    left:            10,
+    borderRadius:    8,
+    paddingHorizontal: 9,
+    paddingVertical:   4,
+    borderWidth:     1,
+  },
 
-  heartBtn:        { position: "absolute", top: 8, right: 8 },
-  heartPressable:  { width: 30, height: 30, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.95)", alignItems: "center", justifyContent: "center", borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border.medium, ...theme.shadow.sm },
-  heartActive:     { backgroundColor: "#FFF1F2", borderColor: "#FECDD3" },
+  /* Heart button — refined glass tile */
+  heartBtn: {
+    position: "absolute",
+    top:      10,
+    right:    10,
+  },
+  heartPressable: {
+    width:           32,
+    height:          32,
+    borderRadius:    11,
+    backgroundColor: "rgba(255,255,255,0.97)",
+    alignItems:      "center",
+    justifyContent:  "center",
+    borderWidth:     StyleSheet.hairlineWidth,
+    borderColor:     theme.colors.border.hairline,
+    ...theme.shadow.hairline,
+  },
+  heartActive: {
+    backgroundColor: theme.colors.rose[50],
+    borderColor:     theme.colors.rose[100],
+  },
 
-  addedFlash:      { position: "absolute", bottom: 6, right: 6, flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "rgba(255,255,255,0.97)", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: theme.colors.brand[100], ...theme.shadow.sm },
-  addedFlashText:  { fontSize: 10, fontFamily: theme.fonts.black, color: theme.colors.brand[700] },
+  /* "Added!" flash — refined confirmation chip */
+  addedFlash: {
+    position:        "absolute",
+    bottom:          8,
+    right:           8,
+    flexDirection:   "row",
+    alignItems:      "center",
+    gap:             5,
+    backgroundColor: "rgba(255,255,255,0.97)",
+    borderRadius:    8,
+    paddingHorizontal: 9,
+    paddingVertical:   5,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
+    ...theme.shadow.hairline,
+  },
+  addedFlashMax: {
+    borderColor: theme.colors.error.light,
+    backgroundColor: theme.colors.error.bg,
+  },
 
-  gridInfo:        { padding: 12, gap: 4 },
-  catLabel:        { fontSize: 9.5, fontFamily: theme.fonts.semibold, color: theme.colors.text.tertiary, textAlign: "right", letterSpacing: 0.4 },
-  nameLabel:       { fontSize: theme.fontSize.sm, fontFamily: theme.fonts.bold, color: theme.colors.text.primary, textAlign: "right", lineHeight: 18 },
-  ratingRow:       { flexDirection: "row-reverse", alignItems: "center", gap: 4 },
-  ratingCount:     { fontSize: 9, fontFamily: theme.fonts.regular, color: theme.colors.text.tertiary },
-  priceRow:        { flexDirection: "row-reverse", alignItems: "flex-end", justifyContent: "space-between", marginTop: 6 },
-  price:           { fontSize: 15, fontFamily: theme.fonts.black, color: theme.colors.brand[700] },
-  priceCur:        { fontSize: 10, fontFamily: theme.fonts.semibold, color: theme.colors.brand[600] },
-  origPrice:       { fontSize: 10, fontFamily: theme.fonts.regular, color: theme.colors.text.tertiary, textDecorationLine: "line-through", textAlign: "right" },
-  addBtn:          { width: 36, height: 36, borderRadius: 11, alignItems: "center", justifyContent: "center" },
-  addBtnQty:       { fontSize: 12, fontFamily: theme.fonts.black, color: theme.colors.brand[700] },
+  /* Info section — premium rhythm */
+  gridInfo: {
+    padding: 14,
+    gap:     5,
+  },
+  nameLabelNew: {
+    lineHeight: 19,
+    minHeight:  38,
+  },
+  ratingRow: {
+    flexDirection: "row-reverse",
+    alignItems:    "center",
+    gap:           5,
+    marginTop:     1,
+  },
+  priceRow: {
+    flexDirection:  "row-reverse",
+    alignItems:     "flex-end",
+    justifyContent: "space-between",
+    marginTop:      8,
+  },
+  priceNew: {
+    color:         theme.colors.brand[700],
+    letterSpacing: -0.3,
+  },
+  priceCurNew: {
+    color: theme.colors.brand[600],
+  },
+  origPriceNew: {
+    color:              theme.colors.text.tertiary,
+    textDecorationLine: "line-through",
+    letterSpacing:      0.2,
+    textTransform:      "none",
+  },
+  addBtn: {
+    width:           38,
+    height:          38,
+    borderRadius:    12,
+    alignItems:      "center",
+    justifyContent:  "center",
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
+  },
+  addBtnQtyNew: {
+    color: theme.colors.brand[700],
+  },
+  addBtnMax: {
+    backgroundColor: theme.colors.error.bg,
+    borderColor:     theme.colors.error.light,
+  },
 
-  /* ── Row ── */
-  rowCard:             { flexDirection: "row-reverse", alignItems: "center", gap: 12, backgroundColor: theme.colors.surface, borderRadius: theme.layout.cardRadius, padding: 12, ...theme.shadow.card, borderWidth: StyleSheet.hairlineWidth, borderColor: theme.colors.border.medium },
-  rowThumb:            { width: 82, height: 82, borderRadius: theme.radius.xl, overflow: "hidden", backgroundColor: theme.colors.subtle, position: "relative" },
-  thumbBadge:          { position: "absolute", top: 4, right: 4, borderRadius: 5, paddingHorizontal: 4, paddingVertical: 2 },
-  thumbBadgeText:      { fontSize: 8, fontFamily: theme.fonts.black },
-  rowInfo:             { flex: 1, gap: 2 },
-  rowActions:          { gap: 8, alignItems: "center" },
-  rowActionBtn:        { width: 36, height: 36, borderRadius: theme.radius.md, alignItems: "center", justifyContent: "center", backgroundColor: theme.colors.brand[50], borderWidth: 1, borderColor: theme.colors.brand[100] },
-  rowActionBtnHeart:   { backgroundColor: "#FFF1F2", borderColor: "#FECDD3" },
+  /* ── Row variant ───────────────────────────────────────────────── */
+  rowCard: {
+    flexDirection:   "row-reverse",
+    alignItems:      "center",
+    gap:             14,
+    backgroundColor: theme.colors.surface,
+    borderRadius:    16,
+    padding:         14,
+    ...theme.shadow.card,
+  },
+  rowThumb: {
+    width:           84,
+    height:          84,
+    borderRadius:    theme.radius.xl,
+    overflow:        "hidden",
+    backgroundColor: theme.colors.surfaceSunken,
+    position:        "relative",
+  },
+  thumbBadge: {
+    position:        "absolute",
+    top:             4,
+    right:           4,
+    borderRadius:    6,
+    paddingHorizontal: 5,
+    paddingVertical:   2,
+    borderWidth:     1,
+  },
+  rowInfo: {
+    flex: 1,
+    gap:  3,
+  },
+  nameLabelRowNew: {
+    fontSize:   14,
+    lineHeight: 20,
+  },
+  rowPriceRow: {
+    flexDirection:  "row-reverse",
+    alignItems:     "center",
+    justifyContent: "space-between",
+    marginTop:      6,
+  },
+  rowActions: {
+    gap:        10,
+    alignItems: "center",
+  },
+  rowActionBtn: {
+    width:           38,
+    height:          38,
+    borderRadius:    12,
+    alignItems:      "center",
+    justifyContent:  "center",
+    backgroundColor: theme.colors.brand.lighter,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
+  },
+  rowActionBtnHeart: {
+    backgroundColor: theme.colors.rose[50],
+    borderColor:     theme.colors.rose[100],
+  },
 });

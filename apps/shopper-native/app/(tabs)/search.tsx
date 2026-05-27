@@ -1,8 +1,27 @@
+/**
+ * Search — light-mode-first premium discovery experience.
+ *
+ * Architectural decisions:
+ *   - Light-mode foundation: every surface is `surface` or `surfaceSunken`;
+ *     elevation comes from `shadow.card` / `shadow.brandGlow`, never from
+ *     dark contrast. Dropped the cinematic dark gradient header entirely.
+ *   - Editorial information rhythm: eyebrow → card-title → body-sm →
+ *     caption tiers cascade across discovery sections, suggestions, and
+ *     filter panel.
+ *   - One typography primitive (`UIText`) across the file. Zero raw <Text>
+ *     for content; only `<TextInput>` and highlight slices remain.
+ *   - Suggestions overlay rebuilt as elevated white Card with hairline
+ *     dividers — reads as predictive helper, not a dropdown menu.
+ *   - Discovery cards use `interactive`-style press (scale 0.985 on press)
+ *     for premium tactility.
+ *   - Result grid leverages the already-refined ProductCard rather than a
+ *     bespoke local variant — ensures consistency across Home / Categories /
+ *     Search / Wishlist surfaces.
+ */
+
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
-  FlatList,
   Keyboard,
   Platform,
   Pressable,
@@ -14,9 +33,8 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import Animated, {
@@ -29,18 +47,21 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useDebounce } from "@/hooks/useDebounce";
-import { fetchProducts, fetchCategories } from "@/services/productsApi";
-import { useCartStore } from "@/stores/cart";
+import { fetchCategories } from "@/services/productsApi";
+import { ProductGrid, useInfiniteProducts, useProductSearch } from "@/features/products";
+import { resolveSmartQuery, detectSearchLang } from "@/utils/searchUtils";
+import { useScreenTrace } from "@/features/observability";
+import { supabase } from "@/lib/supabase";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ProductCardSkeleton } from "@/components/ui/Skeleton";
+import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/theme";
 import { formatPrice } from "@/utils/format";
 import type { NativeProduct, NativeCategory } from "@/services/productsApi";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const CARD_W = (SCREEN_WIDTH - 40 - 10) / 2;
 
 type SortKey = "newest" | "price_asc" | "price_desc" | "name_asc";
 
@@ -51,22 +72,22 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "name_asc",   label: "أ-ي" },
 ];
 
-const TRENDING: { term: string; icon: IoniconsName; color: string }[] = [
-  { term: "باراسيتامول", icon: "medkit",         color: theme.colors.brand[600] },
-  { term: "بانادول",      icon: "medical",        color: "#7C3AED" },
-  { term: "فيتامين C",   icon: "sunny-outline",  color: theme.colors.amber[600] },
-  { term: "بروفين",       icon: "fitness",        color: theme.colors.rose[500] },
-  { term: "كونجستال",     icon: "thermometer",    color: theme.colors.brand[600] },
-  { term: "كريم مرطب",   icon: "water-outline",  color: "#0891B2" },
+const TRENDING: { term: string; icon: IoniconsName; color: string; bg: string }[] = [
+  { term: "باراسيتامول", icon: "medkit",         color: theme.colors.brand[700],   bg: theme.colors.brand.lighter   },
+  { term: "بانادول",      icon: "medical",        color: theme.colors.purple[700],  bg: theme.colors.purple[50]      },
+  { term: "فيتامين C",   icon: "sunny-outline",  color: theme.colors.amber[700],   bg: theme.colors.amber[50]       },
+  { term: "بروفين",       icon: "fitness",        color: theme.colors.rose[600],    bg: theme.colors.rose[50]        },
+  { term: "كونجستال",     icon: "thermometer",    color: theme.colors.info.strong,  bg: theme.colors.info.bg         },
+  { term: "كريم مرطب",   icon: "water-outline",  color: theme.colors.brand[700],   bg: theme.colors.brand.lighter   },
 ];
 
-// ─── Highlight match ──────────────────────────────────────────────────────
+// ─── Highlight match — premium subtle background ───────────────────────────
 
 function Hl({ text, q, style, lines }: { text: string; q: string; style?: any; lines?: number }) {
   if (!q || q.length < 2) return <Text style={style} numberOfLines={lines}>{text}</Text>;
   const lower = text.toLowerCase();
-  const ql = q.toLowerCase().trim();
-  const idx = lower.indexOf(ql);
+  const ql    = q.toLowerCase().trim();
+  const idx   = lower.indexOf(ql);
   if (idx < 0) return <Text style={style} numberOfLines={lines}>{text}</Text>;
   return (
     <Text style={style} numberOfLines={lines}>
@@ -77,17 +98,20 @@ function Hl({ text, q, style, lines }: { text: string; q: string; style?: any; l
   );
 }
 
-// ─── Suggestion row ───────────────────────────────────────────────────────
+// ─── Suggestion row — light, refined ────────────────────────────────────────
 
 const SuggRow = React.memo(function SuggRow({
-  product, query, onPress, index,
-}: { product: NativeProduct; query: string; onPress: () => void; index: number }) {
+  product, query, onPress, index, selected,
+}: { product: NativeProduct; query: string; onPress: () => void; index: number; selected: boolean }) {
   const name = product.nameAr ?? product.name;
   return (
-    <Animated.View entering={FadeInRight.delay(index * 25).duration(180)}>
+    <Animated.View entering={FadeInRight.delay(index * 25).duration(220)}>
       <Pressable
         onPress={onPress}
-        style={({ pressed }) => [s.suggRow, pressed && { backgroundColor: "rgba(255,255,255,0.06)" }]}>
+        style={({ pressed }) => [
+          s.suggRow,
+          (pressed || selected) && { backgroundColor: theme.colors.surfaceSunken },
+        ]}>
         <View style={s.suggThumb}>
           {product.imageUrl ? (
             <Image source={{ uri: product.imageUrl }} style={{ width: "100%", height: "100%" }} contentFit="contain" transition={80} />
@@ -97,57 +121,21 @@ const SuggRow = React.memo(function SuggRow({
         </View>
         <View style={{ flex: 1 }}>
           <Hl text={name} q={query} style={s.suggName} lines={1} />
-          <Text style={s.suggCat} numberOfLines={1}>{product.categoryName}</Text>
+          <UIText variant="eyebrow" color="tertiary" align="right" numberOfLines={1} style={s.suggCat}>
+            {product.categoryName}
+          </UIText>
         </View>
-        <Text style={s.suggPrice}>{formatPrice(product.price)}</Text>
+        <UIText variant="caption" weight="black" style={s.suggPrice}>
+          {formatPrice(product.price)}
+        </UIText>
         {!product.inStock && (
-          <View style={s.suggOos}><Text style={s.suggOosText}>نفذ</Text></View>
-        )}
-        <Ionicons name="arrow-back" size={12} color="rgba(255,255,255,0.25)" />
-      </Pressable>
-    </Animated.View>
-  );
-});
-
-// ─── Result card ──────────────────────────────────────────────────────────
-
-const ResultCard = React.memo(function ResultCard({
-  product, onPress, onAdd,
-}: { product: NativeProduct; onPress: () => void; onAdd: () => void }) {
-  const name = product.nameAr ?? product.name;
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [s.card, pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 }]}>
-      <View style={s.cardImgWrap}>
-        {product.imageUrl ? (
-          <Image source={{ uri: product.imageUrl }} style={s.cardImg} contentFit="contain" transition={120} />
-        ) : (
-          <View style={s.cardImgEmpty}>
-            <Ionicons name="medkit-outline" size={26} color={theme.colors.slate[200]} />
+          <View style={s.suggOos}>
+            <UIText variant="eyebrow" style={{ color: theme.colors.error.strong }}>نفذ</UIText>
           </View>
         )}
-        {!product.inStock && (
-          <View style={s.cardOos}><Text style={s.cardOosText}>نفذ</Text></View>
-        )}
-        {product.inStock && <View style={s.cardLive} />}
-      </View>
-      <View style={s.cardBody}>
-        {product.categoryName ? (
-          <Text style={s.cardCatLabel} numberOfLines={1}>{product.categoryName}</Text>
-        ) : null}
-        <Text style={s.cardName} numberOfLines={2}>{name}</Text>
-        <View style={s.cardFooter}>
-          <Text style={s.cardPrice}>{formatPrice(product.price)}</Text>
-          <Pressable
-            onPress={(e) => { e.stopPropagation(); onAdd(); }}
-            disabled={!product.inStock}
-            style={[s.cardAddBtn, !product.inStock && s.cardAddBtnOff]}>
-            <Ionicons name="add" size={15} color={product.inStock ? "#fff" : theme.colors.slate[400]} />
-          </Pressable>
-        </View>
-      </View>
-    </Pressable>
+        <Ionicons name="arrow-back" size={12} color={theme.colors.slate[300]} />
+      </Pressable>
+    </Animated.View>
   );
 });
 
@@ -156,79 +144,134 @@ const ResultCard = React.memo(function ResultCard({
 // ═══════════════════════════════════════════════════════════════════════════
 
 export default function SearchScreen() {
+  useScreenTrace("search");
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
-  const addItem = useCartStore((s) => s.addItem);
 
   // ── State ──
-  const [query, setQuery] = useState("");
-  const [submitted, setSubmitted] = useState("");
-  const [focused, setFocused] = useState(false);
-  const [sortBy, setSortBy] = useState<SortKey>("newest");
+  const [query, setQuery]             = useState("");
+  const [submitted, setSubmitted]     = useState("");
+  const [focused, setFocused]         = useState(false);
+  const [sortBy, setSortBy]           = useState<SortKey>("newest");
   const [inStockOnly, setInStockOnly] = useState(false);
-  const [catFilter, setCatFilter] = useState<string | null>(null);
+  const [catFilter, setCatFilter]     = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [recents, setRecents] = useState<string[]>([]);
+  const [recents, setRecents]         = useState<string[]>([]);
+  const [selectedIdx, setSelectedIdx] = useState(-1);
 
   const debouncedQ = useDebounce(query.trim(), 200);
 
-  const showSugg = focused && debouncedQ.length >= 2 && debouncedQ !== submitted;
+  const RECENTS_KEY = "um_search_recents_v1";
+
+  // Smart bilingual resolution — used for the lang badge + translation hint
+  const searchResolution = useMemo(
+    () => (debouncedQ.length >= 2 ? resolveSmartQuery(debouncedQ) : null),
+    [debouncedQ],
+  );
+  const inputLang = useMemo(
+    () => (query.trim().length > 0 ? detectSearchLang(query.trim()) : null),
+    [query],
+  );
+
+  const translationHintText = useMemo(() => {
+    const raw = searchResolution?.displayHint;
+    if (!raw) return null;
+    if (raw.includes(':')) return raw.split(':').slice(1).join(':').trim();
+    return raw;
+  }, [searchResolution]);
+
+  const showSugg   = focused && debouncedQ.length >= 2 && debouncedQ !== submitted;
   const hasResults = submitted.length >= 2;
 
-  // ── Animation ──
-  const barGlow = useSharedValue(0);
+  // Reset suggestion selection when suggestions change
+  useEffect(() => { setSelectedIdx(-1); }, [debouncedQ]);
+
+  // ── Animation — refined focus glow ──
+  const barGlow  = useSharedValue(0);
   const barScale = useSharedValue(1);
-  const barAnim = useAnimatedStyle(() => ({
-    transform: [{ scale: barScale.value }],
-  }));
-  const glowAnim = useAnimatedStyle(() => ({
-    opacity: barGlow.value,
-  }));
+  const barAnim  = useAnimatedStyle(() => ({ transform: [{ scale: barScale.value }] }));
+  const glowAnim = useAnimatedStyle(() => ({ opacity: barGlow.value }));
 
   // ── Data ──
   const { data: categories } = useQuery({
     queryKey: ["searchCategories"],
-    queryFn: fetchCategories,
+    queryFn:  fetchCategories,
     staleTime: 10 * 60_000,
   });
 
-  const { data: suggData, isFetching: suggFetching } = useQuery({
-    queryKey: ["cmd-sugg", debouncedQ],
-    queryFn: () => fetchProducts({ search: debouncedQ, page: 1, pageSize: 7 }),
-    enabled: showSugg,
-    staleTime: 30_000,
+  // Popular searches from analytics — falls back to hardcoded TRENDING if unavailable
+  const { data: popularData } = useQuery({
+    queryKey: ["popularSearches"],
+    queryFn:  () => supabase.rpc("get_popular_searches", { p_limit: 6, p_days: 7 }),
+    staleTime: 10 * 60_000,
+    gcTime:    30 * 60_000,
   });
-  const suggestions = suggData?.products ?? [];
+  const popularSearches: string[] = (popularData?.data as Array<{ query: string }> | null)
+    ?.map((r) => r.query)
+    .filter(Boolean) ?? [];
+
+  // Load persisted recents on mount
+  useEffect(() => {
+    AsyncStorage.getItem(RECENTS_KEY)
+      .then((raw) => {
+        if (raw) {
+          const parsed = JSON.parse(raw) as unknown;
+          if (Array.isArray(parsed)) setRecents(parsed as string[]);
+        }
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // suggestions — use dedicated hook (sorts by relevance, not newest)
+  const {
+    products:  suggestions,
+    isLoading: suggFetching,
+  } = useProductSearch({ query: debouncedQ, enabled: showSugg });
 
   const {
-    data, isLoading: resultsLoading, isFetchingNextPage,
-    hasNextPage, fetchNextPage, isFetching: resultsFetching,
-  } = useInfiniteQuery({
-    queryKey: ["cmd-results", submitted, sortBy, inStockOnly, catFilter],
-    queryFn: ({ pageParam = 1 }) =>
-      fetchProducts({
-        search: submitted, sortBy,
-        inStock: inStockOnly || undefined,
-        categoryId: catFilter ?? undefined,
-        page: pageParam, pageSize: 20,
-      }),
-    initialPageParam: 1,
-    getNextPageParam: (last) => (last.hasNextPage ? last.currentPage + 1 : undefined),
-    enabled: hasResults,
-    staleTime: 60_000,
+    products: results,
+    totalCount,
+    isLoading: resultsLoading,
+    isFetching: resultsFetching,
+    isFetchingNextPage,
+    isRefreshing: resultsRefreshing,
+    hasNextPage,
+    fetchNextPage,
+    refetch: refetchResults,
+  } = useInfiniteProducts({
+    search:     submitted || undefined,
+    sortBy,
+    inStock:    inStockOnly || undefined,
+    categoryId: catFilter ?? undefined,
+    pageSize:   20,
+    enabled:    hasResults,
   });
 
-  const results = data?.pages.flatMap((p) => p.products) ?? [];
-  const totalCount = data?.pages[0]?.totalCount ?? 0;
   const isSearching = hasResults && (resultsLoading || (resultsFetching && !results.length));
 
-  // Save recents
+  // Persist recents + log analytics whenever a search yields results
   useEffect(() => {
     if (submitted.length > 1 && results.length > 0) {
-      setRecents((p) => [submitted, ...p.filter((x) => x !== submitted)].slice(0, 8));
+      setRecents((prev) => {
+        const next = [submitted, ...prev.filter((x) => x !== submitted)].slice(0, 8);
+        AsyncStorage.setItem(RECENTS_KEY, JSON.stringify(next)).catch(() => {});
+        return next;
+      });
+      // Fire-and-forget analytics event; never throws to caller
+      supabase
+        .rpc("log_search_event", {
+          p_query:        submitted,
+          p_result_count: totalCount,
+          p_source:       "native",
+        })
+        .then(({ error }) => {
+          if (error && __DEV__) console.warn("[search] analytics:", error.message);
+        })
+        .catch(() => {});
     }
-  }, [submitted, results.length]);
+  }, [submitted, results.length, totalCount]);
 
   // ── Handlers ──
   const submit = useCallback((text?: string) => {
@@ -236,8 +279,11 @@ export default function SearchScreen() {
     if (!q) return;
     setSubmitted(q);
     setQuery(q);
+    setSelectedIdx(-1);
     Keyboard.dismiss();
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    // Analytics: log search term (fire-and-forget, never throws)
+    if (__DEV__) console.log("[search] submitted:", q);
   }, [query]);
 
   const tapSugg = useCallback((p: NativeProduct) => {
@@ -261,11 +307,6 @@ export default function SearchScreen() {
     router.push({ pathname: "/product/[id]", params: { id } });
   }, [router]);
 
-  const addToCart = useCallback((p: NativeProduct) => {
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    addItem(p, 1);
-  }, [addItem]);
-
   const resetFilters = useCallback(() => {
     setSortBy("newest");
     setInStockOnly(false);
@@ -279,13 +320,10 @@ export default function SearchScreen() {
 
   const filterCount = [inStockOnly, catFilter !== null, sortBy !== "newest"].filter(Boolean).length;
 
-  const renderCard = useCallback(({ item }: { item: NativeProduct }) => (
-    <ResultCard product={item} onPress={() => goProduct(item.id)} onAdd={() => addToCart(item)} />
-  ), [goProduct, addToCart]);
+  // Grid rendering is delegated to ProductGrid (FlashList v2). Per-card
+  // memoisation + stable callbacks live in ProductCard itself.
 
-  const keyEx = useCallback((item: NativeProduct) => item.id, []);
-
-  // ── Grouped results by category ──
+  // ── Grouped results by category — for the in-results filter chips ──
   const grouped = useMemo(() => {
     if (!results.length) return [];
     const map = new Map<string, NativeProduct[]>();
@@ -301,74 +339,94 @@ export default function SearchScreen() {
   return (
     <View style={s.screen}>
 
-      {/* ─── Cinematic header ──────────────────────────────────────── */}
-      <LinearGradient
-        colors={["#010D16", "#021D2E", "#053348"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={[s.header, { paddingTop: insets.top + 8 }]}>
+      {/* ─── Premium light header ────────────────────────────────────── */}
+      <View style={[s.header, { paddingTop: insets.top + 12 }]}>
 
-        {/* Decorative */}
-        <View style={s.decor1} />
-        <View style={s.decor2} />
-
-        {/* Top row */}
+        {/* Top row — editorial label + result count */}
         <View style={s.topRow}>
-          <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>
-            <View style={s.cmdIcon}>
-              <Ionicons name="search" size={13} color={theme.colors.brand[400]} />
+          <View style={s.topLeft}>
+            <View style={s.headerIcon}>
+              <Ionicons name="search" size={14} color={theme.colors.brand[700]} />
             </View>
-            <Text style={s.headerLabel}>البحث</Text>
+            <View>
+              <UIText variant="eyebrow" color="tertiary" align="right">
+                اكتشف المنتجات
+              </UIText>
+              <UIText variant="card-title" align="right" style={s.headerTitle}>
+                البحث
+              </UIText>
+            </View>
           </View>
           {hasResults && totalCount > 0 && !isSearching && (
             <Animated.View entering={FadeIn.duration(200)} style={s.countPill}>
-              <Text style={s.countText}>{totalCount.toLocaleString()}</Text>
-              <Text style={s.countUnit}>نتيجة</Text>
+              <UIText variant="caption" weight="black" color="brand">
+                {totalCount.toLocaleString()}
+              </UIText>
+              <UIText variant="eyebrow" color="brand">نتيجة</UIText>
             </Animated.View>
           )}
         </View>
 
-        {/* ─── Command bar ── */}
+        {/* ─── Command bar — premium light search field ── */}
         <View style={s.barContainer}>
-          {/* Glow effect behind bar */}
-          <Animated.View style={[s.barGlow, glowAnim]} />
+          <Animated.View style={[s.barGlow, glowAnim, { pointerEvents: "none" }]} />
 
-          <Animated.View style={[s.bar, barAnim]}>
+          <Animated.View style={[s.bar, barAnim, focused && s.barFocused]}>
             <View style={s.barIconWrap}>
               {suggFetching || isSearching ? (
-                <ActivityIndicator size="small" color={theme.colors.brand[400]} />
+                <ActivityIndicator size="small" color={theme.colors.brand[700]} />
               ) : (
-                <Ionicons name="search" size={16} color={theme.colors.brand[400]} />
+                <Ionicons name="search" size={17} color={focused ? theme.colors.brand[700] : theme.colors.slate[400]} />
               )}
             </View>
+
+            {/* Language badge removed to save space */}
 
             <TextInput
               ref={inputRef}
               style={s.barInput}
-              placeholder="ابحث عن دواء، مستحضر، أو كود..."
-              placeholderTextColor="rgba(255,255,255,0.28)"
+              placeholder="ابحث عن دواء، مستحضر، أو كود…"
+              placeholderTextColor={theme.colors.text.tertiary}
               value={query}
-              onChangeText={setQuery}
+              onChangeText={(v) => { setQuery(v); setSelectedIdx(-1); }}
               onFocus={() => {
                 setFocused(true);
-                barGlow.value = withTiming(1, { duration: 300 });
-                barScale.value = withSpring(1.012, { damping: 20, stiffness: 400 });
+                barGlow.value  = withTiming(1, { duration: 280 });
+                barScale.value = withSpring(1.008, { damping: 20, stiffness: 400 });
               }}
               onBlur={() => {
                 setTimeout(() => setFocused(false), 160);
-                barGlow.value = withTiming(0, { duration: 250 });
+                barGlow.value  = withTiming(0, { duration: 240 });
                 barScale.value = withSpring(1, { damping: 20, stiffness: 400 });
               }}
-              onSubmitEditing={() => submit()}
+              onSubmitEditing={() => {
+                if (selectedIdx >= 0 && suggestions[selectedIdx]) {
+                  tapSugg(suggestions[selectedIdx]);
+                } else {
+                  submit();
+                }
+              }}
+              onKeyPress={({ nativeEvent }) => {
+                if (!showSugg || suggestions.length === 0) return;
+                if (nativeEvent.key === "ArrowDown") {
+                  setSelectedIdx((i) => Math.min(i + 1, suggestions.length - 1));
+                } else if (nativeEvent.key === "ArrowUp") {
+                  setSelectedIdx((i) => Math.max(i - 1, -1));
+                } else if (nativeEvent.key === "Escape") {
+                  setFocused(false);
+                  setSelectedIdx(-1);
+                  Keyboard.dismiss();
+                }
+              }}
               returnKeyType="search"
               autoCorrect={false}
               textAlign="right"
-              selectionColor={theme.colors.brand[400]}
+              selectionColor={theme.colors.brand[600]}
             />
 
             {query.length > 0 && (
               <Pressable onPress={clear} hitSlop={10} style={s.barClear}>
-                <Ionicons name="close" size={12} color="rgba(255,255,255,0.5)" />
+                <Ionicons name="close" size={13} color={theme.colors.slate[500]} />
               </Pressable>
             )}
 
@@ -379,15 +437,17 @@ export default function SearchScreen() {
                 if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
                 setShowFilters((v) => !v);
               }}
+              accessibilityRole="button"
+              accessibilityLabel="تصفية النتائج"
               style={[s.barFilterBtn, (showFilters || filterCount > 0) && s.barFilterBtnActive]}>
               <Ionicons
                 name="options-outline"
-                size={14}
-                color={showFilters || filterCount > 0 ? "#fff" : "rgba(255,255,255,0.5)"}
+                size={15}
+                color={(showFilters || filterCount > 0) ? "#fff" : theme.colors.slate[500]}
               />
               {filterCount > 0 && !showFilters && (
                 <View style={s.filterBadge}>
-                  <Text style={s.filterBadgeText}>{filterCount}</Text>
+                  <UIText variant="eyebrow" color="inverse">{filterCount}</UIText>
                 </View>
               )}
             </Pressable>
@@ -395,32 +455,47 @@ export default function SearchScreen() {
             {query.length >= 2 && (
               <Pressable
                 onPress={() => submit()}
-                style={({ pressed }) => [s.barSubmit, pressed && { opacity: 0.7 }]}>
-                <Ionicons name="return-down-back" size={13} color="#fff" />
+                accessibilityRole="button"
+                accessibilityLabel="بحث"
+                style={({ pressed }) => [s.barSubmit, pressed && { opacity: 0.85 }]}>
+                <Ionicons name="return-down-back" size={14} color="#fff" />
               </Pressable>
             )}
           </Animated.View>
         </View>
 
-        {/* Keyboard hint */}
-        {focused && !hasResults && debouncedQ.length < 2 && (
-          <Animated.View entering={FadeIn.duration(150)} style={s.hint}>
-            <Text style={s.hintText}>اكتب للبحث أو اضغط Enter</Text>
+        {/* Translation / typo-fix hint strip */}
+        {translationHintText && debouncedQ.length >= 2 && (
+          <Animated.View
+            entering={FadeInDown.duration(200)}
+            exiting={FadeOut.duration(140)}
+            style={s.translationHint}>
+            <Ionicons name="language-outline" size={11} color={theme.colors.brand[600]} />
+            <UIText variant="eyebrow" style={s.translationHintText}>
+              {translationHintText}
+            </UIText>
           </Animated.View>
         )}
-      </LinearGradient>
+
+        {/* Quiet keyboard hint */}
+        {focused && !hasResults && debouncedQ.length < 2 && (
+          <Animated.View entering={FadeIn.duration(180)} style={s.hint}>
+            <UIText variant="eyebrow" color="tertiary">اكتب للبحث أو اضغط Enter</UIText>
+          </Animated.View>
+        )}
+      </View>
 
       {/* ─── Content area ──────────────────────────────────────────── */}
       <View style={s.content}>
 
-        {/* Filter panel */}
+        {/* Filter panel — light, refined */}
         {showFilters && (
-          <Animated.View entering={FadeInDown.duration(200)} style={s.filterPanel}>
+          <Animated.View entering={FadeInDown.duration(220)} style={s.filterPanel}>
             <View style={s.filterHeader}>
-              <Text style={s.filterTitle}>تصفية</Text>
+              <UIText variant="eyebrow" color="tertiary">خيارات التصفية</UIText>
               {filterCount > 0 && (
                 <Pressable onPress={resetFilters} hitSlop={6}>
-                  <Text style={s.filterReset}>إعادة الضبط</Text>
+                  <UIText variant="caption" weight="bold" color="brand">إعادة الضبط</UIText>
                 </Pressable>
               )}
             </View>
@@ -433,7 +508,12 @@ export default function SearchScreen() {
                     key={o.key}
                     onPress={() => { setSortBy(o.key); if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {}); }}
                     style={[s.chip, on && s.chipOn]}>
-                    <Text style={[s.chipText, on && s.chipTextOn]}>{o.label}</Text>
+                    <UIText
+                      variant="caption"
+                      weight={on ? "black" : "bold"}
+                      style={{ color: on ? "#fff" : theme.colors.text.secondary }}>
+                      {o.label}
+                    </UIText>
                   </Pressable>
                 );
               })}
@@ -442,9 +522,9 @@ export default function SearchScreen() {
             <Pressable
               onPress={() => { setInStockOnly((v) => !v); if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {}); }}
               style={s.toggleRow}>
-              <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 7 }}>
-                <Ionicons name="cube-outline" size={13} color={theme.colors.slate[500]} />
-                <Text style={s.toggleLabel}>المتاح فقط</Text>
+              <View style={s.toggleLeft}>
+                <Ionicons name="cube-outline" size={14} color={theme.colors.slate[600]} />
+                <UIText variant="body-sm" weight="bold" color="secondary">المتاح فقط</UIText>
               </View>
               <View style={[s.sw, inStockOnly && s.swOn]}>
                 <View style={[s.swThumb, inStockOnly && s.swThumbOn]} />
@@ -455,15 +535,26 @@ export default function SearchScreen() {
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={[s.chipsRow, { paddingBottom: 2 }]}>
+                contentContainerStyle={[s.chipsRow, { paddingBottom: 2, flexWrap: "nowrap" }]}>
                 <Pressable onPress={() => setCatFilter(null)} style={[s.chip, !catFilter && s.chipOn]}>
-                  <Text style={[s.chipText, !catFilter && s.chipTextOn]}>الكل</Text>
+                  <UIText
+                    variant="caption"
+                    weight={!catFilter ? "black" : "bold"}
+                    style={{ color: !catFilter ? "#fff" : theme.colors.text.secondary }}>
+                    الكل
+                  </UIText>
                 </Pressable>
                 {categories.slice(0, 12).map((cat: NativeCategory) => {
                   const on = catFilter === cat.id;
                   return (
                     <Pressable key={cat.id} onPress={() => setCatFilter(on ? null : cat.id)} style={[s.chip, on && s.chipOn]}>
-                      <Text style={[s.chipText, on && s.chipTextOn]} numberOfLines={1}>{cat.name}</Text>
+                      <UIText
+                        variant="caption"
+                        weight={on ? "black" : "bold"}
+                        numberOfLines={1}
+                        style={{ color: on ? "#fff" : theme.colors.text.secondary }}>
+                        {cat.name}
+                      </UIText>
                     </Pressable>
                   );
                 })}
@@ -474,22 +565,34 @@ export default function SearchScreen() {
 
         {/* ─── Body ── */}
         {!hasResults ? (
-          /* Discovery */
+          /* ── Discovery (light, editorial) ── */
           <ScrollView
             contentContainerStyle={[s.discovery, { paddingBottom: theme.layout.tabBarHeight + 40 }]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled">
 
-            {/* Recent */}
+            {/* Recent searches */}
             {recents.length > 0 && (
-              <Animated.View entering={FadeInDown.delay(40).duration(260)} style={s.section}>
+              <Animated.View entering={FadeInDown.delay(40).duration(280)} style={s.section}>
                 <View style={s.sectionHeader}>
-                  <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6 }}>
-                    <Ionicons name="time-outline" size={13} color={theme.colors.slate[400]} />
-                    <Text style={s.sectionTitle}>سابق</Text>
+                  <View style={s.sectionTitleWrap}>
+                    <View style={[s.sectionIcon, { backgroundColor: theme.colors.slate[100] }]}>
+                      <Ionicons name="time-outline" size={13} color={theme.colors.slate[600]} />
+                    </View>
+                    <View>
+                      <UIText variant="eyebrow" color="tertiary" align="right">سجل البحث</UIText>
+                      <UIText variant="card-title" align="right" style={s.sectionTitleNew}>
+                        بحثت عنه سابقاً
+                      </UIText>
+                    </View>
                   </View>
-                  <Pressable onPress={() => setRecents([])} hitSlop={6}>
-                    <Text style={s.sectionAction}>مسح</Text>
+                  <Pressable onPress={() => {
+                    setRecents([]);
+                    AsyncStorage.removeItem(RECENTS_KEY).catch(() => {});
+                  }} hitSlop={6}>
+                    <UIText variant="caption" weight="bold" style={{ color: theme.colors.error.base }}>
+                      مسح
+                    </UIText>
                   </Pressable>
                 </View>
                 <View style={s.recentWrap}>
@@ -497,8 +600,9 @@ export default function SearchScreen() {
                     <Pressable
                       key={term}
                       onPress={() => quickSearch(term)}
-                      style={({ pressed }) => [s.recentChip, pressed && { opacity: 0.7 }]}>
-                      <Text style={s.recentText}>{term}</Text>
+                      style={({ pressed }) => [s.recentChip, pressed && { transform: [{ scale: 0.97 }], opacity: 0.85 }]}>
+                      <Ionicons name="time-outline" size={11} color={theme.colors.slate[500]} />
+                      <UIText variant="caption" weight="bold" color="secondary">{term}</UIText>
                       <Ionicons name="arrow-back" size={10} color={theme.colors.slate[400]} />
                     </Pressable>
                   ))}
@@ -507,151 +611,232 @@ export default function SearchScreen() {
             )}
 
             {/* Trending */}
-            <Animated.View entering={FadeInDown.delay(80).duration(260)} style={s.section}>
-              <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                <Ionicons name="trending-up" size={14} color={theme.colors.brand[400]} />
-                <Text style={s.sectionTitle}>الأكثر بحثاً</Text>
+            <Animated.View entering={FadeInDown.delay(80).duration(280)} style={s.section}>
+              <View style={s.sectionTitleWrap}>
+                <View style={[s.sectionIcon, { backgroundColor: theme.colors.brand.lighter, borderColor: theme.colors.border.brandSoft }]}>
+                  <Ionicons name="trending-up" size={14} color={theme.colors.brand[700]} />
+                </View>
+                <View>
+                  <UIText variant="eyebrow" color="tertiary" align="right">الأكثر شعبية</UIText>
+                  <UIText variant="card-title" align="right" style={s.sectionTitleNew}>
+                    الأكثر بحثاً
+                  </UIText>
+                </View>
               </View>
               <View style={s.trendGrid}>
-                {TRENDING.map((t, i) => (
-                  <Pressable
-                    key={t.term}
-                    onPress={() => quickSearch(t.term)}
-                    style={({ pressed }) => [s.trendItem, pressed && { opacity: 0.7, transform: [{ scale: 0.97 }] }]}>
-                    <View style={[s.trendIcon, { backgroundColor: `${t.color}15` }]}>
-                      <Ionicons name={t.icon} size={15} color={t.color} />
-                    </View>
-                    <Text style={s.trendLabel}>{t.term}</Text>
-                    <Text style={s.trendIdx}>{i + 1}</Text>
-                  </Pressable>
-                ))}
+                {(popularSearches.length > 0 ? popularSearches : TRENDING.map((t) => t.term)).map((term, i) => {
+                  const meta = TRENDING.find((t) => t.term === term) ?? TRENDING[i % TRENDING.length];
+                  return (
+                    <Pressable
+                      key={term}
+                      onPress={() => quickSearch(term)}
+                      style={({ pressed }) => [s.trendItem, pressed && { transform: [{ scale: 0.985 }], opacity: 0.92 }]}>
+                      <View style={[s.trendIcon, { backgroundColor: meta.bg, borderColor: `${meta.color}28` }]}>
+                        <Ionicons name={meta.icon} size={16} color={meta.color} />
+                      </View>
+                      <UIText variant="body-sm" weight="bold" align="right" style={s.trendLabel}>
+                        {term}
+                      </UIText>
+                      <View style={s.trendIdxWrap}>
+                        <UIText variant="eyebrow" color="tertiary">#{i + 1}</UIText>
+                      </View>
+                    </Pressable>
+                  );
+                })}
               </View>
             </Animated.View>
 
             {/* Categories */}
             {categories && categories.length > 0 && (
-              <Animated.View entering={FadeInDown.delay(120).duration(260)} style={s.section}>
-                <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                  <Ionicons name="grid-outline" size={13} color={theme.colors.slate[400]} />
-                  <Text style={s.sectionTitle}>الأقسام</Text>
+              <Animated.View entering={FadeInDown.delay(120).duration(280)} style={s.section}>
+                <View style={s.sectionTitleWrap}>
+                  <View style={[s.sectionIcon, { backgroundColor: theme.colors.brand.lighter, borderColor: theme.colors.border.brandSoft }]}>
+                    <Ionicons name="grid-outline" size={14} color={theme.colors.brand[700]} />
+                  </View>
+                  <View>
+                    <UIText variant="eyebrow" color="tertiary" align="right">تصفح حسب القسم</UIText>
+                    <UIText variant="card-title" align="right" style={s.sectionTitleNew}>
+                      الأقسام
+                    </UIText>
+                  </View>
                 </View>
-                {categories.slice(0, 6).map((cat) => (
-                  <Pressable
-                    key={cat.id}
-                    onPress={() => router.push({ pathname: "/category/[id]", params: { id: cat.id } })}
-                    style={({ pressed }) => [s.catRow, pressed && { backgroundColor: theme.colors.slate[50] }]}>
-                    <View style={s.catIcon}>
-                      <Ionicons name="grid" size={13} color={theme.colors.brand[600]} />
-                    </View>
-                    <Text style={s.catName} numberOfLines={1}>{cat.name}</Text>
-                    {cat.count > 0 && <Text style={s.catCount}>{cat.count}</Text>}
-                    <Ionicons name="chevron-back" size={13} color={theme.colors.slate[300]} />
-                  </Pressable>
-                ))}
+                <View style={s.catList}>
+                  {categories.slice(0, 6).map((cat, i, arr) => (
+                    <Pressable
+                      key={cat.id}
+                      onPress={() => router.push({ pathname: "/category/[id]", params: { id: cat.id } })}
+                      style={({ pressed }) => [
+                        s.catRow,
+                        i < arr.length - 1 && s.catRowDivider,
+                        pressed && { backgroundColor: theme.colors.surfaceSunken },
+                      ]}>
+                      <View style={s.catIcon}>
+                        <Ionicons name="grid" size={14} color={theme.colors.brand[700]} />
+                      </View>
+                      <UIText variant="body-sm" weight="bold" align="right" numberOfLines={1} style={{ flex: 1 }}>
+                        {cat.name}
+                      </UIText>
+                      {cat.count > 0 && (
+                        <View style={s.catCountChip}>
+                          <UIText variant="eyebrow" color="secondary">{cat.count}</UIText>
+                        </View>
+                      )}
+                      <Ionicons name="chevron-back" size={14} color={theme.colors.slate[400]} />
+                    </Pressable>
+                  ))}
+                </View>
               </Animated.View>
             )}
           </ScrollView>
         ) : (
-          /* Results grid */
-          <FlatList
-            data={results}
-            keyExtractor={keyEx}
-            renderItem={renderCard}
-            numColumns={2}
-            columnWrapperStyle={s.gridRow}
-            contentContainerStyle={[s.grid, { paddingBottom: theme.layout.tabBarHeight + 24 }]}
-            keyboardShouldPersistTaps="handled"
-            removeClippedSubviews
-            initialNumToRender={10}
-            maxToRenderPerBatch={12}
-            windowSize={5}
-            onEndReached={loadMore}
-            onEndReachedThreshold={0.5}
+          /* ── Results grid — FlashList v2 via ProductGrid ── */
+          <View style={{ flex: 1 }}>
+          <ProductGrid
+            products={results}
+            onProductPress={(p) => goProduct(p.id)}
+            onEndReached={hasNextPage && !isFetchingNextPage ? loadMore : undefined}
+            refreshing={resultsRefreshing}
+            onRefresh={refetchResults}
+            contentContainerStyle={{ paddingBottom: theme.layout.tabBarHeight + 24 }}
+            lang="ar"
             ListHeaderComponent={
               hasResults && grouped.length > 1 ? (
-                <Animated.View entering={FadeInDown.duration(200)} style={s.groupHeader}>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingHorizontal: 4 }}>
-                    {grouped.map((g) => (
-                      <Pressable
-                        key={g.cat}
-                        onPress={() => {
-                          const catObj = categories?.find((c) => c.name === g.cat);
-                          if (catObj) setCatFilter(catFilter === catObj.id ? null : catObj.id);
-                        }}
-                        style={s.groupChip}>
-                        <Text style={s.groupChipText}>{g.cat}</Text>
-                        <View style={s.groupChipCount}>
-                          <Text style={s.groupChipCountText}>{g.items.length}</Text>
-                        </View>
-                      </Pressable>
-                    ))}
+                <Animated.View entering={FadeInDown.duration(220)} style={s.groupHeader}>
+                  <UIText variant="eyebrow" color="tertiary" align="right" style={s.groupEyebrow}>
+                    تصفية بالقسم
+                  </UIText>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.groupChipsRow}>
+                    {grouped.map((g) => {
+                      const catObj = categories?.find((c) => c.name === g.cat);
+                      const active = catObj && catFilter === catObj.id;
+                      return (
+                        <Pressable
+                          key={g.cat}
+                          onPress={() => {
+                            if (catObj) setCatFilter(catFilter === catObj.id ? null : catObj.id);
+                          }}
+                          style={[s.groupChip, active && s.groupChipActive]}>
+                          <UIText
+                            variant="caption"
+                            weight={active ? "black" : "bold"}
+                            style={{ color: active ? "#fff" : theme.colors.text.secondary }}>
+                            {g.cat}
+                          </UIText>
+                          <View style={[s.groupChipCount, active && s.groupChipCountActive]}>
+                            <UIText variant="eyebrow" style={{ color: active ? "#fff" : theme.colors.text.tertiary }}>
+                              {g.items.length}
+                            </UIText>
+                          </View>
+                        </Pressable>
+                      );
+                    })}
                   </ScrollView>
                 </Animated.View>
               ) : null
             }
             ListEmptyComponent={
-              !isSearching ? (
-                <View style={{ paddingTop: 60, paddingHorizontal: 20 }}>
+              isSearching ? (
+                /* Skeleton grid — shows exact card geometry while data loads */
+                <View style={s.skeletonGrid}>
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <View key={i} style={s.skeletonCell}>
+                      <ProductCardSkeleton />
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View style={{ paddingTop: 60, paddingHorizontal: 20, gap: 20 }}>
                   <EmptyState
                     icon="search-outline"
                     title="لا توجد نتائج"
-                    description="جرّب كلمة مختلفة أو تحقق من الإملاء"
+                    description={
+                      detectSearchLang(submitted) === "arabic"
+                        ? `لم يُعثر على نتائج لـ "${submitted}". جرّب كتابة اسم المنتج بالإنجليزية أو اختر من الاقتراحات أدناه.`
+                        : `جرّب كلمة مختلفة أو تحقق من الإملاء لـ "${submitted}"`
+                    }
                   />
-                </View>
-              ) : (
-                <View style={{ paddingTop: 60, alignItems: "center", gap: 10 }}>
-                  <ActivityIndicator color={theme.colors.brand[500]} />
-                  <Text style={s.searchingText}>جاري البحث...</Text>
+                  {/* Quick-search suggestions for empty state */}
+                  <View style={s.emptyTrendWrap}>
+                    <UIText variant="eyebrow" color="tertiary" align="right" style={{ marginBottom: 10 }}>
+                      جرّب هذه البحوث الشائعة
+                    </UIText>
+                    <View style={s.emptyTrendChips}>
+                      {TRENDING.slice(0, 4).map((t) => (
+                        <Pressable
+                          key={t.term}
+                          onPress={() => quickSearch(t.term)}
+                          style={({ pressed }) => [
+                            s.emptyTrendChip,
+                            { borderColor: `${t.color}40` },
+                            pressed && { opacity: 0.8 },
+                          ]}>
+                          <View style={[s.emptyTrendIcon, { backgroundColor: t.bg }]}>
+                            <Ionicons name={t.icon} size={12} color={t.color} />
+                          </View>
+                          <UIText variant="caption" weight="bold" style={{ color: t.color }}>
+                            {t.term}
+                          </UIText>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
                 </View>
               )
             }
             ListFooterComponent={
               isFetchingNextPage ? (
                 <View style={s.footerLoader}>
-                  <ActivityIndicator size="small" color={theme.colors.brand[500]} />
+                  <ActivityIndicator size="small" color={theme.colors.brand[600]} />
                 </View>
               ) : null
             }
           />
+          </View>
         )}
 
-        {/* ─── Suggestions overlay ─────────────────────────────────── */}
+        {/* ─── Suggestions overlay — elevated white card ──────────── */}
         {showSugg && (
           <Animated.View
             entering={FadeInDown.springify().damping(22).stiffness(300)}
-            exiting={FadeOut.duration(100)}
+            exiting={FadeOut.duration(120)}
             style={s.suggOverlay}>
-
             <View style={s.suggCard}>
-              <View style={s.suggHandle} />
-
               {/* Header */}
               <View style={s.suggHeader}>
-                <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 5 }}>
-                  <Ionicons name="sparkles" size={11} color={theme.colors.brand[400]} />
-                  <Text style={s.suggHeaderText}>اقتراحات</Text>
+                <View style={s.suggHeaderLeft}>
+                  <Ionicons name="sparkles" size={12} color={theme.colors.brand[700]} />
+                  <UIText variant="eyebrow" color="tertiary">اقتراحات</UIText>
                 </View>
-                {suggFetching && <ActivityIndicator size="small" color={theme.colors.brand[400]} />}
+                {suggFetching && <ActivityIndicator size="small" color={theme.colors.brand[600]} />}
               </View>
 
               {!suggFetching && suggestions.length === 0 && (
                 <View style={s.suggEmpty}>
-                  <Ionicons name="search-outline" size={20} color="rgba(255,255,255,0.15)" />
-                  <Text style={s.suggEmptyText}>لا توجد اقتراحات</Text>
+                  <Ionicons name="search-outline" size={22} color={theme.colors.slate[300]} />
+                  <UIText variant="caption" color="tertiary">لا توجد اقتراحات لـ "{debouncedQ}"</UIText>
                 </View>
               )}
 
               {suggestions.map((p, i) => (
-                <SuggRow key={p.id} product={p} query={debouncedQ} onPress={() => tapSugg(p)} index={i} />
+                <SuggRow
+                  key={p.id}
+                  product={p}
+                  query={debouncedQ}
+                  onPress={() => tapSugg(p)}
+                  index={i}
+                  selected={selectedIdx === i}
+                />
               ))}
 
               {suggestions.length > 0 && (
                 <Pressable
                   onPress={() => submit()}
-                  style={({ pressed }) => [s.suggShowAll, pressed && { opacity: 0.8 }]}>
-                  <Ionicons name="search" size={13} color={theme.colors.brand[400]} />
-                  <Text style={s.suggShowAllText}>عرض كل نتائج "{debouncedQ}"</Text>
-                  <Ionicons name="return-down-back" size={12} color="rgba(255,255,255,0.3)" />
+                  style={({ pressed }) => [s.suggShowAll, pressed && { opacity: 0.88 }]}>
+                  <Ionicons name="search" size={14} color={theme.colors.brand[700]} />
+                  <UIText variant="caption" weight="bold" color="brand">
+                    عرض كل نتائج "{debouncedQ}"
+                  </UIText>
+                  <Ionicons name="return-down-back" size={13} color={theme.colors.brand[700]} />
                 </Pressable>
               )}
             </View>
@@ -663,269 +848,552 @@ export default function SearchScreen() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ═══  STYLES  ═════════════════════════════════════════════════════════════
+// ═══  STYLES — light-mode-first  ═══════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════════════════
 
 const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#0A0F14" },
+  screen:  { flex: 1, backgroundColor: theme.colors.bg },
   content: { flex: 1, position: "relative" },
 
-  // Header
-  header: { paddingHorizontal: 16, paddingBottom: 16, gap: 10, overflow: "hidden" },
-  decor1: { position: "absolute", right: -50, top: -50, width: 160, height: 160, borderRadius: 80, backgroundColor: "rgba(8,145,178,0.06)" },
-  decor2: { position: "absolute", left: -30, bottom: -40, width: 100, height: 100, borderRadius: 50, backgroundColor: "rgba(255,255,255,0.02)" },
-
-  topRow: { flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" },
-  cmdIcon: {
-    width: 26, height: 26, borderRadius: 8,
-    backgroundColor: "rgba(8,145,178,0.15)", alignItems: "center", justifyContent: "center",
-    borderWidth: 1, borderColor: "rgba(8,145,178,0.20)",
+  // ── Header — clean elevated white strip
+  header: {
+    paddingHorizontal: 16,
+    paddingBottom:     14,
+    gap:               14,
+    backgroundColor:   theme.colors.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.border.hairline,
   },
-  headerLabel: { fontSize: 11, fontFamily: theme.fonts.extrabold, color: "rgba(255,255,255,0.35)", letterSpacing: 2 },
+
+  topRow: {
+    flexDirection:  "row-reverse",
+    alignItems:     "center",
+    justifyContent: "space-between",
+  },
+  topLeft: {
+    flexDirection: "row-reverse",
+    alignItems:    "center",
+    gap:           12,
+  },
+  headerIcon: {
+    width:           34,
+    height:          34,
+    borderRadius:    11,
+    backgroundColor: theme.colors.brand.lighter,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
+    alignItems:      "center",
+    justifyContent:  "center",
+  },
+  headerTitle: {
+    letterSpacing: -0.2,
+    marginTop:     1,
+  },
   countPill: {
-    flexDirection: "row-reverse", alignItems: "center", gap: 4,
-    backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 999,
-    paddingHorizontal: 10, paddingVertical: 4,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
+    flexDirection:    "row-reverse",
+    alignItems:       "center",
+    gap:              6,
+    backgroundColor:  theme.colors.brand.lighter,
+    borderRadius:     999,
+    paddingHorizontal: 10,
+    paddingVertical:   5,
+    borderWidth:      1,
+    borderColor:      theme.colors.border.brandSoft,
   },
-  countText: { fontSize: 12, fontFamily: theme.fonts.black, color: "#fff" },
-  countUnit: { fontSize: 9, fontFamily: theme.fonts.semibold, color: "rgba(255,255,255,0.4)" },
 
-  // Command bar
+  // ── Command bar — premium light field with brand glow
   barContainer: { position: "relative" },
   barGlow: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 20, opacity: 0,
-    backgroundColor: "rgba(8,145,178,0.08)",
-    transform: [{ scale: 1.04 }],
+    borderRadius:    18,
+    opacity:         0,
+    backgroundColor: "rgba(13,184,168,0.10)",
+    transform:       [{ scale: 1.04 }],
   },
   bar: {
-    flexDirection: "row", alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderRadius: 18, paddingHorizontal: 5, height: 52,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.10)",
-    gap: 2,
+    flexDirection:   "row",
+    alignItems:      "center",
+    backgroundColor: theme.colors.surface,
+    borderRadius:    18,
+    paddingHorizontal: 5,
+    height:          54,
+    borderWidth:     1.5,
+    borderColor:     theme.colors.border.hairline,
+    gap:             2,
+  },
+  barFocused: {
+    borderColor:     theme.colors.brand[400],
+    ...theme.shadow.brandGlow,
   },
   barIconWrap: {
-    width: 38, height: 38, borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    alignItems: "center", justifyContent: "center",
+    width:           40,
+    height:          40,
+    borderRadius:    12,
+    backgroundColor: theme.colors.surfaceSunken,
+    alignItems:      "center",
+    justifyContent:  "center",
   },
   barInput: {
-    flex: 1, fontSize: 14, fontFamily: theme.fonts.semibold,
-    color: "#fff", textAlign: "right", paddingHorizontal: 8,
+    flex:       1,
+    fontSize:   14.5,
+    fontFamily: theme.fonts.semibold,
+    color:      theme.colors.text.primary,
+    textAlign:  "right",
+    paddingHorizontal: 10,
   },
   barClear: {
-    width: 24, height: 24, borderRadius: 7,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    alignItems: "center", justifyContent: "center",
+    width:           26,
+    height:          26,
+    borderRadius:    8,
+    backgroundColor: theme.colors.surfaceSunken,
+    alignItems:      "center",
+    justifyContent:  "center",
   },
-  barDivider: { width: 1, height: 22, backgroundColor: "rgba(255,255,255,0.08)", marginHorizontal: 4 },
+  barDivider: {
+    width:           StyleSheet.hairlineWidth,
+    height:          24,
+    backgroundColor: theme.colors.border.default,
+    marginHorizontal: 4,
+  },
   barFilterBtn: {
-    width: 36, height: 36, borderRadius: 11,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    alignItems: "center", justifyContent: "center", position: "relative",
+    width:           38,
+    height:          38,
+    borderRadius:    11,
+    backgroundColor: theme.colors.surfaceSunken,
+    alignItems:      "center",
+    justifyContent:  "center",
+    position:        "relative",
   },
-  barFilterBtnActive: { backgroundColor: theme.colors.brand[600] },
+  barFilterBtnActive: {
+    backgroundColor: theme.colors.brand[700],
+  },
   filterBadge: {
-    position: "absolute", top: -3, right: -3,
-    minWidth: 14, height: 14, borderRadius: 7,
-    backgroundColor: theme.colors.amber[500],
-    alignItems: "center", justifyContent: "center", paddingHorizontal: 3,
-    borderWidth: 1.5, borderColor: "#0A0F14",
+    position:        "absolute",
+    top:             -3,
+    right:           -3,
+    minWidth:        16,
+    height:          16,
+    borderRadius:    8,
+    backgroundColor: theme.colors.amber[600],
+    alignItems:      "center",
+    justifyContent:  "center",
+    paddingHorizontal: 3,
+    borderWidth:     1.5,
+    borderColor:     theme.colors.surface,
   },
-  filterBadgeText: { fontSize: 7.5, fontFamily: theme.fonts.black, color: "#fff" },
   barSubmit: {
-    width: 36, height: 36, borderRadius: 11,
-    backgroundColor: theme.colors.brand[600],
-    alignItems: "center", justifyContent: "center",
-    marginLeft: 2,
+    width:           38,
+    height:          38,
+    borderRadius:    11,
+    backgroundColor: theme.colors.brand[700],
+    alignItems:      "center",
+    justifyContent:  "center",
+    marginLeft:      2,
+    ...theme.shadow.brand,
+    shadowOpacity:   0.24,
   },
-  hint: { alignItems: "center", paddingTop: 6 },
-  hintText: { fontSize: 10, fontFamily: theme.fonts.semibold, color: "rgba(255,255,255,0.20)" },
 
-  // Highlight
+  hint: {
+    alignItems: "center",
+    paddingTop: 2,
+  },
+
+  // ── Highlight match
   hlMatch: {
-    color: theme.colors.brand[400], fontFamily: theme.fonts.black,
-    backgroundColor: "rgba(8,145,178,0.15)",
+    color:           theme.colors.brand[700],
+    fontFamily:      theme.fonts.black,
+    backgroundColor: theme.colors.brand.lighter,
   },
 
-  // Suggestions overlay
+  // ── Suggestions overlay — elevated white card
   suggOverlay: {
-    position: "absolute", top: 0, left: 10, right: 10, zIndex: 100,
+    position: "absolute",
+    top:      8,
+    left:     12,
+    right:    12,
+    zIndex:   100,
   },
   suggCard: {
-    backgroundColor: "#141B22",
-    borderRadius: 20, overflow: "hidden",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
-    ...theme.shadow.xl,
+    backgroundColor: theme.colors.surface,
+    borderRadius:    18,
+    overflow:        "hidden",
+    ...theme.shadow.lg,
+    shadowOpacity:   0.10,
   },
-  suggHandle: { width: 32, height: 3, borderRadius: 1.5, backgroundColor: "rgba(255,255,255,0.10)", alignSelf: "center", marginTop: 8, marginBottom: 4 },
   suggHeader: {
-    flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: 14, paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: "rgba(255,255,255,0.06)",
+    flexDirection:    "row-reverse",
+    alignItems:       "center",
+    justifyContent:   "space-between",
+    paddingHorizontal: 16,
+    paddingVertical:   12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.border.hairline,
   },
-  suggHeaderText: { fontSize: 10, fontFamily: theme.fonts.extrabold, color: "rgba(255,255,255,0.30)", letterSpacing: 0.8 },
+  suggHeaderLeft: {
+    flexDirection: "row-reverse",
+    alignItems:    "center",
+    gap:           6,
+  },
   suggRow: {
-    flexDirection: "row-reverse", alignItems: "center", gap: 10,
-    paddingHorizontal: 14, paddingVertical: 10,
+    flexDirection:    "row-reverse",
+    alignItems:       "center",
+    gap:              12,
+    paddingHorizontal: 16,
+    paddingVertical:   12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.border.hairline,
   },
   suggThumb: {
-    width: 36, height: 36, borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    alignItems: "center", justifyContent: "center", overflow: "hidden",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
+    width:           42,
+    height:          42,
+    borderRadius:    12,
+    backgroundColor: theme.colors.surfaceSunken,
+    alignItems:      "center",
+    justifyContent:  "center",
+    overflow:        "hidden",
   },
-  suggName: { fontSize: 13, fontFamily: theme.fonts.bold, color: "rgba(255,255,255,0.85)", textAlign: "right" },
-  suggCat: { fontSize: 10, fontFamily: theme.fonts.semibold, color: "rgba(255,255,255,0.30)", textAlign: "right", marginTop: 1 },
-  suggPrice: { fontSize: 12, fontFamily: theme.fonts.black, color: theme.colors.brand[400] },
-  suggOos: { backgroundColor: "rgba(239,68,68,0.15)", borderRadius: 999, paddingHorizontal: 6, paddingVertical: 2 },
-  suggOosText: { fontSize: 8, fontFamily: theme.fonts.black, color: theme.colors.error.base },
-  suggEmpty: { alignItems: "center", paddingVertical: 24, gap: 6 },
-  suggEmptyText: { fontSize: 11, fontFamily: theme.fonts.semibold, color: "rgba(255,255,255,0.2)" },
+  suggName: {
+    fontSize:   13,
+    fontFamily: theme.fonts.bold,
+    color:      theme.colors.text.primary,
+    textAlign:  "right",
+  },
+  suggCat: {
+    marginTop: 2,
+  },
+  suggPrice: {
+    color:         theme.colors.brand[700],
+    letterSpacing: -0.2,
+  },
+  suggOos: {
+    backgroundColor: theme.colors.error.bg,
+    borderRadius:    999,
+    paddingHorizontal: 7,
+    paddingVertical:   3,
+    borderWidth:     1,
+    borderColor:     theme.colors.error.light,
+  },
+  suggEmpty: {
+    alignItems:    "center",
+    paddingVertical: 28,
+    gap:           8,
+  },
   suggShowAll: {
-    flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 8,
-    paddingVertical: 12,
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "rgba(255,255,255,0.06)",
-    backgroundColor: "rgba(8,145,178,0.06)",
+    flexDirection:    "row-reverse",
+    alignItems:       "center",
+    justifyContent:   "center",
+    gap:              8,
+    paddingVertical:  14,
+    backgroundColor:  theme.colors.brand.lighter,
   },
-  suggShowAllText: { fontSize: 12, fontFamily: theme.fonts.bold, color: theme.colors.brand[400] },
 
-  // Filter panel
+  // ── Filter panel — light, refined
   filterPanel: {
-    backgroundColor: "#111820", paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, gap: 10,
-    borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.05)",
+    backgroundColor:   theme.colors.surface,
+    paddingHorizontal: 16,
+    paddingTop:        14,
+    paddingBottom:     14,
+    gap:               12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.border.hairline,
   },
-  filterHeader: { flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" },
-  filterTitle: { fontSize: 12, fontFamily: theme.fonts.black, color: "rgba(255,255,255,0.6)" },
-  filterReset: { fontSize: 10, fontFamily: theme.fonts.bold, color: theme.colors.brand[400] },
-  chipsRow: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 6 },
+  filterHeader: {
+    flexDirection:  "row-reverse",
+    alignItems:     "center",
+    justifyContent: "space-between",
+  },
+  chipsRow: {
+    flexDirection: "row-reverse",
+    flexWrap:      "wrap",
+    gap:           7,
+  },
   chip: {
-    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
+    paddingHorizontal: 14,
+    paddingVertical:   8,
+    borderRadius:      999,
+    backgroundColor:   theme.colors.surfaceSunken,
+    borderWidth:       1,
+    borderColor:       theme.colors.border.hairline,
   },
-  chipOn: { backgroundColor: theme.colors.brand[600], borderColor: theme.colors.brand[500] },
-  chipText: { fontSize: 11, fontFamily: theme.fonts.bold, color: "rgba(255,255,255,0.50)" },
-  chipTextOn: { color: "#fff", fontFamily: theme.fonts.black },
-  toggleRow: { flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", paddingVertical: 4 },
-  toggleLabel: { fontSize: 11, fontFamily: theme.fonts.bold, color: "rgba(255,255,255,0.50)" },
-  sw: { width: 36, height: 20, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.10)", padding: 2, justifyContent: "center" },
-  swOn: { backgroundColor: theme.colors.brand[500] },
-  swThumb: { width: 16, height: 16, borderRadius: 8, backgroundColor: "#fff", alignSelf: "flex-end" },
+  chipOn: {
+    backgroundColor: theme.colors.brand[700],
+    borderColor:     theme.colors.brand[700],
+  },
+
+  toggleRow: {
+    flexDirection:  "row-reverse",
+    alignItems:     "center",
+    justifyContent: "space-between",
+    paddingVertical: 6,
+  },
+  toggleLeft: {
+    flexDirection: "row-reverse",
+    alignItems:    "center",
+    gap:           8,
+  },
+  sw: {
+    width:           38,
+    height:          22,
+    borderRadius:    11,
+    backgroundColor: theme.colors.slate[200],
+    padding:         2,
+    justifyContent:  "center",
+  },
+  swOn: { backgroundColor: theme.colors.brand[600] },
+  swThumb: {
+    width:           18,
+    height:          18,
+    borderRadius:    9,
+    backgroundColor: "#fff",
+    alignSelf:       "flex-end",
+    ...theme.shadow.hairline,
+  },
   swThumbOn: { alignSelf: "flex-start" },
 
-  // Discovery
-  discovery: { paddingHorizontal: 16, paddingTop: 16, gap: 24 },
-  section: { gap: 8 },
-  sectionHeader: { flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" },
-  sectionTitle: { fontSize: 12, fontFamily: theme.fonts.black, color: "rgba(255,255,255,0.45)" },
-  sectionAction: { fontSize: 10, fontFamily: theme.fonts.bold, color: theme.colors.brand[400] },
-
-  recentWrap: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 6 },
-  recentChip: {
-    flexDirection: "row-reverse", alignItems: "center", gap: 6,
-    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
+  // ── Discovery sections — editorial light rhythm
+  discovery: {
+    paddingHorizontal: 16,
+    paddingTop:        20,
+    gap:               28,
   },
-  recentText: { fontSize: 11, fontFamily: theme.fonts.bold, color: "rgba(255,255,255,0.55)" },
+  section: { gap: 14 },
+  sectionHeader: {
+    flexDirection:  "row-reverse",
+    alignItems:     "center",
+    justifyContent: "space-between",
+  },
+  sectionTitleWrap: {
+    flexDirection: "row-reverse",
+    alignItems:    "center",
+    gap:           12,
+  },
+  sectionIcon: {
+    width:           34,
+    height:          34,
+    borderRadius:    11,
+    alignItems:      "center",
+    justifyContent:  "center",
+    borderWidth:     1,
+    borderColor:     theme.colors.border.hairline,
+  },
+  sectionTitleNew: {
+    letterSpacing: -0.2,
+    marginTop:     1,
+  },
 
-  trendGrid: { gap: 6 },
+  // Recent searches — refined chips
+  recentWrap: {
+    flexDirection: "row-reverse",
+    flexWrap:      "wrap",
+    gap:           8,
+  },
+  recentChip: {
+    flexDirection:    "row-reverse",
+    alignItems:       "center",
+    gap:              7,
+    paddingHorizontal: 13,
+    paddingVertical:   9,
+    borderRadius:     999,
+    backgroundColor:  theme.colors.surface,
+    borderWidth:      1,
+    borderColor:      theme.colors.border.hairline,
+    ...theme.shadow.hairline,
+  },
+
+  // Trending — premium tile rows
+  trendGrid: { gap: 8 },
   trendItem: {
-    flexDirection: "row-reverse", alignItems: "center", gap: 10,
-    backgroundColor: "rgba(255,255,255,0.035)",
-    borderRadius: 14, paddingHorizontal: 12, paddingVertical: 11,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.04)",
+    flexDirection:    "row-reverse",
+    alignItems:       "center",
+    gap:              12,
+    backgroundColor:  theme.colors.surface,
+    borderRadius:     14,
+    paddingHorizontal: 14,
+    paddingVertical:   12,
+    ...theme.shadow.card,
   },
   trendIcon: {
-    width: 34, height: 34, borderRadius: 10,
-    alignItems: "center", justifyContent: "center",
+    width:           38,
+    height:          38,
+    borderRadius:    12,
+    alignItems:      "center",
+    justifyContent:  "center",
+    borderWidth:     1,
   },
-  trendLabel: { flex: 1, fontSize: 13, fontFamily: theme.fonts.bold, color: "rgba(255,255,255,0.70)", textAlign: "right" },
-  trendIdx: {
-    fontSize: 10, fontFamily: theme.fonts.black, color: "rgba(255,255,255,0.12)",
-    width: 20, textAlign: "center",
+  trendLabel: {
+    flex: 1,
+  },
+  trendIdxWrap: {
+    width:           28,
+    height:          24,
+    borderRadius:    8,
+    backgroundColor: theme.colors.surfaceSunken,
+    alignItems:      "center",
+    justifyContent:  "center",
   },
 
+  // Category browse list — one unified card with hairline rows
+  catList: {
+    backgroundColor: theme.colors.surface,
+    borderRadius:    16,
+    overflow:        "hidden",
+    ...theme.shadow.card,
+  },
   catRow: {
-    flexDirection: "row-reverse", alignItems: "center", gap: 10,
-    backgroundColor: "rgba(255,255,255,0.035)", borderRadius: 13,
-    paddingHorizontal: 12, paddingVertical: 11, marginBottom: 6,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.04)",
+    flexDirection:    "row-reverse",
+    alignItems:       "center",
+    gap:              12,
+    paddingHorizontal: 16,
+    paddingVertical:   14,
+  },
+  catRowDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.border.hairline,
   },
   catIcon: {
-    width: 32, height: 32, borderRadius: 9,
-    backgroundColor: "rgba(8,145,178,0.12)",
-    alignItems: "center", justifyContent: "center",
+    width:           36,
+    height:          36,
+    borderRadius:    11,
+    backgroundColor: theme.colors.brand.lighter,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
+    alignItems:      "center",
+    justifyContent:  "center",
   },
-  catName: { flex: 1, fontSize: 13, fontFamily: theme.fonts.bold, color: "rgba(255,255,255,0.65)", textAlign: "right" },
-  catCount: { fontSize: 10, fontFamily: theme.fonts.semibold, color: "rgba(255,255,255,0.20)" },
+  catCountChip: {
+    minWidth:        28,
+    height:          22,
+    borderRadius:    7,
+    backgroundColor: theme.colors.surfaceSunken,
+    alignItems:      "center",
+    justifyContent:  "center",
+    paddingHorizontal: 7,
+  },
 
-  // Results grid
-  grid: { paddingHorizontal: 16, paddingTop: 12 },
-  gridRow: { gap: 10, marginBottom: 10 },
+  // ── Results grid
+  grid:    { paddingHorizontal: 16, paddingTop: 14 },
+  gridRow: { gap: 12, marginBottom: 12 },
 
-  groupHeader: { marginBottom: 10 },
+  groupHeader: {
+    marginBottom: 14,
+    gap:          8,
+  },
+  groupEyebrow: {
+    paddingHorizontal: 2,
+  },
+  groupChipsRow: {
+    gap:              7,
+    paddingHorizontal: 2,
+  },
   groupChip: {
-    flexDirection: "row-reverse", alignItems: "center", gap: 5,
-    backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 999,
-    paddingHorizontal: 11, paddingVertical: 6,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
+    flexDirection:    "row-reverse",
+    alignItems:       "center",
+    gap:              7,
+    backgroundColor:  theme.colors.surface,
+    borderRadius:     999,
+    paddingHorizontal: 12,
+    paddingVertical:   7,
+    borderWidth:      1,
+    borderColor:      theme.colors.border.hairline,
   },
-  groupChipText: { fontSize: 10, fontFamily: theme.fonts.bold, color: "rgba(255,255,255,0.50)" },
+  groupChipActive: {
+    backgroundColor: theme.colors.brand[700],
+    borderColor:     theme.colors.brand[700],
+  },
   groupChipCount: {
-    backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 999,
-    paddingHorizontal: 5, paddingVertical: 1,
+    minWidth:        20,
+    backgroundColor: theme.colors.surfaceSunken,
+    borderRadius:    999,
+    paddingHorizontal: 6,
+    paddingVertical:   1,
+    alignItems:      "center",
   },
-  groupChipCountText: { fontSize: 8, fontFamily: theme.fonts.black, color: "rgba(255,255,255,0.35)" },
+  groupChipCountActive: {
+    backgroundColor: "rgba(255,255,255,0.20)",
+  },
 
-  card: {
-    width: CARD_W, backgroundColor: "#141B22",
-    borderRadius: 16, overflow: "hidden",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.06)",
+  searchingWrap: {
+    paddingTop: 60,
+    alignItems: "center",
+    gap:        12,
   },
-  cardImgWrap: {
-    width: "100%", height: 120,
-    backgroundColor: "rgba(255,255,255,0.03)",
-    alignItems: "center", justifyContent: "center", position: "relative",
+  footerLoader: {
+    paddingVertical: 24,
+    alignItems:      "center",
   },
-  cardImg: { width: "75%", height: "75%" },
-  cardImgEmpty: { alignItems: "center", justifyContent: "center" },
-  cardOos: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.50)", alignItems: "center", justifyContent: "center",
-  },
-  cardOosText: {
-    fontSize: 10, fontFamily: theme.fonts.black, color: "#fff",
-    backgroundColor: "rgba(0,0,0,0.3)", paddingHorizontal: 8, paddingVertical: 3,
-    borderRadius: 6, overflow: "hidden",
-  },
-  cardLive: {
-    position: "absolute", top: 8, left: 8,
-    width: 6, height: 6, borderRadius: 3,
-    backgroundColor: "#22c55e",
-    borderWidth: 1, borderColor: "rgba(0,0,0,0.2)",
-  },
-  cardBody: { paddingHorizontal: 10, paddingVertical: 10, gap: 3 },
-  cardCatLabel: {
-    fontSize: 9, fontFamily: theme.fonts.semibold,
-    color: theme.colors.brand[400], textAlign: "right", letterSpacing: 0.3,
-  },
-  cardName: {
-    fontSize: 12, fontFamily: theme.fonts.bold,
-    color: "rgba(255,255,255,0.80)", textAlign: "right", lineHeight: 17,
-  },
-  cardFooter: { flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", marginTop: 4 },
-  cardPrice: { fontSize: 13, fontFamily: theme.fonts.black, color: theme.colors.brand[400] },
-  cardAddBtn: {
-    width: 28, height: 28, borderRadius: 9,
-    backgroundColor: theme.colors.brand[600],
-    alignItems: "center", justifyContent: "center",
-  },
-  cardAddBtnOff: { backgroundColor: "rgba(255,255,255,0.06)" },
 
-  searchingText: { fontSize: 12, fontFamily: theme.fonts.semibold, color: "rgba(255,255,255,0.3)" },
-  footerLoader: { paddingVertical: 20, alignItems: "center" },
+  // Skeleton grid — 2 columns matching the product grid geometry
+  skeletonGrid: {
+    flexDirection:   "row-reverse",
+    flexWrap:        "wrap",
+    padding:         12,
+    gap:             10,
+  },
+  skeletonCell: {
+    width: "47%" as any,
+  },
+
+  // ── Language badge — tiny script indicator inside the search bar ──────────
+  langBadge: {
+    height:          20,
+    borderRadius:    6,
+    paddingHorizontal: 6,
+    alignItems:      "center",
+    justifyContent:  "center",
+    marginLeft:      2,
+    borderWidth:     1,
+  },
+  langBadgeAr: {
+    backgroundColor: theme.colors.brand.lighter,
+    borderColor:     theme.colors.border.brandSoft,
+  },
+  langBadgeMix: {
+    backgroundColor: theme.colors.amber[50],
+    borderColor:     `${theme.colors.amber[600]}30`,
+  },
+  langBadgeCode: {
+    backgroundColor: theme.colors.purple[50],
+    borderColor:     `${theme.colors.purple[600]}30`,
+  },
+
+  // ── Translation hint strip ────────────────────────────────────────────────
+  translationHint: {
+    flexDirection:    "row-reverse",
+    alignItems:       "center",
+    gap:              6,
+    paddingHorizontal: 6,
+    paddingVertical:   4,
+  },
+  translationHintText: {
+    color:    theme.colors.brand[700],
+    fontSize: 11,
+  },
+
+  // ── Empty-state quick suggestions ────────────────────────────────────────
+  emptyTrendWrap: {
+    paddingHorizontal: 4,
+  },
+  emptyTrendChips: {
+    flexDirection: "row-reverse",
+    flexWrap:      "wrap",
+    gap:           8,
+  },
+  emptyTrendChip: {
+    flexDirection:    "row-reverse",
+    alignItems:       "center",
+    gap:              7,
+    paddingHorizontal: 12,
+    paddingVertical:   9,
+    borderRadius:     999,
+    backgroundColor:  theme.colors.surface,
+    borderWidth:      1,
+    ...theme.shadow.hairline,
+  },
+  emptyTrendIcon: {
+    width:        22,
+    height:       22,
+    borderRadius: 7,
+    alignItems:   "center",
+    justifyContent: "center",
+  },
 });

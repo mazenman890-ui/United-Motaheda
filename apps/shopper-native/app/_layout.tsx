@@ -1,8 +1,10 @@
+import "./_initWeb";
+import "../global.css";
 import React, { useEffect } from "react";
-import { I18nManager } from "react-native";
+import { Alert } from "react-native";
 import { Stack } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -16,29 +18,35 @@ import {
 } from "@expo-google-fonts/cairo";
 import { useRouter } from "expo-router";
 import { AuthProvider, useAuth } from "@/features/auth";
-import { useCartStore } from "@/stores/cart";
-import { useOrderStore } from "@/stores/orders";
-import { useWishlistStore } from "@/stores/wishlist";
 import {
   NotificationBanner,
   useNotificationSync,
   usePushNotificationRegistration,
 } from "@/features/notifications";
-import { ErrorBoundary } from "@/shared/components";
+import { ErrorBoundary, PharmacyBootstrap, SplashOverlay } from "@/shared/components";
+import { queryClient } from "@/lib/queryClient";
+import { persistOptions } from "@/lib/queryPersister";
+import { NetworkBridge } from "@/lib/networkStatus";
+import { attachQueryClientTelemetry, installCrashEnrichment } from "@/features/observability";
+import { startOfflineQueueRunner } from "@/lib/offlineQueueRunner";
+import { LanguageProvider } from "@/i18n/LanguageProvider";
+import "@/i18n";
+import { useCartStore } from "@/stores/cart";
+// Side-effect import: registers loyalty op handlers with the offline queue.
+import "@/features/loyalty/offlineHandlers";
 
 SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime:            5 * 60 * 1000,
-      gcTime:               15 * 60 * 1000,
-      retry:                1,
-      refetchOnWindowFocus: false,
-      refetchOnMount:       false,
-    },
-  },
-});
+// Wire observability before any provider renders: this captures the first
+// queries fired during boot (auth, push registration, catalog) and ensures
+// any captureError landing during early boot has breadcrumbs attached.
+installCrashEnrichment();
+attachQueryClientTelemetry(queryClient);
+
+// Drain the offline queue whenever the device is online. Bound to
+// onlineManager from slice 1, so this respects the same NetInfo signal
+// that powers query pause/resume.
+startOfflineQueueRunner();
 
 // ─── Notification sync — single realtime channel + banner toast bridge ──────
 
@@ -65,13 +73,22 @@ function PushBootstrap() {
   return null;
 }
 
+function CartReservationNotifier() {
+  const last = useCartStore((s) => s.lastReservationError);
+  useEffect(() => {
+    if (!last) return;
+    Alert.alert("مشكلة في الحجز", last.message, [
+      { text: "حسناً", onPress: () => useCartStore.getState().clearReservationError() },
+    ]);
+  }, [last]);
+  return null;
+}
+
 // ─── Root layout ──────────────────────────────────────────────────────────────
 
 export default function RootLayout() {
-  const hydrate         = useCartStore((s) => s.hydrate);
-  const hydrateOrders   = useOrderStore((s) => s.hydrate);
-  const hydrateWishlist = useWishlistStore((s) => s.hydrate);
-
+  // All user-data stores are auth-aware and hydrated inside PharmacyBootstrap
+  // (fires on user.id change). Root mount only handles fonts + RTL + splash.
   const [fontsLoaded] = useFonts({
     Cairo_400Regular,
     Cairo_600SemiBold,
@@ -82,21 +99,22 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (!fontsLoaded) return;
-    if (!I18nManager.isRTL) I18nManager.forceRTL(true);
-    Promise.all([hydrate(), hydrateOrders(), hydrateWishlist()])
-      .catch(() => {})
-      .finally(() => SplashScreen.hideAsync());
-  }, [fontsLoaded, hydrate, hydrateOrders, hydrateWishlist]);
+    SplashScreen.hideAsync().catch(() => {});
+  }, [fontsLoaded]);
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundary surface="root">
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
+        <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
+          <NetworkBridge />
+          <LanguageProvider>
           <AuthProvider>
             <StatusBar style="light" />
             <NotificationSync />
             <PushBootstrap />
+            <CartReservationNotifier />
+            <PharmacyBootstrap />
             <Stack screenOptions={{ headerShown: false, animation: "fade" }}>
               <Stack.Screen name="index"                  options={{ headerShown: false }} />
               <Stack.Screen name="onboarding"             options={{ headerShown: false, animation: "fade" }} />
@@ -112,15 +130,32 @@ export default function RootLayout() {
               <Stack.Screen name="notification-preferences" options={{ headerShown: false, animation: "slide_from_right" }} />
               <Stack.Screen name="payment"                options={{ headerShown: false, animation: "slide_from_right" }} />
               <Stack.Screen name="faq"                    options={{ headerShown: false, animation: "slide_from_right" }} />
-              <Stack.Screen name="loyalty"                 options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="loyalty"             options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="wallet"              options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="coupons"             options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="gifts"               options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="loyalty-history"     options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="tiers"               options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="campaigns"           options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="redemption-history"  options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="reset-password"         options={{ headerShown: false }} />
               <Stack.Screen name="about"                  options={{ headerShown: false, animation: "slide_from_right" }} />
               <Stack.Screen name="privacy"                options={{ headerShown: false, animation: "slide_from_right" }} />
               <Stack.Screen name="terms"                  options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="prescriptions"          options={{ headerShown: false, animation: "slide_from_right" }} />
+              {__DEV__ && (
+                <Stack.Screen name="__preview/components" options={{ headerShown: false, animation: "slide_from_right" }} />
+              )}
             </Stack>
             <NotificationBanner />
           </AuthProvider>
-        </QueryClientProvider>
+          </LanguageProvider>
+        </PersistQueryClientProvider>
       </SafeAreaProvider>
+      {/* JS splash overlay — appears once per app launch after native splash
+          hides, fades out after ~1.2 s. Mounted at the root so it sits above
+          every route. */}
+      <SplashOverlay />
     </GestureHandlerRootView>
     </ErrorBoundary>
   );

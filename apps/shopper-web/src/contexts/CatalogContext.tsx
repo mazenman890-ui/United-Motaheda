@@ -439,10 +439,16 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// ─── useCatalogOptional ───────────────────────────────────────────────────────
+
+export function useCatalogOptional() {
+  return useContext(CatalogContext);
+}
+
 // ─── useCatalog ───────────────────────────────────────────────────────────────
 
 export function useCatalog(): CatalogContextType {
-  const ctx = useContext(CatalogContext);
+  const ctx = useCatalogOptional();
   if (process.env.NODE_ENV !== "production" && ctx === null) {
     throw new Error(
       "[CatalogContext] useCatalog() was called outside <CatalogProvider>. " +

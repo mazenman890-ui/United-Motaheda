@@ -18,19 +18,23 @@ import { useAuth } from "@/features/auth";
 import { useCartStore } from "@/stores/cart";
 import { useWishlistStore } from "@/stores/wishlist";
 import { useOrderStore } from "@/stores/orders";
+import { useLoyaltyBalance } from "@/features/loyalty";
 import { Button } from "@/components/ui/Button";
+import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/theme";
+import { useTranslation } from "react-i18next";
+import { useAppLanguage } from "@/i18n/LanguageProvider";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
 function getTier(points: number) {
   if (points >= 4000)
-    return { name: "بلاتيني", color: "#A78BFA", ring: ["#8B5CF6", "#7C3AED"] as [string, string], icon: "diamond" as IoniconsName };
+    return { name: "بلاتيني", color: theme.colors.purple[400], ring: [theme.colors.purple[500], theme.colors.purple[700]] as [string, string], icon: "diamond" as IoniconsName };
   if (points >= 1500)
-    return { name: "ذهبي", color: "#FBBF24", ring: ["#F59E0B", "#D97706"] as [string, string], icon: "shield" as IoniconsName };
+    return { name: "ذهبي", color: theme.colors.amber[300], ring: [theme.colors.amber[400], theme.colors.amber[500]] as [string, string], icon: "shield" as IoniconsName };
   if (points >= 500)
-    return { name: "فضي", color: "#94A3B8", ring: ["#94A3B8", "#64748B"] as [string, string], icon: "shield-half" as IoniconsName };
-  return { name: "برونزي", color: "#D97706", ring: ["#D97706", "#B45309"] as [string, string], icon: "shield-outline" as IoniconsName };
+    return { name: "فضي", color: theme.colors.slate[400], ring: [theme.colors.slate[400], theme.colors.slate[600]] as [string, string], icon: "shield-half" as IoniconsName };
+  return { name: "برونزي", color: theme.colors.amber[500], ring: [theme.colors.amber[500], theme.colors.amber[700]] as [string, string], icon: "shield-outline" as IoniconsName };
 }
 
 // ─── MenuRow ──────────────────────────────────────────────────────────────
@@ -47,28 +51,48 @@ function MenuRow({
   danger?: boolean;
   last?: boolean;
 }) {
-  const ic = danger ? theme.colors.error.base : (color ?? theme.colors.brand[600]);
+  const ic = danger ? theme.colors.error.base : (color ?? theme.colors.brand[700]);
   return (
     <Pressable
       onPress={() => {
         if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
         onPress();
       }}
+      accessibilityRole="button"
+      accessibilityLabel={subtitle ? `${label}، ${subtitle}` : label}
       style={({ pressed }) => [
         styles.menuRow,
         !last && styles.menuRowBorder,
-        pressed && { backgroundColor: theme.colors.slate[50] },
+        pressed && { backgroundColor: theme.colors.surfaceSunken },
       ]}>
-      <View style={[styles.menuIcon, { backgroundColor: danger ? theme.colors.error.bg : `${ic}14` }]}>
+      <View style={[
+        styles.menuIcon,
+        { backgroundColor: danger ? theme.colors.error.bg : `${ic}14`,
+          borderColor:     danger ? theme.colors.error.light : `${ic}22` },
+      ]}>
         <Ionicons name={icon} size={17} color={ic} />
       </View>
-      <View style={{ flex: 1 }}>
-        <Text style={[styles.menuLabel, danger && { color: theme.colors.error.base }]}>{label}</Text>
-        {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
+      <View style={styles.menuTextWrap}>
+        <UIText
+          variant="body-sm"
+          weight="bold"
+          align="right"
+          style={danger ? { color: theme.colors.error.base } : undefined}>
+          {label}
+        </UIText>
+        {subtitle && (
+          <UIText variant="caption" color="tertiary" align="right" style={styles.menuSubtitleNew}>
+            {subtitle}
+          </UIText>
+        )}
       </View>
       {badge != null && (
         <View style={[styles.badge, danger && { backgroundColor: theme.colors.error.bg }]}>
-          <Text style={[styles.badgeText, danger && { color: theme.colors.error.base }]}>{badge}</Text>
+          <UIText
+            variant="eyebrow"
+            style={{ color: danger ? theme.colors.error.base : theme.colors.brand[700] }}>
+            {badge}
+          </UIText>
         </View>
       )}
       <Ionicons name="chevron-back" size={15} color={theme.colors.slate[300]} />
@@ -79,14 +103,13 @@ function MenuRow({
 // ─── Stat Pill ────────────────────────────────────────────────────────────
 
 function StatPill({
-  value, label, icon, accent, onPress, isLast,
+  value, label, icon, accent, onPress,
 }: {
   value: string | number;
   label: string;
   icon: IoniconsName;
   accent: string;
   onPress: () => void;
-  isLast?: boolean;
 }) {
   return (
     <Pressable
@@ -94,15 +117,24 @@ function StatPill({
         if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
         onPress();
       }}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}: ${value}`}
       style={({ pressed }) => [
         styles.statCol,
-        pressed && { opacity: 0.65, transform: [{ scale: 0.96 }] },
+        pressed && { opacity: 0.72, transform: [{ scale: 0.97 }] },
       ]}>
-      <View style={[styles.statIconWrap, { backgroundColor: `${accent}18` }]}>
-        <Ionicons name={icon} size={14} color={accent} />
+      <View style={[
+        styles.statIconWrap,
+        { backgroundColor: `${accent}14`, borderColor: `${accent}26` },
+      ]}>
+        <Ionicons name={icon} size={15} color={accent} />
       </View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+      <UIText variant="card-title" weight="black" style={styles.statValueNew}>
+        {value}
+      </UIText>
+      <UIText variant="eyebrow" color="tertiary">
+        {label}
+      </UIText>
     </Pressable>
   );
 }
@@ -112,23 +144,30 @@ function StatPill({
 export default function ProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
+  const { language, setLanguage } = useAppLanguage();
   const { user, signOut } = useAuth();
   const cartCount = useCartStore((s) => s.itemCount());
   const wishlistCount = useWishlistStore((s) => s.items.length);
   const orders = useOrderStore((s) => s.orders);
   const [signingOut, setSigningOut] = useState(false);
 
-  const { orderCount, totalSpent, loyaltyPoints, tier, lastOrder } = useMemo(() => {
+  // Real server-side loyalty balance — only fetch when authenticated.
+  const loyaltyBalanceQuery = useLoyaltyBalance(!!user?.id);
+
+  const { orderCount, loyaltyPoints, tier, lastOrder } = useMemo(() => {
+    // Use the real server balance when available; fall back to local approximation
+    // (floor(spend/10)) so the profile renders instantly from cached orders.
+    const realBalance = loyaltyBalanceQuery.data?.balance;
     const spent = orders.reduce((sum, o) => sum + o.total, 0);
-    const pts = Math.floor(spent / 10);
+    const pts = realBalance ?? Math.floor(spent / 10);
     return {
       orderCount: orders.length,
-      totalSpent: spent,
       loyaltyPoints: pts,
       tier: getTier(pts),
       lastOrder: orders[0] ?? null,
     };
-  }, [orders]);
+  }, [orders, loyaltyBalanceQuery.data?.balance]);
 
   const handleSignOut = useCallback(async () => {
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
@@ -146,7 +185,7 @@ export default function ProfileScreen() {
         {user ? (
           <View>
             <LinearGradient
-              colors={["#011826", "#032B42", "#064D6E"]}
+              colors={theme.gradients.heroPrimary as [string, string, string]}
               start={{ x: 0, y: 0 }}
               end={{ x: 0.7, y: 1 }}
               style={[styles.hero, { paddingTop: insets.top + 14 }]}>
@@ -159,13 +198,31 @@ export default function ProfileScreen() {
               {/* Top bar */}
               <Animated.View entering={FadeIn.duration(200)} style={styles.heroTopBar}>
                 <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>
-                  <Text style={styles.heroPageLabel}>حسابي</Text>
+                  <UIText variant="eyebrow" style={styles.heroPageLabelNew}>حسابي</UIText>
                 </View>
-                <Pressable
-                  onPress={() => router.push("/notifications")}
-                  style={styles.heroIconBtn}>
-                  <Ionicons name="settings-outline" size={16} color="rgba(255,255,255,0.8)" />
-                </Pressable>
+                <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>
+                  <Pressable
+                    onPress={() => router.push("/(tabs)/cart")}
+                    accessibilityRole="button"
+                    accessibilityLabel={cartCount > 0 ? `السلة، ${cartCount} عنصر` : "السلة"}
+                    style={styles.heroIconBtn}>
+                    <Ionicons name="bag-outline" size={16} color="rgba(255,255,255,0.8)" />
+                    {cartCount > 0 && (
+                      <View style={styles.heroIconBadge}>
+                        <Text style={styles.heroIconBadgeText}>
+                          {cartCount > 9 ? "9+" : cartCount}
+                        </Text>
+                      </View>
+                    )}
+                  </Pressable>
+                  <Pressable
+                    onPress={() => router.push("/notifications")}
+                    accessibilityRole="button"
+                    accessibilityLabel="الإعدادات"
+                    style={styles.heroIconBtn}>
+                    <Ionicons name="settings-outline" size={16} color="rgba(255,255,255,0.8)" />
+                  </Pressable>
+                </View>
               </Animated.View>
 
               {/* Avatar + Identity */}
@@ -189,21 +246,25 @@ export default function ProfileScreen() {
                 </View>
 
                 <View style={styles.heroTextGroup}>
-                  <Text style={styles.userName} numberOfLines={1}>
+                  <UIText variant="sheet-title" color="inverse" numberOfLines={1} style={styles.userNameNew}>
                     {user.name ?? "المستخدم"}
-                  </Text>
-                  <Text style={styles.userEmail} numberOfLines={1}>
+                  </UIText>
+                  <UIText variant="body-sm" color="inverse-muted" numberOfLines={1}>
                     {user.email}
-                  </Text>
+                  </UIText>
                 </View>
 
                 {/* Tier + Points */}
                 <Pressable onPress={() => router.push("/loyalty")} style={styles.tierChip}>
-                  <Ionicons name={tier.icon} size={11} color={tier.color} />
-                  <Text style={styles.tierChipLabel}>عضو {tier.name}</Text>
+                  <Ionicons name={tier.icon} size={12} color={tier.color} />
+                  <UIText variant="caption" weight="bold" style={styles.tierChipLabelNew}>
+                    عضو {tier.name}
+                  </UIText>
                   <View style={styles.pointsChip}>
-                    <Text style={styles.pointsChipText}>{loyaltyPoints}</Text>
-                    <Text style={styles.pointsChipUnit}>نقطة</Text>
+                    <UIText variant="caption" weight="black" style={styles.pointsChipTextNew}>
+                      {loyaltyPoints}
+                    </UIText>
+                    <UIText variant="eyebrow" style={styles.pointsChipUnitNew}>نقطة</UIText>
                   </View>
                 </Pressable>
               </Animated.View>
@@ -241,7 +302,6 @@ export default function ProfileScreen() {
                 icon="cart-outline"
                 accent={theme.colors.amber[600]}
                 onPress={() => router.push("/(tabs)/cart")}
-                isLast
               />
             </Animated.View>
 
@@ -256,12 +316,12 @@ export default function ProfileScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6 }}>
-                      <Text style={styles.quickCardTitle}>آخر طلب</Text>
+                      <UIText variant="body-sm" weight="bold" align="right">آخر طلب</UIText>
                       <View style={styles.statusDot} />
                     </View>
-                    <Text style={styles.quickCardSub}>
-                      #{lastOrder.id.slice(-6)} • {lastOrder.items.length} منتج • {lastOrder.total.toFixed(0)} ج.م
-                    </Text>
+                    <UIText variant="caption" color="tertiary" align="right" style={styles.quickCardSubNew}>
+                      #{lastOrder.id.slice(-6)}  •  {lastOrder.items.length} منتج  •  {lastOrder.total.toFixed(0)} ج.م
+                    </UIText>
                   </View>
                   <Ionicons name="chevron-back" size={14} color={theme.colors.slate[300]} />
                 </Pressable>
@@ -271,7 +331,7 @@ export default function ProfileScreen() {
         ) : (
           /* ── Guest hero ── */
           <LinearGradient
-            colors={["#011826", "#032B42", "#064D6E"]}
+            colors={theme.gradients.heroPrimary as [string, string, string]}
             start={{ x: 0, y: 0 }}
             end={{ x: 0.7, y: 1 }}
             style={[styles.guestHero, { paddingTop: insets.top + 28 }]}>
@@ -281,20 +341,26 @@ export default function ProfileScreen() {
             <View style={styles.guestAvatar}>
               <Ionicons name="person" size={34} color="rgba(255,255,255,0.45)" />
             </View>
-            <Text style={styles.guestTitle}>مرحباً بك في صيدليات المتحدة</Text>
-            <Text style={styles.guestDesc}>
+            <UIText variant="sheet-title" color="inverse" align="center" style={styles.guestTitleNew}>
+              مرحباً بك في صيدليات المتحدة
+            </UIText>
+            <UIText variant="body-sm" color="inverse-muted" align="center" style={styles.guestDescNew}>
               سجّل دخولك للوصول إلى طلباتك ومفضلتك وبرنامج الولاء
-            </Text>
+            </UIText>
             <View style={styles.guestActions}>
               <Pressable
                 onPress={() => router.push("/(auth)/login")}
                 style={({ pressed }) => [styles.guestPrimaryBtn, pressed && { opacity: 0.9, transform: [{ scale: 0.985 }] }]}>
-                <Text style={styles.guestPrimaryText}>تسجيل الدخول</Text>
+                <UIText variant="body-sm" weight="black" style={{ color: theme.colors.heroMid }}>
+                  تسجيل الدخول
+                </UIText>
               </Pressable>
               <Pressable
                 onPress={() => router.push("/(auth)/register")}
                 style={({ pressed }) => [styles.guestSecondaryBtn, pressed && { opacity: 0.85 }]}>
-                <Text style={styles.guestSecondaryText}>إنشاء حساب جديد</Text>
+                <UIText variant="body-sm" weight="extrabold" color="inverse">
+                  إنشاء حساب جديد
+                </UIText>
               </Pressable>
             </View>
           </LinearGradient>
@@ -304,22 +370,27 @@ export default function ProfileScreen() {
         {user && (
           <Animated.View entering={FadeInDown.delay(280).duration(280)} style={styles.quickGrid}>
             {([
-              { icon: "bag-handle-outline", label: "طلباتي", color: theme.colors.brand[600], bg: theme.colors.brand[50], route: "/orders" },
-              { icon: "heart-outline", label: "المفضلة", color: theme.colors.rose[500], bg: theme.colors.rose[50], route: "/favorites" },
-              { icon: "diamond-outline", label: "الولاء", color: "#9333EA", bg: theme.colors.purple[50], route: "/loyalty" },
-              { icon: "location-outline", label: "العناوين", color: theme.colors.amber[600], bg: theme.colors.amber[50], route: "/addresses" },
-            ] as { icon: IoniconsName; label: string; color: string; bg: string; route: string }[]).map((a) => (
+              { icon: "bag-handle-outline", label: "طلباتي", color: theme.colors.brand[600], bg: theme.colors.brand[50], route: "/orders"    },
+              { icon: "heart-outline",      label: "المفضلة", color: theme.colors.rose[500],  bg: theme.colors.rose[50],  route: "/favorites" },
+              { icon: "diamond-outline",    label: "الولاء",  color: "#9333EA",               bg: theme.colors.purple[50], route: "/loyalty"  },
+              { icon: "location-outline",   label: "العناوين", color: theme.colors.amber[600], bg: theme.colors.amber[50], route: "/addresses" },
+            ] as const).map((a) => (
               <Pressable
                 key={a.label}
                 onPress={() => {
                   if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
-                  router.push(a.route as any);
+                  router.push(a.route as Parameters<typeof router.push>[0]);
                 }}
                 style={({ pressed }) => [styles.quickGridItem, pressed && { transform: [{ scale: 0.955 }], opacity: 0.85 }]}>
-                <View style={[styles.quickGridIcon, { backgroundColor: a.bg }]}>
-                  <Ionicons name={a.icon} size={19} color={a.color} />
+                <View style={[
+                  styles.quickGridIcon,
+                  { backgroundColor: a.bg, borderColor: `${a.color}22` },
+                ]}>
+                  <Ionicons name={a.icon} size={20} color={a.color} />
                 </View>
-                <Text style={styles.quickGridLabel}>{a.label}</Text>
+                <UIText variant="caption" weight="bold" align="center" color="secondary">
+                  {a.label}
+                </UIText>
               </Pressable>
             ))}
           </Animated.View>
@@ -327,8 +398,17 @@ export default function ProfileScreen() {
 
         {/* ── Settings ── */}
         <Animated.View entering={FadeInDown.delay(340).duration(280)} style={styles.section}>
-          <Text style={styles.sectionLabel}>الإعدادات</Text>
+          <UIText variant="eyebrow" color="tertiary" align="right" style={styles.sectionLabelNew}>الإعدادات</UIText>
           <View style={styles.menuCard}>
+            <MenuRow
+              icon="language-outline"
+              label={t("language.label")}
+              subtitle={language === "ar" ? t("language.en") : t("language.ar")}
+              onPress={() => {
+                if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
+                void setLanguage(language === "ar" ? "en" : "ar");
+              }}
+            />
             <MenuRow
               icon="notifications-outline"
               label="الإشعارات"
@@ -353,7 +433,7 @@ export default function ProfileScreen() {
 
         {/* ── Support ── */}
         <Animated.View entering={FadeInDown.delay(400).duration(280)} style={styles.section}>
-          <Text style={styles.sectionLabel}>الدعم والمساعدة</Text>
+          <UIText variant="eyebrow" color="tertiary" align="right" style={styles.sectionLabelNew}>الدعم والمساعدة</UIText>
           <View style={styles.menuCard}>
             <MenuRow
               icon="logo-whatsapp"
@@ -380,7 +460,7 @@ export default function ProfileScreen() {
 
         {/* ── About ── */}
         <Animated.View entering={FadeInDown.delay(460).duration(280)} style={styles.section}>
-          <Text style={styles.sectionLabel}>عن التطبيق</Text>
+          <UIText variant="eyebrow" color="tertiary" align="right" style={styles.sectionLabelNew}>عن التطبيق</UIText>
           <View style={styles.menuCard}>
             <MenuRow
               icon="information-circle-outline"
@@ -405,24 +485,28 @@ export default function ProfileScreen() {
         {user && (
           <Animated.View entering={FadeInDown.delay(520).duration(280)} style={{ paddingHorizontal: 16, marginTop: 8 }}>
             <Button variant="ghost" size="md" fullWidth loading={signingOut} onPress={handleSignOut}>
-              <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6 }}>
+              <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>
                 <Ionicons name="log-out-outline" size={16} color={theme.colors.error.base} />
-                <Text style={{ fontSize: 13, fontFamily: theme.fonts.black, color: theme.colors.error.base }}>
+                <UIText variant="body-sm" weight="black" style={{ color: theme.colors.error.base }}>
                   تسجيل الخروج
-                </Text>
+                </UIText>
               </View>
             </Button>
           </Animated.View>
         )}
 
-        {/* ── Footer ── */}
+        {/* ── Footer — quiet, anchored ─────────────────────────────────── */}
         <View style={styles.footer}>
           <View style={styles.footerBrand}>
-            <Ionicons name="medkit" size={12} color={theme.colors.brand[600]} />
-            <Text style={styles.footerBrandText}>صيدليات المتحدة</Text>
+            <Ionicons name="medkit" size={12} color={theme.colors.brand[700]} />
+            <UIText variant="caption" weight="bold" style={{ color: theme.colors.brand[700] }}>
+              صيدليات المتحدة
+            </UIText>
           </View>
-          <Text style={styles.footerSub}>United Pharmacies</Text>
-          <Text style={styles.footerVersion}>الإصدار 1.0.0</Text>
+          <UIText variant="eyebrow" color="tertiary">United Pharmacies</UIText>
+          <UIText variant="eyebrow" color="disabled" style={styles.footerVersionNew}>
+            الإصدار 1.0.0
+          </UIText>
         </View>
       </ScrollView>
     </View>
@@ -473,6 +557,9 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.5)",
     letterSpacing: 2,
   },
+  heroPageLabelNew: {
+    color: "rgba(255,255,255,0.55)",
+  },
   heroIconBtn: {
     width: 38,
     height: 38,
@@ -482,6 +569,27 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.12)",
+    position: "relative",
+  },
+  heroIconBadge: {
+    position: "absolute",
+    top: -4,
+    left: -4,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: 9,
+    backgroundColor: theme.colors.error.base,
+    borderWidth: 2,
+    borderColor: theme.colors.hero,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroIconBadgeText: {
+    color: "#fff",
+    fontSize: 10,
+    lineHeight: 12,
+    fontFamily: theme.fonts.extrabold,
   },
 
   // Avatar
@@ -506,7 +614,7 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: "rgba(255,255,255,0.25)",
   },
-  avatarLetter: { fontSize: 32, fontFamily: theme.fonts.black, color: "#032B42" },
+  avatarLetter: { fontSize: 32, fontFamily: theme.fonts.black, color: theme.colors.heroMid },
   tierBadge: {
     position: "absolute",
     bottom: -3,
@@ -519,9 +627,12 @@ const styles = StyleSheet.create({
     borderWidth: 2.5,
     borderColor: "#fff",
   },
-  heroTextGroup: { alignItems: "center", gap: 2 },
+  heroTextGroup: { alignItems: "center", gap: 4 },
   userName: { fontSize: 19, fontFamily: theme.fonts.black, color: "#fff" },
   userEmail: { fontSize: 11.5, fontFamily: theme.fonts.semibold, color: "rgba(255,255,255,0.55)" },
+  userNameNew: {
+    letterSpacing: -0.4,
+  },
 
   // Tier chip
   tierChip: {
@@ -537,6 +648,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.15)",
   },
   tierChipLabel: { fontSize: 11, fontFamily: theme.fonts.bold, color: "rgba(255,255,255,0.90)" },
+  tierChipLabelNew: { color: "rgba(255,255,255,0.92)" },
   pointsChip: {
     flexDirection: "row-reverse",
     alignItems: "center",
@@ -548,6 +660,8 @@ const styles = StyleSheet.create({
   },
   pointsChipText: { fontSize: 11, fontFamily: theme.fonts.black, color: "#fff" },
   pointsChipUnit: { fontSize: 9, fontFamily: theme.fonts.semibold, color: "rgba(255,255,255,0.65)" },
+  pointsChipTextNew: { color: "#fff" },
+  pointsChipUnitNew: { color: "rgba(255,255,255,0.70)" },
 
   // ── Guest hero ──
   guestHero: {
@@ -570,6 +684,14 @@ const styles = StyleSheet.create({
   },
   guestTitle: { fontSize: 18, fontFamily: theme.fonts.black, color: "#fff", textAlign: "center" },
   guestDesc: { fontSize: 12, fontFamily: theme.fonts.semibold, color: "rgba(255,255,255,0.55)", textAlign: "center", lineHeight: 18 },
+  guestTitleNew: {
+    letterSpacing: -0.4,
+    marginTop:     8,
+  },
+  guestDescNew: {
+    lineHeight: 20,
+    maxWidth:   320,
+  },
   guestActions: { width: "100%", marginTop: 16, gap: 9 },
   guestPrimaryBtn: {
     backgroundColor: "#fff",
@@ -578,7 +700,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     ...theme.shadow.md,
   },
-  guestPrimaryText: { fontSize: 14, fontFamily: theme.fonts.black, color: "#032B42" },
+  guestPrimaryText: { fontSize: 14, fontFamily: theme.fonts.black, color: theme.colors.heroMid },
   guestSecondaryBtn: {
     backgroundColor: "rgba(255,255,255,0.10)",
     borderRadius: 16,
@@ -589,148 +711,195 @@ const styles = StyleSheet.create({
   },
   guestSecondaryText: { fontSize: 13, fontFamily: theme.fonts.bold, color: "#fff" },
 
-  // ── Stats card ──
+  // ── Stats card — clinical lifted surface, hairline dividers ──
   statsCard: {
-    flexDirection: "row-reverse",
-    backgroundColor: "#fff",
+    flexDirection:    "row-reverse",
+    backgroundColor:  theme.colors.surface,
     marginHorizontal: 16,
-    marginTop: -36,
-    borderRadius: 20,
-    paddingVertical: 16,
+    marginTop:        -36,
+    borderRadius:     20,
+    paddingVertical:  18,
     paddingHorizontal: 4,
     ...theme.shadow.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.slate[100],
+    shadowOpacity:    0.10,
   },
-  statCol: { flex: 1, alignItems: "center", gap: 4 },
-  statIconWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: 10,
+  statCol: {
+    flex:       1,
     alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 2,
+    gap:        6,
   },
-  statDivider: { width: 1, backgroundColor: theme.colors.slate[100], marginVertical: 8 },
+  statIconWrap: {
+    width:           34,
+    height:          34,
+    borderRadius:    11,
+    alignItems:      "center",
+    justifyContent:  "center",
+    marginBottom:    2,
+    borderWidth:     1,
+  },
+  statDivider: {
+    width:           StyleSheet.hairlineWidth,
+    backgroundColor: theme.colors.border.hairline,
+    marginVertical:  10,
+  },
   statValue: { fontSize: 18, fontFamily: theme.fonts.black, color: theme.colors.slate[900] },
   statLabel: { fontSize: 10, fontFamily: theme.fonts.semibold, color: theme.colors.slate[400] },
+  statValueNew: {
+    letterSpacing: -0.3,
+  },
 
   // ── Quick last-order card ──
-  quickCardWrap: { paddingHorizontal: 16, marginTop: 12 },
+  quickCardWrap: { paddingHorizontal: 16, marginTop: 14 },
   quickCard: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 13,
-    borderWidth: 1,
-    borderColor: theme.colors.slate[100],
-    ...theme.shadow.xs,
+    flexDirection:   "row-reverse",
+    alignItems:      "center",
+    gap:             12,
+    backgroundColor: theme.colors.surface,
+    borderRadius:    16,
+    padding:         14,
+    ...theme.shadow.card,
   },
   quickCardIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: theme.colors.brand[50],
-    alignItems: "center",
-    justifyContent: "center",
+    width:           42,
+    height:          42,
+    borderRadius:    13,
+    backgroundColor: theme.colors.brand.lighter,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
+    alignItems:      "center",
+    justifyContent:  "center",
   },
   quickCardTitle: { fontSize: 12, fontFamily: theme.fonts.black, color: theme.colors.slate[800], textAlign: "right" },
   quickCardSub: { fontSize: 11, fontFamily: theme.fonts.semibold, color: theme.colors.slate[400], textAlign: "right", marginTop: 1 },
-  statusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: theme.colors.green[500] },
+  quickCardSubNew: {
+    marginTop: 2,
+    textTransform: "none",
+    letterSpacing: 0,
+  },
+  statusDot: {
+    width: 7, height: 7, borderRadius: 3.5,
+    backgroundColor: theme.colors.success.base,
+  },
 
   // ── Quick action grid ──
   quickGrid: {
-    flexDirection: "row-reverse",
-    gap: 8,
+    flexDirection:     "row-reverse",
+    gap:               10,
     paddingHorizontal: 16,
-    marginTop: 16,
+    marginTop:         18,
   },
   quickGridItem: {
-    flex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    paddingVertical: 14,
+    flex:              1,
+    backgroundColor:   theme.colors.surface,
+    borderRadius:      16,
+    paddingVertical:   16,
     paddingHorizontal: 8,
-    alignItems: "center",
-    gap: 7,
-    borderWidth: 1,
-    borderColor: theme.colors.slate[100],
-    ...theme.shadow.xs,
+    alignItems:        "center",
+    gap:               10,
+    ...theme.shadow.card,
   },
   quickGridIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 13,
-    alignItems: "center",
-    justifyContent: "center",
+    width:           46,
+    height:          46,
+    borderRadius:    14,
+    alignItems:      "center",
+    justifyContent:  "center",
+    borderWidth:     1,
   },
   quickGridLabel: { fontSize: 11, fontFamily: theme.fonts.bold, color: theme.colors.slate[700] },
 
-  // ── Sections ──
-  section: { paddingHorizontal: 16, marginTop: 24, gap: 8 },
+  // ── Sections — predictable rhythm across the screen ──
+  section: {
+    paddingHorizontal: 16,
+    marginTop:         28,
+    gap:               10,
+  },
   sectionLabel: {
-    fontSize: 10,
-    fontFamily: theme.fonts.extrabold,
-    color: theme.colors.slate[400],
+    fontSize:      10,
+    fontFamily:    theme.fonts.extrabold,
+    color:         theme.colors.slate[400],
     letterSpacing: 1.8,
-    textAlign: "right",
+    textAlign:     "right",
     paddingHorizontal: 4,
   },
+  sectionLabelNew: {
+    paddingHorizontal: 4,
+    marginBottom:      4,
+  },
+  // ── Menu card — clinical elevated container ──
   menuCard: {
-    backgroundColor: "#fff",
-    borderRadius: 18,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: theme.colors.slate[100],
-    ...theme.shadow.xs,
+    backgroundColor: theme.colors.surface,
+    borderRadius:    18,
+    overflow:        "hidden",
+    ...theme.shadow.card,
   },
 
-  // ── Menu row ──
+  // ── Menu row — refined disclosure rhythm ──
   menuRow: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
+    flexDirection:    "row-reverse",
+    alignItems:       "center",
+    gap:              12,
+    paddingHorizontal: 16,
+    paddingVertical:   15,
   },
   menuRowBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.slate[100],
+    borderBottomColor: theme.colors.border.hairline,
   },
   menuIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
+    width:           40,
+    height:          40,
+    borderRadius:    12,
+    alignItems:      "center",
+    justifyContent:  "center",
+    borderWidth:     1,
+  },
+  menuTextWrap: {
+    flex: 1,
+    gap:  2,
   },
   menuLabel: { fontSize: 13, fontFamily: theme.fonts.black, color: theme.colors.slate[800], textAlign: "right" },
   menuSubtitle: { fontSize: 10.5, fontFamily: theme.fonts.semibold, color: theme.colors.slate[400], textAlign: "right", marginTop: 1 },
+  menuSubtitleNew: {
+    marginTop:     2,
+    textTransform: "none",
+    letterSpacing: 0,
+  },
   badge: {
-    minWidth: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: theme.colors.brand[50],
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 7,
+    minWidth:        24,
+    height:          24,
+    borderRadius:    12,
+    backgroundColor: theme.colors.brand.lighter,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
+    alignItems:      "center",
+    justifyContent:  "center",
+    paddingHorizontal: 8,
   },
   badgeText: { fontSize: 11, fontFamily: theme.fonts.black, color: theme.colors.brand[700] },
 
-  // ── Footer ──
-  footer: { alignItems: "center", marginTop: 28, gap: 4, paddingBottom: 8 },
-  footerBrand: {
-    flexDirection: "row-reverse",
+  // ── Footer — quiet anchor ──
+  footer: {
     alignItems: "center",
-    gap: 6,
-    backgroundColor: theme.colors.brand[50],
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    marginTop:  32,
+    gap:        6,
+    paddingBottom: 12,
+  },
+  footerBrand: {
+    flexDirection:   "row-reverse",
+    alignItems:      "center",
+    gap:             6,
+    backgroundColor: theme.colors.brand.lighter,
+    borderRadius:    999,
+    paddingHorizontal: 14,
+    paddingVertical:   6,
+    borderWidth:       1,
+    borderColor:       theme.colors.border.brandSoft,
   },
   footerBrandText: { fontSize: 11, fontFamily: theme.fonts.black, color: theme.colors.brand[700] },
   footerSub: { fontSize: 9, fontFamily: theme.fonts.semibold, color: theme.colors.slate[400], letterSpacing: 1 },
   footerVersion: { fontSize: 9.5, fontFamily: theme.fonts.regular, color: theme.colors.slate[300], marginTop: 2 },
+  footerVersionNew: {
+    marginTop: 4,
+  },
 });

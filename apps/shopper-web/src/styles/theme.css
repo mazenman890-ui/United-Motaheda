@@ -7,8 +7,11 @@
 
 :root {
   --font-size: 16px;
-  --font-body: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
-  --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
+  /* Outfit supports 300-900 (true Black weight) — fixes missing font-weight:900 on
+     Plus Jakarta Sans which only had ExtraBold/800 as its maximum.
+     Inter 400-900 serves as a genuine same-weight fallback. */
+  --font-body: 'Outfit', 'Inter', system-ui, sans-serif;
+  --font-display: 'Outfit', 'Inter', system-ui, sans-serif;
   --font-body-ar: 'Cairo', system-ui, sans-serif;
   --font-display-ar: 'Cairo', system-ui, sans-serif;
 
@@ -240,6 +243,11 @@
   --radius-xl:  calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 16px);
+
+  /* Custom animation utilities used by ProductCardSkeleton */
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  /* product-card-in: entrance animation for non-virtualized product cards */
+  --animate-product-card-in: product-card-in 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
   --color-sidebar:             var(--sidebar);
   --color-sidebar-foreground:  var(--sidebar-foreground);
   --color-sidebar-primary:     var(--sidebar-primary);
@@ -1324,24 +1332,25 @@
 [data-reveal] {
   --reveal-delay: 0ms;
   opacity: 0;
-  filter: blur(10px);
+  /* filter:blur(10px) removed — it created a GPU layer for every reveal element
+     on the page and caused the entire section to re-composite on scroll.
+     Pure opacity + transform is compositor-thread only, zero paint cost. */
   transition:
-    opacity 0.82s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.82s cubic-bezier(0.22, 1, 0.36, 1),
-    filter 0.82s cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
   transition-delay: var(--reveal-delay);
-  will-change: opacity, transform, filter;
+  /* Only compositor-safe properties — no "filter" needed here. */
+  will-change: opacity, transform;
 }
 
-[data-reveal="up"]    { transform: translate3d(0, 34px, 0) scale(0.985); }
-[data-reveal="down"]  { transform: translate3d(0, -24px, 0) scale(0.985); }
-[data-reveal="left"]  { transform: translate3d(30px, 0, 0) scale(0.985); }
-[data-reveal="right"] { transform: translate3d(-30px, 0, 0) scale(0.985); }
+[data-reveal="up"]    { transform: translate3d(0, 28px, 0) scale(0.988); }
+[data-reveal="down"]  { transform: translate3d(0, -20px, 0) scale(0.988); }
+[data-reveal="left"]  { transform: translate3d(24px, 0, 0) scale(0.988); }
+[data-reveal="right"] { transform: translate3d(-24px, 0, 0) scale(0.988); }
 [data-reveal="scale"] { transform: scale(0.94); }
 
 [data-reveal-visible="true"] {
   opacity: 1;
-  filter: blur(0);
   transform: translate3d(0, 0, 0) scale(1);
 }
 
@@ -1352,22 +1361,28 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-  [data-reveal] { opacity: 1 !important; transform: none !important; filter: none !important; }
+  [data-reveal] { opacity: 1 !important; transform: none !important; }
 }
 
 @keyframes route-shell-enter {
-  0%   { opacity: 0; transform: translate3d(0, 18px, 0) scale(0.992); filter: blur(10px); }
-  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); filter: blur(0); }
+  /* filter:blur removed — it forces GPU compositing of the entire page on every
+     transition frame, causing visible jank during scroll on low-end devices.
+     opacity + transform achieve the same "fresh page" feel at zero extra GPU cost. */
+  0%   { opacity: 0; transform: translate3d(0, 10px, 0) scale(0.997); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
 }
 
 .route-shell {
   min-height: 100%;
   transform-origin: top center;
-  will-change: opacity, transform, filter;
+  /* Removed "filter" from will-change — it was promoting the entire page to its
+     own compositing layer on every navigation, which caused the scroll lag. */
+  will-change: opacity, transform;
 }
 
 html.route-transitioning .route-shell {
-  animation: route-shell-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* Reduced from 420ms — snappier page transitions that don't outlast perception. */
+  animation: route-shell-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1661,8 +1676,8 @@ html.route-transitioning .route-shell {
 
 /* ── New keyframes ──────────────────────────────────── */
 @keyframes stagger-fade-up {
-  0%   { opacity: 0; transform: translate3d(0, 22px, 0) scale(0.97); filter: blur(4px); }
-  100% { opacity: 1; transform: translate3d(0, 0, 0)   scale(1);    filter: blur(0); }
+  0%   { opacity: 0; transform: translate3d(0, 18px, 0) scale(0.975); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0)   scale(1); }
 }
 @keyframes slide-in-right {
   0%   { opacity: 0; transform: translate3d(32px, 0, 0); }
@@ -1678,8 +1693,8 @@ html.route-transitioning .route-shell {
   100% { opacity: 1; transform: scale(1)    translateY(0); }
 }
 @keyframes drift-up {
-  0%   { opacity: 0; transform: translate3d(0, 40px, 0) scale(0.95); filter: blur(6px); }
-  100% { opacity: 1; transform: translate3d(0, 0, 0)   scale(1);    filter: blur(0); }
+  0%   { opacity: 0; transform: translate3d(0, 32px, 0) scale(0.96); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0)   scale(1); }
 }
 @keyframes reveal-clip {
   0%   { clip-path: inset(0 100% 0 0); opacity: 0; }
@@ -1835,16 +1850,17 @@ html.route-transitioning .route-shell {
 }
 
 /* ── Extended reveal types (beyond the base up/down/left/right/scale) ── */
-[data-reveal="up-far"]   { transform: translateY(48px) scale(0.97); filter: blur(6px); }
-[data-reveal="pop"]      { transform: scale(0.86); filter: blur(3px); }
+/* filter:blur removed from all reveal variants — same reason as above.      */
+[data-reveal="up-far"]   { transform: translateY(40px) scale(0.975); }
+[data-reveal="pop"]      { transform: scale(0.88); }
 [data-reveal="clip"]     {
   clip-path: inset(0 100% 0 0);
-  transition-property: opacity, clip-path, filter;
+  transition-property: opacity, clip-path;
 }
-[data-reveal="slide-r"]  { transform: translateX(-40px) scale(0.98); }
-[data-reveal="slide-l"]  { transform: translateX(40px)  scale(0.98); }
-[data-reveal-visible="true"][data-reveal="up-far"]  { transform: translateY(0) scale(1); filter: blur(0); }
-[data-reveal-visible="true"][data-reveal="pop"]     { transform: scale(1); filter: blur(0); }
+[data-reveal="slide-r"]  { transform: translateX(-36px) scale(0.98); }
+[data-reveal="slide-l"]  { transform: translateX(36px)  scale(0.98); }
+[data-reveal-visible="true"][data-reveal="up-far"]  { transform: translateY(0) scale(1); }
+[data-reveal-visible="true"][data-reveal="pop"]     { transform: scale(1); }
 [data-reveal-visible="true"][data-reveal="clip"]    { clip-path: inset(0 0% 0 0); }
 [data-reveal-visible="true"][data-reveal="slide-r"] { transform: translateX(0) scale(1); }
 [data-reveal-visible="true"][data-reveal="slide-l"] { transform: translateX(0) scale(1); }

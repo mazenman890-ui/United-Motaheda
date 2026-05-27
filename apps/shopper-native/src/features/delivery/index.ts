@@ -1,6 +1,13 @@
 export * from "./constants";
 export * from "./types";
 export { useDeliveryQuote } from "./useDeliveryQuote";
+export { useDeliveryContext, type DeliveryContext } from "./useDeliveryContext";
+export {
+  useLocationStore,
+  useLocationState,
+  type Coordinates as LocationCoordinates,
+  type LocationPermission,
+} from "./locationStore";
 
 // ─── Geofencing ─────────────────────────────────────────────────────────────
 export {

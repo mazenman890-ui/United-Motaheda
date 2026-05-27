@@ -473,6 +473,262 @@ const AR_TO_EN: ReadonlyMap<string, readonly string[]> = new Map([
   ["لاتانوبروست",      ["latanoprost", "xalatan"]],
   ["سيبروفلوكساسين قطرة", ["ciprofloxacin eye drops"]],
   ["التوبراميسين",     ["tobramycin"]],
+
+  // ── More pain / fever / anti-inflammatory ─────────────────────────────────
+  ["نوفالجين",         ["novalgin", "metamizole", "dipyrone"]],
+  ["نوفلجين",          ["novalgin", "metamizole"]],
+  ["ميتاميزول",        ["metamizole", "novalgin", "dipyrone"]],
+  ["دايبيرون",         ["dipyrone", "metamizole", "novalgin"]],
+  ["بروفيناك",         ["profinac", "diclofenac"]],
+  ["سيليكوكسيب",       ["celecoxib", "celebrex"]],
+  ["سيليبريكس",        ["celebrex", "celecoxib"]],
+  ["ميلوكسيكام",       ["meloxicam", "mobic"]],
+  ["موبيك",            ["mobic", "meloxicam"]],
+  ["بنتازوسين",        ["pentazocine", "fortwin"]],
+  ["كيتورولاك",        ["ketorolac", "toradol"]],
+  ["ايتودولاك",        ["etodolac"]],
+  ["مكلوفيناميك",      ["meclofenamic", "meclomen"]],
+
+  // ── More antibiotics ──────────────────────────────────────────────────────
+  ["لينزوليد",         ["linezolid", "zyvox"]],
+  ["فانكومايسين",      ["vancomycin", "vancocin"]],
+  ["مروبينيم",         ["meropenem", "merrem"]],
+  ["ايميبينيم",        ["imipenem", "primaxin"]],
+  ["كولستين",          ["colistin", "polymyxin"]],
+  ["فوسفومايسين",      ["fosfomycin"]],
+  ["نيتروفورانتوين",   ["nitrofurantoin", "macrobid"]],
+  ["تريميثوبريم",      ["trimethoprim"]],
+  ["كوتريموكسازول",    ["cotrimoxazole", "bactrim", "septrin"]],
+  ["بكتريم",           ["bactrim", "cotrimoxazole"]],
+  ["سبترين",           ["septrin", "cotrimoxazole"]],
+  ["سيفوروكسيم",       ["cefuroxime", "zinnat"]],
+  ["زينات",            ["zinnat", "cefuroxime"]],
+  ["سيفاكلور",         ["cefaclor", "ceclor"]],
+  ["كلاريد",           ["klaricid", "clarithromycin"]],
+
+  // ── Antivirals ────────────────────────────────────────────────────────────
+  ["اسيكلوفير",        ["acyclovir", "zovirax"]],
+  ["اسيكلوفر",         ["acyclovir", "zovirax"]],
+  ["زوفيراكس",         ["zovirax", "acyclovir"]],
+  ["اوسيلتامافير",     ["oseltamivir", "tamiflu"]],
+  ["تاميفلو",          ["tamiflu", "oseltamivir"]],
+  ["فالاسيكلوفير",     ["valacyclovir", "valtrex"]],
+
+  // ── GI / Stomach extras ───────────────────────────────────────────────────
+  ["جاسترو",           ["gastro", "omeprazole"]],
+  ["ديجيستات",         ["digestat", "digestive"]],
+  ["هيليكوباكتر",      ["helicobacter", "pylori", "hp kit"]],
+  ["كريون",            ["creon", "pancreatin", "pancrease"]],
+  ["بانكرياتين",       ["pancreatin", "creon"]],
+  ["سيميثيكون",        ["simethicone", "gas", "bloating"]],
+  ["انتاسيد",          ["antacid", "maalox"]],
+  ["ميوكانت",          ["mucaine", "antacid"]],
+  ["ماالوكس",          ["maalox", "antacid"]],
+  ["جيلوسيل",          ["gelusil", "antacid"]],
+  ["فولكولاكس",        ["dulcolax", "bisacodyl"]],
+  ["إيزي ليف",         ["easy lif", "antacid"]],
+
+  // ── Respiratory / Cold / Cough extras ────────────────────────────────────
+  ["كودسيل",           ["codcil", "codeine", "cough"]],
+  ["اكتيفيد",          ["actifed", "triprolidine", "pseudoephedrine"]],
+  ["رينكول",           ["rincole", "cold", "decongestant"]],
+  ["بروفيكس",          ["profix", "cefprozil"]],
+  ["بروفيكول",         ["proficol", "cough"]],
+  ["دايلاتامين",       ["dilatamine", "pseudoephedrine"]],
+  ["اوتريفين",         ["otrivin", "xylometazoline"]],
+  ["ناريستين",         ["naristin", "xylometazoline"]],
+  ["بينافين",          ["pinavin", "decongestant"]],
+  ["ايليكسير",         ["elixir", "cough syrup"]],
+  ["كلاريتين",         ["claritin", "loratadine"]],
+  ["زيرتيك",           ["zyrtec", "cetirizine"]],
+  ["تيلفاست",          ["telfast", "fexofenadine"]],
+
+  // ── Vitamins / Supplements extras ─────────────────────────────────────────
+  ["فيتامين سي",       ["vitamin c", "ascorbic acid"]],
+  ["فيتامين 12 ب",     ["vitamin b12", "cyanocobalamin"]],
+  ["فيتامين د3",       ["vitamin d3", "cholecalciferol"]],
+  ["بروبيوتيك",        ["probiotic", "lactobacillus"]],
+  ["انزيمات هضمية",    ["digestive enzymes", "pancreatin"]],
+  ["الزيوت السمكية",   ["fish oil", "omega 3"]],
+  ["كولاجين",          ["collagen", "gelatin"]],
+  ["مولتيفيتامين",     ["multivitamin", "multi vitamin"]],
+  ["سينكوفيت",         ["sincovit", "multivitamin"]],
+  ["سيناتوس",          ["cenatus", "multivitamin"]],
+  ["بيفول",            ["bevol", "folic acid", "vitamin b"]],
+  ["فيروجراد",         ["ferrograd", "iron", "ferrous"]],
+  ["رانفيرون",         ["ranferon", "iron", "ferrous"]],
+  ["حديد",             ["iron", "ferrous sulfate", "ferrous gluconate"]],
+
+  // ── Skin / Topical extras ─────────────────────────────────────────────────
+  ["هيدروكورتيزون كريم", ["hydrocortisone cream"]],
+  ["بتنول",            ["bepanthen", "panthenol", "dexpanthenol"]],
+  ["كلوبيتازول",       ["clobetasol", "dermovate"]],
+  ["ديرموفيت",         ["dermovate", "clobetasol"]],
+  ["تيركورتريل",       ["terra-cortril", "tetracycline", "hydrocortisone"]],
+  ["بيتاديون",         ["betadine", "povidone iodine"]],
+  ["بوفيدون يود",      ["povidone iodine", "betadine"]],
+  ["فوسيدين",          ["fucidin", "fusidic acid"]],
+  ["فيوسيديك اسيد",    ["fusidic acid", "fucidin"]],
+
+  // ── Diabetes extras ───────────────────────────────────────────────────────
+  ["نوفورمين",         ["novonorm", "repaglinide"]],
+  ["جانوفيا",          ["januvia", "sitagliptin"]],
+  ["جارديانس",         ["jardiance", "empagliflozin"]],
+  ["فيكتوزا",          ["victoza", "liraglutide"]],
+  ["بيوجليتازون",      ["pioglitazone", "actos"]],
+  ["اكتوس",            ["actos", "pioglitazone"]],
+  ["انسولين نوفومكس",  ["novomix", "insulin"]],
+  ["انسولين ليفيمير",  ["levemir", "insulin detemir"]],
+  ["انسولين لانتوس",   ["lantus", "insulin glargine"]],
+  ["جلوكومتر",         ["glucometer", "glucose meter"]],
+  ["شرائط قياس السكر", ["glucose test strips", "glucometer strips"]],
+
+  // ── Cardiovascular extras ─────────────────────────────────────────────────
+  ["كونكور كور",       ["concor cor", "bisoprolol"]],
+  ["كوفورسيل",         ["coversyl", "perindopril"]],
+  ["نورموتنز",         ["normotens", "amlodipine"]],
+  ["كلوبيدوقريل",      ["clopidogrel", "plavix"]],
+  ["اكسيجن",           ["oxygen"]],
+  ["نيترو",            ["nitro", "nitroglycerin", "nitrate"]],
+  ["ديجوكسين",         ["digoxin", "digitalis"]],
+  ["تروكارديل",        ["trocardin", "hawthorn", "heart"]],
+
+  // ── Hormones / Women's health ─────────────────────────────────────────────
+  ["يازمين",           ["yasmin", "contraceptive", "pill"]],
+  ["سينافيم",          ["synafen", "contraceptive"]],
+  ["بروجيسترون",       ["progesterone", "progestogen"]],
+  ["ايستروجين",        ["estrogen", "oestrogen"]],
+  ["كلوميد",           ["clomid", "clomifene", "clomiphene"]],
+  ["كلوميفين",         ["clomifene", "clomid"]],
+  ["اوتروجستان",       ["utrogestan", "progesterone"]],
+  ["ديفيرلين",         ["diphereline", "triptorelin"]],
+  ["فيميكون",          ["femicon", "contraceptive"]],
+
+  // ── Orthopedics / Muscles ─────────────────────────────────────────────────
+  ["ميورلاكس",         ["myorelax", "muscle relaxant"]],
+  ["تيزانيدين",        ["tizanidine", "sirdalud"]],
+  ["سيردالود",         ["sirdalud", "tizanidine"]],
+  ["باكلوفين",         ["baclofen"]],
+  ["ميثوكارباميل",     ["methocarbamol", "robaxin"]],
+  ["كالسيوم 500",      ["calcium 500", "calcium carbonate"]],
+  ["اوستيوكير",        ["osteocare", "calcium", "vitamin d"]],
+  ["كوندروتين",        ["chondroitin", "glucosamine"]],
+  ["جلوكوزامين",       ["glucosamine", "chondroitin"]],
+
+  // ── Category-level / Generic health terms ─────────────────────────────────
+  // These map common Arabic health descriptions to English category/drug terms.
+  // They allow searches like "مسكن ألم" or "خافض حرارة" to find relevant items.
+  ["مسكن",             ["painkiller", "analgesic", "pain relief", "paracetamol", "ibuprofen"]],
+  ["مسكنات",           ["painkiller", "analgesic", "pain relief"]],
+  ["مسكن الم",         ["painkiller", "analgesic", "pain", "paracetamol", "ibuprofen"]],
+  ["مسكن ألم",         ["painkiller", "analgesic", "pain", "paracetamol"]],
+  ["مسكنات الالم",     ["analgesic", "pain relief", "painkiller"]],
+  ["خافض حرارة",       ["antipyretic", "fever", "paracetamol", "ibuprofen"]],
+  ["خوافض الحرارة",    ["antipyretic", "fever reducer"]],
+  ["مضاد حيوي",        ["antibiotic", "antibacterial"]],
+  ["مضاد للحيوي",      ["antibiotic", "antibacterial"]],
+  ["مضادات حيوية",     ["antibiotics", "antibacterial"]],
+  ["مضاد الاكتئاب",    ["antidepressant", "ssri"]],
+  ["مضادات الاكتئاب",  ["antidepressants", "ssri", "snri"]],
+  ["مضاد للالتهاب",    ["anti-inflammatory", "nsaid", "diclofenac", "ibuprofen"]],
+  ["مضاد التهاب",      ["anti-inflammatory", "nsaid"]],
+  ["مضادات الفطريات",  ["antifungal", "fluconazole", "clotrimazole"]],
+  ["مضاد فطريات",      ["antifungal", "antifungal cream"]],
+  ["مضاد للفيروسات",   ["antiviral", "acyclovir", "oseltamivir"]],
+  ["مضاد فيروسات",     ["antiviral"]],
+  ["مضاد للتشنج",      ["antispasmodic", "buscopan", "hyoscine"]],
+  ["مضاد تشنج",        ["antispasmodic", "spasm", "buscopan"]],
+  ["مضاد قيء",         ["antiemetic", "ondansetron", "metoclopramide"]],
+  ["مضاد للقيء",       ["antiemetic", "nausea", "vomiting"]],
+  ["مضاد هيستامين",    ["antihistamine", "cetirizine", "loratadine"]],
+  ["مضادات الهيستامين",["antihistamines", "antihistamine", "allergy"]],
+  ["دواء ضغط",         ["blood pressure", "hypertension", "antihypertensive"]],
+  ["علاج ضغط",         ["blood pressure", "hypertension", "amlodipine", "losartan"]],
+  ["ارتفاع الضغط",     ["hypertension", "blood pressure", "antihypertensive"]],
+  ["ضغط الدم",         ["blood pressure", "hypertension"]],
+  ["دواء السكر",       ["diabetes", "diabetic", "metformin", "insulin"]],
+  ["علاج السكر",       ["diabetes", "antidiabetic", "glucose", "insulin"]],
+  ["دواء الغدة",       ["thyroid", "thyroxine", "levothyroxine"]],
+  ["علاج الغدة الدرقية", ["thyroid", "levothyroxine", "thyroxine"]],
+  ["دواء القلب",       ["cardiac", "heart", "cardiovascular"]],
+  ["علاج القلب",       ["heart", "cardiac", "cardiovascular", "digoxin"]],
+  ["دهون الدم",        ["cholesterol", "lipids", "statin", "atorvastatin"]],
+  ["كوليسترول",        ["cholesterol", "statin", "atorvastatin", "simvastatin"]],
+  ["دهون",             ["cholesterol", "lipids", "triglycerides", "statin"]],
+  ["معدة",             ["stomach", "gastric", "gastro", "omeprazole", "antacid"]],
+  ["علاج المعدة",      ["stomach", "gastric", "omeprazole", "antacid", "proton pump"]],
+  ["قرحة المعدة",      ["stomach ulcer", "peptic ulcer", "omeprazole", "ranitidine"]],
+  ["حرقة",             ["heartburn", "acid reflux", "antacid", "omeprazole"]],
+  ["حموضة",            ["acidity", "heartburn", "acid reflux", "antacid"]],
+  ["قولون",            ["colon", "irritable bowel", "ibs", "buscopan"]],
+  ["اسهال",            ["diarrhea", "diarrhoea", "loperamide", "imodium"]],
+  ["إسهال",            ["diarrhea", "diarrhoea", "loperamide"]],
+  ["امساك",            ["constipation", "laxative", "bisacodyl", "lactulose"]],
+  ["إمساك",            ["constipation", "laxative", "dulcolax"]],
+  ["غثيان",            ["nausea", "vomiting", "antiemetic", "ondansetron", "metoclopramide"]],
+  ["قيء",              ["vomiting", "nausea", "antiemetic"]],
+  ["صداع",             ["headache", "migraine", "paracetamol", "ibuprofen"]],
+  ["صداع نصفي",        ["migraine", "sumatriptan", "analgesic"]],
+  ["حمى",              ["fever", "antipyretic", "paracetamol", "ibuprofen"]],
+  ["حرارة",            ["fever", "temperature", "antipyretic", "paracetamol"]],
+  ["ارتفاع الحرارة",   ["fever", "high temperature", "antipyretic"]],
+  ["نزلة برد",         ["cold", "flu", "paracetamol", "decongestant", "antihistamine"]],
+  ["رشح",              ["cold", "rhinitis", "decongestant", "antihistamine"]],
+  ["زكام",             ["cold", "rhinitis", "decongestant"]],
+  ["انفلونزا",         ["influenza", "flu", "oseltamivir", "tamiflu"]],
+  ["انفلونزا",         ["influenza", "flu", "antiviral"]],
+  ["كحة",              ["cough", "cough syrup", "dextromethorphan", "ambroxol"]],
+  ["سعال",             ["cough", "cough syrup", "ambroxol", "bromhexine"]],
+  ["ربو",              ["asthma", "bronchial", "salbutamol", "ventolin", "budesonide"]],
+  ["حساسية",           ["allergy", "allergic", "antihistamine", "cetirizine", "loratadine"]],
+  ["حساسية جلد",       ["skin allergy", "dermatitis", "antihistamine", "hydrocortisone"]],
+  ["حساسية صدر",       ["chest allergy", "asthma", "bronchial", "salbutamol"]],
+  ["حساسية انف",       ["nasal allergy", "rhinitis", "antihistamine", "decongestant"]],
+  ["التهاب",           ["inflammation", "anti-inflammatory", "antibiotics", "nsaid"]],
+  ["التهاب الحلق",     ["throat infection", "sore throat", "antibiotics", "amoxicillin"]],
+  ["التهاب اللوزتين",  ["tonsillitis", "amoxicillin", "antibiotics"]],
+  ["التهاب الاذن",     ["ear infection", "otitis", "antibiotics", "ciprofloxacin"]],
+  ["التهاب الجيوب الانفية", ["sinusitis", "amoxicillin", "augmentin", "antibiotics"]],
+  ["التهاب الجلد",     ["dermatitis", "skin inflammation", "hydrocortisone", "betamethasone"]],
+  ["التهاب المسالك",   ["urinary tract infection", "uti", "ciprofloxacin", "nitrofurantoin"]],
+  ["التهاب المثانة",   ["cystitis", "uti", "ciprofloxacin", "trimethoprim"]],
+  ["التهاب المفاصل",   ["arthritis", "joint pain", "anti-inflammatory", "diclofenac"]],
+  ["روماتيزم",         ["rheumatism", "arthritis", "anti-inflammatory", "methotrexate"]],
+  ["جلطة",             ["thrombosis", "clot", "anticoagulant", "warfarin", "heparin"]],
+  ["انيميا",           ["anemia", "iron deficiency", "ferrous", "iron supplement"]],
+  ["فقر الدم",         ["anemia", "iron deficiency", "ferrous sulfate", "iron"]],
+  ["ارق",              ["insomnia", "sleep", "zolpidem", "melatonin"]],
+  ["نوم",              ["sleep", "insomnia", "sedative", "melatonin"]],
+  ["قلق",              ["anxiety", "anxiolytic", "diazepam", "lorazepam", "alprazolam"]],
+  ["اكتئاب",           ["depression", "antidepressant", "fluoxetine", "sertraline"]],
+  ["تشنجات",           ["seizures", "epilepsy", "anticonvulsant", "carbamazepine", "valproate"]],
+  ["صرع",              ["epilepsy", "seizures", "anticonvulsant", "phenytoin"]],
+  ["ضعف الانتصاب",     ["erectile dysfunction", "sildenafil", "tadalafil", "viagra"]],
+  ["فياجرا",           ["viagra", "sildenafil"]],
+  ["سيالديس",          ["cialis", "tadalafil"]],
+  ["عقم",              ["infertility", "clomid", "clomifene", "progesterone"]],
+  ["مدر للبول",        ["diuretic", "furosemide", "hydrochlorothiazide"]],
+  ["ادرار",            ["diuretic", "urinary", "furosemide"]],
+  ["تخسيس",            ["weight loss", "slimming", "orlistat"]],
+  ["سمنة",             ["obesity", "weight", "orlistat", "metformin"]],
+  ["قرص",              ["tablet", "pill"]],
+  ["كبسولات",          ["capsule", "capsules"]],
+  ["شراب",             ["syrup", "oral solution", "suspension"]],
+  ["قطرات",            ["drops", "eye drops", "ear drops"]],
+  ["كريم",             ["cream", "ointment", "topical"]],
+  ["مرهم",             ["ointment", "cream", "topical"]],
+  ["حقن",              ["injection", "injectable", "ampoule", "vial"]],
+  ["امبولات",          ["ampoule", "injection", "vial"]],
+  ["بخاخ",             ["spray", "inhaler", "nasal spray"]],
+  ["لصقة",             ["patch", "plaster", "transdermal"]],
+  ["تحميل",            ["suppository", "rectal"]],
+  ["مكمل",             ["supplement", "multivitamin", "mineral"]],
+  ["مكملات",           ["supplements", "multivitamin", "vitamins"]],
+  ["عشبي",             ["herbal", "natural", "plant"]],
+  ["ادوية",            ["medicine", "medication", "drug", "pharmaceutical"]],
+  ["دواء",             ["medicine", "medication", "drug"]],
+  ["علاج",             ["treatment", "therapy", "medicine", "medication"]],
+  ["صيدلية",           ["pharmacy", "pharmaceutical"]],
 ]);
 
 // Build EN → AR map (reverse of AR_TO_EN)
@@ -1036,6 +1292,38 @@ export function expandSearchTerms(rawQuery: string): {
         for (const ar of arSet2) add(ar);
       }
     }
+  }
+
+  // Multi-word queries: split into individual tokens so "قطن اذن" also matches
+  // products whose DB name contains just one of the tokens.
+  //
+  // WHY: normalise() converts أ→ا, but DB values may be stored un-normalised
+  // (e.g. "قطن أذن" with أ).  A whole-phrase ilike "%قطن اذن%" never matches
+  // "قطن أذن" because ilike is byte-exact for Arabic.  Splitting and searching
+  // individual tokens — plus generating hamza variants (ا→أ/إ) — bridges that
+  // gap without requiring any DB-side normalisation column.
+  const qTokens = q.split(/\s+/).filter((t) => t.length >= 2);
+  if (qTokens.length > 1) {
+    for (const tok of qTokens) {
+      add(tok);
+      // Hamza variants: normalised ا may correspond to أ or إ in the DB.
+      if (RE_ARABIC.test(tok) && tok.includes("ا")) {
+        add(tok.replace(/ا/g, "أ"));
+        add(tok.replace(/ا/g, "إ"));
+      }
+    }
+    // Also split the raw form — user may have typed أ which normalise() would
+    // have converted to ا, but the DB stores أ, so the raw token matches.
+    for (const tok of raw.split(/\s+/).filter((t) => t.length >= 2)) {
+      add(tok);
+    }
+  }
+
+  // Single-word Arabic queries: also add hamza variants to tolerate مismatch
+  // between user input (bare ا) and DB-stored values (أ/إ).
+  if (qTokens.length === 1 && RE_ARABIC.test(q) && q.includes("ا")) {
+    add(q.replace(/ا/g, "أ"));
+    add(q.replace(/ا/g, "إ"));
   }
 
   return {

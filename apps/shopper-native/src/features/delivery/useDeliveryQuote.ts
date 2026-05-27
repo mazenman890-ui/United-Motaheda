@@ -41,7 +41,8 @@ export function useDeliveryQuote(input: DeliveryQuoteInput): DeliveryQuote {
   const { data: branches = [], isLoading: branchesLoading } = useBranches();
 
   return useMemo<DeliveryQuote>(() => {
-    const subtotal = Math.max(0, input.subtotal);
+    // Guard NaN/Infinity from external subtotal sources (e.g. store hydration race)
+    const subtotal = Math.max(0, Number.isFinite(input.subtotal) ? input.subtotal : 0);
     const isFree = subtotal >= FREE_DELIVERY_THRESHOLD;
 
     // ── Resolve branch ─────────────────────────────────────────────────────
@@ -67,8 +68,9 @@ export function useDeliveryQuote(input: DeliveryQuoteInput): DeliveryQuote {
         isDeliverable = false;
         outOfServiceMessage = "نخدم القاهرة فقط حالياً";
       } else if (resolvedBranch) {
-        distance = distanceKm(input.customerCoords, { lat: resolvedBranch.lat, lng: resolvedBranch.lng });
-        if (distance > DEFAULT_BRANCH_RADIUS_KM) {
+        const rawDist = distanceKm(input.customerCoords, { lat: resolvedBranch.lat, lng: resolvedBranch.lng });
+        distance = Number.isFinite(rawDist) ? rawDist : null;
+        if (distance !== null && distance > DEFAULT_BRANCH_RADIUS_KM) {
           isDeliverable = false;
           outOfServiceMessage = `العنوان خارج نطاق التوصيل (${distance.toFixed(1)} كم من أقرب فرع)`;
         }

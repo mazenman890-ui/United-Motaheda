@@ -1,0 +1,35 @@
+{
+  "tabs": {
+    "home": "الرئيسية",
+    "products": "الأقسام",
+    "search": "بحث",
+    "cart": "السلة",
+    "orders": "طلباتي",
+    "profile": "حسابي"
+  },
+  "checkout": {
+    "title": "إتمام الطلب",
+    "confirm": "تأكيد الطلب",
+    "paymentMethod": "طريقة الدفع"
+  },
+  "payment": {
+    "vodafone": "فودافون كاش",
+    "instapay": "إنستاباي",
+    "copyNumber": "نسخ",
+    "walletNumber": "رقم المحفظة",
+    "senderReference": "رقم هاتف المرسل أو معرف إنستاباي",
+    "uploadReceipt": "لقطة شاشة التحويل",
+    "pickReceipt": "اضغط لاختيار صورة الإيصال"
+  },
+  "branches": {
+    "title": "فروعنا"
+  },
+  "language": {
+    "label": "اللغة",
+    "ar": "العربية",
+    "en": "English"
+  },
+  "about": {
+    "branches": "فروعنا"
+  }
+}

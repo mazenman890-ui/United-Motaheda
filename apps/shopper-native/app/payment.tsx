@@ -1,18 +1,17 @@
 import React, { useEffect } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { PaymentMethodSelector, usePaymentStore, hydratePaymentStore } from "@/features/payment";
+import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/theme";
 
 export default function PaymentScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const selected = usePaymentStore((s) => s.selected);
-
   useEffect(() => {
     hydratePaymentStore();
   }, []);
@@ -25,77 +24,93 @@ export default function PaymentScreen() {
     <View style={styles.screen}>
       {/* ── Header ── */}
       <LinearGradient
-        colors={["#011826", "#032B42", "#064D6E"]}
+        colors={theme.gradients.heroPrimary as [string, string, string]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0.7, y: 1 }}
         style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <View style={styles.decoCircle} />
 
         <View style={styles.headerTopRow}>
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
+          <Pressable
+            onPress={() => router.back()}
+            style={styles.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel="رجوع">
             <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.8)" />
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>طرق الدفع</Text>
-            <Text style={styles.headerSub}>اختر طريقة الدفع المفضلة</Text>
+            <UIText variant="eyebrow" align="right" style={styles.headerEyebrowNew}>
+              الإعدادات
+            </UIText>
+            <UIText variant="sheet-title" color="inverse" align="right" style={styles.headerTitleNew}>
+              طرق الدفع
+            </UIText>
+            <UIText variant="body-sm" color="inverse-muted" align="right" style={styles.headerSubNew}>
+              اختر طريقة الدفع المفضلة لطلباتك
+            </UIText>
           </View>
           <View style={styles.shieldIcon}>
-            <Ionicons name="shield-checkmark" size={18} color={theme.colors.green[400]} />
+            <Ionicons name="shield-checkmark" size={18} color={theme.colors.success.base} />
           </View>
         </View>
 
         {/* Active method badge */}
-        <Animated.View entering={FadeIn.duration(200)} style={styles.activeBadge}>
-          <Ionicons name="checkmark-circle" size={12} color={theme.colors.green[400]} />
-          <Text style={styles.activeBadgeText}>الطريقة الحالية: {selectedLabel}</Text>
+        <Animated.View entering={FadeIn.duration(220)} style={styles.activeBadge}>
+          <Ionicons name="checkmark-circle" size={13} color={theme.colors.success.base} />
+          <UIText variant="caption" weight="bold" style={styles.activeBadgeTextNew}>
+            الطريقة الحالية: {selectedLabel}
+          </UIText>
         </Animated.View>
       </LinearGradient>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 30 }]}>
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 30 }]}> 
 
-        {/* Trust banner */}
-        <Animated.View entering={FadeInDown.duration(300)} style={styles.trustBanner}>
-          <View style={styles.trustBannerRow}>
-            <View style={styles.trustItem}>
-              <View style={[styles.trustIcon, { backgroundColor: theme.colors.green[50] }]}>
-                <Ionicons name="lock-closed" size={14} color={theme.colors.green[600]} />
+        <Animated.View entering={FadeInDown.duration(220)} style={styles.savedPaymentBanner}>
+          <UIText variant="body-sm" style={styles.savedPaymentTitle} align="right">
+            هذه هي طريقة الدفع الافتراضية المحفوظة في حسابك.
+          </UIText>
+          <UIText variant="caption" color="secondary" align="right" style={styles.savedPaymentText}>
+            يمكنك تغيير الطريقة في الأسفل. سيتم تذكر اختيارك للحساب، ويمكنك العودة إلى الطريقة المحفوظة لاحقاً.
+          </UIText>
+        </Animated.View>
+
+        {/* Trust banner — clinical commitment row, hairline dividers */}
+        <Animated.View entering={FadeInDown.duration(320)} style={styles.trustBanner}>
+          {([
+            { icon: "lock-closed",       label: "مشفّر",     accent: theme.colors.success.strong, bg: theme.colors.success.bg },
+            { icon: "shield-checkmark",  label: "آمن",       accent: theme.colors.brand[700],     bg: theme.colors.brand.lighter },
+            { icon: "eye-off",           label: "خصوصية",   accent: theme.colors.purple[700],    bg: theme.colors.purple[50] },
+            { icon: "flash",             label: "فوري",      accent: theme.colors.amber[700],     bg: theme.colors.amber[50] },
+          ] as { icon: React.ComponentProps<typeof Ionicons>["name"]; label: string; accent: string; bg: string }[]).map((t, i, arr) => (
+            <View
+              key={t.label}
+              style={[
+                styles.trustItem,
+                i < arr.length - 1 && styles.trustItemDivider,
+              ]}>
+              <View style={[styles.trustIcon, { backgroundColor: t.bg }]}>
+                <Ionicons name={t.icon} size={15} color={t.accent} />
               </View>
-              <Text style={styles.trustLabel}>مشفر</Text>
+              <UIText variant="eyebrow" color="secondary" align="center">{t.label}</UIText>
             </View>
-            <View style={styles.trustItem}>
-              <View style={[styles.trustIcon, { backgroundColor: theme.colors.brand[50] }]}>
-                <Ionicons name="shield-checkmark" size={14} color={theme.colors.brand[600]} />
-              </View>
-              <Text style={styles.trustLabel}>آمن</Text>
-            </View>
-            <View style={styles.trustItem}>
-              <View style={[styles.trustIcon, { backgroundColor: theme.colors.purple[50] }]}>
-                <Ionicons name="eye-off" size={14} color={theme.colors.purple[600]} />
-              </View>
-              <Text style={styles.trustLabel}>خصوصية</Text>
-            </View>
-            <View style={styles.trustItem}>
-              <View style={[styles.trustIcon, { backgroundColor: theme.colors.amber[50] }]}>
-                <Ionicons name="flash" size={14} color={theme.colors.amber[600]} />
-              </View>
-              <Text style={styles.trustLabel}>فوري</Text>
-            </View>
-          </View>
+          ))}
         </Animated.View>
 
         {/* Payment selector */}
-        <Animated.View entering={FadeInDown.delay(100).duration(300)}>
+        <Animated.View entering={FadeInDown.delay(120).duration(320)}>
           <PaymentMethodSelector />
         </Animated.View>
 
-        {/* Info note */}
-        <Animated.View entering={FadeInDown.delay(200).duration(300)} style={styles.infoNote}>
-          <Ionicons name="information-circle-outline" size={16} color={theme.colors.brand[600]} />
-          <Text style={styles.infoNoteText}>
-            يمكنك تغيير طريقة الدفع عند إتمام كل طلب. لن يتم حفظ أي بيانات مالية حساسة.
-          </Text>
+        {/* Info note — clinical reassurance */}
+        <Animated.View entering={FadeInDown.delay(220).duration(320)} style={styles.infoNote}>
+          <View style={styles.infoNoteIcon}>
+            <Ionicons name="information-circle-outline" size={16} color={theme.colors.brand[700]} />
+          </View>
+          <UIText variant="caption" color="secondary" align="right" style={styles.infoNoteTextNew}>
+            يمكنك تغيير طريقة الدفع عند إتمام كل طلب. لن يتم حفظ أي بيانات مالية حساسة على هذا الجهاز.
+          </UIText>
         </Animated.View>
       </ScrollView>
     </View>
@@ -130,18 +145,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.12)",
   },
-  headerTitle: {
-    fontSize: 22,
-    fontFamily: theme.fonts.black,
-    color: "#fff",
-    textAlign: "right",
-  },
-  headerSub: {
-    fontSize: 11,
-    fontFamily: theme.fonts.semibold,
-    color: "rgba(255,255,255,0.50)",
-    textAlign: "right",
-  },
   shieldIcon: {
     width: 38,
     height: 38,
@@ -164,56 +167,94 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.10)",
   },
-  activeBadgeText: {
-    fontSize: 10,
-    fontFamily: theme.fonts.bold,
-    color: "rgba(255,255,255,0.70)",
-  },
+  content: { padding: 20, gap: 18 },
 
-  content: { padding: 20, gap: 20 },
+  headerEyebrowNew: {
+    color:     "rgba(255,255,255,0.55)",
+    marginTop: 2,
+  },
+  headerTitleNew: {
+    letterSpacing: -0.4,
+    marginTop:     2,
+  },
+  headerSubNew: {
+    marginTop: 4,
+  },
+  activeBadgeTextNew: {
+    color: "rgba(255,255,255,0.85)",
+  },
 
   trustBanner: {
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.surface,
+    borderRadius:    18,
+    paddingVertical: 16,
+    paddingHorizontal: 4,
+    flexDirection:   "row-reverse",
+    ...theme.shadow.card,
+  },
+  trustItem: {
+    flex:       1,
+    alignItems: "center",
+    gap:        8,
+    paddingHorizontal: 4,
+  },
+  trustItemDivider: {
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderRightColor: theme.colors.border.hairline,
+  },
+  trustIcon: {
+    width:           36,
+    height:          36,
+    borderRadius:    11,
+    alignItems:      "center",
+    justifyContent:  "center",
+  },
+
+  savedPaymentBanner: {
+    marginBottom: 18,
+    padding: 18,
     borderRadius: 18,
-    padding: 16,
+    backgroundColor: theme.colors.slate[50],
     borderWidth: 1,
     borderColor: theme.colors.border.default,
-    ...theme.shadow.xs,
   },
-  trustBannerRow: {
-    flexDirection: "row-reverse",
-    justifyContent: "space-around",
-  },
-  trustItem: { alignItems: "center", gap: 6 },
-  trustIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 11,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  trustLabel: {
-    fontSize: 10,
+  savedPaymentTitle: {
+    fontSize: 12,
     fontFamily: theme.fonts.bold,
+    color: theme.colors.text.primary,
+    textAlign: "right",
+    marginBottom: 6,
+  },
+  savedPaymentText: {
+    fontSize: 11,
+    fontFamily: theme.fonts.regular,
     color: theme.colors.slate[500],
+    textAlign: "right",
+    lineHeight: 18,
   },
 
   infoNote: {
-    flexDirection: "row-reverse",
-    alignItems: "flex-start",
-    gap: 10,
-    padding: 14,
-    borderRadius: 14,
-    backgroundColor: theme.colors.brand[50],
-    borderWidth: 1,
-    borderColor: theme.colors.brand[100],
+    flexDirection:   "row-reverse",
+    alignItems:      "flex-start",
+    gap:             12,
+    padding:         14,
+    borderRadius:    14,
+    backgroundColor: theme.colors.brand.lighter,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
   },
-  infoNoteText: {
-    flex: 1,
-    fontSize: 11,
-    fontFamily: theme.fonts.regular,
-    color: theme.colors.brand[700],
-    textAlign: "right",
+  infoNoteIcon: {
+    width:           28,
+    height:          28,
+    borderRadius:    9,
+    backgroundColor: "rgba(13,184,168,0.10)",
+    alignItems:      "center",
+    justifyContent:  "center",
+    marginTop:       -2,
+  },
+  infoNoteTextNew: {
+    flex:       1,
     lineHeight: 18,
+    color:      theme.colors.brand[800],
   },
 });
