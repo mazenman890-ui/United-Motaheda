@@ -3,8 +3,16 @@ dist/
 .env
 .DS_Store
 *.log
-# تجاهل أي ملفات build تانية
+
+# Build outputs
 apps/api/dist/
 apps/shopper-web/dist/
+
+# Expo cache & generated files
+# These are build-time artifacts with paths that exceed the Windows 260-char limit
+**/.expo/
+**/expo-env.d.ts
+
+# Claude internal
 .claude/
 
