@@ -14,6 +14,7 @@ import Animated, {
   cancelAnimation,
   withRepeat,
 } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { fetchCatalogStats } from "@/services/productsApi";
 import type { CatalogStats } from "@/services/productsApi";
 import { theme } from "@/theme";
@@ -77,10 +78,11 @@ function StatsSkeleton() {
 // ──�� Error Dock ──────────────────────────────────────────────────────────────
 
 function StatsError({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation();
   return (
     <Pressable onPress={onRetry} style={styles.errorDock}>
       <Ionicons name="refresh-outline" size={16} color={theme.colors.amber[600]} />
-      <Text style={styles.errorText}>تعذر تحميل الإحصائيات • اضغط لإعادة المحاولة</Text>
+      <Text style={styles.errorText}>{t("products.statsError")}</Text>
     </Pressable>
   );
 }
@@ -138,6 +140,8 @@ interface CategoryStatsDockProps {
 }
 
 export function CategoryStatsDock({ categoriesCount }: CategoryStatsDockProps) {
+  // ⚠ ALL hooks must be called unconditionally — before any early returns.
+  const { t } = useTranslation();
   const {
     data: stats,
     isLoading,
@@ -167,7 +171,6 @@ export function CategoryStatsDock({ categoriesCount }: CategoryStatsDockProps) {
       </Animated.View>
     );
   }
-
   const catCount  = categoriesCount    ?? 0;
   const prodCount = stats?.totalProducts ?? 0;
 
@@ -175,7 +178,7 @@ export function CategoryStatsDock({ categoriesCount }: CategoryStatsDockProps) {
     {
       icon: "grid-outline",
       value: catCount,
-      label: "قسم",
+      label: t("products.statCategories"),
       accent: theme.colors.brand[600],
       bg: theme.colors.brand[50],
       isNumeric: true,
@@ -183,22 +186,22 @@ export function CategoryStatsDock({ categoriesCount }: CategoryStatsDockProps) {
     {
       icon: "cube-outline",
       value: prodCount,
-      label: "منتج",
+      label: t("products.statItems"),
       accent: theme.colors.purple[600],
       bg: theme.colors.purple[50],
       isNumeric: true,
     },
     {
       icon: "flash-outline",
-      value: "سريع",
-      label: "توصيل",
+      value: t("products.statFastValue"),
+      label: t("products.statFastLabel"),
       accent: theme.colors.amber[600],
       bg: theme.colors.amber[50],
     },
     {
       icon: "shield-checkmark-outline",
-      value: "أصلية",
-      label: "أدوية",
+      value: t("products.statOriginalValue"),
+      label: t("products.statOriginalLabel"),
       accent: theme.colors.green[600],
       bg: theme.colors.green[50],
     },

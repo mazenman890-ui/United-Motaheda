@@ -29,12 +29,12 @@ type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
 function getTier(points: number) {
   if (points >= 4000)
-    return { name: "بلاتيني", color: theme.colors.purple[400], ring: [theme.colors.purple[500], theme.colors.purple[700]] as [string, string], icon: "diamond" as IoniconsName };
+    return { nameKey: "profile.tier.platinum", color: theme.colors.purple[400], ring: [theme.colors.purple[500], theme.colors.purple[700]] as [string, string], icon: "diamond" as IoniconsName };
   if (points >= 1500)
-    return { name: "ذهبي", color: theme.colors.amber[300], ring: [theme.colors.amber[400], theme.colors.amber[500]] as [string, string], icon: "shield" as IoniconsName };
+    return { nameKey: "profile.tier.gold",     color: theme.colors.amber[300],  ring: [theme.colors.amber[400],  theme.colors.amber[500]]  as [string, string], icon: "shield" as IoniconsName };
   if (points >= 500)
-    return { name: "فضي", color: theme.colors.slate[400], ring: [theme.colors.slate[400], theme.colors.slate[600]] as [string, string], icon: "shield-half" as IoniconsName };
-  return { name: "برونزي", color: theme.colors.amber[500], ring: [theme.colors.amber[500], theme.colors.amber[700]] as [string, string], icon: "shield-outline" as IoniconsName };
+    return { nameKey: "profile.tier.silver",   color: theme.colors.slate[400],  ring: [theme.colors.slate[400],  theme.colors.slate[600]]  as [string, string], icon: "shield-half" as IoniconsName };
+  return   { nameKey: "profile.tier.bronze",   color: theme.colors.amber[500],  ring: [theme.colors.amber[500],  theme.colors.amber[700]]  as [string, string], icon: "shield-outline" as IoniconsName };
 }
 
 // ─── MenuRow ──────────────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ function MenuRow({
         onPress();
       }}
       accessibilityRole="button"
-      accessibilityLabel={subtitle ? `${label}، ${subtitle}` : label}
+      accessibilityLabel={subtitle ? `${label}, ${subtitle}` : label}
       style={({ pressed }) => [
         styles.menuRow,
         !last && styles.menuRowBorder,
@@ -198,13 +198,13 @@ export default function ProfileScreen() {
               {/* Top bar */}
               <Animated.View entering={FadeIn.duration(200)} style={styles.heroTopBar}>
                 <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>
-                  <UIText variant="eyebrow" style={styles.heroPageLabelNew}>حسابي</UIText>
+                  <UIText variant="eyebrow" style={styles.heroPageLabelNew}>{t("profile.title")}</UIText>
                 </View>
                 <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>
                   <Pressable
                     onPress={() => router.push("/(tabs)/cart")}
                     accessibilityRole="button"
-                    accessibilityLabel={cartCount > 0 ? `السلة، ${cartCount} عنصر` : "السلة"}
+                    accessibilityLabel={t("tabs.cart")}
                     style={styles.heroIconBtn}>
                     <Ionicons name="bag-outline" size={16} color="rgba(255,255,255,0.8)" />
                     {cartCount > 0 && (
@@ -218,7 +218,7 @@ export default function ProfileScreen() {
                   <Pressable
                     onPress={() => router.push("/notifications")}
                     accessibilityRole="button"
-                    accessibilityLabel="الإعدادات"
+                    accessibilityLabel={t("profile.settings")}
                     style={styles.heroIconBtn}>
                     <Ionicons name="settings-outline" size={16} color="rgba(255,255,255,0.8)" />
                   </Pressable>
@@ -247,7 +247,7 @@ export default function ProfileScreen() {
 
                 <View style={styles.heroTextGroup}>
                   <UIText variant="sheet-title" color="inverse" numberOfLines={1} style={styles.userNameNew}>
-                    {user.name ?? "المستخدم"}
+                    {user.name ?? t("profile.userFallback")}
                   </UIText>
                   <UIText variant="body-sm" color="inverse-muted" numberOfLines={1}>
                     {user.email}
@@ -258,13 +258,13 @@ export default function ProfileScreen() {
                 <Pressable onPress={() => router.push("/loyalty")} style={styles.tierChip}>
                   <Ionicons name={tier.icon} size={12} color={tier.color} />
                   <UIText variant="caption" weight="bold" style={styles.tierChipLabelNew}>
-                    عضو {tier.name}
+                    {t("profile.memberTier", { tier: t(tier.nameKey) })}
                   </UIText>
                   <View style={styles.pointsChip}>
                     <UIText variant="caption" weight="black" style={styles.pointsChipTextNew}>
                       {loyaltyPoints}
                     </UIText>
-                    <UIText variant="eyebrow" style={styles.pointsChipUnitNew}>نقطة</UIText>
+                    <UIText variant="eyebrow" style={styles.pointsChipUnitNew}>{t("profile.pointsUnit")}</UIText>
                   </View>
                 </Pressable>
               </Animated.View>
@@ -274,7 +274,7 @@ export default function ProfileScreen() {
             <Animated.View entering={FadeInDown.delay(140).duration(320)} style={styles.statsCard}>
               <StatPill
                 value={orderCount}
-                label="طلب"
+                label={t("profile.statOrders")}
                 icon="bag-handle-outline"
                 accent={theme.colors.brand[600]}
                 onPress={() => router.push("/orders")}
@@ -282,7 +282,7 @@ export default function ProfileScreen() {
               <View style={styles.statDivider} />
               <StatPill
                 value={wishlistCount}
-                label="مفضلة"
+                label={t("profile.statWishlist")}
                 icon="heart-outline"
                 accent={theme.colors.rose[500]}
                 onPress={() => router.push("/favorites")}
@@ -290,7 +290,7 @@ export default function ProfileScreen() {
               <View style={styles.statDivider} />
               <StatPill
                 value={loyaltyPoints}
-                label="نقطة"
+                label={t("profile.statPoints")}
                 icon="diamond-outline"
                 accent="#9333EA"
                 onPress={() => router.push("/loyalty")}
@@ -298,7 +298,7 @@ export default function ProfileScreen() {
               <View style={styles.statDivider} />
               <StatPill
                 value={cartCount}
-                label="سلة"
+                label={t("profile.statCart")}
                 icon="cart-outline"
                 accent={theme.colors.amber[600]}
                 onPress={() => router.push("/(tabs)/cart")}
@@ -316,11 +316,11 @@ export default function ProfileScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6 }}>
-                      <UIText variant="body-sm" weight="bold" align="right">آخر طلب</UIText>
+                      <UIText variant="body-sm" weight="bold" align="right">{t("profile.lastOrderCard")}</UIText>
                       <View style={styles.statusDot} />
                     </View>
                     <UIText variant="caption" color="tertiary" align="right" style={styles.quickCardSubNew}>
-                      #{lastOrder.id.slice(-6)}  •  {lastOrder.items.length} منتج  •  {lastOrder.total.toFixed(0)} ج.م
+                      #{lastOrder.id.slice(-6)}  •  {t("orders.items", { count: lastOrder.items.length })}  •  {lastOrder.total.toFixed(0)} {t("common.currency")}
                     </UIText>
                   </View>
                   <Ionicons name="chevron-back" size={14} color={theme.colors.slate[300]} />
@@ -342,24 +342,24 @@ export default function ProfileScreen() {
               <Ionicons name="person" size={34} color="rgba(255,255,255,0.45)" />
             </View>
             <UIText variant="sheet-title" color="inverse" align="center" style={styles.guestTitleNew}>
-              مرحباً بك في صيدليات المتحدة
+              {t("profile.guestTitle")}
             </UIText>
             <UIText variant="body-sm" color="inverse-muted" align="center" style={styles.guestDescNew}>
-              سجّل دخولك للوصول إلى طلباتك ومفضلتك وبرنامج الولاء
+              {t("profile.guestDesc")}
             </UIText>
             <View style={styles.guestActions}>
               <Pressable
                 onPress={() => router.push("/(auth)/login")}
                 style={({ pressed }) => [styles.guestPrimaryBtn, pressed && { opacity: 0.9, transform: [{ scale: 0.985 }] }]}>
                 <UIText variant="body-sm" weight="black" style={{ color: theme.colors.heroMid }}>
-                  تسجيل الدخول
+                  {t("auth.login")}
                 </UIText>
               </Pressable>
               <Pressable
                 onPress={() => router.push("/(auth)/register")}
                 style={({ pressed }) => [styles.guestSecondaryBtn, pressed && { opacity: 0.85 }]}>
                 <UIText variant="body-sm" weight="extrabold" color="inverse">
-                  إنشاء حساب جديد
+                  {t("auth.createAccount")}
                 </UIText>
               </Pressable>
             </View>
@@ -370,13 +370,13 @@ export default function ProfileScreen() {
         {user && (
           <Animated.View entering={FadeInDown.delay(280).duration(280)} style={styles.quickGrid}>
             {([
-              { icon: "bag-handle-outline" as IoniconsName, label: "طلباتي",  grad: ["#0891B2", "#0DB8A8"] as [string,string], route: "/orders"    },
-              { icon: "heart-outline"      as IoniconsName, label: "المفضلة", grad: ["#E11D48", "#F43F5E"] as [string,string], route: "/favorites" },
-              { icon: "diamond-outline"    as IoniconsName, label: "الولاء",  grad: ["#7C3AED", "#9333EA"] as [string,string], route: "/loyalty"   },
-              { icon: "location-outline"   as IoniconsName, label: "العناوين",grad: ["#D97706", "#F59E0B"] as [string,string], route: "/addresses" },
+              { icon: "bag-handle-outline" as IoniconsName, labelKey: "profile.myOrders",   grad: ["#0891B2", "#0DB8A8"] as [string,string], route: "/orders"    },
+              { icon: "heart-outline"      as IoniconsName, labelKey: "profile.wishlist",   grad: ["#E11D48", "#F43F5E"] as [string,string], route: "/favorites" },
+              { icon: "diamond-outline"    as IoniconsName, labelKey: "profile.loyaltyCard",grad: ["#7C3AED", "#9333EA"] as [string,string], route: "/loyalty"   },
+              { icon: "location-outline"   as IoniconsName, labelKey: "profile.addresses",  grad: ["#D97706", "#F59E0B"] as [string,string], route: "/addresses" },
             ]).map((a) => (
               <Pressable
-                key={a.label}
+                key={a.labelKey}
                 onPress={() => {
                   if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
                   router.push(a.route as Parameters<typeof router.push>[0]);
@@ -385,19 +385,20 @@ export default function ProfileScreen() {
                   styles.quickGridItem,
                   pressed && { transform: [{ scale: 0.94 }], opacity: 0.88 },
                 ]}>
-                <View style={styles.quickGridIconWrap}>
+                {/* Shadow wrapper — carries elevation so icons render on Android */}
+                <View style={styles.quickGridIconShadow}>
                   <LinearGradient
                     colors={a.grad}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
-                    style={StyleSheet.absoluteFill}
-                  />
-                  {/* Top shine */}
-                  <View style={styles.quickGridShine} />
-                  <Ionicons name={a.icon} size={20} color="rgba(255,255,255,0.95)" />
+                    style={styles.quickGridIconWrap}>
+                    {/* Top shine */}
+                    <View style={styles.quickGridShine} />
+                    <Ionicons name={a.icon} size={20} color="rgba(255,255,255,0.95)" />
+                  </LinearGradient>
                 </View>
                 <UIText variant="caption" weight="bold" align="center" color="secondary">
-                  {a.label}
+                  {t(a.labelKey)}
                 </UIText>
               </Pressable>
             ))}
@@ -406,7 +407,7 @@ export default function ProfileScreen() {
 
         {/* ── Settings ── */}
         <Animated.View entering={FadeInDown.delay(340).duration(280)} style={styles.section}>
-          <UIText variant="eyebrow" color="tertiary" align="right" style={styles.sectionLabelNew}>الإعدادات</UIText>
+          <UIText variant="eyebrow" color="tertiary" align="right" style={styles.sectionLabelNew}>{t("profile.settingsSection")}</UIText>
           <View style={styles.menuCard}>
             <MenuRow
               icon="language-outline"
@@ -419,20 +420,20 @@ export default function ProfileScreen() {
             />
             <MenuRow
               icon="notifications-outline"
-              label="الإشعارات"
-              subtitle="تنبيهات الطلبات والعروض"
+              label={t("profile.notifications")}
+              subtitle={t("profile.notificationsSubtitle")}
               onPress={() => router.push("/notifications")}
             />
             <MenuRow
               icon="location-outline"
-              label="العناوين المحفوظة"
-              subtitle="إدارة عناوين التوصيل"
+              label={t("profile.menuAddresses")}
+              subtitle={t("profile.menuAddressesSubtitle")}
               onPress={() => router.push("/addresses")}
             />
             <MenuRow
               icon="card-outline"
-              label="طرق الدفع"
-              subtitle="الدفع عند الاستلام، إنستاباي، فودافون"
+              label={t("profile.menuPayment")}
+              subtitle={t("profile.menuPaymentSubtitle")}
               onPress={() => router.push("/payment")}
               last
             />
@@ -441,25 +442,25 @@ export default function ProfileScreen() {
 
         {/* ── Support ── */}
         <Animated.View entering={FadeInDown.delay(400).duration(280)} style={styles.section}>
-          <UIText variant="eyebrow" color="tertiary" align="right" style={styles.sectionLabelNew}>الدعم والمساعدة</UIText>
+          <UIText variant="eyebrow" color="tertiary" align="right" style={styles.sectionLabelNew}>{t("profile.sectionSupport")}</UIText>
           <View style={styles.menuCard}>
             <MenuRow
               icon="logo-whatsapp"
-              label="تواصل واتساب"
-              subtitle="رد سريع خلال دقائق"
+              label={t("profile.whatsapp")}
+              subtitle={t("profile.whatsappSubtitle")}
               color="#25D366"
               onPress={() => Linking.openURL("https://wa.me/201112343212?text=مرحباً").catch(() => {})}
             />
             <MenuRow
               icon="call-outline"
-              label="اتصل بنا"
+              label={t("profile.callUs")}
               subtitle="01112343212"
               color={theme.colors.brand[600]}
               onPress={() => Linking.openURL("tel:01112343212").catch(() => {})}
             />
             <MenuRow
               icon="help-circle-outline"
-              label="الأسئلة الشائعة"
+              label={t("profile.faq")}
               onPress={() => router.push("/faq")}
               last
             />
@@ -468,21 +469,21 @@ export default function ProfileScreen() {
 
         {/* ── About ── */}
         <Animated.View entering={FadeInDown.delay(460).duration(280)} style={styles.section}>
-          <UIText variant="eyebrow" color="tertiary" align="right" style={styles.sectionLabelNew}>عن التطبيق</UIText>
+          <UIText variant="eyebrow" color="tertiary" align="right" style={styles.sectionLabelNew}>{t("profile.sectionAbout")}</UIText>
           <View style={styles.menuCard}>
             <MenuRow
               icon="information-circle-outline"
-              label="عن صيدليات المتحدة"
+              label={t("profile.aboutPharmacy")}
               onPress={() => router.push("/about")}
             />
             <MenuRow
               icon="document-text-outline"
-              label="سياسة الخصوصية"
+              label={t("profile.privacy")}
               onPress={() => router.push("/privacy")}
             />
             <MenuRow
               icon="shield-checkmark-outline"
-              label="الشروط والأحكام"
+              label={t("profile.terms")}
               onPress={() => router.push("/terms")}
               last
             />
@@ -496,7 +497,7 @@ export default function ProfileScreen() {
               <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>
                 <Ionicons name="log-out-outline" size={16} color={theme.colors.error.base} />
                 <UIText variant="body-sm" weight="black" style={{ color: theme.colors.error.base }}>
-                  تسجيل الخروج
+                  {t("profile.logout")}
                 </UIText>
               </View>
             </Button>
@@ -508,12 +509,12 @@ export default function ProfileScreen() {
           <View style={styles.footerBrand}>
             <Ionicons name="medkit" size={12} color={theme.colors.brand[700]} />
             <UIText variant="caption" weight="bold" style={{ color: theme.colors.brand[700] }}>
-              صيدليات المتحدة
+              {t("profile.footerName")}
             </UIText>
           </View>
           <UIText variant="eyebrow" color="tertiary">United Pharmacies</UIText>
           <UIText variant="eyebrow" color="disabled" style={styles.footerVersionNew}>
-            الإصدار 1.0.0
+            {t("profile.version", { ver: "1.0.0" })}
           </UIText>
         </View>
       </ScrollView>
@@ -810,6 +811,16 @@ const styles = StyleSheet.create({
     shadowRadius:      8,
     elevation:         3,
   },
+  // Shadow wrapper — elevation only (no overflow:hidden) so Android renders icons
+  quickGridIconShadow: {
+    borderRadius:  16,
+    shadowColor:   "#000",
+    shadowOffset:  { width: 0, height: 3 },
+    shadowOpacity: 0.20,
+    shadowRadius:  8,
+    elevation:     4,
+  },
+  // Clip wrapper — overflow:hidden only (no elevation) so gradient is clipped
   quickGridIconWrap: {
     width:           52,
     height:          52,
@@ -817,11 +828,6 @@ const styles = StyleSheet.create({
     alignItems:      "center",
     justifyContent:  "center",
     overflow:        "hidden",
-    shadowColor:     "#000",
-    shadowOffset:    { width: 0, height: 3 },
-    shadowOpacity:   0.20,
-    shadowRadius:    8,
-    elevation:       4,
   },
   quickGridShine: {
     position:        "absolute",

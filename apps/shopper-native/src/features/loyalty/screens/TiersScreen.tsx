@@ -17,6 +17,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
 import { theme } from "@/theme";
 import { useScreenTrace } from "@/features/observability";
 import { SubScreenHeader } from "../components/SubScreenHeader";
@@ -44,6 +45,7 @@ const TIER_ICONS: IoniconsName[] = [
 export function TiersScreen() {
   useScreenTrace("loyalty-tiers");
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   const tiers   = useRewardTiers();
   const balance = useLoyaltyBalance();
@@ -59,10 +61,10 @@ export function TiersScreen() {
   if (tiers.isLoading) {
     return (
       <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-        <SubScreenHeader title="مستويات العضوية" subtitle="ارتقِ في المستويات لتحصل على مزايا حصرية" />
+        <SubScreenHeader title={t("loyalty.tiersTitle")} subtitle={t("loyalty.tiersSubtitle")} />
         <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }}>
           {Array.from({ length: 4 }).map((_, i) => (
-            <View key={i} style={[styles.tierCard, { minHeight: 120, backgroundColor: theme.colors.surfaceSunken }]} accessibilityLabel="جارٍ التحميل" />
+            <View key={i} style={[styles.tierCard, { minHeight: 120, backgroundColor: theme.colors.surfaceSunken }]} accessibilityLabel={t("common.loading")} />
           ))}
         </ScrollView>
       </View>
@@ -72,18 +74,18 @@ export function TiersScreen() {
   if (tiers.isError) {
     return (
       <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-        <SubScreenHeader title="مستويات العضوية" subtitle="ارتقِ في المستويات لتحصل على مزايا حصرية" />
+        <SubScreenHeader title={t("loyalty.tiersTitle")} subtitle={t("loyalty.tiersSubtitle")} />
         <View style={styles.errorPanel}>
           <Ionicons name="cloud-offline-outline" size={36} color={theme.colors.slate[400]} />
-          <Text style={styles.errorTitle} maxFontSizeMultiplier={1.4}>تعذر تحميل المستويات</Text>
+          <Text style={styles.errorTitle} maxFontSizeMultiplier={1.4}>{t("loyalty.tiersErrorTitle")}</Text>
           <Pressable
             onPress={() => void tiers.refetch()}
             accessibilityRole="button"
-            accessibilityLabel="إعادة المحاولة"
+            accessibilityLabel={t("common.retry")}
             style={({ pressed }) => [styles.primaryBtn, pressed && { opacity: 0.9 }]}
           >
             <Ionicons name="refresh" size={14} color="#fff" />
-            <Text style={styles.primaryBtnText}>إعادة المحاولة</Text>
+            <Text style={styles.primaryBtnText}>{t("common.retry")}</Text>
           </Pressable>
         </View>
       </View>
@@ -102,7 +104,7 @@ export function TiersScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-      <SubScreenHeader title="مستويات العضوية" subtitle="ارتقِ في المستويات لتحصل على مزايا حصرية" />
+      <SubScreenHeader title={t("loyalty.tiersTitle")} subtitle={t("loyalty.tiersSubtitle")} />
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 32 }}
         refreshControl={
@@ -110,7 +112,7 @@ export function TiersScreen() {
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={theme.colors.brand[600]}
-            accessibilityLabel="تحديث المستويات"
+            accessibilityLabel={t("loyalty.tiersRefreshA11y")}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -120,21 +122,21 @@ export function TiersScreen() {
           <View
             style={styles.statusChip}
             accessibilityRole="text"
-            accessibilityLabel={`مستواك الحالي: ${currentTier.name}`}
+            accessibilityLabel={t("loyalty.currentTierA11y", { name: currentTier.name })}
           >
             <View style={styles.statusLeft}>
-              <Text style={styles.statusLabel}>مستواك الحالي</Text>
+              <Text style={styles.statusLabel}>{t("loyalty.currentTierLabel")}</Text>
               <Text style={styles.statusTier}>{currentTier.name}</Text>
             </View>
             {nextTier && (
               <View style={styles.statusProgress}>
                 <Text style={styles.statusProgressLabel} maxFontSizeMultiplier={1.3}>
-                  {Math.max(0, nextTier.min_lifetime_points - lifetimeEarned).toLocaleString("ar-EG")} للمستوى التالي
+                  {t("loyalty.pointsToNextTier", { n: Math.max(0, nextTier.min_lifetime_points - lifetimeEarned).toLocaleString("ar-EG") })}
                 </Text>
                 <View style={styles.progressTrack}>
                   <View
                     style={[styles.progressFill, { width: `${progress * 100}%` }]}
-                    accessibilityLabel={`${Math.round(progress * 100)}% من المستوى التالي`}
+                    accessibilityLabel={t("loyalty.progressPctA11y", { n: Math.round(progress * 100) })}
                   />
                 </View>
               </View>
@@ -177,6 +179,7 @@ interface TierCardProps {
 }
 
 function TierCard({ tier, isCurrent, isUnlocked, gradient, icon }: TierCardProps) {
+  const { t } = useTranslation();
   return (
     <View
       style={[
@@ -184,7 +187,11 @@ function TierCard({ tier, isCurrent, isUnlocked, gradient, icon }: TierCardProps
         isCurrent && { borderColor: gradient[0] + "60", borderWidth: 2 },
       ]}
       accessibilityRole="text"
-      accessibilityLabel={`مستوى ${tier.name}، يبدأ من ${tier.min_lifetime_points} نقطة، مضاعف ${tier.earn_multiplier}`}
+      accessibilityLabel={t("loyalty.tierCardA11y", {
+        name:   tier.name,
+        points: tier.min_lifetime_points.toLocaleString("ar-EG"),
+        mult:   tier.earn_multiplier,
+      })}
     >
       <LinearGradient
         colors={isUnlocked ? gradient : [theme.colors.slate[100], theme.colors.slate[200]]}
@@ -207,7 +214,9 @@ function TierCard({ tier, isCurrent, isUnlocked, gradient, icon }: TierCardProps
           </Text>
           {isCurrent && (
             <View style={[styles.currentPill, { backgroundColor: gradient[0] + "18" }]}>
-              <Text style={[styles.currentPillText, { color: gradient[0] }]}>مستواك الحالي</Text>
+              <Text style={[styles.currentPillText, { color: gradient[0] }]}>
+                {t("loyalty.tierCurrentChip")}
+              </Text>
             </View>
           )}
           {!isUnlocked && !isCurrent && (
@@ -216,7 +225,7 @@ function TierCard({ tier, isCurrent, isUnlocked, gradient, icon }: TierCardProps
         </View>
 
         <Text style={[styles.tierPoints, !isUnlocked && { color: theme.colors.slate[400] }]} maxFontSizeMultiplier={1.4}>
-          {tier.min_lifetime_points.toLocaleString("ar-EG")}+ نقطة مكتسبة
+          {t("loyalty.tierPointsEarned", { n: tier.min_lifetime_points.toLocaleString("ar-EG") })}
         </Text>
 
         <View style={styles.multiplierRow}>
@@ -229,7 +238,7 @@ function TierCard({ tier, isCurrent, isUnlocked, gradient, icon }: TierCardProps
             style={[styles.multiplierText, !isUnlocked && { color: theme.colors.slate[400] }]}
             maxFontSizeMultiplier={1.3}
           >
-            مضاعف الكسب: {tier.earn_multiplier}×
+            {t("loyalty.tierEarnMultiplier", { n: tier.earn_multiplier })}
           </Text>
         </View>
       </View>

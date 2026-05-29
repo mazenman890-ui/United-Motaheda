@@ -8,6 +8,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/theme";
 import type { NativeCategory } from "@/services/productsApi";
@@ -54,6 +55,7 @@ export const CategoryCard = memo(function CategoryCard({
   onPress,
   variant = "pill",
 }: CategoryCardProps) {
+  const { t } = useTranslation();
   const [c1, c2] = theme.catGradients[gradientIdx % theme.catGradients.length];
   const icon      = getIcon(category.name);
   const label     = lang === "ar" ? category.name : category.nameEn;
@@ -133,7 +135,7 @@ export const CategoryCard = memo(function CategoryCard({
           </UIText>
           {category.count > 0 && (
             <UIText variant="eyebrow" style={{ color: "rgba(255,255,255,0.72)" }}>
-              {category.count} منتج
+              {t("products.itemCount", { n: category.count })}
             </UIText>
           )}
         </View>

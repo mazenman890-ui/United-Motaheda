@@ -15,6 +15,8 @@
 import React from "react";
 import { Pressable, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { theme } from "@/theme";
 import { Card, Text } from "@/shared/ui";
 import { Button } from "@/components/ui/Button";
@@ -40,12 +42,12 @@ const STATUS_TONE: Record<RxStatus, "success" | "neutral" | "warning" | "error">
   expired:  "error",
 };
 
-function statusLabel(rx: Prescription): string {
+function statusLabel(rx: Prescription, t: TFunction): string {
   switch (rx.status) {
-    case "ready":    return "جاهز";
-    case "active":   return rx.refills > 0 ? `${rx.refills} تجديدات` : "فعّال";
-    case "expiring": return "حان موعد التجديد";
-    case "expired":  return "منتهي";
+    case "ready":    return t("rx.statusReady");
+    case "active":   return rx.refills > 0 ? t("rx.statusRefills", { count: rx.refills }) : t("rx.statusActive");
+    case "expiring": return t("rx.statusExpiring");
+    case "expired":  return t("rx.statusExpired");
   }
 }
 
@@ -55,17 +57,18 @@ export function RxCard({
   onRefill,
   onPress,
 }: RxCardProps): React.ReactElement {
+  const { t }       = useTranslation();
   const tone        = STATUS_TONE[rx.status];
   const isExpiring  = rx.status === "expiring";
   const isExpired   = rx.status === "expired";
-  const refillLabel = "إعادة الصرف";
+  const refillLabel = t("rx.refillLabel");
 
   if (variant === "active") {
     return (
       <Pressable
         onPress={() => onPress?.(rx)}
         accessibilityRole="button"
-        accessibilityLabel={`${rx.name} — ${statusLabel(rx)}`}>
+        accessibilityLabel={`${rx.name} — ${statusLabel(rx, t)}`}>
         <Card radius={theme.layout.cardRadius}>
           <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: theme.spacing[1.5] }}>
             <View style={{
@@ -81,7 +84,7 @@ export function RxCard({
                 {rx.dose}
               </Text>
             </View>
-            <Badge variant={tone} size="md">{statusLabel(rx)}</Badge>
+            <Badge variant={tone} size="md">{statusLabel(rx, t)}</Badge>
           </View>
 
           <View style={{
@@ -93,7 +96,7 @@ export function RxCard({
             flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between",
           }}>
             <View>
-              <Text variant="eyebrow" color="tertiary" style={{ textAlign: "right" }}>التجديد القادم</Text>
+              <Text variant="eyebrow" color="tertiary" style={{ textAlign: "right" }}>{t("rx.nextRefill")}</Text>
               <Text variant="body-sm" weight="bold" style={{ marginTop: 2, textAlign: "right" }}>
                 {rx.nextRefill}
               </Text>
@@ -116,7 +119,7 @@ export function RxCard({
     <Pressable
       onPress={() => onPress?.(rx)}
       accessibilityRole="button"
-      accessibilityLabel={`${rx.name} — ${statusLabel(rx)}`}
+      accessibilityLabel={`${rx.name} — ${statusLabel(rx, t)}`}
       style={{
         flexDirection:    "row-reverse",
         alignItems:       "center",

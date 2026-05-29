@@ -15,6 +15,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { theme } from "@/theme";
 import { captureError } from "@/lib/crashReporter";
 
@@ -73,14 +74,15 @@ export class ErrorBoundary extends React.Component<Props, State> {
 }
 
 function DefaultFallback({ error, onReset }: { error: Error; onReset: () => void }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.container}>
       <View style={styles.iconWrap}>
         <Ionicons name="warning-outline" size={36} color={theme.colors.amber[600]} />
       </View>
-      <Text style={styles.title}>حدث خطأ غير متوقع</Text>
+      <Text style={styles.title}>{t("errors.unexpected")}</Text>
       <Text style={styles.body}>
-        نعتذر — حدث خطأ في تحميل هذه الصفحة. يمكنك إعادة المحاولة أو العودة للصفحة الرئيسية.
+        {t("errors.unexpectedBody")}
       </Text>
 
       {__DEV__ && (
@@ -94,7 +96,7 @@ function DefaultFallback({ error, onReset }: { error: Error; onReset: () => void
 
       <Pressable onPress={onReset} style={styles.btn}>
         <Ionicons name="refresh" size={14} color="#fff" />
-        <Text style={styles.btnText}>إعادة المحاولة</Text>
+        <Text style={styles.btnText}>{t("common.retry")}</Text>
       </Pressable>
     </View>
   );

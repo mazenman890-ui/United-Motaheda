@@ -14,12 +14,20 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
+import { useTranslation } from "react-i18next";
 import { theme } from "@/theme";
 import { AppLogo } from "@/shared/components/AppLogo";
 import { BranchAddressList } from "@/components/BranchAddressCard";
+import { useAppLanguage } from "@/i18n/LanguageProvider";
 
 const APP_VERSION = "1.0.0";
 const APP_BUILD   = "100";
+
+const STATS = [
+  { valueKey: "about.stat1Value", labelKey: "about.stat1Label" },
+  { valueKey: "about.stat2Value", labelKey: "about.stat2Label" },
+  { valueKey: "about.stat3Value", labelKey: "about.stat3Label" },
+] as const;
 
 interface ContactRowProps {
   icon:    React.ComponentProps<typeof Ionicons>["name"];
@@ -69,8 +77,10 @@ function InfoRow({ label, value }: InfoRowProps) {
 }
 
 export default function AboutScreen() {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const router   = useRouter();
+  const insets   = useSafeAreaInsets();
+  const { t }    = useTranslation();
+  const { language } = useAppLanguage();
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -81,10 +91,10 @@ export default function AboutScreen() {
           style={styles.backBtn}
           hitSlop={10}
           accessibilityRole="button"
-          accessibilityLabel="رجوع">
+          accessibilityLabel={t("common.back")}>
           <Ionicons name="arrow-forward" size={18} color={theme.colors.text.primary} />
         </Pressable>
-        <Text style={styles.title}>عن التطبيق</Text>
+        <Text style={styles.title}>{t("about.title")}</Text>
         <View style={{ width: 38 }} />
       </View>
 
@@ -102,38 +112,31 @@ export default function AboutScreen() {
             <View style={styles.logoTile}>
               <AppLogo size="lg" />
             </View>
-            <Text style={styles.heroTagline}>صيدليتك الموثوقة — في متناول يدك</Text>
+            <Text style={styles.heroTagline}>{t("about.tagline")}</Text>
             <View style={styles.versionBadge}>
-              <Text style={styles.versionText}>الإصدار {APP_VERSION}</Text>
+              <Text style={styles.versionText}>{t("profile.version", { ver: APP_VERSION })}</Text>
             </View>
           </LinearGradient>
         </Animated.View>
 
         {/* Description */}
         <Animated.View entering={FadeInDown.duration(350).delay(80)} style={styles.section}>
-          <Text style={styles.sectionTitle}>من نحن</Text>
+          <Text style={styles.sectionTitle}>{t("about.whoWeAreTitle")}</Text>
           <View style={styles.card}>
             <Text style={styles.description}>
-              الصيدلية المتحدة هي منصة صيدلانية رقمية متكاملة تتيح لك الوصول إلى مئات المنتجات الدوائية
-              ومستلزمات العناية الصحية بأسعار تنافسية، مع توصيل سريع وآمن إلى باب منزلك.{"\n\n"}
-              نؤمن بأن الحصول على الدواء حق لكل إنسان، لذا نسعى دائماً لتقديم أفضل تجربة تسوق صيدلاني
-              بمعايير الجودة والأمان العالية.
+              {t("about.whoWeArePara1")}{"\n\n"}{t("about.whoWeArePara2")}
             </Text>
           </View>
         </Animated.View>
 
         {/* App stats */}
         <Animated.View entering={FadeInDown.duration(350).delay(140)} style={styles.section}>
-          <Text style={styles.sectionTitle}>أرقامنا</Text>
+          <Text style={styles.sectionTitle}>{t("about.statsTitle")}</Text>
           <View style={styles.statsRow}>
-            {[
-              { value: "+٥٠٠", label: "منتج طبي" },
-              { value: "+٢٠",  label: "تصنيف" },
-              { value: "٢٤/٧", label: "خدمة العملاء" },
-            ].map((stat) => (
-              <View key={stat.label} style={styles.statCard}>
-                <Text style={styles.statValue}>{stat.value}</Text>
-                <Text style={styles.statLabel}>{stat.label}</Text>
+            {STATS.map((stat) => (
+              <View key={stat.labelKey} style={styles.statCard}>
+                <Text style={styles.statValue}>{t(stat.valueKey)}</Text>
+                <Text style={styles.statLabel}>{t(stat.labelKey)}</Text>
               </View>
             ))}
           </View>
@@ -141,17 +144,17 @@ export default function AboutScreen() {
 
         {/* Branch locations */}
         <Animated.View entering={FadeInDown.duration(350).delay(170)} style={styles.section}>
-          <Text style={styles.sectionTitle}>فروعنا · Our branches</Text>
+          <Text style={styles.sectionTitle}>{t("about.branchesTitle")}</Text>
           <BranchAddressList />
         </Animated.View>
 
         {/* Contact */}
         <Animated.View entering={FadeInDown.duration(350).delay(200)} style={styles.section}>
-          <Text style={styles.sectionTitle}>تواصل معنا</Text>
+          <Text style={styles.sectionTitle}>{t("about.contact")}</Text>
           <View style={styles.card}>
             <ContactRow
               icon="logo-whatsapp"
-              label="واتساب"
+              label={t("about.whatsappLabel")}
               value="+20 111 234 3212"
               color="#25D366"
               onPress={() => Linking.openURL("https://wa.me/201112343212?text=مرحباً").catch(() => {})}
@@ -159,7 +162,7 @@ export default function AboutScreen() {
             <View style={styles.rowDivider} />
             <ContactRow
               icon="call-outline"
-              label="هاتف"
+              label={t("about.phoneLabel")}
               value="+20 111 234 3212"
               color={theme.colors.brand[600]}
               onPress={() => Linking.openURL("tel:+201112343212").catch(() => {})}
@@ -167,7 +170,7 @@ export default function AboutScreen() {
             <View style={styles.rowDivider} />
             <ContactRow
               icon="mail-outline"
-              label="البريد الإلكتروني"
+              label={t("about.emailLabel")}
               value="info@unitedpharmacy.com"
               color={theme.colors.info.strong}
               onPress={() => Linking.openURL("mailto:info@unitedpharmacy.com").catch(() => {})}
@@ -177,21 +180,25 @@ export default function AboutScreen() {
 
         {/* App info */}
         <Animated.View entering={FadeInDown.duration(350).delay(260)} style={styles.section}>
-          <Text style={styles.sectionTitle}>معلومات التطبيق</Text>
+          <Text style={styles.sectionTitle}>{t("about.appInfoTitle")}</Text>
           <View style={styles.card}>
-            <InfoRow label="رقم الإصدار"     value={APP_VERSION} />
+            <InfoRow label={t("about.versionLabel")} value={APP_VERSION} />
             <View style={styles.rowDivider} />
-            <InfoRow label="رقم البناء"        value={APP_BUILD} />
+            <InfoRow label={t("about.buildLabel")} value={APP_BUILD} />
             <View style={styles.rowDivider} />
-            <InfoRow label="نظام التشغيل"      value={Platform.OS === "ios" ? "iOS" : Platform.OS === "android" ? "Android" : "Web"} />
+            <InfoRow
+              label={t("about.osLabel")}
+              value={Platform.OS === "ios" ? "iOS" : Platform.OS === "android" ? "Android" : "Web"}
+            />
             <View style={styles.rowDivider} />
-            <InfoRow label="اللغة"             value="العربية" />
+            <InfoRow
+              label={t("language.label")}
+              value={language === "en" ? t("language.en") : t("language.ar")}
+            />
           </View>
         </Animated.View>
 
-        <Text style={styles.copyright}>
-          © 2025 الصيدلية المتحدة. جميع الحقوق محفوظة.
-        </Text>
+        <Text style={styles.copyright}>{t("about.copyright")}</Text>
       </ScrollView>
     </View>
   );

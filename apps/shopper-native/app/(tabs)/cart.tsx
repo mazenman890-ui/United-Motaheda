@@ -13,6 +13,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown, FadeOutUp, Layout } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { useCartStore, type CartItem } from "@/stores/cart";
 import {
   useDeliveryContext,
@@ -22,6 +23,9 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/theme";
+
+/** Must stay in sync with BAR_HEIGHT in app/(tabs)/_layout.tsx */
+const TAB_BAR_H = 62;
 
 function QtyButton({ icon, onPress, disabled }: { icon: "add" | "remove"; onPress: () => void; disabled?: boolean }) {
   return (
@@ -47,6 +51,7 @@ function QtyButton({ icon, onPress, disabled }: { icon: "add" | "remove"; onPres
 }
 
 const CartItemCard = memo(function CartItemCard({ item }: { item: CartItem }) {
+  const { t } = useTranslation();
   // Per-field selectors — function references are stable in zustand, so this
   // row only re-renders when its `item` prop changes, not on every cart
   // mutation (was: whole-store subscription → O(N) wasted renders per tap).
@@ -106,7 +111,7 @@ const CartItemCard = memo(function CartItemCard({ item }: { item: CartItem }) {
         </UIText>
         <View style={styles.priceCluster}>
           <UIText variant="card-title" weight="black" style={styles.priceLabelNew}>
-            {lineTotal} <UIText variant="eyebrow" style={{ color: theme.colors.brand[600] }}>ج.م</UIText>
+            {lineTotal} <UIText variant="eyebrow" style={{ color: theme.colors.brand[600] }}>{t("common.currency")}</UIText>
           </UIText>
           {item.quantity > 1 && (
             <UIText variant="caption" color="tertiary">
@@ -122,7 +127,7 @@ const CartItemCard = memo(function CartItemCard({ item }: { item: CartItem }) {
           onPress={handleRemove}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="إزالة المنتج"
+          accessibilityLabel={t("cart.removeItem")}
           style={styles.removeBtn}>
           <Ionicons name="trash-outline" size={15} color={theme.colors.error.base} />
         </Pressable>
@@ -132,7 +137,7 @@ const CartItemCard = memo(function CartItemCard({ item }: { item: CartItem }) {
           <QtyButton icon="remove" onPress={handleDec} />
           {isAtMax && product.stock > 0 && (
             <UIText variant="eyebrow" style={{ color: theme.colors.error.strong, fontSize: 8, textAlign: "center", maxWidth: 52 }}>
-              الحد الأقصى
+              {t("common.maxQty")}
             </UIText>
           )}
         </View>
@@ -142,8 +147,12 @@ const CartItemCard = memo(function CartItemCard({ item }: { item: CartItem }) {
 });
 
 export default function CartScreen() {
+  const { t }  = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  // Lift the sticky footer above the floating tab bar.
+  // TAB_BAR_H (62) + paddingBottom of floatWrap (≥ 20) = ≥ 82 px clear space.
+  const tabBarBottom = Math.max(insets.bottom + 6, 20) + TAB_BAR_H;
   // Subscribe only to `items` (the only field that changes per-tap). The
   // store's `subtotal`/`itemCount`/`clearCart` are functions and identity-
   // stable, so pulling them as their own selectors avoids subscribing to
@@ -169,15 +178,15 @@ export default function CartScreen() {
       <View style={[styles.screen, { paddingTop: insets.top + 16 }]}>
         <View style={styles.topBar}>
           <View>
-            <UIText variant="eyebrow" color="tertiary" align="right">عربة التسوق</UIText>
-            <UIText variant="card-title" align="right" style={styles.titleNew}>السلة</UIText>
+            <UIText variant="eyebrow" color="tertiary" align="right">{t("cart.eyebrow")}</UIText>
+            <UIText variant="card-title" align="right" style={styles.titleNew}>{t("cart.title")}</UIText>
           </View>
         </View>
         <EmptyState
           icon="bag-outline"
-          title="سلتك فارغة"
-          description="تصفح منتجاتنا وأضف ما يعجبك لتجده هنا"
-          actionLabel="تسوق الآن"
+          title={t("cart.emptyTitle")}
+          description={t("cart.emptyDescription")}
+          actionLabel={t("cart.emptyAction")}
           onAction={() => router.push("/(tabs)/products")}
         />
       </View>
@@ -190,12 +199,12 @@ export default function CartScreen() {
       <View style={styles.topBar}>
         <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 10 }}>
           <View>
-            <UIText variant="eyebrow" color="tertiary" align="right">عربة التسوق</UIText>
-            <UIText variant="card-title" align="right" style={styles.titleNew}>السلة</UIText>
+            <UIText variant="eyebrow" color="tertiary" align="right">{t("cart.eyebrow")}</UIText>
+            <UIText variant="card-title" align="right" style={styles.titleNew}>{t("cart.title")}</UIText>
           </View>
           <View style={styles.countChip}>
             <UIText variant="eyebrow" style={{ color: theme.colors.brand[700] }}>
-              {count} منتج
+              {t("cart.itemCount", { count })}
             </UIText>
           </View>
         </View>
@@ -205,30 +214,30 @@ export default function CartScreen() {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
             }
             showConfirmSheet(
-              "مسح السلة",
-              "هل تريد إزالة جميع المنتجات من سلتك؟ لا يمكن التراجع عن هذا.",
+              t("cart.clearCartTitle"),
+              t("cart.clearCartMessage"),
               () => {
                 if (Platform.OS !== "web") {
                   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
                 }
                 clearCart();
               },
-              { confirmLabel: "مسح الكل", danger: true },
+              { confirmLabel: t("cart.clearAll"), danger: true },
             );
           }}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="مسح السلة"
+          accessibilityLabel={t("cart.clearCart")}
           style={styles.clearBtn}>
           <Ionicons name="trash-outline" size={14} color={theme.colors.error.base} />
-          <UIText variant="eyebrow" style={{ color: theme.colors.error.base }}>مسح</UIText>
+          <UIText variant="eyebrow" style={{ color: theme.colors.error.base }}>{t("common.clear")}</UIText>
         </Pressable>
       </View>
 
       <FlatList
         data={items}
         keyExtractor={(i) => i.productId}
-        contentContainerStyle={{ paddingHorizontal: theme.layout.pagePaddingH, paddingTop: 8, paddingBottom: 260, gap: 10 }}
+        contentContainerStyle={{ paddingHorizontal: theme.layout.pagePaddingH, paddingTop: 8, paddingBottom: tabBarBottom + 195, gap: 10 }}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <>
@@ -240,7 +249,7 @@ export default function CartScreen() {
                 style={styles.outOfServiceBanner}>
                 <Ionicons name="alert-circle" size={16} color={theme.colors.amber[700]} />
                 <UIText variant="caption" weight="bold" style={{ flex: 1, color: theme.colors.amber[900] }}>
-                  {delivery.outOfServiceMessage}
+                  {delivery.outOfServiceMessage ?? t("cart.outOfServiceArea")}
                 </UIText>
               </Animated.View>
             )}
@@ -255,10 +264,10 @@ export default function CartScreen() {
                   <Ionicons name="storefront-outline" size={13} color={theme.colors.brand[700]} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <UIText variant="eyebrow" color="tertiary" align="right">يتم التوصيل من</UIText>
+                  <UIText variant="eyebrow" color="tertiary" align="right">{t("cart.deliveringFrom")}</UIText>
                   <UIText variant="caption" weight="bold" align="right" style={styles.branchPillLabel}>
                     {delivery.branch.fullNameAr ?? delivery.branch.nameAr}
-                    {delivery.distanceKm != null && ` • ${delivery.distanceKm.toFixed(1)} كم`}
+                    {delivery.distanceKm != null && ` • ${delivery.distanceKm.toFixed(1)} ${t("home.kmUnit")}`}
                   </UIText>
                 </View>
               </Animated.View>
@@ -273,10 +282,10 @@ export default function CartScreen() {
                   </View>
                   <View>
                     <UIText variant="body-sm" weight="extrabold" align="right" style={{ color: theme.colors.success.strong }}>
-                      توصيل مجاني!
+                      {t("cart.freeDelivery")}
                     </UIText>
                     <UIText variant="eyebrow" color="success" align="right" style={styles.deliveryFreeSub}>
-                      طلبك يتجاوز {FREE_DELIVERY_THRESHOLD} ج.م
+                      {t("cart.freeDeliverySubtitle", { threshold: FREE_DELIVERY_THRESHOLD })}
                     </UIText>
                   </View>
                 </View>
@@ -286,7 +295,7 @@ export default function CartScreen() {
                     <View style={styles.deliveryProgressLeft}>
                       <Ionicons name="bicycle-outline" size={16} color={theme.colors.amber[700]} />
                       <UIText variant="body-sm" weight="bold" color="secondary" align="right">
-                        أضف {remaining} ج.م للتوصيل المجاني
+                        {t("cart.addForFreeDelivery", { remaining })}
                       </UIText>
                     </View>
                     <UIText variant="eyebrow" color="brand">
@@ -303,9 +312,9 @@ export default function CartScreen() {
             {/* Trust badges — clinical commitment row */}
             <View style={styles.trustRow}>
               {([
-                { icon: "flash-outline",            label: "توصيل سريع" },
-                { icon: "shield-checkmark-outline", label: "دفع آمن" },
-                { icon: "refresh-outline",          label: "إرجاع مضمون" },
+                { icon: "flash-outline",            label: t("cart.fastDelivery") },
+                { icon: "shield-checkmark-outline", label: t("cart.securePayment") },
+                { icon: "refresh-outline",          label: t("cart.guaranteedReturns") },
               ] as { icon: React.ComponentProps<typeof Ionicons>["name"]; label: string }[]).map((b, i, arr) => (
                 <View
                   key={b.label}
@@ -323,14 +332,14 @@ export default function CartScreen() {
         renderItem={({ item }) => <CartItemCard item={item} />}
       />
 
-      {/* Sticky checkout footer — premium anchor */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 14 }]}>
+      {/* Sticky checkout footer — positioned above the floating tab bar */}
+      <View style={[styles.footer, { bottom: tabBarBottom, paddingBottom: 16 }]}>
         <View style={styles.footerTotalsBlock}>
           {([
-            { label: "المجموع الفرعي", value: `${sub.toFixed(2)} ج.م`, valueColor: undefined },
+            { label: t("cart.subtotal"), value: `${sub.toFixed(2)} ${t("common.currency")}`, valueColor: undefined },
             {
-              label:      "التوصيل",
-              value:      delivery.isFree ? "مجاني" : `${deliveryCost.toFixed(2)} ج.م`,
+              label:      t("cart.delivery"),
+              value:      delivery.isFree ? t("common.free") : `${deliveryCost.toFixed(2)} ${t("common.currency")}`,
               valueColor: delivery.isFree ? theme.colors.success.strong : undefined,
             },
           ]).map((row) => (
@@ -344,13 +353,13 @@ export default function CartScreen() {
           <View style={styles.footerDivider} />
           <View style={styles.footerRow}>
             <View>
-              <UIText variant="eyebrow" color="tertiary">المبلغ الإجمالي</UIText>
+              <UIText variant="eyebrow" color="tertiary">{t("cart.totalAmount")}</UIText>
               <UIText variant="card-title" align="right" style={styles.totalLabel}>
-                الإجمالي
+                {t("cart.total")}
               </UIText>
             </View>
             <UIText variant="sheet-title" weight="black" align="left" style={styles.totalValue}>
-              {total.toFixed(2)}  <UIText variant="caption" weight="bold" style={{ color: theme.colors.brand[600] }}>ج.م</UIText>
+              {total.toFixed(2)}{"  "}<UIText variant="caption" weight="bold" style={{ color: theme.colors.brand[600] }}>{t("common.currency")}</UIText>
             </UIText>
           </View>
         </View>
@@ -363,8 +372,8 @@ export default function CartScreen() {
           disabled={!delivery.isDeliverable}
           onPress={() => router.push("/checkout")}>
           {delivery.isDeliverable
-            ? `إتمام الطلب — ${total.toFixed(2)} ج.م`
-            : "العنوان خارج نطاق التوصيل"}
+            ? t("cart.checkoutBtn", { total: total.toFixed(2) })
+            : t("cart.outsideDelivery")}
         </Button>
       </View>
     </View>

@@ -3,6 +3,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { theme } from "@/theme";
 import type { PaymentMethod } from "../types";
 
@@ -21,6 +22,7 @@ const TYPE_COLORS: Record<string, { accent: string; bg: string; ring: string }> 
 };
 
 export function PaymentMethodCard({ method, selected, onSelect }: Props) {
+  const { t } = useTranslation();
   const colors = TYPE_COLORS[method.type] ?? TYPE_COLORS.cod;
   const scale = useSharedValue(1);
 
@@ -58,9 +60,9 @@ export function PaymentMethodCard({ method, selected, onSelect }: Props) {
         {/* Text */}
         <View style={styles.textWrap}>
           <Text style={[styles.label, selected && { color: theme.colors.text.primary, fontFamily: theme.fonts.black }]}>
-            {method.label}
+            {t(method.labelKey)}
           </Text>
-          <Text style={styles.desc}>{method.description}</Text>
+          <Text style={styles.desc}>{t(method.descKey)}</Text>
           {method.phone && (
             <View style={styles.phoneRow}>
               <Ionicons name="call-outline" size={12} color={colors.accent} />
@@ -72,18 +74,18 @@ export function PaymentMethodCard({ method, selected, onSelect }: Props) {
           {selected && (
             <Animated.View entering={FadeIn.duration(200)} style={styles.secureBadge}>
               <Ionicons name="shield-checkmark" size={10} color={theme.colors.green[600]} />
-              <Text style={styles.secureText}>آمن</Text>
+              <Text style={styles.secureText}>{t("payment.secure")}</Text>
             </Animated.View>
           )}
         </View>
       </Pressable>
 
       {/* Expanded details when selected */}
-      {selected && method.details && (
+      {selected && method.detailsKey && (
         <Animated.View entering={FadeIn.duration(250)} style={styles.detailsCard}>
           <View style={styles.detailRow}>
             <Ionicons name="information-circle-outline" size={14} color={theme.colors.slate[400]} />
-            <Text style={styles.detailText}>{method.details}</Text>
+            <Text style={styles.detailText}>{t(method.detailsKey)}</Text>
           </View>
           {method.phone && (
             <View style={styles.detailRow}>

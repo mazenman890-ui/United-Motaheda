@@ -29,6 +29,8 @@ import Animated, {
   withTiming,
   interpolate,
 } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { AddressMapPlaceholder } from "./AddressMapPlaceholder";
 import { ADDRESS_LABELS } from "../types";
 import type { Address, AddressFormData } from "../types";
@@ -88,34 +90,33 @@ function useShakeOnError(error?: string) {
 // ─── Phone Validation ───────────────────────────────────────────────────────
 const PHONE_REGEX = /^(?:\+20|0020|0)?1[0125]\d{8}$/;
 const PHONE_EXAMPLE = "01012345678";
-const PHONE_ERROR_MSG = `صيغة الجوال غير صحيحة، مثال: ${PHONE_EXAMPLE}`;
 
-function getPhoneError(phone: string): string | undefined {
+function getPhoneError(phone: string, t: TFunction): string | undefined {
   const trimmed = phone.trim();
-  if (!trimmed) return "مطلوب";
-  if (!PHONE_REGEX.test(trimmed)) return PHONE_ERROR_MSG;
+  if (!trimmed) return t("common.required");
+  if (!PHONE_REGEX.test(trimmed)) return t("addressForm.phoneInvalid", { example: PHONE_EXAMPLE });
   return undefined;
 }
 
 // ─── Steps Definition ───────────────────────────────────────────────────────
 const STEPS = [
   {
-    key: "type_recipient",
-    title: "نوع العنوان والمستلم",
-    subtitle: "اختر نوع العنوان وبيانات المستلم",
-    icon: "person-outline" as IoniconsName,
+    key:         "type_recipient",
+    titleKey:    "addressForm.stepTypeTitle",
+    subtitleKey: "addressForm.stepTypeSubtitle",
+    icon:        "person-outline" as IoniconsName,
   },
   {
-    key: "address_details",
-    title: "تفاصيل العنوان",
-    subtitle: "الحي والشارع ورقم المبنى",
-    icon: "map-outline" as IoniconsName,
+    key:         "address_details",
+    titleKey:    "addressForm.stepDetailsTitle",
+    subtitleKey: "addressForm.stepDetailsSubtitle",
+    icon:        "map-outline" as IoniconsName,
   },
   {
-    key: "confirm",
-    title: "تأكيد",
-    subtitle: "راجع بيانات العنوان",
-    icon: "checkmark-circle-outline" as IoniconsName,
+    key:         "confirm",
+    titleKey:    "addressForm.stepConfirmTitle",
+    subtitleKey: "addressForm.stepConfirmSubtitle",
+    icon:        "checkmark-circle-outline" as IoniconsName,
   },
 ];
 
@@ -145,6 +146,7 @@ export function AddressFormDrawer({
   onSubmit,
   loading,
 }: Props) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const isEdit = !!address;
 
@@ -230,24 +232,24 @@ export function AddressFormDrawer({
       const newErrors: typeof errors = {};
 
       if (fields.includes("label") && !form.label) {
-        newErrors.label = "اختر نوع العنوان";
+        newErrors.label = t("addressForm.selectLabel");
       }
       if (fields.includes("recipient_name")) {
-        if (!form.recipient_name.trim()) newErrors.recipient_name = "مطلوب";
+        if (!form.recipient_name.trim()) newErrors.recipient_name = t("common.required");
         else if (form.recipient_name.trim().length < 3)
-          newErrors.recipient_name = "الاسم قصير جداً";
+          newErrors.recipient_name = t("addressForm.nameTooShort");
       }
       if (fields.includes("phone")) {
-        const phoneError = getPhoneError(form.phone);
+        const phoneError = getPhoneError(form.phone, t);
         if (phoneError) newErrors.phone = phoneError;
       }
-      if (fields.includes("city") && !form.city.trim()) newErrors.city = "مطلوب";
+      if (fields.includes("city") && !form.city.trim()) newErrors.city = t("common.required");
       if (fields.includes("district") && !form.district.trim())
-        newErrors.district = "مطلوب";
+        newErrors.district = t("common.required");
       if (fields.includes("street") && !form.street.trim())
-        newErrors.street = "مطلوب";
+        newErrors.street = t("common.required");
       if (fields.includes("building") && !form.building.trim())
-        newErrors.building = "مطلوب";
+        newErrors.building = t("common.required");
 
       setErrors((prev) => ({ ...prev, ...newErrors }));
       return Object.keys(newErrors).length === 0;
@@ -257,16 +259,16 @@ export function AddressFormDrawer({
 
   const validateAll = useCallback((): { valid: boolean; errors: typeof errors } => {
     const newErrors: typeof errors = {};
-    if (!form.label) newErrors.label = "اختر نوع العنوان";
-    if (!form.recipient_name.trim()) newErrors.recipient_name = "مطلوب";
+    if (!form.label) newErrors.label = t("addressForm.selectLabel");
+    if (!form.recipient_name.trim()) newErrors.recipient_name = t("common.required");
     else if (form.recipient_name.trim().length < 3)
-      newErrors.recipient_name = "الاسم قصير جداً";
-    const phoneError = getPhoneError(form.phone);
+      newErrors.recipient_name = t("addressForm.nameTooShort");
+    const phoneError = getPhoneError(form.phone, t);
     if (phoneError) newErrors.phone = phoneError;
-    if (!form.city.trim()) newErrors.city = "مطلوب";
-    if (!form.district.trim()) newErrors.district = "مطلوب";
-    if (!form.street.trim()) newErrors.street = "مطلوب";
-    if (!form.building.trim()) newErrors.building = "مطلوب";
+    if (!form.city.trim()) newErrors.city = t("common.required");
+    if (!form.district.trim()) newErrors.district = t("common.required");
+    if (!form.street.trim()) newErrors.street = t("common.required");
+    if (!form.building.trim()) newErrors.building = t("common.required");
     setErrors(newErrors);
     return { valid: Object.keys(newErrors).length === 0, errors: newErrors };
   }, [form]);
@@ -321,17 +323,17 @@ export function AddressFormDrawer({
     if (isDirty) {
       if (Platform.OS === "web" && typeof globalThis !== "undefined" && "window" in globalThis) {
         const confirmDiscard = (globalThis as any).window.confirm(
-          "لديك تغييرات غير محفوظة. هل تريد تجاهلها والخروج؟",
+          t("addressForm.confirmDiscardWeb"),
         );
         if (confirmDiscard) onClose();
         return;
       }
 
       showConfirmSheet(
-        "تجاهل التغييرات؟",
-        "لديك تغييرات غير محفوظة. هل تريد الخروج بدون حفظ؟",
+        t("addressForm.confirmDiscardTitle"),
+        t("addressForm.confirmDiscardMsg"),
         onClose,
-        { confirmLabel: "تجاهل التغييرات", danger: true, cancelLabel: "البقاء" },
+        { confirmLabel: t("addressForm.confirmDiscardAction"), danger: true, cancelLabel: t("addressForm.stayAction") },
       );
     } else {
       onClose();
@@ -372,7 +374,7 @@ export function AddressFormDrawer({
               hitSlop={24}
               pressRetentionOffset={{ top: 18, bottom: 18, left: 18, right: 18 }}
               accessibilityRole="button"
-              accessibilityLabel="إغلاق"
+              accessibilityLabel={t("common.close")}
               android_ripple={{
                 color: theme.colors.slate[200],
                 borderless: false,
@@ -383,10 +385,10 @@ export function AddressFormDrawer({
             </Pressable>
             <View style={styles.headerCenter}>
               <Text style={styles.headerTitle}>
-                {isEdit ? "تعديل العنوان" : "إضافة عنوان جديد"}
+                {isEdit ? t("addressForm.editTitle") : t("addressForm.addTitle")}
               </Text>
               <Text style={styles.headerStepSubtitle}>
-                {STEPS[currentStepIdx].subtitle}
+                {t(STEPS[currentStepIdx].subtitleKey)}
               </Text>
             </View>
             <View style={{ width: 36 }} />
@@ -428,7 +430,7 @@ export function AddressFormDrawer({
                     ]}
                     numberOfLines={1}
                   >
-                    {step.title}
+                    {t(step.titleKey)}
                   </Text>
                 </Pressable>
               );
@@ -440,7 +442,7 @@ export function AddressFormDrawer({
             <View style={styles.progressBar}>
               <Animated.View style={[styles.progressFill, progressBarStyle]} />
             </View>
-            <Text style={styles.progressText}>{completionPercent}% مكتمل</Text>
+            <Text style={styles.progressText}>{t("addressForm.percentComplete", { percent: completionPercent })}</Text>
           </View>
 
           {/* ── Scrollable Content ── */}
@@ -476,7 +478,7 @@ export function AddressFormDrawer({
                 }}
               >
                 <Ionicons name="arrow-forward" size={16} color={theme.colors.slate[600]} />
-                <Text style={styles.navBtnText}>السابق</Text>
+                <Text style={styles.navBtnText}>{t("common.previous")}</Text>
               </Pressable>
             )}
             <View style={{ flex: 1 }} />
@@ -490,7 +492,7 @@ export function AddressFormDrawer({
                   radius: 14,
                 }}
               >
-                <Text style={styles.navBtnPrimaryText}>التالي</Text>
+                <Text style={styles.navBtnPrimaryText}>{t("common.next")}</Text>
                 <Ionicons name="arrow-back" size={16} color="#fff" />
               </Pressable>
             ) : (
@@ -523,10 +525,10 @@ export function AddressFormDrawer({
                 )}
                 <Text style={styles.submitText}>
                   {loading
-                    ? "جاري الحفظ..."
+                    ? t("addressForm.saving")
                     : isEdit
-                    ? "حفظ التعديلات"
-                    : "إضافة العنوان"}
+                    ? t("addressForm.saveEdit")
+                    : t("addressForm.addAddress")}
                 </Text>
               </Pressable>
             )}
@@ -553,13 +555,15 @@ function StepContent({
   isEdit: boolean;
   address?: Address | null;
 }) {
+  const { t } = useTranslation();
+
   switch (stepKey) {
     case "type_recipient":
       return (
         <Animated.View entering={FadeIn.duration(300)} style={styles.stepContainer}>
           {/* Label selector card */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>نوع العنوان</Text>
+            <Text style={styles.cardTitle}>{t("addressForm.labelType")}</Text>
             <View style={styles.labelGrid}>
               {ADDRESS_LABELS.map((l) => {
                 const active = form.label === l.key;
@@ -590,7 +594,7 @@ function StepContent({
                         active && styles.labelChipTextActive,
                       ]}
                     >
-                      {l.label}
+                      {t(l.labelKey)}
                     </Text>
                     {active && (
                       <View style={styles.activeIndicator}>
@@ -612,19 +616,19 @@ function StepContent({
 
           {/* Recipient info card */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>معلومات المستلم</Text>
+            <Text style={styles.cardTitle}>{t("addressForm.recipientInfo")}</Text>
             <View style={styles.fieldGroup}>
               <FloatingLabelInput
-                label="اسم المستلم *"
+                label={t("addressForm.recipientName")}
                 value={form.recipient_name}
                 onChange={(v) => updateField("recipient_name", v)}
                 error={errors.recipient_name}
-                placeholder="الاسم بالكامل"
+                placeholder={t("addressForm.recipientNamePlaceholder")}
                 icon="person-outline"
                 autoFocus={!isEdit}
               />
               <FloatingLabelInput
-                label="رقم الهاتف *"
+                label={t("addressForm.phone")}
                 value={form.phone}
                 onChange={(v) => updateField("phone", v)}
                 error={errors.phone}
@@ -642,12 +646,12 @@ function StepContent({
       return (
         <Animated.View entering={FadeIn.duration(300)} style={styles.stepContainer}>
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>تفاصيل العنوان</Text>
+            <Text style={styles.cardTitle}>{t("addressForm.detailsTitle")}</Text>
             <View style={styles.fieldGroup}>
               <View style={styles.row}>
                 {/* City – read only */}
                 <View style={styles.fieldColumn}>
-                  <Text style={fieldStyles.label}>المدينة *</Text>
+                  <Text style={fieldStyles.label}>{t("addressForm.city")}</Text>
                   <View style={[fieldStyles.inputWrap, styles.readonlyField]}>
                     <Ionicons
                       name="lock-closed"
@@ -661,31 +665,31 @@ function StepContent({
                 </View>
                 <View style={styles.fieldColumn}>
                   <FloatingLabelInput
-                    label="الحي *"
+                    label={t("addressForm.district")}
                     value={form.district}
                     onChange={(v) => updateField("district", v)}
                     error={errors.district}
-                    placeholder="مثال: النرجس"
+                    placeholder={t("addressForm.districtPlaceholder")}
                   />
                 </View>
               </View>
 
               <FloatingLabelInput
-                label="الشارع *"
+                label={t("addressForm.street")}
                 value={form.street}
                 onChange={(v) => updateField("street", v)}
                 error={errors.street}
-                placeholder="اسم أو رقم الشارع"
+                placeholder={t("addressForm.streetPlaceholder")}
               />
 
               <View style={styles.row}>
                 <View style={styles.fieldColumnWide}>
                   <FloatingLabelInput
-                    label="المبنى *"
+                    label={t("addressForm.building")}
                     value={form.building}
                     onChange={(v) => updateField("building", v)}
                     error={errors.building}
-                    placeholder="رقم المبنى"
+                    placeholder={t("addressForm.buildingPlaceholder")}
                   />
                 </View>
               </View>
@@ -693,27 +697,27 @@ function StepContent({
               <View style={styles.row}>
                 <View style={styles.fieldColumn}>
                   <FloatingLabelInput
-                    label="الطابق"
+                    label={t("addressForm.floor")}
                     value={form.floor ?? ""}
                     onChange={(v) => updateField("floor", v)}
-                    placeholder="مثال: 3"
+                    placeholder={t("addressForm.floorPlaceholder")}
                   />
                 </View>
                 <View style={styles.fieldColumn}>
                   <FloatingLabelInput
-                    label="الشقة"
+                    label={t("addressForm.apartment")}
                     value={form.apartment ?? ""}
                     onChange={(v) => updateField("apartment", v)}
-                    placeholder="مثال: 7"
+                    placeholder={t("addressForm.apartmentPlaceholder")}
                   />
                 </View>
               </View>
 
               <FloatingLabelInput
-                label="علامة مميزة"
+                label={t("addressForm.landmark")}
                 value={form.landmark ?? ""}
                 onChange={(v) => updateField("landmark", v)}
-                placeholder="بجوار مسجد / مقابل حديقة…"
+                placeholder={t("addressForm.landmarkPlaceholder")}
                 icon="flag-outline"
               />
             </View>
@@ -734,33 +738,31 @@ function StepContent({
                 color={theme.colors.brand[600]}
               />
               <Text style={styles.mapHintText}>
-                سيتم تحديد الموقع تلقائياً عند التوصيل
+                {t("addressForm.locationNote")}
               </Text>
             </View>
           </View>
 
           {/* Summary card */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>ملخص العنوان</Text>
+            <Text style={styles.cardTitle}>{t("addressForm.summaryTitle")}</Text>
             <View style={styles.summaryRows}>
               <SummaryRow
-                label="النوع"
-                value={
-                  ADDRESS_LABELS.find((l) => l.key === form.label)?.label ?? ""
-                }
+                label={t("addressForm.summaryLabelType")}
+                value={t(ADDRESS_LABELS.find((l) => l.key === form.label)?.labelKey ?? "")}
               />
-              <SummaryRow label="اسم المستلم" value={form.recipient_name} />
-              <SummaryRow label="الجوال" value={form.phone} />
-              <SummaryRow label="المدينة" value={form.city} />
-              <SummaryRow label="الحي" value={form.district} />
-              <SummaryRow label="الشارع" value={form.street} />
-              <SummaryRow label="المبنى" value={form.building} />
-              {form.floor && <SummaryRow label="الطابق" value={form.floor} />}
+              <SummaryRow label={t("addressForm.summaryLabelName")} value={form.recipient_name} />
+              <SummaryRow label={t("addressForm.summaryLabelPhone")} value={form.phone} />
+              <SummaryRow label={t("addressForm.summaryLabelCity")} value={form.city} />
+              <SummaryRow label={t("addressForm.summaryLabelDistrict")} value={form.district} />
+              <SummaryRow label={t("addressForm.summaryLabelStreet")} value={form.street} />
+              <SummaryRow label={t("addressForm.summaryLabelBuilding")} value={form.building} />
+              {form.floor && <SummaryRow label={t("addressForm.floor")} value={form.floor} />}
               {form.apartment && (
-                <SummaryRow label="الشقة" value={form.apartment} />
+                <SummaryRow label={t("addressForm.apartment")} value={form.apartment} />
               )}
               {form.landmark && (
-                <SummaryRow label="علامة مميزة" value={form.landmark} />
+                <SummaryRow label={t("addressForm.landmark")} value={form.landmark} />
               )}
             </View>
           </View>
@@ -787,8 +789,8 @@ function StepContent({
               }
             />
             <View>
-              <Text style={styles.toggleTitle}>تعيين كعنوان افتراضي</Text>
-              <Text style={styles.toggleDesc}>سيُستخدم تلقائياً عند الطلب</Text>
+              <Text style={styles.toggleTitle}>{t("addressForm.setDefault")}</Text>
+              <Text style={styles.toggleDesc}>{t("addressForm.setDefaultDesc")}</Text>
             </View>
           </Pressable>
         </Animated.View>

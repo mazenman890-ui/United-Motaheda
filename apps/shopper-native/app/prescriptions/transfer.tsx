@@ -6,13 +6,15 @@
  */
 
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ComingSoonScreen } from "@/shared/components";
 
 export default function Page(): React.ReactElement {
+  const { t } = useTranslation();
   return (
     <ComingSoonScreen
-      title="نقل من صيدلية أخرى"
-      subtitle="نموذج النقل قيد التطوير"
+      title={t("prescriptions.transferTitle")}
+      subtitle={t("prescriptions.transferSubtitle")}
       icon="swap-horizontal-outline"
     />
   );

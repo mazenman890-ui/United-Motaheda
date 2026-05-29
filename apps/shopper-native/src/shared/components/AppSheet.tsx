@@ -16,6 +16,7 @@ import {
   Dimensions,
   Platform,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -53,56 +54,56 @@ const TYPE_CFG: Record<AppSheetType, TypeCfg> = {
     icon:    "close-circle",
     grad:    ["#FF7676", "#EF4444"],
     glow:    "rgba(239,68,68,0.28)",
-    badge:   "خطأ",
+    badge:   "sheet.badge.error",
     badgeBg: "rgba(239,68,68,0.12)",
   },
   warning: {
     icon:    "warning",
     grad:    ["#FCD34D", "#F59E0B"],
     glow:    "rgba(245,158,11,0.28)",
-    badge:   "تحذير",
+    badge:   "sheet.badge.warning",
     badgeBg: "rgba(245,158,11,0.12)",
   },
   success: {
     icon:    "checkmark-circle",
     grad:    ["#34D399", "#059669"],
     glow:    "rgba(5,150,105,0.28)",
-    badge:   "نجاح",
+    badge:   "sheet.badge.success",
     badgeBg: "rgba(5,150,105,0.12)",
   },
   info: {
     icon:    "information-circle",
     grad:    ["#60A5FA", "#2563EB"],
     glow:    "rgba(37,99,235,0.28)",
-    badge:   "معلومة",
+    badge:   "sheet.badge.info",
     badgeBg: "rgba(37,99,235,0.12)",
   },
   auth: {
     icon:    "person-circle",
     grad:    ["#A78BFA", "#6D28D9"],
     glow:    "rgba(109,40,217,0.28)",
-    badge:   "تسجيل دخول",
+    badge:   "sheet.badge.auth",
     badgeBg: "rgba(109,40,217,0.12)",
   },
   "out-of-zone": {
     icon:    "location",
     grad:    ["#FB923C", "#EA580C"],
     glow:    "rgba(234,88,12,0.28)",
-    badge:   "خارج النطاق",
+    badge:   "sheet.badge.outOfZone",
     badgeBg: "rgba(234,88,12,0.12)",
   },
   confirm: {
-    icon:    "help-circle",
-    grad:    ["#2DD4BF", "#0D9488"],
-    glow:    "rgba(13,148,136,0.28)",
-    badge:   "تأكيد",
-    badgeBg: "rgba(13,148,136,0.12)",
+    icon:    "alert-circle",
+    grad:    ["#FBBF24", "#D97706"],
+    glow:    "rgba(217,119,6,0.28)",
+    badge:   "sheet.badge.confirm",
+    badgeBg: "rgba(217,119,6,0.12)",
   },
   network: {
     icon:    "wifi-outline",
     grad:    ["#818CF8", "#4F46E5"],
     glow:    "rgba(79,70,229,0.28)",
-    badge:   "اتصال",
+    badge:   "sheet.badge.network",
     badgeBg: "rgba(79,70,229,0.12)",
   },
 };
@@ -149,6 +150,7 @@ function ActionBtn({ action, cfg }: { action: AppSheetAction; cfg: TypeCfg }) {
 // ─── Main sheet ───────────────────────────────────────────────────────────────
 
 export function AppSheet() {
+  const { t }               = useTranslation();
   const insets              = useSafeAreaInsets();
   const { visible, config, hide } = useAppSheetStore();
 
@@ -233,7 +235,7 @@ export function AppSheet() {
           <View style={s.badgeRow}>
             <View style={[s.typeBadge, { backgroundColor: cfg.badgeBg }]}>
               <Text style={[s.typeBadgeTxt, { color: cfg.grad[1] }]}>
-                {cfg.badge}
+                {t(cfg.badge)}
               </Text>
             </View>
           </View>

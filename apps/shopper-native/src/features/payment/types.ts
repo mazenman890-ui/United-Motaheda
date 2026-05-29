@@ -3,11 +3,11 @@ export type PaymentMethodType = "cod" | "instapay" | "vodafone_cash";
 export interface PaymentMethod {
   id: string;
   type: PaymentMethodType;
-  label: string;
-  description: string;
+  labelKey: string;
+  descKey: string;
   icon: string;
   is_active: boolean;
-  details?: string;
+  detailsKey?: string;
   phone?: string;
 }
 
@@ -23,30 +23,30 @@ export const PAYMENT_METHODS: PaymentMethod[] = [
   {
     id: "cod",
     type: "cod",
-    label: "الدفع عند الاستلام",
-    description: "ادفع نقداً عند استلام طلبك",
+    labelKey: "payment.methodCod",
+    descKey: "payment.methodCodDesc",
     icon: "cash-outline",
     is_active: true,
-    details: "يتم الدفع للمندوب مباشرة",
+    detailsKey: "payment.methodCodDetails",
   },
   {
     id: "instapay",
     type: "instapay",
-    label: "InstaPay",
-    description: "تحويل عبر إنستاباي",
+    labelKey: "payment.methodInstapay",
+    descKey: "payment.methodInstapayDesc",
     icon: "flash-outline",
     is_active: true,
     phone: "01124076520",
-    details: "حوّل المبلغ وأرسل لنا صورة الإيصال",
+    detailsKey: "payment.methodInstapayDetails",
   },
   {
     id: "vodafone_cash",
     type: "vodafone_cash",
-    label: "فودافون كاش",
-    description: "تحويل عبر فودافون كاش",
+    labelKey: "payment.methodVodafone",
+    descKey: "payment.methodVodafoneDesc",
     icon: "wallet-outline",
     is_active: true,
     phone: "01124076520",
-    details: "حوّل لرقم المحفظة وأرسل الإيصال",
+    detailsKey: "payment.methodVodafoneDetails",
   },
 ];

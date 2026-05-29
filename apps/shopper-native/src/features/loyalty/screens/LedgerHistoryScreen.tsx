@@ -20,6 +20,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
 import { theme } from "@/theme";
 import { useScreenTrace } from "@/features/observability";
 import { SubScreenHeader } from "../components/SubScreenHeader";
@@ -31,6 +32,7 @@ type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 export function LedgerHistoryScreen() {
   useScreenTrace("loyalty-history");
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   const { data, isLoading, isError, isFetchingNextPage, hasNextPage, fetchNextPage, refetch } =
     useLoyaltyHistory();
@@ -50,7 +52,7 @@ export function LedgerHistoryScreen() {
   if (isLoading) {
     return (
       <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-        <SubScreenHeader title="سجل النقاط" subtitle="كل معاملاتك في مكان واحد" />
+        <SubScreenHeader title={t("loyalty.ledgerTitle")} subtitle={t("loyalty.ledgerSubtitle")} />
         <View style={{ padding: 16 }}>
           <ListSkeleton rows={5} />
         </View>
@@ -61,21 +63,21 @@ export function LedgerHistoryScreen() {
   if (isError) {
     return (
       <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-        <SubScreenHeader title="سجل النقاط" subtitle="كل معاملاتك في مكان واحد" />
+        <SubScreenHeader title={t("loyalty.ledgerTitle")} subtitle={t("loyalty.ledgerSubtitle")} />
         <View style={styles.centerPanel}>
           <Ionicons name="cloud-offline-outline" size={36} color={theme.colors.slate[400]} />
-          <Text style={styles.errorTitle} maxFontSizeMultiplier={1.4}>تعذر تحميل السجل</Text>
+          <Text style={styles.errorTitle} maxFontSizeMultiplier={1.4}>{t("loyalty.ledgerErrorTitle")}</Text>
           <Text style={styles.errorBody} maxFontSizeMultiplier={1.5}>
-            تحقق من اتصالك وحاول مرة أخرى.
+            {t("loyalty.ledgerErrorBody")}
           </Text>
           <Pressable
             onPress={() => void refetch()}
             accessibilityRole="button"
-            accessibilityLabel="إعادة المحاولة"
+            accessibilityLabel={t("common.retry")}
             style={({ pressed }) => [styles.primaryBtn, pressed && { opacity: 0.9 }]}
           >
             <Ionicons name="refresh" size={14} color="#fff" />
-            <Text style={styles.primaryBtnText}>إعادة المحاولة</Text>
+            <Text style={styles.primaryBtnText}>{t("common.retry")}</Text>
           </Pressable>
         </View>
       </View>
@@ -84,7 +86,7 @@ export function LedgerHistoryScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-      <SubScreenHeader title="سجل النقاط" subtitle="كل معاملاتك في مكان واحد" />
+      <SubScreenHeader title={t("loyalty.ledgerTitle")} subtitle={t("loyalty.ledgerSubtitle")} />
       <FlatList
         data={allEntries}
         keyExtractor={(item) => item.id}
@@ -99,7 +101,7 @@ export function LedgerHistoryScreen() {
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={theme.colors.brand[600]}
-            accessibilityLabel="تحديث السجل"
+            accessibilityLabel={t("loyalty.ledgerRefreshA11y")}
           />
         }
         onEndReached={loadMore}
@@ -109,16 +111,16 @@ export function LedgerHistoryScreen() {
           <View style={styles.centerPanel}>
             <Ionicons name="time-outline" size={36} color={theme.colors.slate[300]} />
             <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
-              لا توجد معاملات بعد
+              {t("loyalty.ledgerEmpty")}
             </Text>
             <Text style={styles.emptyBody} maxFontSizeMultiplier={1.5}>
-              ستظهر هنا نقاطك المكتسبة والمستبدلة عند كل طلب.
+              {t("loyalty.ledgerEmptyBody")}
             </Text>
           </View>
         }
         ListFooterComponent={
           isFetchingNextPage ? (
-            <View style={styles.footerLoader} accessibilityLabel="جارٍ تحميل المزيد">
+            <View style={styles.footerLoader} accessibilityLabel={t("loyalty.ledgerLoadMoreA11y")}>
               <ActivityIndicator size="small" color={theme.colors.brand[600]} />
             </View>
           ) : null
@@ -131,7 +133,11 @@ export function LedgerHistoryScreen() {
 // ─── Entry row ───────────────────────────────────────────────────────────────
 
 function EntryRow({ entry }: { entry: LedgerEntry }) {
+  const { t } = useTranslation();
   const isCredit = entry.delta > 0;
+
+  const kindStr = getKindLabel(entry.kind, t);
+
   const date = new Date(entry.created_at).toLocaleDateString("ar-EG", {
     day:   "numeric",
     month: "short",
@@ -146,7 +152,11 @@ function EntryRow({ entry }: { entry: LedgerEntry }) {
     <View
       style={styles.row}
       accessibilityRole="text"
-      accessibilityLabel={`${kindLabel(entry.kind)} ${isCredit ? "+" : ""}${entry.delta} نقطة، ${date}`}
+      accessibilityLabel={t("loyalty.ledgerRowA11y", {
+        kind:  kindStr,
+        delta: `${isCredit ? "+" : ""}${entry.delta}`,
+        date,
+      })}
     >
       <View style={[styles.iconWrap, { backgroundColor: isCredit ? theme.colors.green[50] : theme.colors.rose[50] }]}>
         <Ionicons
@@ -158,7 +168,7 @@ function EntryRow({ entry }: { entry: LedgerEntry }) {
 
       <View style={styles.rowBody}>
         <Text style={styles.rowKind} maxFontSizeMultiplier={1.3} numberOfLines={1}>
-          {kindLabel(entry.kind)}
+          {kindStr}
         </Text>
         {entry.source_ref && (
           <Text style={styles.rowRef} maxFontSizeMultiplier={1.4} numberOfLines={1}>
@@ -178,7 +188,7 @@ function EntryRow({ entry }: { entry: LedgerEntry }) {
           {isCredit ? "+" : ""}{entry.delta.toLocaleString("ar-EG")}
         </Text>
         <Text style={styles.rowBalance} maxFontSizeMultiplier={1.4}>
-          {entry.balance_after.toLocaleString("ar-EG")} نقطة
+          {entry.balance_after.toLocaleString("ar-EG")} {t("loyalty.pointsUnit")}
         </Text>
       </View>
     </View>
@@ -187,17 +197,19 @@ function EntryRow({ entry }: { entry: LedgerEntry }) {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function kindLabel(kind: LedgerEntry["kind"]): string {
+type TFunc = ReturnType<typeof useTranslation>["t"];
+
+function getKindLabel(kind: LedgerEntry["kind"], t: TFunc): string {
   switch (kind) {
-    case "earn":     return "نقاط مكتسبة";
-    case "redeem":   return "استبدال نقاط";
-    case "adjust":   return "تعديل يدوي";
-    case "reverse":  return "استرداد نقاط";
-    case "expire":   return "نقاط منتهية";
-    case "bonus":    return "نقاط إضافية";
-    case "referral": return "مكافأة الإحالة";
-    case "cashback": return "كاش باك";
-    default:         return "معاملة";
+    case "earn":     return t("loyalty.kindEarn");
+    case "redeem":   return t("loyalty.kindRedeem");
+    case "adjust":   return t("loyalty.kindAdjust");
+    case "reverse":  return t("loyalty.kindReverse");
+    case "expire":   return t("loyalty.kindExpire");
+    case "bonus":    return t("loyalty.kindBonus");
+    case "referral": return t("loyalty.kindReferral");
+    case "cashback": return t("loyalty.kindCashback");
+    default:         return t("loyalty.kindDefault");
   }
 }
 
@@ -218,10 +230,11 @@ function kindIcon(kind: LedgerEntry["kind"]): IoniconsName {
 // ─── Skeleton ────────────────────────────────────────────────────────────────
 
 function ListSkeleton({ rows }: { rows: number }) {
+  const { t } = useTranslation();
   return (
     <>
       {Array.from({ length: rows }).map((_, i) => (
-        <View key={i} style={[styles.row, styles.skeletonRow]} accessibilityLabel="جارٍ التحميل" />
+        <View key={i} style={[styles.row, styles.skeletonRow]} accessibilityLabel={t("common.loading")} />
       ))}
     </>
   );

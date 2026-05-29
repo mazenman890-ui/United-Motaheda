@@ -8,7 +8,7 @@
  *   • Coupons section with native Share (copy to clipboard workaround)
  *   • Pending gifts/redemptions section
  *   • Skeleton loading, error-with-retry, unauthenticated state, frozen warning
- *   • Full RTL + Arabic a11y labels
+ *   • Full RTL + a11y labels via i18n
  */
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -31,6 +31,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
 import { theme } from "@/theme";
 import { useScreenTrace } from "@/features/observability";
 import { useAuth } from "@/features/auth/context";
@@ -46,27 +47,11 @@ const TOUR_SEEN_KEY = "loyalty_tour_seen_v1";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
-const TOUR_STEPS: { icon: IoniconsName; title: string; body: string }[] = [
-  {
-    icon:  "wallet-outline",
-    title: "رصيدك من النقاط",
-    body:  "تكتسب نقاطاً مع كل عملية شراء. كلما اشتريت أكثر كلما كسبت أكثر!",
-  },
-  {
-    icon:  "star-outline",
-    title: "مستويات المكافآت",
-    body:  "ارتقِ من برونزي إلى فضي إلى ذهبي للحصول على مضاعف كسب أعلى وعروض حصرية.",
-  },
-  {
-    icon:  "pricetag-outline",
-    title: "قسائم الخصم",
-    body:  "استبدل نقاطك بقسائم فورية — انسخ الكود وطبّقه مباشرةً عند الدفع.",
-  },
-  {
-    icon:  "gift-outline",
-    title: "هدايا مميزة",
-    body:  "اختر هديةً من الكتالوج وتلقَّها على باب منزلك مجاناً!",
-  },
+const TOUR_STEPS: { icon: IoniconsName; titleKey: string; bodyKey: string }[] = [
+  { icon: "wallet-outline",   titleKey: "loyalty.tourStep1Title", bodyKey: "loyalty.tourStep1Body" },
+  { icon: "star-outline",     titleKey: "loyalty.tourStep2Title", bodyKey: "loyalty.tourStep2Body" },
+  { icon: "pricetag-outline", titleKey: "loyalty.tourStep3Title", bodyKey: "loyalty.tourStep3Body" },
+  { icon: "gift-outline",     titleKey: "loyalty.tourStep4Title", bodyKey: "loyalty.tourStep4Body" },
 ];
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -83,7 +68,7 @@ export interface LoyaltyWalletScreenProps {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function LoyaltyWalletScreen({
-  title = "محفظة المكافآت",
+  title,
   onBrowseCoupons,
   onBrowseGifts,
   onViewHistory,
@@ -93,6 +78,7 @@ export function LoyaltyWalletScreen({
   useScreenTrace("loyalty-wallet");
   const insets   = useSafeAreaInsets();
   const { user } = useAuth();
+  const { t }    = useTranslation();
   const isAuthed = !!user;
 
   const balance = useLoyaltyBalance(isAuthed);
@@ -137,11 +123,13 @@ export function LoyaltyWalletScreen({
     void tiers.refetch();
   }, [balance, coupons, redeems, tiers]);
 
+  const resolvedTitle = title ?? t("loyalty.walletTitle");
+
   // ── Unauthenticated ────────────────────────────────────────────────────────
   if (!isAuthed) {
     return (
       <View style={[styles.screen, { paddingTop: insets.top }]}>
-        <ScreenHeader title={title} />
+        <ScreenHeader title={resolvedTitle} />
         <UnauthPanel />
       </View>
     );
@@ -151,7 +139,7 @@ export function LoyaltyWalletScreen({
   if (balance.isLoading) {
     return (
       <View style={[styles.screen, { paddingTop: insets.top }]}>
-        <ScreenHeader title={title} />
+        <ScreenHeader title={resolvedTitle} />
         <WalletSkeleton />
       </View>
     );
@@ -161,7 +149,7 @@ export function LoyaltyWalletScreen({
   if (balance.isError) {
     return (
       <View style={[styles.screen, { paddingTop: insets.top }]}>
-        <ScreenHeader title={title} />
+        <ScreenHeader title={resolvedTitle} />
         <ErrorPanel onRetry={onRefresh} />
       </View>
     );
@@ -183,7 +171,7 @@ export function LoyaltyWalletScreen({
         onSkip={dismissTour}
       />
 
-      <ScreenHeader title={title} onTourPress={() => setTourVisible(true)} />
+      <ScreenHeader title={resolvedTitle} onTourPress={() => setTourVisible(true)} />
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
@@ -192,7 +180,7 @@ export function LoyaltyWalletScreen({
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={theme.colors.brand[600]}
-            accessibilityLabel="تحديث الرصيد"
+            accessibilityLabel={t("loyalty.walletRefreshA11y")}
           />
         }
         showsVerticalScrollIndicator={false}>
@@ -219,13 +207,13 @@ export function LoyaltyWalletScreen({
           <View style={styles.frozenBanner} accessibilityRole="alert">
             <Ionicons name="lock-closed" size={16} color={theme.colors.rose[700]} />
             <Text style={styles.frozenText}>
-              حسابك مجمَّد مؤقتاً — يُرجى التواصل مع الدعم لإعادة التفعيل
+              {t("loyalty.walletFrozenMsg")}
             </Text>
           </View>
         )}
 
         {/* ── Coupons ────────────────────────────────────────────────────── */}
-        <SectionHeader title="قسائمي" icon="pricetag-outline" onSeeAll={onBrowseCoupons} />
+        <SectionHeader title={t("loyalty.walletMyCoupons")} icon="pricetag-outline" onSeeAll={onBrowseCoupons} />
         <CouponsSection
           isLoading={coupons.isLoading}
           isError={coupons.isError}
@@ -235,7 +223,7 @@ export function LoyaltyWalletScreen({
         />
 
         {/* ── Pending gifts ──────────────────────────────────────────────── */}
-        <SectionHeader title="الهدايا قيد التسليم" icon="gift-outline" onSeeAll={onViewRedemptions} />
+        <SectionHeader title={t("loyalty.walletPendingGifts")} icon="gift-outline" onSeeAll={onViewRedemptions} />
         <RedemptionsSection
           isLoading={redeems.isLoading}
           isError={redeems.isError}
@@ -253,29 +241,27 @@ export function LoyaltyWalletScreen({
 
 function ScreenHeader({ title, onTourPress }: { title: string; onTourPress?: () => void }) {
   const router = useRouter();
+  const { t } = useTranslation();
   return (
     <View style={styles.screenHeader}>
-      {/* Title — RTL start (visual right) */}
       <Text style={styles.screenTitle} accessibilityRole="header">{title}</Text>
 
-      {/* Tour button — middle (only when authenticated) */}
       {onTourPress && (
         <Pressable
           onPress={onTourPress}
           hitSlop={10}
           accessibilityRole="button"
-          accessibilityLabel="عرض الجولة التعريفية"
+          accessibilityLabel={t("loyalty.walletTourA11y")}
           style={styles.tourBtn}>
           <Ionicons name="help-circle-outline" size={22} color={theme.colors.text.secondary} />
         </Pressable>
       )}
 
-      {/* Back button — RTL end (visual left) */}
       <Pressable
         onPress={() => router.back()}
         hitSlop={12}
         accessibilityRole="button"
-        accessibilityLabel="رجوع"
+        accessibilityLabel={t("common.back")}
         style={({ pressed }) => [styles.walletBackBtn, pressed && styles.walletBackBtnPressed]}>
         <Ionicons name="chevron-forward" size={22} color={theme.colors.text.primary} />
       </Pressable>
@@ -293,7 +279,7 @@ interface BalanceHeroProps {
 }
 
 function BalanceHero({ balance, currentTier, nextTier, progress }: BalanceHeroProps) {
-  // Count-up animation (addListener avoids Arabic-Indic digit crash in interpolate)
+  const { t } = useTranslation();
   const animVal = useRef(new RNAnimated.Value(0)).current;
   const prevBalance = useRef(0);
   const [displayBalance, setDisplayBalance] = useState(
@@ -340,25 +326,25 @@ function BalanceHero({ balance, currentTier, nextTier, progress }: BalanceHeroPr
           </View>
           <View style={styles.multiplierBadge}>
             <Text style={styles.multiplierText}>
-              ×{(currentTier?.earn_multiplier ?? 1).toFixed(1)} مضاعف
+              {t("loyalty.walletMultiplier", { n: (currentTier?.earn_multiplier ?? 1).toFixed(1) })}
             </Text>
           </View>
         </View>
 
         {/* Balance */}
         <View style={styles.balanceCenter}>
-          <Text style={styles.balanceEyebrow}>الرصيد الحالي</Text>
+          <Text style={styles.balanceEyebrow}>{t("loyalty.walletCurrentBalance")}</Text>
           <View style={styles.balanceRow}>
             <Text style={styles.balanceValue}>{displayBalance}</Text>
-            <Text style={styles.balanceUnit}>نقطة</Text>
+            <Text style={styles.balanceUnit}>{t("loyalty.pointsUnit")}</Text>
           </View>
         </View>
 
         {/* Stats row */}
         <View style={styles.statsRow}>
-          <StatChip label="مجموع المكتسب" value={balance.lifetime_earned} />
+          <StatChip label={t("loyalty.walletTotalEarned")}   value={balance.lifetime_earned} />
           <View style={styles.statsSep} />
-          <StatChip label="مجموع المستبدل" value={balance.lifetime_redeemed} />
+          <StatChip label={t("loyalty.walletTotalRedeemed")} value={balance.lifetime_redeemed} />
         </View>
 
         {/* Tier progress bar */}
@@ -367,8 +353,8 @@ function BalanceHero({ balance, currentTier, nextTier, progress }: BalanceHeroPr
             <View style={styles.progressLabelRow}>
               <Text style={styles.progressLabel}>
                 {pointsToNext && pointsToNext > 0
-                  ? `${pointsToNext.toLocaleString("ar-EG")} نقطة للوصول إلى ${nextTier.name}`
-                  : `وصلت إلى ${nextTier.name}!`}
+                  ? t("loyalty.walletPointsToNext", { n: pointsToNext.toLocaleString("ar-EG"), name: nextTier.name })
+                  : t("loyalty.walletReachedTier", { name: nextTier.name })}
               </Text>
               <Text style={styles.progressPct}>{Math.round(progress * 100)}%</Text>
             </View>
@@ -402,17 +388,18 @@ interface QuickActionsProps {
 }
 
 function QuickActions({ onEarn, onCoupons, onGifts, onHistory, onRedemptions }: QuickActionsProps) {
+  const { t } = useTranslation();
   return (
     <View style={styles.quickActionsWrap}>
       <View style={styles.quickActionsRow}>
-        <QuickActionTile icon="bag-handle-outline"  label="اكسب نقاط"  onPress={onEarn}    color="#3B82F6" />
-        <QuickActionTile icon="pricetag-outline"    label="القسائم"     onPress={onCoupons} color="#8B5CF6" />
-        <QuickActionTile icon="gift-outline"        label="الهدايا"     onPress={onGifts}   color="#EC4899" />
+        <QuickActionTile icon="bag-handle-outline"  label={t("loyalty.quickEarnPoints")}    onPress={onEarn}    color="#3B82F6" />
+        <QuickActionTile icon="pricetag-outline"    label={t("loyalty.quickCoupons")}        onPress={onCoupons} color="#8B5CF6" />
+        <QuickActionTile icon="gift-outline"        label={t("loyalty.quickGifts")}          onPress={onGifts}   color="#EC4899" />
       </View>
       <View style={styles.quickActionsRow}>
-        <QuickActionTile icon="receipt-outline"     label="سجل النقاط"  onPress={onHistory}     color="#10B981" />
-        <QuickActionTile icon="cube-outline"        label="طلبات الهدايا" onPress={onRedemptions} color="#F59E0B" />
-        <QuickActionTile icon="storefront-outline"  label="تسوق الآن"   onPress={onEarn}    color="#06B6D4" />
+        <QuickActionTile icon="receipt-outline"     label={t("loyalty.quickPointsHistory")}  onPress={onHistory}     color="#10B981" />
+        <QuickActionTile icon="cube-outline"        label={t("loyalty.quickGiftOrders")}     onPress={onRedemptions} color="#F59E0B" />
+        <QuickActionTile icon="storefront-outline"  label={t("loyalty.quickShopNow")}        onPress={onEarn}    color="#06B6D4" />
       </View>
     </View>
   );
@@ -467,6 +454,7 @@ interface SectionHeaderProps {
 }
 
 function SectionHeader({ title, icon, onSeeAll }: SectionHeaderProps) {
+  const { t } = useTranslation();
   return (
     <View style={styles.sectionHeaderRow}>
       <View style={styles.sectionTitleWrap}>
@@ -475,8 +463,8 @@ function SectionHeader({ title, icon, onSeeAll }: SectionHeaderProps) {
       </View>
       {onSeeAll && (
         <Pressable onPress={onSeeAll} hitSlop={8}
-          accessibilityRole="button" accessibilityLabel={`عرض كل ${title}`}>
-          <Text style={styles.seeAll}>عرض الكل</Text>
+          accessibilityRole="button" accessibilityLabel={t("loyalty.walletSeeAllA11y", { title })}>
+          <Text style={styles.seeAll}>{t("loyalty.walletSeeAll")}</Text>
         </Pressable>
       )}
     </View>
@@ -494,6 +482,7 @@ interface CouponsSectionProps {
 }
 
 function CouponsSection({ isLoading, isError, coupons, onRetry, onBrowse }: CouponsSectionProps) {
+  const { t } = useTranslation();
   if (isLoading) return <ListSkeleton rows={2} />;
   if (isError)   return <ErrorRow onRetry={onRetry} />;
 
@@ -503,9 +492,9 @@ function CouponsSection({ isLoading, isError, coupons, onRetry, onBrowse }: Coup
     return (
       <EmptyCard
         icon="pricetag-outline"
-        title="لا توجد قسائم بعد"
-        body="استبدل نقاطك بقسائم خصم فورية تُطبَّق عند الدفع."
-        ctaLabel="استعرض القسائم"
+        title={t("loyalty.walletNoCoupons")}
+        body={t("loyalty.walletNoCouponsBody")}
+        ctaLabel={t("loyalty.walletBrowseCoupons")}
         onCta={onBrowse}
       />
     );
@@ -515,7 +504,7 @@ function CouponsSection({ isLoading, isError, coupons, onRetry, onBrowse }: Coup
     return (
       <View style={styles.emptyRow}>
         <Ionicons name="checkmark-circle-outline" size={20} color={theme.colors.brand[600]} />
-        <Text style={styles.emptyText}>استُخدمت جميع قسائمك — أضف قسيمة جديدة!</Text>
+        <Text style={styles.emptyText}>{t("loyalty.walletCouponsAllUsed")}</Text>
       </View>
     );
   }
@@ -525,7 +514,7 @@ function CouponsSection({ isLoading, isError, coupons, onRetry, onBrowse }: Coup
       {active.slice(0, 3).map((c) => <CouponCard key={c.id} coupon={c} />)}
       {active.length > 3 && onBrowse && (
         <Pressable onPress={onBrowse} style={styles.showMoreBtn} accessibilityRole="button">
-          <Text style={styles.showMoreText}>+{active.length - 3} قسائم أخرى</Text>
+          <Text style={styles.showMoreText}>{t("loyalty.walletMoreCoupons", { n: active.length - 3 })}</Text>
           <Ionicons name="chevron-back" size={14} color={theme.colors.brand[600]} />
         </Pressable>
       )}
@@ -534,6 +523,7 @@ function CouponsSection({ isLoading, isError, coupons, onRetry, onBrowse }: Coup
 }
 
 function CouponCard({ coupon }: { coupon: Coupon }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   const expiry = coupon.expires_at
@@ -543,16 +533,19 @@ function CouponCard({ coupon }: { coupon: Coupon }) {
   const handleCopy = useCallback(async () => {
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     try {
-      await Share.share({ message: coupon.code, title: "كود الخصم" });
+      await Share.share({ message: coupon.code, title: t("loyalty.couponShareTitle") });
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch { /* user cancelled share */ }
-  }, [coupon.code]);
+  }, [coupon.code, t]);
 
   return (
     <View style={styles.couponCard}
       accessibilityRole="text"
-      accessibilityLabel={`قسيمة ${coupon.code}${expiry ? ` صالحة حتى ${expiry}` : ""}`}>
+      accessibilityLabel={t("loyalty.couponA11y", {
+        code:   coupon.code,
+        expiry: expiry ? t("loyalty.couponExpiryA11y", { date: expiry }) : "",
+      })}>
 
       {/* Left accent */}
       <View style={styles.couponAccent} />
@@ -562,7 +555,7 @@ function CouponCard({ coupon }: { coupon: Coupon }) {
         <Text style={styles.couponCode} maxFontSizeMultiplier={1.2}>{coupon.code}</Text>
         {expiry && (
           <Text style={styles.couponExpiry} maxFontSizeMultiplier={1.3}>
-            صالحة حتى {expiry}
+            {t("loyalty.validUntil", { date: expiry })}
           </Text>
         )}
       </View>
@@ -570,7 +563,7 @@ function CouponCard({ coupon }: { coupon: Coupon }) {
       {/* State badge */}
       <View style={styles.activeBadge}>
         <Ionicons name="checkmark-circle" size={10} color="#fff" />
-        <Text style={styles.activeBadgeText}>متاحة</Text>
+        <Text style={styles.activeBadgeText}>{t("loyalty.couponAvailable")}</Text>
       </View>
 
       {/* Copy button */}
@@ -578,7 +571,7 @@ function CouponCard({ coupon }: { coupon: Coupon }) {
         onPress={handleCopy}
         hitSlop={10}
         accessibilityRole="button"
-        accessibilityLabel={copied ? "تم النسخ" : "نسخ الكود"}
+        accessibilityLabel={copied ? t("loyalty.couponCopiedA11y") : t("loyalty.couponCopyA11y")}
         style={[styles.copyBtn, copied && styles.copyBtnDone]}>
         <Ionicons
           name={copied ? "checkmark" : "copy-outline"}
@@ -601,6 +594,7 @@ interface RedemptionsSectionProps {
 }
 
 function RedemptionsSection({ isLoading, isError, redemptions, onRetry, onViewAll }: RedemptionsSectionProps) {
+  const { t } = useTranslation();
   if (isLoading) return <ListSkeleton rows={1} />;
   if (isError)   return <ErrorRow onRetry={onRetry} />;
 
@@ -610,9 +604,9 @@ function RedemptionsSection({ isLoading, isError, redemptions, onRetry, onViewAl
     return (
       <EmptyCard
         icon="gift-outline"
-        title="لا توجد هدايا قيد التسليم"
-        body="استبدل نقاطك بهديةٍ مميزة من كتالوج المكافآت."
-        ctaLabel={onViewAll ? "كل طلبات الهدايا" : undefined}
+        title={t("loyalty.walletNoGifts")}
+        body={t("loyalty.walletNoGiftsBody")}
+        ctaLabel={onViewAll ? t("loyalty.walletAllGiftOrders") : undefined}
         onCta={onViewAll}
       />
     );
@@ -623,7 +617,7 @@ function RedemptionsSection({ isLoading, isError, redemptions, onRetry, onViewAl
       {active.slice(0, 3).map((r) => <RedemptionCard key={r.id} r={r} />)}
       {active.length > 3 && onViewAll && (
         <Pressable onPress={onViewAll} style={styles.showMoreBtn} accessibilityRole="button">
-          <Text style={styles.showMoreText}>+{active.length - 3} طلبات أخرى</Text>
+          <Text style={styles.showMoreText}>{t("loyalty.walletMoreOrders", { n: active.length - 3 })}</Text>
           <Ionicons name="chevron-back" size={14} color={theme.colors.brand[600]} />
         </Pressable>
       )}
@@ -632,11 +626,15 @@ function RedemptionsSection({ isLoading, isError, redemptions, onRetry, onViewAl
 }
 
 function RedemptionCard({ r }: { r: GiftRedemption }) {
+  const { t } = useTranslation();
   const isDelivered = r.state === "fulfilled";
   return (
     <View style={styles.redemptionCard}
       accessibilityRole="text"
-      accessibilityLabel={`هدية ${r.points_spent} نقطة — ${isDelivered ? "تم التسليم" : "قيد التوصيل"}`}>
+      accessibilityLabel={t("loyalty.redemptionCardA11y", {
+        points: r.points_spent.toLocaleString("ar-EG"),
+        state:  isDelivered ? t("loyalty.redemptionDelivered") : t("loyalty.redemptionPending"),
+      })}>
       <View style={[styles.redemptionIcon, isDelivered && styles.redemptionIconDone]}>
         <Ionicons
           name={isDelivered ? "checkmark-circle" : "time-outline"}
@@ -646,15 +644,15 @@ function RedemptionCard({ r }: { r: GiftRedemption }) {
       </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.redemptionPts} maxFontSizeMultiplier={1.2}>
-          {r.points_spent.toLocaleString("ar-EG")} نقطة
+          {r.points_spent.toLocaleString("ar-EG")} {t("loyalty.pointsUnit")}
         </Text>
         <Text style={styles.redemptionState} maxFontSizeMultiplier={1.3}>
-          {isDelivered ? "تم التسليم" : "قيد التوصيل…"}
+          {isDelivered ? t("loyalty.redemptionDelivered") : t("loyalty.redemptionPending")}
         </Text>
       </View>
       <View style={[styles.stateChip, isDelivered ? styles.stateChipDone : styles.stateChipPending]}>
         <Text style={[styles.stateChipText, isDelivered ? styles.stateChipTextDone : styles.stateChipTextPending]}>
-          {isDelivered ? "مُسلَّمة" : "محجوزة"}
+          {isDelivered ? t("loyalty.redemptionStateDelivered") : t("loyalty.redemptionStatePending")}
         </Text>
       </View>
     </View>
@@ -671,6 +669,7 @@ interface TourModalProps {
 }
 
 function TourModal({ visible, step, onNext, onSkip }: TourModalProps) {
+  const { t } = useTranslation();
   const current = TOUR_STEPS[step]!;
   const isLast  = step === TOUR_STEPS.length - 1;
 
@@ -693,8 +692,8 @@ function TourModal({ visible, step, onNext, onSkip }: TourModalProps) {
           </View>
 
           {/* Content */}
-          <Text style={styles.tourTitle}>{current.title}</Text>
-          <Text style={styles.tourBody}>{current.body}</Text>
+          <Text style={styles.tourTitle}>{t(current.titleKey)}</Text>
+          <Text style={styles.tourBody}>{t(current.bodyKey)}</Text>
 
           {/* Progress dots */}
           <View style={styles.tourDots}>
@@ -709,13 +708,13 @@ function TourModal({ visible, step, onNext, onSkip }: TourModalProps) {
           {/* Actions */}
           <View style={styles.tourActions}>
             <Pressable onPress={onSkip} style={styles.tourSkip}
-              accessibilityRole="button" accessibilityLabel="تخطي الجولة">
-              <Text style={styles.tourSkipText}>تخطي</Text>
+              accessibilityRole="button" accessibilityLabel={t("loyalty.tourSkipA11y")}>
+              <Text style={styles.tourSkipText}>{t("loyalty.tourSkip")}</Text>
             </Pressable>
             <Pressable onPress={onNext} style={styles.tourNext}
-              accessibilityRole="button" accessibilityLabel={isLast ? "إنهاء الجولة" : "التالي"}>
+              accessibilityRole="button" accessibilityLabel={isLast ? t("loyalty.tourFinishA11y") : t("loyalty.tourNextA11y")}>
               <LinearGradient colors={["#2d5a8e", "#1e3a5f"]} style={styles.tourNextGrad}>
-                <Text style={styles.tourNextText}>{isLast ? "ابدأ الآن!" : "التالي"}</Text>
+                <Text style={styles.tourNextText}>{isLast ? t("loyalty.tourFinish") : t("loyalty.tourNext")}</Text>
                 {!isLast && <Ionicons name="arrow-back" size={14} color="#fff" />}
               </LinearGradient>
             </Pressable>
@@ -749,23 +748,25 @@ function EmptyCard({
 }
 
 function ErrorRow({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.errorRow}>
-      <Text style={styles.errorRowText}>تعذّر التحميل</Text>
+      <Text style={styles.errorRowText}>{t("loyalty.recentLoadError")}</Text>
       <Pressable onPress={onRetry} style={styles.retryBtn}
-        accessibilityRole="button" accessibilityLabel="إعادة المحاولة">
+        accessibilityRole="button" accessibilityLabel={t("common.retry")}>
         <Ionicons name="refresh" size={13} color={theme.colors.brand[700]} />
-        <Text style={styles.retryText}>إعادة المحاولة</Text>
+        <Text style={styles.retryText}>{t("common.retry")}</Text>
       </Pressable>
     </View>
   );
 }
 
 function ListSkeleton({ rows }: { rows: number }) {
+  const { t } = useTranslation();
   return (
     <View style={{ gap: 8, paddingHorizontal: 16, marginBottom: 4 }}>
       {Array.from({ length: rows }).map((_, i) => (
-        <View key={i} style={styles.skeletonRow} accessibilityLabel="جارٍ التحميل" />
+        <View key={i} style={styles.skeletonRow} accessibilityLabel={t("common.loading")} />
       ))}
     </View>
   );
@@ -785,16 +786,17 @@ function WalletSkeleton() {
 }
 
 function ErrorPanel({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.fullPanel}>
       <Ionicons name="cloud-offline-outline" size={40} color={theme.colors.slate[400]} />
-      <Text style={styles.fullPanelTitle}>تعذّر تحميل المحفظة</Text>
-      <Text style={styles.fullPanelBody}>تحقق من اتصالك وحاول مرة أخرى.</Text>
+      <Text style={styles.fullPanelTitle}>{t("loyalty.walletErrorTitle")}</Text>
+      <Text style={styles.fullPanelBody}>{t("loyalty.walletErrorBody")}</Text>
       <Pressable onPress={onRetry} style={styles.fullPanelBtn}
-        accessibilityRole="button" accessibilityLabel="إعادة المحاولة">
+        accessibilityRole="button" accessibilityLabel={t("common.retry")}>
         <LinearGradient colors={["#2d5a8e", "#1e3a5f"]} style={styles.fullPanelBtnGrad}>
           <Ionicons name="refresh" size={14} color="#fff" />
-          <Text style={styles.fullPanelBtnText}>إعادة المحاولة</Text>
+          <Text style={styles.fullPanelBtnText}>{t("common.retry")}</Text>
         </LinearGradient>
       </Pressable>
     </View>
@@ -802,13 +804,12 @@ function ErrorPanel({ onRetry }: { onRetry: () => void }) {
 }
 
 function UnauthPanel() {
+  const { t } = useTranslation();
   return (
     <View style={styles.fullPanel} accessibilityRole="text">
       <Ionicons name="lock-closed-outline" size={40} color={theme.colors.slate[400]} />
-      <Text style={styles.fullPanelTitle}>سجّل دخولك لعرض محفظتك</Text>
-      <Text style={styles.fullPanelBody}>
-        تحتاج إلى حساب لعرض رصيد النقاط والقسائم والمكافآت.
-      </Text>
+      <Text style={styles.fullPanelTitle}>{t("loyalty.walletUnauthTitle")}</Text>
+      <Text style={styles.fullPanelBody}>{t("loyalty.walletUnauthBody")}</Text>
     </View>
   );
 }

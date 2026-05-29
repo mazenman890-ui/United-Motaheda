@@ -32,6 +32,7 @@ import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/lib/supabase";
 import { PHONE_VERIFICATION_ENABLED } from "@/features/auth";
 import { Text } from "@/shared/ui";
@@ -39,6 +40,7 @@ import { Button } from "@/components/ui/Button";
 import { theme } from "@/theme";
 
 export default function AuthCallbackScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams<{ code?: string; error_description?: string }>();
   const [error, setError] = useState<string | null>(null);
@@ -52,13 +54,13 @@ export default function AuthCallbackScreen() {
       }
       const code = typeof params.code === "string" ? params.code : undefined;
       if (!code) {
-        setError("رابط التأكيد غير صالح. حاول التسجيل مرة أخرى.");
+        setError(t("authCallback.invalidLink"));
         return;
       }
       const { data, error: exErr } = await supabase.auth.exchangeCodeForSession(code);
       if (exErr) {
         if (__DEV__) console.warn("[auth-callback] exchangeCodeForSession:", exErr.message);
-        setError("تعذّر تأكيد البريد الإلكتروني. ربما انتهت صلاحية الرابط — أعد إرسال التأكيد.");
+        setError(t("authCallback.confirmFailed"));
         return;
       }
       // If phone verification is enabled AND the user gave us a phone at
@@ -93,7 +95,7 @@ export default function AuthCallbackScreen() {
           <Ionicons name="alert-circle-outline" size={30} color={theme.colors.error.base} />
         </Animated.View>
         <Animated.View entering={FadeInUp.duration(420).delay(80)} style={styles.textStack}>
-          <Text variant="sheet-title" align="center" style={styles.title}>تعذّر تأكيد البريد</Text>
+          <Text variant="sheet-title" align="center" style={styles.title}>{t("authCallback.errorTitle")}</Text>
           <Text variant="body" color="secondary" align="center" style={styles.subtitle}>
             {error}
           </Text>
@@ -102,7 +104,7 @@ export default function AuthCallbackScreen() {
           entering={FadeIn.duration(360).delay(220)}
           style={styles.ctaWrap}>
           <Button variant="primary" fullWidth onPress={() => router.replace("/(auth)/login")}>
-            العودة لتسجيل الدخول
+            {t("authCallback.backToLogin")}
           </Button>
         </Animated.View>
       </View>
@@ -118,10 +120,10 @@ export default function AuthCallbackScreen() {
       </Animated.View>
       <Animated.View entering={FadeInUp.duration(420).delay(80)} style={styles.textStack}>
         <Text variant="sheet-title" align="center" style={styles.title}>
-          جارٍ تأكيد بريدك الإلكتروني
+          {t("authCallback.confirming")}
         </Text>
         <Text variant="body" color="secondary" align="center" style={styles.subtitle}>
-          ثوانٍ معدودة ثم نعود بك إلى التطبيق
+          {t("authCallback.confirmingBody")}
         </Text>
       </Animated.View>
       <Animated.View entering={FadeIn.duration(300).delay(220)} style={{ marginTop: 28 }}>
@@ -131,7 +133,7 @@ export default function AuthCallbackScreen() {
       {/* Trust footnote — quiet reassurance during a security-sensitive step */}
       <View style={styles.trustFootnote}>
         <Ionicons name="shield-checkmark" size={12} color={theme.colors.text.tertiary} />
-        <Text variant="eyebrow" color="tertiary">جلسة آمنة ومشفّرة</Text>
+        <Text variant="eyebrow" color="tertiary">{t("authCallback.trustNote")}</Text>
       </View>
     </View>
   );

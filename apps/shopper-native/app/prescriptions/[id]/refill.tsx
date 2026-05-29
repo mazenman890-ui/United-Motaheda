@@ -9,19 +9,21 @@
 
 import React from "react";
 import { useLocalSearchParams } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { ComingSoonScreen } from "@/shared/components";
 import { usePrescription } from "@/features/prescriptions";
 
 export default function Page(): React.ReactElement {
+  const { t }  = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const rx     = usePrescription(id);
 
   return (
     <ComingSoonScreen
-      title="إعادة الصرف"
+      title={t("prescriptions.refillTitle")}
       subtitle={rx
         ? `${rx.name} · ${rx.dose}`
-        : "تدفق إعادة الصرف قيد التطوير"}
+        : t("prescriptions.refillSubtitle")}
       icon="refresh-outline"
     />
   );

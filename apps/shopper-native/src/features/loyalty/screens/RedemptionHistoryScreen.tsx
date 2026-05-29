@@ -18,6 +18,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
 import { theme } from "@/theme";
 import { useScreenTrace } from "@/features/observability";
 import { SubScreenHeader } from "../components/SubScreenHeader";
@@ -28,9 +29,12 @@ import { showConfirmSheet } from "@/shared/store/appSheetStore";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
+type TFunc = ReturnType<typeof useTranslation>["t"];
+
 export function RedemptionHistoryScreen() {
   useScreenTrace("loyalty-redemption-history");
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   const redemptions = useRedemptions();
   const cancel      = useCancelGiftRedemption();
@@ -53,26 +57,26 @@ export function RedemptionHistoryScreen() {
   const handleCancel = useCallback(
     (r: GiftRedemption) => {
       showConfirmSheet(
-        "إلغاء الطلب",
-        "سيتم إلغاء الطلب وإعادة النقاط المخصومة إلى رصيدك.",
+        t("loyalty.cancelOrderTitle"),
+        t("loyalty.cancelOrderBody"),
         () => {
           if (Platform.OS !== "web")
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
           cancel.cancel({ redemptionId: r.id, reason: "user_cancelled" });
         },
-        { confirmLabel: "تأكيد الإلغاء", danger: true },
+        { confirmLabel: t("loyalty.cancelConfirmLabel"), danger: true },
       );
     },
-    [cancel],
+    [cancel, t],
   );
 
   if (redemptions.isLoading) {
     return (
       <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-        <SubScreenHeader title="طلبات الهدايا" subtitle="تتبع طلباتك وحالة التوصيل" />
+        <SubScreenHeader title={t("loyalty.redemptionsTitle")} subtitle={t("loyalty.redemptionsSubtitle")} />
         <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }}>
           {Array.from({ length: 3 }).map((_, i) => (
-            <View key={i} style={[styles.card, styles.skeletonCard]} accessibilityLabel="جارٍ التحميل" />
+            <View key={i} style={[styles.card, styles.skeletonCard]} accessibilityLabel={t("common.loading")} />
           ))}
         </ScrollView>
       </View>
@@ -82,18 +86,18 @@ export function RedemptionHistoryScreen() {
   if (redemptions.isError) {
     return (
       <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-        <SubScreenHeader title="طلبات الهدايا" subtitle="تتبع طلباتك وحالة التوصيل" />
+        <SubScreenHeader title={t("loyalty.redemptionsTitle")} subtitle={t("loyalty.redemptionsSubtitle")} />
         <View style={styles.centerPanel}>
           <Ionicons name="cloud-offline-outline" size={36} color={theme.colors.slate[400]} />
-          <Text style={styles.errorTitle} maxFontSizeMultiplier={1.4}>تعذر تحميل طلبات الهدايا</Text>
+          <Text style={styles.errorTitle} maxFontSizeMultiplier={1.4}>{t("loyalty.redemptionsErrorTitle")}</Text>
           <Pressable
             onPress={() => void redemptions.refetch()}
             accessibilityRole="button"
-            accessibilityLabel="إعادة المحاولة"
+            accessibilityLabel={t("common.retry")}
             style={({ pressed }) => [styles.primaryBtn, pressed && { opacity: 0.9 }]}
           >
             <Ionicons name="refresh" size={14} color="#fff" />
-            <Text style={styles.primaryBtnText}>إعادة المحاولة</Text>
+            <Text style={styles.primaryBtnText}>{t("common.retry")}</Text>
           </Pressable>
         </View>
       </View>
@@ -104,7 +108,7 @@ export function RedemptionHistoryScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-      <SubScreenHeader title="طلبات الهدايا" subtitle="تتبع طلباتك وحالة التوصيل" />
+      <SubScreenHeader title={t("loyalty.redemptionsTitle")} subtitle={t("loyalty.redemptionsSubtitle")} />
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 32 }}
         refreshControl={
@@ -112,7 +116,7 @@ export function RedemptionHistoryScreen() {
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={theme.colors.brand[600]}
-            accessibilityLabel="تحديث طلبات الهدايا"
+            accessibilityLabel={t("loyalty.redemptionsRefreshA11y")}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -120,16 +124,16 @@ export function RedemptionHistoryScreen() {
         {isEmpty ? (
           <View style={styles.centerPanel}>
             <Ionicons name="gift-outline" size={36} color={theme.colors.slate[300]} />
-            <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>لا توجد هدايا بعد</Text>
+            <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>{t("loyalty.redemptionsEmpty")}</Text>
             <Text style={styles.emptyBody} maxFontSizeMultiplier={1.5}>
-              عند استبدال نقاطك بهدية ستظهر هنا مع حالتها وتفاصيل الشحن.
+              {t("loyalty.redemptionsEmptyBody")}
             </Text>
           </View>
         ) : (
           <>
             {active.length > 0 && (
               <>
-                <SectionHeader title="الطلبات النشطة" />
+                <SectionHeader title={t("loyalty.activeOrders")} />
                 {active.map((r) => (
                   <RedemptionCard
                     key={r.id}
@@ -142,7 +146,7 @@ export function RedemptionHistoryScreen() {
             )}
             {inactive.length > 0 && (
               <>
-                <SectionHeader title="السجل السابق" />
+                <SectionHeader title={t("loyalty.pastOrders")} />
                 {inactive.map((r) => (
                   <RedemptionCard key={r.id} redemption={r} />
                 ))}
@@ -164,6 +168,7 @@ interface RedemptionCardProps {
 }
 
 function RedemptionCard({ redemption: r, onCancel, cancelling }: RedemptionCardProps) {
+  const { t } = useTranslation();
   const reservedDate  = new Date(r.reserved_at).toLocaleDateString("ar-EG", { day: "numeric", month: "short", year: "numeric" });
   const fulfilledDate = r.fulfilled_at
     ? new Date(r.fulfilled_at).toLocaleDateString("ar-EG", { day: "numeric", month: "short", year: "numeric" })
@@ -174,7 +179,11 @@ function RedemptionCard({ redemption: r, onCancel, cancelling }: RedemptionCardP
     <View
       style={[styles.card, r.state === "cancelled" || r.state === "expired" ? styles.cardMuted : null]}
       accessibilityRole="text"
-      accessibilityLabel={`هدية ${r.points_spent} نقطة، ${stateLabel(r.state)}، ${reservedDate}`}
+      accessibilityLabel={t("loyalty.redemptionA11y", {
+        points: r.points_spent.toLocaleString("ar-EG"),
+        state:  getStateLabel(r.state, t),
+        date:   reservedDate,
+      })}
     >
       <View style={styles.cardTop}>
         <View style={[styles.stateIcon, { backgroundColor: stateColor(r.state) + "18" }]}>
@@ -184,20 +193,26 @@ function RedemptionCard({ redemption: r, onCancel, cancelling }: RedemptionCardP
         <View style={{ flex: 1, gap: 3 }}>
           <View style={styles.cardTitleRow}>
             <Text style={styles.pointsText} maxFontSizeMultiplier={1.3}>
-              {r.points_spent.toLocaleString("ar-EG")} نقطة
+              {r.points_spent.toLocaleString("ar-EG")} {t("loyalty.pointsUnit")}
             </Text>
             <View style={[styles.statePill, { backgroundColor: stateColor(r.state) + "18" }]}>
               <Text style={[styles.statePillText, { color: stateColor(r.state) }]}>
-                {stateLabel(r.state)}
+                {getStateLabel(r.state, t)}
               </Text>
             </View>
           </View>
 
-          <Text style={styles.metaText} maxFontSizeMultiplier={1.4}>طُلب في {reservedDate}</Text>
-          {fulfilledDate && <Text style={styles.metaText} maxFontSizeMultiplier={1.4}>سُلّم في {fulfilledDate}</Text>}
+          <Text style={styles.metaText} maxFontSizeMultiplier={1.4}>
+            {t("loyalty.orderedOn", { date: reservedDate })}
+          </Text>
+          {fulfilledDate && (
+            <Text style={styles.metaText} maxFontSizeMultiplier={1.4}>
+              {t("loyalty.deliveredOn", { date: fulfilledDate })}
+            </Text>
+          )}
           {r.state === "reserved" && (
             <Text style={styles.expiryText} maxFontSizeMultiplier={1.4}>
-              ينتهي الحجز في {expiryDate}
+              {t("loyalty.reservationEnds", { date: expiryDate })}
             </Text>
           )}
           {r.tracking_number && (
@@ -221,7 +236,7 @@ function RedemptionCard({ redemption: r, onCancel, cancelling }: RedemptionCardP
           onPress={onCancel}
           disabled={cancelling}
           accessibilityRole="button"
-          accessibilityLabel="إلغاء الطلب"
+          accessibilityLabel={t("loyalty.cancelOrderA11y")}
           accessibilityState={{ disabled: !!cancelling, busy: !!cancelling }}
           style={({ pressed }) => [
             styles.cancelBtn,
@@ -230,7 +245,7 @@ function RedemptionCard({ redemption: r, onCancel, cancelling }: RedemptionCardP
           ]}
         >
           <Ionicons name="close-circle-outline" size={14} color={theme.colors.rose[600]} />
-          <Text style={styles.cancelBtnText}>إلغاء الطلب</Text>
+          <Text style={styles.cancelBtnText}>{t("loyalty.cancelOrder")}</Text>
         </Pressable>
       )}
     </View>
@@ -239,12 +254,12 @@ function RedemptionCard({ redemption: r, onCancel, cancelling }: RedemptionCardP
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function stateLabel(state: GiftRedemptionState): string {
+function getStateLabel(state: GiftRedemptionState, t: TFunc): string {
   switch (state) {
-    case "reserved":  return "قيد التنفيذ";
-    case "fulfilled": return "تم التسليم";
-    case "cancelled": return "ملغى";
-    case "expired":   return "منتهي";
+    case "reserved":  return t("loyalty.stateReserved");
+    case "fulfilled": return t("loyalty.stateFulfilled");
+    case "cancelled": return t("loyalty.stateCancelled");
+    case "expired":   return t("loyalty.stateExpired");
     default:          return state;
   }
 }

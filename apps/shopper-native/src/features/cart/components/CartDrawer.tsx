@@ -18,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { useCartStore, selectPricing, selectItemCount } from "@/stores/cart";
 import { useDeliveryContext } from "@/features/delivery";
 import { Text as UIText } from "@/shared/ui";
@@ -31,6 +32,7 @@ export interface CartDrawerRef {
 }
 
 export const CartDrawer = forwardRef<CartDrawerRef>(function CartDrawer(_, ref) {
+  const { t }   = useTranslation();
   const sheetRef = useRef<BottomSheet>(null);
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -92,13 +94,13 @@ export const CartDrawer = forwardRef<CartDrawerRef>(function CartDrawer(_, ref) 
             </View>
             <View>
               <UIText variant="eyebrow" color="tertiary" align="right">
-                عربة التسوق
+                {t("cart.eyebrow")}
               </UIText>
               <UIText variant="card-title" align="right" style={styles.headerTitleNew}>
-                سلة المشتريات
+                {t("cart.drawerTitle")}
               </UIText>
               <UIText variant="caption" color="muted" align="right" style={styles.headerSubNew}>
-                {itemCount > 0 ? `${itemCount} منتج` : "السلة فارغة"}
+                {itemCount > 0 ? t("cart.itemCount", { count: itemCount }) : t("cart.emptyTitle")}
               </UIText>
             </View>
           </View>
@@ -106,7 +108,7 @@ export const CartDrawer = forwardRef<CartDrawerRef>(function CartDrawer(_, ref) 
             onPress={() => sheetRef.current?.close()}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel="إغلاق"
+            accessibilityLabel={t("common.close")}
             style={styles.closeBtn}>
             <Ionicons name="close" size={16} color={theme.colors.slate[700]} />
           </Pressable>
@@ -128,22 +130,22 @@ export const CartDrawer = forwardRef<CartDrawerRef>(function CartDrawer(_, ref) 
             {/* ── Footer — premium anchor (matches Cart screen) ── */}
             <View style={[styles.footer, { paddingBottom: insets.bottom + 14 }]}>
               <View style={styles.totalsRow}>
-                <UIText variant="body-sm" color="secondary">المجموع الفرعي</UIText>
+                <UIText variant="body-sm" color="secondary">{t("cart.subtotal")}</UIText>
                 <UIText variant="body-sm" weight="bold">{formatPrice(pricing.subtotal)}</UIText>
               </View>
               <View style={styles.totalsRow}>
-                <UIText variant="body-sm" color="secondary">التوصيل</UIText>
+                <UIText variant="body-sm" color="secondary">{t("cart.delivery")}</UIText>
                 <UIText
                   variant="body-sm"
                   weight="bold"
                   style={delivery.isFree ? { color: theme.colors.success.strong } : undefined}>
-                  {delivery.isFree ? "مجاني" : formatPrice(delivery.cost)}
+                  {delivery.isFree ? t("common.free") : formatPrice(delivery.cost)}
                 </UIText>
               </View>
               {pricing.discount > 0 && (
                 <View style={styles.totalsRow}>
                   <UIText variant="body-sm" style={{ color: theme.colors.success.strong }}>
-                    الخصم
+                    {t("cart.discount")}
                   </UIText>
                   <UIText variant="body-sm" weight="bold" style={{ color: theme.colors.success.strong }}>
                     −{formatPrice(pricing.discount)}
@@ -153,9 +155,9 @@ export const CartDrawer = forwardRef<CartDrawerRef>(function CartDrawer(_, ref) 
               <View style={styles.divider} />
               <View style={styles.grandTotalRow}>
                 <View>
-                  <UIText variant="eyebrow" color="tertiary">المبلغ الإجمالي</UIText>
+                  <UIText variant="eyebrow" color="tertiary">{t("cart.totalAmount")}</UIText>
                   <UIText variant="card-title" align="right" style={styles.grandTotalLabel}>
-                    الإجمالي
+                    {t("cart.total")}
                   </UIText>
                 </View>
                 <UIText variant="sheet-title" weight="black" align="left" style={styles.grandTotalValue}>
@@ -169,7 +171,7 @@ export const CartDrawer = forwardRef<CartDrawerRef>(function CartDrawer(_, ref) 
                   pressed && { opacity: 0.92, transform: [{ scale: 0.985 }] },
                 ]}>
                   <UIText variant="body-sm" weight="extrabold" color="secondary">
-                    عرض السلة
+                    {t("cart.viewCart")}
                   </UIText>
                 </Pressable>
                 <Pressable onPress={handleCheckout} style={({ pressed }) => [
@@ -177,7 +179,7 @@ export const CartDrawer = forwardRef<CartDrawerRef>(function CartDrawer(_, ref) 
                   pressed && { opacity: 0.94, transform: [{ scale: 0.985 }] },
                 ]}>
                   <UIText variant="body-sm" weight="black" color="inverse">
-                    إتمام الطلب
+                    {t("cart.checkoutNow")}
                   </UIText>
                   <Ionicons name="arrow-back" size={14} color="#fff" />
                 </Pressable>
@@ -200,6 +202,7 @@ function CartDrawerRow({
   onDecrement: () => void;
   onRemove: () => void;
 }) {
+  const { t }  = useTranslation();
   const product = item.product;
   const lineTotal = (product?.price ?? 0) * item.quantity;
 
@@ -230,7 +233,7 @@ function CartDrawerRow({
             <Pressable
               onPress={() => { haptic(); onDecrement(); }}
               accessibilityRole="button"
-              accessibilityLabel="إنقاص"
+              accessibilityLabel={t("common.decrement")}
               style={styles.qtyBtn}>
               <Ionicons name="remove" size={14} color={theme.colors.brand[700]} />
             </Pressable>
@@ -240,7 +243,7 @@ function CartDrawerRow({
             <Pressable
               onPress={() => { haptic(); onIncrement(); }}
               accessibilityRole="button"
-              accessibilityLabel="زيادة"
+              accessibilityLabel={t("common.increment")}
               style={styles.qtyBtn}>
               <Ionicons name="add" size={14} color={theme.colors.brand[700]} />
             </Pressable>
@@ -249,7 +252,7 @@ function CartDrawerRow({
             onPress={() => { haptic(); onRemove(); }}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="إزالة المنتج"
+            accessibilityLabel={t("cart.removeItem")}
             style={styles.removeBtn}>
             <Ionicons name="trash-outline" size={14} color={theme.colors.error.base} />
           </Pressable>
@@ -262,16 +265,17 @@ function CartDrawerRow({
 // ─── Empty ───────────────────────────────────────────────────────────────────
 
 function EmptyCartBody() {
+  const { t } = useTranslation();
   return (
     <View style={styles.emptyWrap}>
       <View style={styles.emptyIcon}>
         <Ionicons name="bag-outline" size={34} color={theme.colors.brand[700]} />
       </View>
       <UIText variant="sheet-title" align="center" style={styles.emptyTitleNew}>
-        السلة فارغة
+        {t("cart.emptyTitle")}
       </UIText>
       <UIText variant="body" color="secondary" align="center" style={styles.emptyDescNew}>
-        ابدأ بتصفح المنتجات وأضف ما تحتاجه إلى عربتك
+        {t("cart.emptyDescription")}
       </UIText>
     </View>
   );

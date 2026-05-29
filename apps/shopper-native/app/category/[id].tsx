@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useTranslation } from "react-i18next";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Text as UIText } from "@/shared/ui";
@@ -16,17 +17,22 @@ import {
   type ProductSortMode,
 } from "@/features/products";
 
-const SORT_OPTIONS: { id: ProductSortMode; label: string; icon: React.ComponentProps<typeof Ionicons>["name"] }[] = [
-  { id: "newest",     label: "الأحدث",      icon: "time-outline" },
-  { id: "price_asc",  label: "الأقل سعراً",  icon: "arrow-down-outline" },
-  { id: "price_desc", label: "الأعلى سعراً", icon: "arrow-up-outline" },
-  { id: "name_asc",   label: "الاسم",       icon: "text-outline" },
+const SORT_OPTIONS: { id: ProductSortMode; labelKey: string; icon: React.ComponentProps<typeof Ionicons>["name"] }[] = [
+  { id: "newest",     labelKey: "category.sortNewest",    icon: "time-outline" },
+  { id: "price_asc",  labelKey: "category.sortPriceAsc",  icon: "arrow-down-outline" },
+  { id: "price_desc", labelKey: "category.sortPriceDesc", icon: "arrow-up-outline" },
+  { id: "name_asc",   labelKey: "category.sortNameAsc",   icon: "text-outline" },
 ];
 
 export default function CategoryScreen() {
-  const params = useLocalSearchParams<{ id?: string | string[] }>();
-  const rawId = Array.isArray(params.id) ? params.id[0] : params.id;
-  const id = typeof rawId === "string" && rawId.length > 0 ? decodeURIComponent(rawId) : undefined;
+  const { t, i18n } = useTranslation();
+  const params = useLocalSearchParams<{ id?: string | string[]; nameEn?: string | string[] }>();
+  const rawId    = Array.isArray(params.id)     ? params.id[0]     : params.id;
+  const rawNameEn= Array.isArray(params.nameEn) ? params.nameEn[0] : params.nameEn;
+  const id       = typeof rawId === "string" && rawId.length > 0 ? decodeURIComponent(rawId) : undefined;
+  const nameEn   = typeof rawNameEn === "string" && rawNameEn.length > 0 ? decodeURIComponent(rawNameEn) : undefined;
+  // Display title respects current language
+  const displayTitle = i18n.language === "en" && nameEn ? nameEn : (id ?? t("category.defaultName"));
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [sortBy, setSortBy]           = useState<ProductSortMode>("newest");
@@ -93,14 +99,14 @@ export default function CategoryScreen() {
           </Pressable>
           <View style={{ flex: 1 }}>
             <UIText variant="eyebrow" align="right" style={{ color: "rgba(255,255,255,0.55)" }}>
-              تصفح القسم
+              {t("category.browse")}
             </UIText>
             <UIText variant="sheet-title" color="inverse" align="right" numberOfLines={1} style={{ letterSpacing: -0.3, marginTop: 2 }}>
-              {id ?? "القسم"}
+              {displayTitle}
             </UIText>
             {totalCount > 0 && (
               <UIText variant="body-sm" color="inverse-muted" align="right" style={{ marginTop: 2 }}>
-                {totalCount.toLocaleString()} منتج
+                {t("category.productCount", { count: totalCount.toLocaleString() })}
               </UIText>
             )}
           </View>
@@ -143,7 +149,7 @@ export default function CategoryScreen() {
               borderColor:      inStockOnly ? "rgba(255,255,255,0.40)" : "rgba(255,255,255,0.15)",
             }}>
             <Ionicons name={inStockOnly ? "checkmark-circle" : "cube-outline"} size={14} color="#fff" />
-            <UIText variant="caption" weight="bold" color="inverse">متوفر فقط</UIText>
+            <UIText variant="caption" weight="bold" color="inverse">{t("category.inStockOnly")}</UIText>
           </Pressable>
 
           {/* Sort options */}
@@ -172,7 +178,7 @@ export default function CategoryScreen() {
                   variant="caption"
                   weight={active ? "black" : "semibold"}
                   color="inverse">
-                  {opt.label}
+                  {t(opt.labelKey)}
                 </UIText>
               </Pressable>
             );
@@ -198,17 +204,17 @@ export default function CategoryScreen() {
       ) : isError ? (
         <EmptyState
           icon="wifi-outline"
-          title="تعذر التحميل"
-          description="تحقق من اتصالك بالإنترنت وحاول مرة أخرى"
-          actionLabel="إعادة المحاولة"
+          title={t("category.loadError")}
+          description={t("category.loadErrorDesc")}
+          actionLabel={t("category.tryAgain")}
           onAction={refetch}
         />
       ) : products.length === 0 ? (
         <EmptyState
           icon="cube-outline"
-          title="لا توجد منتجات"
-          description={inStockOnly ? "لا توجد منتجات متوفرة في هذا القسم حالياً" : "لا توجد منتجات في هذا القسم حالياً"}
-          actionLabel={inStockOnly ? "عرض الكل" : "العودة"}
+          title={t("category.noProducts")}
+          description={inStockOnly ? t("category.noInStockProducts") : t("category.noProductsInCat")}
+          actionLabel={inStockOnly ? t("category.showAll") : t("common.back")}
           onAction={() => (inStockOnly ? setInStockOnly(false) : router.back())}
         />
       ) : (

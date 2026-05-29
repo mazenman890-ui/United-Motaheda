@@ -3,6 +3,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { AddressMapPlaceholder } from "./AddressMapPlaceholder";
 import { ADDRESS_LABELS } from "../types";
 import type { Address } from "../types";
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export function AddressCard({ address, onEdit, onDelete, onSetDefault }: Props) {
+  const { t }    = useTranslation();
   const labelCfg = ADDRESS_LABELS.find((l) => l.key === address.label) ?? ADDRESS_LABELS[3];
 
   const haptic = () => {
@@ -35,12 +37,12 @@ export function AddressCard({ address, onEdit, onDelete, onSetDefault }: Props) 
         <View style={styles.topRow}>
           <View style={styles.labelPill}>
             <Ionicons name={labelCfg.icon as IoniconsName} size={12} color={theme.colors.brand[700]} />
-            <Text style={styles.labelText}>{labelCfg.label}</Text>
+            <Text style={styles.labelText}>{t(labelCfg.labelKey)}</Text>
           </View>
           {address.is_default && (
             <View style={styles.defaultBadge}>
               <Ionicons name="checkmark-circle" size={11} color={theme.colors.green[600]} />
-              <Text style={styles.defaultText}>الافتراضي</Text>
+              <Text style={styles.defaultText}>{t("address.default")}</Text>
             </View>
           )}
         </View>
@@ -70,20 +72,20 @@ export function AddressCard({ address, onEdit, onDelete, onSetDefault }: Props) 
               onPress={() => { haptic(); onSetDefault(); }}
               style={styles.actionBtn}>
               <Ionicons name="star-outline" size={13} color={theme.colors.brand[600]} />
-              <Text style={[styles.actionText, { color: theme.colors.brand[600] }]}>تعيين افتراضي</Text>
+              <Text style={[styles.actionText, { color: theme.colors.brand[600] }]}>{t("address.setDefault")}</Text>
             </Pressable>
           )}
           <Pressable
             onPress={() => { haptic(); onEdit(); }}
             style={styles.actionBtn}>
             <Ionicons name="create-outline" size={13} color={theme.colors.slate[500]} />
-            <Text style={styles.actionText}>تعديل</Text>
+            <Text style={styles.actionText}>{t("address.edit")}</Text>
           </Pressable>
           <Pressable
             onPress={() => { haptic(); onDelete(); }}
             style={styles.actionBtn}>
             <Ionicons name="trash-outline" size={13} color={theme.colors.red[500]} />
-            <Text style={[styles.actionText, { color: theme.colors.red[500] }]}>حذف</Text>
+            <Text style={[styles.actionText, { color: theme.colors.red[500] }]}>{t("address.delete")}</Text>
           </Pressable>
         </View>
       </View>

@@ -10,6 +10,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { theme } from "@/theme";
 
 interface SectionProps {
@@ -31,6 +32,7 @@ function Section({ title, children, delay = 0 }: SectionProps) {
 }
 
 export default function PrivacyScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -41,7 +43,7 @@ export default function PrivacyScreen() {
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={10}>
           <Ionicons name="arrow-forward" size={18} color={theme.colors.text.primary} />
         </Pressable>
-        <Text style={styles.title}>سياسة الخصوصية</Text>
+        <Text style={styles.title}>{t("privacy.title")}</Text>
         <View style={{ width: 38 }} />
       </View>
 
@@ -52,14 +54,14 @@ export default function PrivacyScreen() {
         {/* Last updated */}
         <Animated.View entering={FadeInDown.duration(300)} style={styles.updatedBanner}>
           <Ionicons name="calendar-outline" size={15} color={theme.colors.brand[700]} />
-          <Text style={styles.updatedText}>آخر تحديث: يناير ٢٠٢٥</Text>
+          <Text style={styles.updatedText}>{t("privacy.lastUpdated")}</Text>
         </Animated.View>
 
         {/* Intro */}
         <Animated.View entering={FadeInDown.duration(350).delay(40)} style={styles.introBanner}>
           <Ionicons name="shield-checkmark" size={20} color={theme.colors.brand[600]} />
           <Text style={styles.introText}>
-            خصوصيتك أمانة عندنا. تصف هذه الوثيقة كيف تجمع الصيدلية المتحدة بياناتك وتستخدمها وتحميها.
+            {t("privacy.introBanner")}
           </Text>
         </Animated.View>
 

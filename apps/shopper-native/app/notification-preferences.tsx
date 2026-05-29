@@ -16,6 +16,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/features/auth";
 import {
   useNotificationPreferences,
@@ -28,90 +29,91 @@ type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
 const CHANNELS: Array<{
   key: keyof NotificationChannelPrefs;
-  label: string;
-  description: string;
+  labelKey: string;
+  descKey: string;
   icon: IoniconsName;
   color: string;
   bg: string;
 }> = [
   {
-    key: "push",
-    label: "الإشعارات الفورية",
-    description: "تنبيهات داخل التطبيق على جهازك",
-    icon: "notifications-outline",
-    color: theme.colors.brand[600],
-    bg: theme.colors.brand[50],
+    key:      "push",
+    labelKey: "notifications.channelPushLabel",
+    descKey:  "notifications.channelPushDesc",
+    icon:     "notifications-outline",
+    color:    theme.colors.brand[600],
+    bg:       theme.colors.brand[50],
   },
   {
-    key: "email",
-    label: "البريد الإلكتروني",
-    description: "تأكيدات الطلبات والملخصات الأسبوعية",
-    icon: "mail-outline",
-    color: theme.colors.purple[600],
-    bg: theme.colors.purple[50],
+    key:      "email",
+    labelKey: "notifications.channelEmailLabel",
+    descKey:  "notifications.channelEmailDesc",
+    icon:     "mail-outline",
+    color:    theme.colors.purple[600],
+    bg:       theme.colors.purple[50],
   },
   {
-    key: "sms",
-    label: "الرسائل النصية",
-    description: "رموز التحقق وتنبيهات الطلبات الحرجة",
-    icon: "chatbubble-outline",
-    color: theme.colors.amber[600],
-    bg: theme.colors.amber[50],
+    key:      "sms",
+    labelKey: "notifications.channelSmsLabel",
+    descKey:  "notifications.channelSmsDesc",
+    icon:     "chatbubble-outline",
+    color:    theme.colors.amber[600],
+    bg:       theme.colors.amber[50],
   },
 ];
 
 const CATEGORIES: Array<{
   key: keyof NotificationCategoryPrefs;
-  label: string;
-  description: string;
+  labelKey: string;
+  descKey: string;
   icon: IoniconsName;
   color: string;
 }> = [
   {
-    key: "order_updates",
-    label: "تحديثات الطلبات",
-    description: "حالة الطلب والتوصيل",
-    icon: "bag-handle-outline",
-    color: theme.colors.brand[600],
+    key:      "order_updates",
+    labelKey: "notifications.catOrderLabel",
+    descKey:  "notifications.catOrderDesc",
+    icon:     "bag-handle-outline",
+    color:    theme.colors.brand[600],
   },
   {
-    key: "promotions",
-    label: "العروض والخصومات",
-    description: "عروض حصرية وكوبونات",
-    icon: "pricetag-outline",
-    color: theme.colors.amber[600],
+    key:      "promotions",
+    labelKey: "notifications.catPromoLabel",
+    descKey:  "notifications.catPromoDesc",
+    icon:     "pricetag-outline",
+    color:    theme.colors.amber[600],
   },
   {
-    key: "security_alerts",
-    label: "تنبيهات الأمان",
-    description: "تسجيل دخول من جهاز جديد",
-    icon: "shield-checkmark-outline",
-    color: theme.colors.green[600],
+    key:      "security_alerts",
+    labelKey: "notifications.catSecurityLabel",
+    descKey:  "notifications.catSecurityDesc",
+    icon:     "shield-checkmark-outline",
+    color:    theme.colors.green[600],
   },
   {
-    key: "health_reminders",
-    label: "تذكيرات صحية",
-    description: "مواعيد الأدوية والمتابعة",
-    icon: "heart-outline",
-    color: theme.colors.rose[500],
+    key:      "health_reminders",
+    labelKey: "notifications.catHealthLabel",
+    descKey:  "notifications.catHealthDesc",
+    icon:     "heart-outline",
+    color:    theme.colors.rose[500],
   },
   {
-    key: "new_arrivals",
-    label: "وصل حديثاً",
-    description: "منتجات جديدة في المخزون",
-    icon: "sparkles-outline",
-    color: theme.colors.purple[600],
+    key:      "new_arrivals",
+    labelKey: "notifications.catNewArrivalsLabel",
+    descKey:  "notifications.catNewArrivalsDesc",
+    icon:     "sparkles-outline",
+    color:    theme.colors.purple[600],
   },
   {
-    key: "account_updates",
-    label: "تحديثات الحساب",
-    description: "تغييرات الملف الشخصي والإعدادات",
-    icon: "person-outline",
-    color: theme.colors.slate[600],
+    key:      "account_updates",
+    labelKey: "notifications.catAccountLabel",
+    descKey:  "notifications.catAccountDesc",
+    icon:     "person-outline",
+    color:    theme.colors.slate[600],
   },
 ];
 
 export default function NotificationPreferencesScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -150,12 +152,12 @@ export default function NotificationPreferencesScreen() {
             onPress={() => router.back()}
             style={styles.backBtn}
             accessibilityRole="button"
-            accessibilityLabel="رجوع">
+            accessibilityLabel={t("common.back")}>
             <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.8)" />
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>تفضيلات الإشعارات</Text>
-            <Text style={styles.headerSub}>تحكم في طرق وأنواع التنبيهات</Text>
+            <Text style={styles.headerTitle}>{t("notifications.prefTitle")}</Text>
+            <Text style={styles.headerSub}>{t("notifications.prefSubtitle")}</Text>
           </View>
           <View style={styles.shieldIcon}>
             <Ionicons name="options-outline" size={18} color="rgba(255,255,255,0.7)" />
@@ -170,14 +172,14 @@ export default function NotificationPreferencesScreen() {
           <Animated.View entering={FadeIn.duration(200)} style={styles.signedOutBanner}>
             <Ionicons name="lock-closed-outline" size={14} color={theme.colors.amber[700]} />
             <Text style={styles.signedOutText}>
-              سجل دخولك لحفظ تفضيلاتك على الخادم
+              {t("notifications.signInToSave")}
             </Text>
           </Animated.View>
         )}
 
         {/* ── Channels ── */}
         <Animated.View entering={FadeInDown.duration(280)}>
-          <SectionHeader icon="megaphone-outline" title="قنوات التواصل" />
+          <SectionHeader icon="megaphone-outline" title={t("notifications.channelsTitle")} />
           <View style={styles.card}>
             {CHANNELS.map((ch, i) => (
               <View key={ch.key} style={[styles.row, i < CHANNELS.length - 1 && styles.rowBorder]}>
@@ -185,8 +187,8 @@ export default function NotificationPreferencesScreen() {
                   <Ionicons name={ch.icon} size={17} color={ch.color} />
                 </View>
                 <View style={styles.rowText}>
-                  <Text style={styles.rowLabel}>{ch.label}</Text>
-                  <Text style={styles.rowDesc}>{ch.description}</Text>
+                  <Text style={styles.rowLabel}>{t(ch.labelKey)}</Text>
+                  <Text style={styles.rowDesc}>{t(ch.descKey)}</Text>
                 </View>
                 <Switch
                   value={preferences.channels[ch.key]}
@@ -202,7 +204,7 @@ export default function NotificationPreferencesScreen() {
 
         {/* ── Categories ── */}
         <Animated.View entering={FadeInDown.delay(80).duration(280)} style={{ marginTop: 18 }}>
-          <SectionHeader icon="grid-outline" title="أنواع الإشعارات" />
+          <SectionHeader icon="grid-outline" title={t("notifications.categoriesTitle")} />
           <View style={styles.card}>
             {CATEGORIES.map((cat, i) => (
               <View key={cat.key} style={[styles.row, i < CATEGORIES.length - 1 && styles.rowBorder]}>
@@ -210,8 +212,8 @@ export default function NotificationPreferencesScreen() {
                   <Ionicons name={cat.icon} size={16} color={cat.color} />
                 </View>
                 <View style={styles.rowText}>
-                  <Text style={styles.rowLabel}>{cat.label}</Text>
-                  <Text style={styles.rowDesc}>{cat.description}</Text>
+                  <Text style={styles.rowLabel}>{t(cat.labelKey)}</Text>
+                  <Text style={styles.rowDesc}>{t(cat.descKey)}</Text>
                 </View>
                 <Switch
                   value={preferences.categories[cat.key]}
@@ -228,7 +230,7 @@ export default function NotificationPreferencesScreen() {
         <Animated.View entering={FadeInDown.delay(160).duration(280)} style={styles.footerNote}>
           <Ionicons name="information-circle-outline" size={14} color={theme.colors.brand[600]} />
           <Text style={styles.footerText}>
-            تنبيهات الأمان وتأكيدات الطلبات الحرجة قد تُرسل دائماً بغض النظر عن إعداداتك.
+            {t("notifications.securityNote")}
           </Text>
         </Animated.View>
       </ScrollView>

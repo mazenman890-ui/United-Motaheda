@@ -22,6 +22,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { requestPasswordReset, authErrorToArabic } from "@/features/auth";
 import { track } from "@/lib/analytics";
 import { captureError } from "@/lib/crashReporter";
@@ -31,6 +32,7 @@ import { Text } from "@/shared/ui";
 import { theme } from "@/theme";
 
 export default function ForgotPasswordScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -43,11 +45,11 @@ export default function ForgotPasswordScreen() {
     setError(null);
     const trimmed = email.trim();
     if (!trimmed) {
-      setError("يرجى إدخال بريدك الإلكتروني");
+      setError(t("forgotPassword.emailRequired"));
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setError("صيغة البريد الإلكتروني غير صحيحة");
+      setError(t("forgotPassword.invalidEmail"));
       return;
     }
     setLoading(true);
@@ -79,7 +81,7 @@ export default function ForgotPasswordScreen() {
           style={[styles.hero, { paddingTop: insets.top + 20 }]}>
 
           <Pressable onPress={() => router.back()} style={styles.closeBtn} hitSlop={10}
-            accessibilityRole="button" accessibilityLabel="رجوع">
+            accessibilityRole="button" accessibilityLabel={t("forgotPassword.backLabel")}>
             <Ionicons name="arrow-back" size={20} color="rgba(255,255,255,0.85)" />
           </Pressable>
 
@@ -93,12 +95,10 @@ export default function ForgotPasswordScreen() {
 
           <Animated.View entering={FadeInDown.duration(420).delay(140)} style={styles.heroTextWrap}>
             <Text variant="screen-title" color="inverse" align="center" style={styles.heroTitle}>
-              {sent ? "تحقق من بريدك" : "نسيت كلمة المرور؟"}
+              {sent ? t("forgotPassword.titleSent") : t("forgotPassword.title")}
             </Text>
             <Text variant="body" color="inverse-muted" align="center" style={{ marginTop: 6 }}>
-              {sent
-                ? "أرسلنا إليك رابط إعادة تعيين كلمة المرور"
-                : "لا تقلق — سنرسل لك رابطاً لإعادة تعيينها"}
+              {sent ? t("forgotPassword.subtitleSent") : t("forgotPassword.subtitle")}
             </Text>
           </Animated.View>
         </LinearGradient>
@@ -118,11 +118,11 @@ export default function ForgotPasswordScreen() {
               )}
 
               <Text variant="body" color="secondary" align="right" style={styles.hint}>
-                أدخل البريد الإلكتروني المرتبط بحسابك وسنرسل إليك رابط إعادة التعيين.
+                {t("forgotPassword.hint")}
               </Text>
 
               <Input
-                label="البريد الإلكتروني"
+                label={t("forgotPassword.emailLabel")}
                 placeholder="example@email.com"
                 value={email}
                 onChangeText={setEmail}
@@ -140,7 +140,7 @@ export default function ForgotPasswordScreen() {
                 onPress={handleSubmit}
                 gradient
                 style={{ marginTop: 4 }}>
-                إرسال رابط الإعادة
+                {t("forgotPassword.sendBtn")}
               </Button>
             </>
           ) : (
@@ -149,17 +149,17 @@ export default function ForgotPasswordScreen() {
                 <Ionicons name="mail-open-outline" size={36} color={theme.colors.brand.base} />
               </View>
               <Text variant="sheet-title" align="center" style={styles.successTitle}>
-                تم الإرسال بنجاح!
+                {t("forgotPassword.successTitle")}
               </Text>
               <Text variant="body" color="secondary" align="center" style={styles.successBody}>
-                أرسلنا رسالة إلى{"\n"}
+                {t("forgotPassword.successBodyPre")}{"\n"}
                 <Text variant="body" weight="bold" color="primary">{email}</Text>
-                {"\n"}يُرجى فتح البريد الإلكتروني والنقر على الرابط خلال 60 دقيقة.
+                {"\n"}{t("forgotPassword.successBodyPost")}
               </Text>
               <View style={styles.tipBox}>
                 <Ionicons name="information-circle-outline" size={16} color={theme.colors.brand.base} />
                 <Text variant="caption" color="secondary" style={{ flex: 1, textAlign: "right" }}>
-                  إن لم تجد الرسالة في صندوق الوارد، تحقق من مجلد الرسائل غير المرغوب فيها (Spam).
+                  {t("forgotPassword.spamTip")}
                 </Text>
               </View>
               <Button
@@ -168,16 +168,16 @@ export default function ForgotPasswordScreen() {
                 fullWidth
                 onPress={() => { setSent(false); setEmail(""); }}
                 style={{ marginTop: 8 }}>
-                إعادة الإرسال
+                {t("forgotPassword.resend")}
               </Button>
             </Animated.View>
           )}
 
           {/* Back to login */}
           <View style={styles.footer}>
-            <Text variant="body-sm" color="secondary">تذكرت كلمة المرور؟</Text>
+            <Text variant="body-sm" color="secondary">{t("forgotPassword.rememberPassword")}</Text>
             <Pressable hitSlop={6} onPress={() => router.replace("/(auth)/login")}>
-              <Text variant="body-sm" weight="extrabold" color="brand">تسجيل الدخول</Text>
+              <Text variant="body-sm" weight="extrabold" color="brand">{t("forgotPassword.signIn")}</Text>
             </Pressable>
           </View>
 

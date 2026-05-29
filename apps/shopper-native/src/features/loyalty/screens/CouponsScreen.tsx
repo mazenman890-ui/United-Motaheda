@@ -22,6 +22,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
 import { theme } from "@/theme";
 import { useScreenTrace } from "@/features/observability";
 import { SubScreenHeader } from "../components/SubScreenHeader";
@@ -32,9 +33,12 @@ import { useRedeemCoupon } from "../hooks/useRedeemCoupon";
 import type { Coupon, CouponBatch, CouponDiscountKind } from "../types";
 import { showErrorSheet, showConfirmSheet } from "@/shared/store/appSheetStore";
 
+type TFunc = ReturnType<typeof useTranslation>["t"];
+
 export function CouponsScreen() {
   useScreenTrace("loyalty-coupons");
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   const balance = useLoyaltyBalance();
   const batches = useCouponBatches();
@@ -60,24 +64,30 @@ export function CouponsScreen() {
       const currentBalance = balance.data?.balance ?? 0;
       if (currentBalance < batch.points_cost) {
         showErrorSheet(
-          "نقاط غير كافية",
-          `تحتاج ${batch.points_cost.toLocaleString("ar-EG")} نقطة لاستبدال هذه القسيمة. رصيدك الحالي ${currentBalance.toLocaleString("ar-EG")}.`,
+          t("loyalty.insufficientPointsTitle"),
+          t("loyalty.insufficientPointsBody", {
+            cost:    batch.points_cost.toLocaleString("ar-EG"),
+            balance: currentBalance.toLocaleString("ar-EG"),
+          }),
         );
         return;
       }
       showConfirmSheet(
-        "تأكيد الاستبدال",
-        `سيتم خصم ${batch.points_cost.toLocaleString("ar-EG")} نقطة من رصيدك مقابل "${batch.name}".`,
+        t("loyalty.redeemConfirmTitle"),
+        t("loyalty.redeemConfirmBody", {
+          cost: batch.points_cost.toLocaleString("ar-EG"),
+          name: batch.name,
+        }),
         () => {
           if (Platform.OS !== "web")
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
           setRedeemingBatchId(batch.id);
           redeem.redeem({ batchId: batch.id });
         },
-        { confirmLabel: "استبدال" },
+        { confirmLabel: t("loyalty.redeemConfirmLabel") },
       );
     },
-    [balance.data, redeem],
+    [balance.data, redeem, t],
   );
 
   // Clear the in-flight flag when the mutation settles.
@@ -85,10 +95,10 @@ export function CouponsScreen() {
     if (!redeem.isPending && redeemingBatchId !== null) {
       setRedeemingBatchId(null);
       if (redeem.isError && redeem.error) {
-        showErrorSheet("تعذر الاستبدال", decodeRedeemError(redeem.error));
+        showErrorSheet(t("loyalty.redeemErrorTitle"), decodeRedeemError(redeem.error, t));
       }
     }
-  }, [redeem.isPending, redeem.isError, redeem.error, redeemingBatchId]);
+  }, [redeem.isPending, redeem.isError, redeem.error, redeemingBatchId, t]);
 
   const issuedCoupons = useMemo(
     () => (coupons.data ?? []).filter((c) => c.state === "issued"),
@@ -99,7 +109,7 @@ export function CouponsScreen() {
   if (coupons.isLoading && batches.isLoading) {
     return (
       <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-        <SubScreenHeader title="القسائم" subtitle="استبدل نقاطك بقسائم خصم فورية" />
+        <SubScreenHeader title={t("loyalty.couponsTitle")} subtitle={t("loyalty.couponsSubtitle")} />
         <ScrollView contentContainerStyle={{ padding: 16 }}>
           <ListSkeleton rows={3} />
         </ScrollView>
@@ -109,7 +119,7 @@ export function CouponsScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-      <SubScreenHeader title="القسائم" subtitle="استبدل نقاطك بقسائم خصم فورية" />
+      <SubScreenHeader title={t("loyalty.couponsTitle")} subtitle={t("loyalty.couponsSubtitle")} />
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 32, paddingHorizontal: 16 }}
         refreshControl={
@@ -117,7 +127,7 @@ export function CouponsScreen() {
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={theme.colors.brand[600]}
-            accessibilityLabel="تحديث القسائم"
+            accessibilityLabel={t("loyalty.couponsRefreshA11y")}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -125,33 +135,33 @@ export function CouponsScreen() {
         {/* Balance chip */}
         {balance.data && (
           <View style={styles.balanceChip} accessibilityRole="text"
-                accessibilityLabel={`رصيد النقاط ${balance.data.balance} نقطة`}>
+                accessibilityLabel={t("loyalty.balanceA11y", { n: balance.data.balance })}>
             <Ionicons name="star" size={14} color={theme.colors.brand[700]} />
             <Text style={styles.balanceText} maxFontSizeMultiplier={1.3}>
-              رصيدك: {balance.data.balance.toLocaleString("ar-EG")} نقطة
+              {t("loyalty.balanceChipText", { n: balance.data.balance.toLocaleString("ar-EG") })}
             </Text>
           </View>
         )}
 
-        <SectionHeader title="قسائمي" />
+        <SectionHeader title={t("loyalty.myCoupons")} />
         {coupons.isError ? (
           <ErrorRow onRetry={() => void coupons.refetch()} />
         ) : issuedCoupons.length === 0 ? (
           <EmptyRow
             icon="pricetag-outline"
-            message="لا توجد قسائم نشطة بعد. استبدل نقاطك للحصول على واحدة من القائمة أدناه."
+            message={t("loyalty.couponsIssuedEmpty")}
           />
         ) : (
           issuedCoupons.map((c) => <IssuedCouponRow key={c.id} coupon={c} />)
         )}
 
-        <SectionHeader title="استبدال جديد" />
+        <SectionHeader title={t("loyalty.redeemNew")} />
         {batches.isError ? (
           <ErrorRow onRetry={() => void batches.refetch()} />
         ) : (batches.data ?? []).length === 0 ? (
           <EmptyRow
             icon="storefront-outline"
-            message="لا توجد قسائم متاحة للاستبدال حالياً. تحقق لاحقاً."
+            message={t("loyalty.couponsBatchesEmpty")}
           />
         ) : (
           (batches.data ?? []).map((b) => (
@@ -182,6 +192,7 @@ function SectionHeader({ title }: { title: string }) {
 }
 
 function IssuedCouponRow({ coupon }: { coupon: Coupon }) {
+  const { t } = useTranslation();
   const expiry = coupon.expires_at
     ? new Date(coupon.expires_at).toLocaleDateString("ar-EG")
     : null;
@@ -189,7 +200,10 @@ function IssuedCouponRow({ coupon }: { coupon: Coupon }) {
     <View
       style={styles.couponRow}
       accessibilityRole="text"
-      accessibilityLabel={`قسيمة ${coupon.code}${expiry ? ` تنتهي في ${expiry}` : ""}`}
+      accessibilityLabel={t("loyalty.couponA11y", {
+        code:   coupon.code,
+        expiry: expiry ? t("loyalty.couponExpiryA11y", { date: expiry }) : "",
+      })}
     >
       <View style={styles.codeBox}>
         <Text style={styles.codeText} selectable maxFontSizeMultiplier={1.2}>
@@ -197,15 +211,15 @@ function IssuedCouponRow({ coupon }: { coupon: Coupon }) {
         </Text>
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={styles.couponLabel} maxFontSizeMultiplier={1.4}>قسيمة خصم</Text>
+        <Text style={styles.couponLabel} maxFontSizeMultiplier={1.4}>{t("loyalty.couponLabel")}</Text>
         {expiry && (
           <Text style={styles.couponMeta} maxFontSizeMultiplier={1.4}>
-            صالحة حتى {expiry}
+            {t("loyalty.validUntil", { date: expiry })}
           </Text>
         )}
       </View>
       <View style={styles.statusPill}>
-        <Text style={styles.statusPillText}>متاحة</Text>
+        <Text style={styles.statusPillText}>{t("loyalty.couponAvailable")}</Text>
       </View>
     </View>
   );
@@ -219,6 +233,7 @@ interface BatchRowProps {
 }
 
 function BatchRow({ batch, currentBalance, isRedeeming, onRedeem }: BatchRowProps) {
+  const { t } = useTranslation();
   const canAfford = currentBalance >= batch.points_cost;
   const remaining = batch.total_supply
     ? Math.max(batch.total_supply - batch.issued_count, 0)
@@ -229,11 +244,11 @@ function BatchRow({ batch, currentBalance, isRedeeming, onRedeem }: BatchRowProp
 
   return (
     <View style={styles.batchCard} accessibilityRole="text"
-          accessibilityLabel={`${batch.name}, ${batch.points_cost} نقطة`}>
+          accessibilityLabel={t("loyalty.batchA11y", { name: batch.name, cost: batch.points_cost.toLocaleString("ar-EG") })}>
       <View style={styles.batchHead}>
         <View style={styles.discountBadge}>
           <Text style={styles.discountText} maxFontSizeMultiplier={1.2}>
-            {formatDiscount(batch.discount_kind, batch.discount_value)}
+            {formatDiscount(batch.discount_kind, batch.discount_value, t)}
           </Text>
         </View>
         <View style={{ flex: 1, marginEnd: 12 }}>
@@ -242,17 +257,17 @@ function BatchRow({ batch, currentBalance, isRedeeming, onRedeem }: BatchRowProp
           </Text>
           {batch.min_spend_cents != null && batch.min_spend_cents > 0 && (
             <Text style={styles.batchMeta} maxFontSizeMultiplier={1.4}>
-              لطلب أكبر من {(batch.min_spend_cents / 100).toLocaleString("ar-EG")} ج.م
+              {t("loyalty.minSpendBatch", { amount: (batch.min_spend_cents / 100).toLocaleString("ar-EG") })}
             </Text>
           )}
           {lowStock && (
             <Text style={styles.lowStockText} maxFontSizeMultiplier={1.4}>
-              متبقي {remaining} فقط
+              {t("loyalty.lowStock", { n: remaining })}
             </Text>
           )}
           {soldOut && (
             <Text style={styles.soldOutText} maxFontSizeMultiplier={1.4}>
-              نفذت الكمية
+              {t("loyalty.soldOut")}
             </Text>
           )}
         </View>
@@ -262,14 +277,14 @@ function BatchRow({ batch, currentBalance, isRedeeming, onRedeem }: BatchRowProp
         <View style={styles.costWrap}>
           <Ionicons name="star" size={14} color={theme.colors.amber[600]} />
           <Text style={styles.costText} maxFontSizeMultiplier={1.3}>
-            {batch.points_cost.toLocaleString("ar-EG")} نقطة
+            {t("loyalty.costLabel", { n: batch.points_cost.toLocaleString("ar-EG") })}
           </Text>
         </View>
         <Pressable
           onPress={onRedeem}
           disabled={disabled}
           accessibilityRole="button"
-          accessibilityLabel={`استبدال ${batch.name} بـ ${batch.points_cost} نقطة`}
+          accessibilityLabel={t("loyalty.redeemBtnA11y", { name: batch.name, cost: batch.points_cost.toLocaleString("ar-EG") })}
           accessibilityState={{ disabled, busy: isRedeeming }}
           style={({ pressed }) => [
             styles.redeemBtn,
@@ -286,7 +301,13 @@ function BatchRow({ batch, currentBalance, isRedeeming, onRedeem }: BatchRowProp
             ]}
             maxFontSizeMultiplier={1.2}
           >
-            {isRedeeming ? "جارٍ…" : soldOut ? "نفذت" : !canAfford ? "نقاط غير كافية" : "استبدل"}
+            {isRedeeming
+              ? t("loyalty.redeemLoading")
+              : soldOut
+              ? t("loyalty.redeemSoldOutLabel")
+              : !canAfford
+              ? t("loyalty.redeemInsufficientLabel")
+              : t("loyalty.redeemLabel")}
           </Text>
         </Pressable>
       </View>
@@ -295,10 +316,11 @@ function BatchRow({ batch, currentBalance, isRedeeming, onRedeem }: BatchRowProp
 }
 
 function ListSkeleton({ rows }: { rows: number }) {
+  const { t } = useTranslation();
   return (
     <View>
       {Array.from({ length: rows }).map((_, i) => (
-        <View key={i} style={[styles.batchCard, styles.skeletonRow]} accessibilityLabel="جارٍ التحميل" />
+        <View key={i} style={[styles.batchCard, styles.skeletonRow]} accessibilityLabel={t("common.loading")} />
       ))}
     </View>
   );
@@ -314,17 +336,18 @@ function EmptyRow({ icon, message }: { icon: React.ComponentProps<typeof Ionicon
 }
 
 function ErrorRow({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.errorRow}>
-      <Text style={styles.errorText} maxFontSizeMultiplier={1.4}>تعذر التحميل</Text>
+      <Text style={styles.errorText} maxFontSizeMultiplier={1.4}>{t("loyalty.recentLoadError")}</Text>
       <Pressable
         onPress={onRetry}
         accessibilityRole="button"
-        accessibilityLabel="إعادة المحاولة"
+        accessibilityLabel={t("common.retry")}
         style={({ pressed }) => [styles.errorBtn, pressed && { opacity: 0.85 }]}
       >
         <Ionicons name="refresh" size={13} color={theme.colors.brand[700]} />
-        <Text style={styles.errorBtnText}>إعادة المحاولة</Text>
+        <Text style={styles.errorBtnText}>{t("common.retry")}</Text>
       </Pressable>
     </View>
   );
@@ -332,23 +355,23 @@ function ErrorRow({ onRetry }: { onRetry: () => void }) {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function formatDiscount(kind: CouponDiscountKind, value: number): string {
+function formatDiscount(kind: CouponDiscountKind, value: number, t: TFunc): string {
   switch (kind) {
     case "percent":       return `${value}%-`;
     case "flat":          return `${(value / 100).toLocaleString("ar-EG")} ج.م`;
-    case "free_shipping": return "توصيل مجاني";
+    case "free_shipping": return t("loyalty.freeShipping");
     default:              return "";
   }
 }
 
-function decodeRedeemError(error: Error): string {
+function decodeRedeemError(error: Error, t: TFunc): string {
   const m = error.message ?? "";
-  if (m.includes("insufficient_balance")) return "نقاط غير كافية لاستبدال هذه القسيمة.";
-  if (m.includes("batch_exhausted"))      return "نفذت الكمية المتاحة من هذه القسيمة.";
-  if (m.includes("batch_expired"))        return "انتهت صلاحية هذه القسيمة.";
-  if (m.includes("account_frozen"))       return "حسابك مجمَّد مؤقتاً — تواصل مع الدعم.";
-  if (m.includes("not_authenticated"))    return "يرجى تسجيل الدخول أولاً.";
-  return "تعذر إتمام الاستبدال. حاول مرة أخرى.";
+  if (m.includes("insufficient_balance")) return t("loyalty.redeemErrorInsufficientBalance");
+  if (m.includes("batch_exhausted"))      return t("loyalty.redeemErrorBatchExhausted");
+  if (m.includes("batch_expired"))        return t("loyalty.redeemErrorBatchExpired");
+  if (m.includes("account_frozen"))       return t("loyalty.redeemErrorAccountFrozen");
+  if (m.includes("not_authenticated"))    return t("loyalty.redeemErrorNotAuthenticated");
+  return t("loyalty.redeemErrorDefault");
 }
 
 // ─── Styles ─────────────────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 import "./_initWeb";
 import "../global.css";
 import React, { useEffect } from "react";
+import { Platform } from "react-native";
 import { Stack } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
@@ -32,6 +33,7 @@ import { attachQueryClientTelemetry, installCrashEnrichment } from "@/features/o
 import { startOfflineQueueRunner } from "@/lib/offlineQueueRunner";
 import { LanguageProvider } from "@/i18n/LanguageProvider";
 import "@/i18n";
+import { useTranslation } from "react-i18next";
 import { useCartStore } from "@/stores/cart";
 // Side-effect import: registers loyalty op handlers with the offline queue.
 import "@/features/loyalty/offlineHandlers";
@@ -75,13 +77,14 @@ function PushBootstrap() {
 }
 
 function CartReservationNotifier() {
+  const { t } = useTranslation();
   const last = useCartStore((s) => s.lastReservationError);
   useEffect(() => {
     if (!last) return;
-    showErrorSheet("مشكلة في الحجز", last.message, {
+    showErrorSheet(t("cart.reservationError"), last.message, {
       onRetry: () => useCartStore.getState().clearReservationError(),
     });
-  }, [last]);
+  }, [last, t]);
   return null;
 }
 
@@ -111,7 +114,7 @@ export default function RootLayout() {
           <NetworkBridge />
           <LanguageProvider>
           <AuthProvider>
-            <StatusBar style="light" />
+            {Platform.OS !== "web" && <StatusBar style="light" />}
             <NotificationSync />
             <PushBootstrap />
             <CartReservationNotifier />
@@ -139,6 +142,8 @@ export default function RootLayout() {
               <Stack.Screen name="tiers"               options={{ headerShown: false, animation: "slide_from_right" }} />
               <Stack.Screen name="campaigns"           options={{ headerShown: false, animation: "slide_from_right" }} />
               <Stack.Screen name="redemption-history"  options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="deals"               options={{ headerShown: false, animation: "slide_from_bottom" }} />
+              <Stack.Screen name="featured"            options={{ headerShown: false, animation: "slide_from_bottom" }} />
               <Stack.Screen name="reset-password"         options={{ headerShown: false }} />
               <Stack.Screen name="about"                  options={{ headerShown: false, animation: "slide_from_right" }} />
               <Stack.Screen name="privacy"                options={{ headerShown: false, animation: "slide_from_right" }} />

@@ -25,9 +25,11 @@ import Animated, {
   useSharedValue,
   withSpring,
   withSequence,
+  withTiming,
   FadeIn,
   FadeOut,
 } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { theme } from "@/theme";
 import { Text as UIText } from "@/shared/ui";
 import { useCartStore } from "@/stores/cart";
@@ -163,6 +165,7 @@ export const ProductCard = memo(function ProductCard({
   badge,
   discountPercent,
 }: ProductCardProps) {
+  const { t } = useTranslation();
   const addItem  = useCartStore((s) => s.addItem);
   const cartQty  = useCartStore(
     (s) => s.items.find((i) => i.productId === product.id)?.quantity ?? 0,
@@ -234,10 +237,12 @@ export const ProductCard = memo(function ProductCard({
         : Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       ).catch(() => {});
     }
+    // Crisp single-pop: quick shrink → snap back to exactly 1.0.
+    // Springs that overshoot and slowly settle read as "stuck" on web, so we
+    // use fast timing for the dip and a tight spring that lands precisely at 1.
     hrtScale.value = withSequence(
-      withSpring(0.72, { damping: 16, stiffness: 500 }),
-      withSpring(1.28, { damping: 10, stiffness: 320 }),
-      withSpring(1.0,  { damping: 18, stiffness: 400 }),
+      withTiming(0.82, { duration: 90 }),
+      withSpring(1.0,  { damping: 12, stiffness: 420, mass: 0.5 }),
     );
     toggleWishlist(product);
   }, [product, toggleWishlist, hrtScale, inWishlist]);
@@ -252,9 +257,9 @@ export const ProductCard = memo(function ProductCard({
 
   // Badge
   const badgeMeta =
-    badge === "new"  ? { label: "جديد",                          grad: ["#2563EB", "#1D4ED8"]  as [string, string] } :
-    badge === "hot"  ? { label: "الأكثر مبيعاً",                  grad: ["#EF4444", "#B91C1C"]  as [string, string] } :
-    badge === "sale" ? { label: `${discountPercent ?? 0}%- خصم`,  grad: ["#F59E0B", "#D97706"]  as [string, string] } :
+    badge === "new"  ? { label: t("products.badgeNew"),                                    grad: ["#2563EB", "#1D4ED8"]  as [string, string] } :
+    badge === "hot"  ? { label: t("products.badgeBestSeller"),                             grad: ["#EF4444", "#B91C1C"]  as [string, string] } :
+    badge === "sale" ? { label: t("products.badgeSale", { n: discountPercent ?? 0 }),      grad: ["#F59E0B", "#D97706"]  as [string, string] } :
     null;
 
   // ── GRID variant ───────────────────────────────────────────────────────────
@@ -289,7 +294,7 @@ export const ProductCard = memo(function ProductCard({
             <View style={styles.oosOverlay}>
               <View style={styles.oosPill}>
                 <Ionicons name="alert-circle-outline" size={12} color="#94A3B8" />
-                <UIText variant="eyebrow" style={styles.oosText}>نفذ المخزون</UIText>
+                <UIText variant="eyebrow" style={styles.oosText}>{t("common.outOfStock")}</UIText>
               </View>
             </View>
           )}
@@ -298,7 +303,7 @@ export const ProductCard = memo(function ProductCard({
           {isLowStock && product.inStock && (
             <View style={styles.lowStockBadge}>
               <Ionicons name="warning" size={10} color="#FCA5A5" />
-              <UIText variant="eyebrow" style={styles.lowStockText}>آخر {product.stock} قطع</UIText>
+              <UIText variant="eyebrow" style={styles.lowStockText}>{t("products.lowStockCount", { n: product.stock })}</UIText>
             </View>
           )}
 
@@ -322,12 +327,12 @@ export const ProductCard = memo(function ProductCard({
 
           {/* Wishlist button */}
           <Animated.View style={[styles.heartWrap, hrtAnim]}>
-            <Pressable onPress={handleWishlist} hitSlop={8} style={styles.heartBtn}>
-              {inWishlist && <View style={[StyleSheet.absoluteFill, styles.heartFill]} />}
+            <Pressable onPress={handleWishlist} hitSlop={8}
+              style={[styles.heartBtn, inWishlist && styles.heartBtnActive]}>
               <Ionicons
                 name={inWishlist ? "heart" : "heart-outline"}
                 size={14}
-                color={inWishlist ? "#fff" : "#94A3B8"}
+                color={inWishlist ? "#F43F5E" : "#94A3B8"}
               />
             </Pressable>
           </Animated.View>
@@ -344,7 +349,7 @@ export const ProductCard = memo(function ProductCard({
                 color={showMaxed ? "#FCA5A5" : "#6EE7B7"}
               />
               <UIText variant="eyebrow" style={[styles.flashText, showMaxed && styles.flashTextMax]}>
-                {showMaxed ? "الحد الأقصى" : "تمت الإضافة ✓"}
+                {showMaxed ? t("common.maxQty") : t("products.addedToCart")}
               </UIText>
             </Animated.View>
           )}
@@ -374,11 +379,11 @@ export const ProductCard = memo(function ProductCard({
                 <UIText variant="card-title" weight="black" style={styles.priceValue}>
                   {product.price.toFixed(2)}
                 </UIText>
-                <UIText variant="eyebrow" style={styles.priceCurrency}>ج.م</UIText>
+                <UIText variant="eyebrow" style={styles.priceCurrency}>{t("common.currency")}</UIText>
               </View>
               {!!origPrice && (
                 <UIText variant="eyebrow" style={styles.origPrice}>
-                  {origPrice.toFixed(0)} ج.م
+                  {origPrice.toFixed(0)} {t("common.currency")}
                 </UIText>
               )}
             </View>
@@ -464,11 +469,11 @@ export const ProductCard = memo(function ProductCard({
             <UIText variant="card-title" weight="black" style={styles.priceValue}>
               {product.price.toFixed(2)}
             </UIText>
-            <UIText variant="eyebrow" style={styles.priceCurrency}>ج.م</UIText>
+            <UIText variant="eyebrow" style={styles.priceCurrency}>{t("common.currency")}</UIText>
           </View>
           {!product.inStock && (
             <View style={styles.oosPillSmall}>
-              <UIText variant="eyebrow" style={styles.oosText}>نفذ</UIText>
+              <UIText variant="eyebrow" style={styles.oosText}>{t("common.outOfStock")}</UIText>
             </View>
           )}
         </View>
@@ -477,12 +482,12 @@ export const ProductCard = memo(function ProductCard({
       {/* Row actions */}
       <View style={styles.rowActions}>
         <Animated.View style={hrtAnim}>
-          <Pressable onPress={handleWishlist} hitSlop={8} style={styles.rowActionBtn}>
-            {inWishlist && <View style={[StyleSheet.absoluteFill, styles.heartFill]} />}
+          <Pressable onPress={handleWishlist} hitSlop={8}
+            style={[styles.rowActionBtn, inWishlist && styles.heartBtnActive]}>
             <Ionicons
               name={inWishlist ? "heart" : "heart-outline"}
               size={16}
-              color={inWishlist ? "#fff" : "#64748B"}
+              color={inWishlist ? "#F43F5E" : "#64748B"}
             />
           </Pressable>
         </Animated.View>
@@ -700,6 +705,11 @@ const styles = StyleSheet.create({
     shadowRadius:    4,
     elevation:       2,
   },
+  // Soft rose tint when favourited — elegant, not aggressively red
+  heartBtnActive: {
+    backgroundColor: "#FFF0F3",
+    borderColor:     "#FECDD3",
+  },
 
   flashChip: {
     position:          "absolute",
@@ -812,10 +822,6 @@ const styles = StyleSheet.create({
   addBtnBase: {
     backgroundColor: "#0DB8A8",
     borderColor:     "#0891B2",
-  },
-  // Replaces LinearGradient fill inside the wishlist heart button
-  heartFill: {
-    backgroundColor: "#F43F5E",
   },
   // Applied to btnAnim wrapper when product is out-of-stock — keeps the
   // opacity computation out of the Reanimated worklet (pure JS, no UI thread)

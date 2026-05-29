@@ -6,13 +6,15 @@
  */
 
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ComingSoonScreen } from "@/shared/components";
 
 export default function Page(): React.ReactElement {
+  const { t } = useTranslation();
   return (
     <ComingSoonScreen
-      title="مسح ملصق الوصفة"
-      subtitle="ميزة الكاميرا قيد التطوير"
+      title={t("prescriptions.scanTitle")}
+      subtitle={t("prescriptions.scanSubtitle")}
       icon="scan-outline"
     />
   );

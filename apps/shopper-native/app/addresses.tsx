@@ -21,6 +21,7 @@ import Animated, {
   withTiming,
   useSharedValue,
 } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/features/auth";
 import {
   useAddressStore,
@@ -51,22 +52,23 @@ function ShimmerCard() {
 
 // ─── Addresses Screen ───────────────────────────────────────────────────────
 export default function AddressesScreen() {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const router  = useRouter();
+  const insets  = useSafeAreaInsets();
+  const { t }   = useTranslation();
   const { user } = useAuth();
 
-  const addresses = useAddressStore((s) => s.addresses);
-  const loading = useAddressStore((s) => s.loading);
+  const addresses      = useAddressStore((s) => s.addresses);
+  const loading        = useAddressStore((s) => s.loading);
   const fetchAddresses = useAddressStore((s) => s.fetch);
-  const addAddress = useAddressStore((s) => s.add);
-  const updateAddress = useAddressStore((s) => s.update);
-  const removeAddress = useAddressStore((s) => s.remove);
-  const setDefault = useAddressStore((s) => s.setDefault);
+  const addAddress     = useAddressStore((s) => s.add);
+  const updateAddress  = useAddressStore((s) => s.update);
+  const removeAddress  = useAddressStore((s) => s.remove);
+  const setDefault     = useAddressStore((s) => s.setDefault);
 
-  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [drawerVisible, setDrawerVisible]   = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const [submitting, setSubmitting]         = useState(false);
+  const [refreshing, setRefreshing]         = useState(false);
 
   // Fetch on mount / user change
   useEffect(() => {
@@ -101,17 +103,17 @@ export default function AddressesScreen() {
   const handleDelete = useCallback(
     (addr: Address) => {
       showConfirmSheet(
-        "حذف العنوان",
-        `هل تريد حذف عنوان "${addr.recipient_name}" نهائياً؟ لا يمكن التراجع عن هذا.`,
+        t("addresses.deleteTitle"),
+        t("addresses.deleteMessage", { name: addr.recipient_name }),
         () => {
           if (Platform.OS !== "web")
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
           removeAddress(addr.id);
         },
-        { confirmLabel: "حذف", danger: true },
+        { confirmLabel: t("addresses.deleteConfirm"), danger: true },
       );
     },
-    [removeAddress]
+    [removeAddress, t]
   );
 
   const handleSetDefault = useCallback(
@@ -136,12 +138,12 @@ export default function AddressesScreen() {
         }
         setDrawerVisible(false);
       } catch {
-        showErrorSheet("خطأ في الحفظ", "تعذر حفظ العنوان. حاول مرة أخرى.");
+        showErrorSheet(t("addresses.saveError"), t("addresses.saveErrorDesc"));
       } finally {
         setSubmitting(false);
       }
     },
-    [user?.id, editingAddress, updateAddress, addAddress]
+    [user?.id, editingAddress, updateAddress, addAddress, t]
   );
 
   // ── Memoized address card to prevent re‑renders ──
@@ -159,9 +161,7 @@ export default function AddressesScreen() {
       onDelete: (a: Address) => void;
       onSetDefault: (a: Address) => void;
     }) => (
-      <Animated.View
-        entering={FadeInDown.duration(280).delay(index * 60)}
-      >
+      <Animated.View entering={FadeInDown.duration(280).delay(index * 60)}>
         <AddressCard
           address={item}
           onEdit={() => onEdit(item)}
@@ -207,40 +207,22 @@ export default function AddressesScreen() {
             onPress={() => router.back()}
             style={styles.backBtn}
             accessibilityRole="button"
-            accessibilityLabel="رجوع"
+            accessibilityLabel={t("common.back")}
           >
-            <Ionicons
-              name="chevron-forward"
-              size={18}
-              color="rgba(255,255,255,0.8)"
-            />
+            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.8)" />
           </Pressable>
 
           <View style={{ flex: 1 }}>
-            <UIText
-              variant="eyebrow"
-              align="right"
-              style={styles.headerEyebrowNew}
-            >
-              عناوين التوصيل
+            <UIText variant="eyebrow" align="right" style={styles.headerEyebrowNew}>
+              {t("addresses.eyebrow")}
             </UIText>
-            <UIText
-              variant="sheet-title"
-              color="inverse"
-              align="right"
-              style={styles.headerTitleNew}
-            >
-              عناويني
+            <UIText variant="sheet-title" color="inverse" align="right" style={styles.headerTitleNew}>
+              {t("addresses.title")}
             </UIText>
-            <UIText
-              variant="body-sm"
-              color="inverse-muted"
-              align="right"
-              style={styles.headerSubNew}
-            >
+            <UIText variant="body-sm" color="inverse-muted" align="right" style={styles.headerSubNew}>
               {addresses.length > 0
-                ? `${addresses.length} عنوان محفوظ على حسابك`
-                : "أضف عنوانك الأول لتسهيل التوصيل"}
+                ? t("addresses.savedCount", { count: addresses.length })
+                : t("addresses.addFirst")}
             </UIText>
           </View>
 
@@ -249,7 +231,7 @@ export default function AddressesScreen() {
             style={styles.addBtnHeader}
             hitSlop={6}
             accessibilityRole="button"
-            accessibilityLabel="إضافة عنوان جديد"
+            accessibilityLabel={t("addresses.addNew")}
           >
             <Ionicons name="add" size={20} color="#fff" />
           </Pressable>
@@ -259,35 +241,16 @@ export default function AddressesScreen() {
         {addresses.length > 0 && (
           <Animated.View entering={FadeIn.duration(280)} style={styles.statsRow}>
             <View style={styles.statPill}>
-              <Ionicons
-                name="location"
-                size={12}
-                color={theme.colors.brand[300]}
-              />
-              <UIText
-                variant="eyebrow"
-                style={{ color: "rgba(255,255,255,0.82)" }}
-              >
-                {addresses.length} عنوان
+              <Ionicons name="location" size={12} color={theme.colors.brand[300]} />
+              <UIText variant="eyebrow" style={{ color: "rgba(255,255,255,0.82)" }}>
+                {t("addresses.count", { count: addresses.length })}
               </UIText>
             </View>
             {defaultAddr && (
-              <View
-                style={[
-                  styles.statPill,
-                  { borderColor: "rgba(34,197,94,0.3)" },
-                ]}
-              >
-                <Ionicons
-                  name="checkmark-circle"
-                  size={12}
-                  color={theme.colors.success.base}
-                />
-                <UIText
-                  variant="eyebrow"
-                  style={{ color: theme.colors.success.light }}
-                >
-                  {defaultAddr.city}  •  الافتراضي
+              <View style={[styles.statPill, { borderColor: "rgba(34,197,94,0.3)" }]}>
+                <Ionicons name="checkmark-circle" size={12} color={theme.colors.success.base} />
+                <UIText variant="eyebrow" style={{ color: theme.colors.success.light }}>
+                  {defaultAddr.city}  •  {t("addresses.default")}
                 </UIText>
               </View>
             )}
@@ -306,9 +269,9 @@ export default function AddressesScreen() {
         <View style={styles.emptyWrap}>
           <EmptyState
             icon="location-outline"
-            title="لا توجد عناوين محفوظة"
-            description="أضف عنوان التوصيل الأول الخاص بك لتسهيل عملية الطلب"
-            actionLabel="إضافة عنوان"
+            title={t("addresses.emptyTitle")}
+            description={t("addresses.emptyDesc")}
+            actionLabel={t("addresses.emptyAction")}
             onAction={handleAdd}
           />
         </View>
@@ -333,22 +296,14 @@ export default function AddressesScreen() {
             addresses.length > 1 ? (
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionIcon}>
-                  <Ionicons
-                    name="map-outline"
-                    size={14}
-                    color={theme.colors.brand[700]}
-                  />
+                  <Ionicons name="map-outline" size={14} color={theme.colors.brand[700]} />
                 </View>
                 <View>
                   <UIText variant="eyebrow" color="tertiary" align="right">
-                    جميع المواقع
+                    {t("addresses.allLocations")}
                   </UIText>
-                  <UIText
-                    variant="card-title"
-                    align="right"
-                    style={styles.sectionTitleNew}
-                  >
-                    العناوين المحفوظة
+                  <UIText variant="card-title" align="right" style={styles.sectionTitleNew}>
+                    {t("addresses.savedTitle")}
                   </UIText>
                 </View>
               </View>
@@ -362,29 +317,20 @@ export default function AddressesScreen() {
                 onPress={handleAdd}
                 style={styles.addCardBtn}
                 accessibilityRole="button"
-                accessibilityLabel="إضافة عنوان توصيل جديد"
+                accessibilityLabel={t("addresses.addNew")}
               >
                 <View style={styles.addCardIcon}>
                   <Ionicons name="add" size={22} color={theme.colors.brand[700]} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <UIText variant="body-sm" weight="bold" align="right">
-                    إضافة عنوان جديد
+                    {t("addresses.addNew")}
                   </UIText>
-                  <UIText
-                    variant="caption"
-                    color="tertiary"
-                    align="right"
-                    style={styles.addCardDescNew}
-                  >
-                    أضف موقع توصيل إضافي إلى حسابك
+                  <UIText variant="caption" color="tertiary" align="right" style={styles.addCardDescNew}>
+                    {t("addresses.addNewDesc")}
                   </UIText>
                 </View>
-                <Ionicons
-                  name="chevron-back"
-                  size={14}
-                  color={theme.colors.brand[700]}
-                />
+                <Ionicons name="chevron-back" size={14} color={theme.colors.brand[700]} />
               </Pressable>
             </Animated.View>
           }
@@ -412,151 +358,151 @@ const styles = StyleSheet.create({
   // ── Header ──
   header: {
     paddingHorizontal: 20,
-    paddingBottom: 16,
-    gap: 14,
-    overflow: "hidden",
+    paddingBottom:     16,
+    gap:               14,
+    overflow:          "hidden",
   },
   decoCircle: {
-    position: "absolute",
-    right: -40,
-    top: -40,
-    width: 140,
-    height: 140,
-    borderRadius: 70,
+    position:        "absolute",
+    right:           -40,
+    top:             -40,
+    width:           140,
+    height:          140,
+    borderRadius:    70,
     backgroundColor: "rgba(255,255,255,0.03)",
   },
   decoCircle2: {
-    position: "absolute",
-    left: -20,
-    bottom: -30,
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    position:        "absolute",
+    left:            -20,
+    bottom:          -30,
+    width:           90,
+    height:          90,
+    borderRadius:    45,
     backgroundColor: "rgba(255,255,255,0.02)",
   },
   headerTopRow: {
     flexDirection: "row-reverse",
-    alignItems: "center",
-    gap: 12,
+    alignItems:    "center",
+    gap:           12,
   },
   backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width:           38,
+    height:          38,
+    borderRadius:    12,
     backgroundColor: "rgba(255,255,255,0.10)",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
+    alignItems:      "center",
+    justifyContent:  "center",
+    borderWidth:     1,
+    borderColor:     "rgba(255,255,255,0.12)",
   },
   addBtnHeader: {
-    width: 42,
-    height: 42,
-    borderRadius: 13,
+    width:         42,
+    height:        42,
+    borderRadius:  13,
     backgroundColor: theme.colors.brand[600],
-    alignItems: "center",
+    alignItems:    "center",
     justifyContent: "center",
     ...theme.shadow.brand,
     shadowOpacity: 0.3,
   },
   headerEyebrowNew: {
-    color: "rgba(255,255,255,0.55)",
+    color:     "rgba(255,255,255,0.55)",
     marginTop: 2,
   },
   headerTitleNew: {
     letterSpacing: -0.4,
-    marginTop: 2,
+    marginTop:     2,
   },
   headerSubNew: {
     marginTop: 4,
   },
   statsRow: {
     flexDirection: "row-reverse",
-    gap: 8,
+    gap:           8,
   },
   statPill: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    flexDirection:     "row-reverse",
+    alignItems:        "center",
+    gap:               5,
+    backgroundColor:   "rgba(255,255,255,0.08)",
     paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+    paddingVertical:   5,
+    borderRadius:      999,
+    borderWidth:       1,
+    borderColor:       "rgba(255,255,255,0.10)",
   },
 
   // ── Loading skeletons ──
   loadingWrap: {
-    flex: 1,
+    flex:    1,
     padding: 20,
-    gap: 12,
+    gap:     12,
   },
   skeletonCard: {
-    height: 180,
-    borderRadius: 20,
+    height:          180,
+    borderRadius:    20,
     backgroundColor: theme.colors.slate[100],
   },
 
   // ── Empty state ──
   emptyWrap: {
-    flex: 1,
-    justifyContent: "center",
+    flex:              1,
+    justifyContent:    "center",
     paddingHorizontal: 20,
   },
 
   // ── List ──
   list: {
-    padding: 20,
+    padding:       20,
     paddingBottom: 40,
   },
   sectionHeader: {
     flexDirection: "row-reverse",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 14,
+    alignItems:    "center",
+    gap:           12,
+    marginBottom:  14,
   },
   sectionIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 11,
+    width:           34,
+    height:          34,
+    borderRadius:    11,
     backgroundColor: theme.colors.brand.lighter,
-    borderWidth: 1,
-    borderColor: theme.colors.border.brandSoft,
-    alignItems: "center",
-    justifyContent: "center",
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
+    alignItems:      "center",
+    justifyContent:  "center",
   },
   sectionTitleNew: {
     letterSpacing: -0.2,
-    marginTop: 1,
+    marginTop:     1,
   },
 
   // ── Add address CTA ──
   addCardBtn: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
-    gap: 14,
-    padding: 16,
-    marginTop: 14,
-    borderRadius: 18,
+    flexDirection:   "row-reverse",
+    alignItems:      "center",
+    gap:             14,
+    padding:         16,
+    marginTop:       14,
+    borderRadius:    18,
     backgroundColor: theme.colors.surface,
-    borderWidth: 1.5,
-    borderColor: theme.colors.brand[200],
-    borderStyle: "dashed",
+    borderWidth:     1.5,
+    borderColor:     theme.colors.brand[200],
+    borderStyle:     "dashed",
   },
   addCardIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+    width:           48,
+    height:          48,
+    borderRadius:    14,
     backgroundColor: theme.colors.brand.lighter,
-    borderWidth: 1,
-    borderColor: theme.colors.border.brandSoft,
-    alignItems: "center",
-    justifyContent: "center",
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
+    alignItems:      "center",
+    justifyContent:  "center",
   },
   addCardDescNew: {
-    marginTop: 2,
-    textTransform: "none",
-    letterSpacing: 0,
+    marginTop:       2,
+    textTransform:   "none",
+    letterSpacing:   0,
   },
 });

@@ -21,6 +21,7 @@ import {
   StyleSheet,
   View,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Image as ExpoImage } from "expo-image";
 import { Image as RNImage, Platform } from "react-native";
 
@@ -50,6 +51,7 @@ import { Text as UIText } from "@/shared/ui";
 import { Badge } from "@/components/ui/Badge";
 import { theme } from "@/theme";
 import { formatPrice } from "@/utils/format";
+import { useAppLanguage } from "@/i18n/LanguageProvider";
 import type { Order, OrderStatus } from "@/stores/orders";
 
 // ─── Status / payment metadata ────────────────────────────────────────────────
@@ -58,24 +60,24 @@ type StatusVariant = "success" | "warning" | "brand" | "error" | "neutral";
 
 const ORDER_STATUS_META: Record<
   OrderStatus,
-  { label: string; variant: StatusVariant; icon: React.ComponentProps<typeof Ionicons>["name"] }
+  { labelKey: string; variant: StatusVariant; icon: React.ComponentProps<typeof Ionicons>["name"] }
 > = {
-  pending:         { label: "قيد المعالجة",  variant: "warning", icon: "time-outline"             },
-  pending_payment: { label: "بانتظار الدفع", variant: "warning", icon: "card-outline"             },
-  processing:      { label: "جارٍ التجهيز",  variant: "brand",   icon: "refresh-outline"          },
-  shipped:         { label: "في الطريق",     variant: "brand",   icon: "car-outline"              },
-  delivered:       { label: "تم التسليم",    variant: "success", icon: "checkmark-circle-outline" },
-  cancelled:       { label: "ملغي",          variant: "error",   icon: "close-circle-outline"     },
+  pending:         { labelKey: "orders.pending",        variant: "warning", icon: "time-outline"             },
+  pending_payment: { labelKey: "orders.pendingPayment",  variant: "warning", icon: "card-outline"             },
+  processing:      { labelKey: "orders.processing",     variant: "brand",   icon: "refresh-outline"          },
+  shipped:         { labelKey: "orders.shipped",        variant: "brand",   icon: "car-outline"              },
+  delivered:       { labelKey: "orders.delivered",      variant: "success", icon: "checkmark-circle-outline" },
+  cancelled:       { labelKey: "orders.cancelled",      variant: "error",   icon: "close-circle-outline"     },
 };
 
 const PAYMENT_METHOD_META: Record<
   string,
-  { label: string; icon: React.ComponentProps<typeof Ionicons>["name"]; color: string; bg: string }
+  { labelKey: string; icon: React.ComponentProps<typeof Ionicons>["name"]; color: string; bg: string }
 > = {
-  cod:          { label: "الدفع عند الاستلام", icon: "cash-outline",   color: theme.colors.green[700],  bg: theme.colors.green[50]  },
-  vodafone:     { label: "فودافون كاش",        icon: "wallet-outline", color: theme.colors.red[600],    bg: theme.colors.red[50]    },
-  vodafone_cash:{ label: "فودافون كاش",        icon: "wallet-outline", color: theme.colors.red[600],    bg: theme.colors.red[50]    },
-  instapay:     { label: "إنستاباي",           icon: "flash-outline",  color: theme.colors.purple[600], bg: theme.colors.purple[50] },
+  cod:          { labelKey: "checkout.methodCodTitle",      icon: "cash-outline",   color: theme.colors.green[700],  bg: theme.colors.green[50]  },
+  vodafone:     { labelKey: "checkout.methodVodafoneTitle", icon: "wallet-outline", color: theme.colors.red[600],    bg: theme.colors.red[50]    },
+  vodafone_cash:{ labelKey: "checkout.methodVodafoneTitle", icon: "wallet-outline", color: theme.colors.red[600],    bg: theme.colors.red[50]    },
+  instapay:     { labelKey: "checkout.methodInstapayTitle", icon: "flash-outline",  color: theme.colors.purple[600], bg: theme.colors.purple[50] },
 };
 
 function getPaymentMeta(method: string | null) {
@@ -83,91 +85,61 @@ function getPaymentMeta(method: string | null) {
   return PAYMENT_METHOD_META[method] ?? PAYMENT_METHOD_META.cod;
 }
 
-function getPaymentStatusDisplay(status: string): { label: string; color: string; icon: React.ComponentProps<typeof Ionicons>["name"] } {
+function getPaymentStatusDisplay(status: string): { labelKey: string; color: string; icon: React.ComponentProps<typeof Ionicons>["name"] } {
   switch (status) {
     case "pending_verification":
-      return { label: "بانتظار مراجعة الإيصال", color: theme.colors.amber[700],  icon: "hourglass-outline"      };
+      return { labelKey: "orders.paymentStatusPendingVerification", color: theme.colors.amber[700],  icon: "hourglass-outline"    };
     case "verified":
     case "paid":
-      return { label: "تم التحقق من الدفع",     color: theme.colors.green[700],  icon: "checkmark-circle"       };
+      return { labelKey: "orders.paymentStatusVerified",            color: theme.colors.green[700],  icon: "checkmark-circle"     };
     case "failed":
-      return { label: "فشل الدفع",              color: theme.colors.red[600],    icon: "close-circle-outline"   };
+      return { labelKey: "orders.paymentStatusFailed",              color: theme.colors.red[600],    icon: "close-circle-outline" };
     case "pending":
     default:
-      return { label: "في الانتظار",            color: theme.colors.slate[500],  icon: "time-outline"           };
+      return { labelKey: "orders.paymentStatusPending",             color: theme.colors.slate[500],  icon: "time-outline"         };
   }
 }
 
 // ─── Timeline ─────────────────────────────────────────────────────────────────
 
 interface TimelineStep {
-  key:   string;
-  label: string;
-  done:  boolean;
-  icon:  React.ComponentProps<typeof Ionicons>["name"];
+  key:      string;
+  labelKey: string;
+  done:     boolean;
+  icon:     React.ComponentProps<typeof Ionicons>["name"];
 }
 
 function buildTimeline(order: Order): TimelineStep[] {
-  const isCod     = !order.paymentMethod || order.paymentMethod === "cod";
-  const isManual  = !isCod;
-  const s         = order.status;
-  const ps        = order.paymentStatus;
+  const isCod    = !order.paymentMethod || order.paymentMethod === "cod";
+  const isManual = !isCod;
+  const s        = order.status;
+  const ps       = order.paymentStatus;
 
   const done = (check: boolean) => check;
 
   const base: TimelineStep[] = [
-    {
-      key:   "placed",
-      label: "تم تقديم الطلب",
-      done:  true,
-      icon:  "bag-check-outline",
-    },
+    { key: "placed",     labelKey: "orders.stepPlaced",           done: true, icon: "bag-check-outline" },
   ];
 
   if (isManual) {
     base.push(
-      {
-        key:   "payment_uploaded",
-        label: "تم رفع إيصال الدفع",
-        done:  done(["pending_verification", "verified", "paid"].includes(ps)),
-        icon:  "cloud-upload-outline",
-      },
-      {
-        key:   "payment_verified",
-        label: "تم التحقق من الدفع",
-        done:  done(["verified", "paid"].includes(ps)),
-        icon:  "shield-checkmark-outline",
-      },
+      { key: "payment_uploaded", labelKey: "orders.stepPaymentUploaded", done: done(["pending_verification","verified","paid"].includes(ps)), icon: "cloud-upload-outline"       },
+      { key: "payment_verified", labelKey: "orders.stepPaymentVerified", done: done(["verified","paid"].includes(ps)),                         icon: "shield-checkmark-outline"   },
     );
   }
 
   base.push(
-    {
-      key:   "processing",
-      label: "جارٍ تجهيز الطلب",
-      done:  done(["processing", "shipped", "delivered"].includes(s)),
-      icon:  "cube-outline",
-    },
-    {
-      key:   "shipped",
-      label: "في الطريق إليك",
-      done:  done(["shipped", "delivered"].includes(s)),
-      icon:  "car-outline",
-    },
-    {
-      key:   "delivered",
-      label: "تم التسليم",
-      done:  done(s === "delivered"),
-      icon:  "checkmark-circle-outline",
-    },
+    { key: "processing", labelKey: "orders.stepProcessing", done: done(["processing","shipped","delivered"].includes(s)), icon: "cube-outline"              },
+    { key: "shipped",    labelKey: "orders.stepShipped",    done: done(["shipped","delivered"].includes(s)),               icon: "car-outline"               },
+    { key: "delivered",  labelKey: "orders.stepDelivered",  done: done(s === "delivered"),                                  icon: "checkmark-circle-outline"  },
   );
 
   if (s === "cancelled") {
-    return base.filter((step) =>
-      ["placed", "cancelled_status"].includes(step.key),
-    ).concat([
-      { key: "cancelled_status", label: "تم إلغاء الطلب", done: true, icon: "close-circle-outline" },
-    ]);
+    return base
+      .filter((step) => ["placed","cancelled_status"].includes(step.key))
+      .concat([
+        { key: "cancelled_status", labelKey: "orders.stepCancelled", done: true, icon: "close-circle-outline" },
+      ]);
   }
 
   return base;
@@ -175,9 +147,9 @@ function buildTimeline(order: Order): TimelineStep[] {
 
 // ─── Helper: date format ──────────────────────────────────────────────────────
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, locale: string): string {
   try {
-    return new Date(iso).toLocaleDateString("ar-EG", {
+    return new Date(iso).toLocaleDateString(locale === "en" ? "en-US" : "ar-EG", {
       weekday: "long",
       day:     "numeric",
       month:   "long",
@@ -186,9 +158,9 @@ function formatDate(iso: string): string {
   } catch { return iso; }
 }
 
-function formatTime(iso: string): string {
+function formatTime(iso: string, locale: string): string {
   try {
-    return new Date(iso).toLocaleTimeString("ar-EG", {
+    return new Date(iso).toLocaleTimeString(locale === "en" ? "en-US" : "ar-EG", {
       hour:   "2-digit",
       minute: "2-digit",
     });
@@ -248,9 +220,11 @@ function InfoRow({
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function OrderDetailScreen(): React.ReactElement {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const router            = useRouter();
+  const insets            = useSafeAreaInsets();
+  const { t }             = useTranslation();
+  const { language }      = useAppLanguage();
+  const { id }            = useLocalSearchParams<{ id: string }>();
 
   const {
     data:        order,
@@ -288,14 +262,14 @@ export default function OrderDetailScreen(): React.ReactElement {
         <View style={styles.errorState}>
           <Ionicons name="alert-circle-outline" size={48} color={theme.colors.slate[300]} />
           <UIText variant="sheet-title" color="secondary" align="center" style={{ marginTop: 16 }}>
-            تعذّر تحميل الطلب
+            {t("orders.loadError")}
           </UIText>
           <UIText variant="body" color="muted" align="center" style={{ marginTop: 8 }}>
-            تحقق من اتصالك وحاول مجدداً
+            {t("orders.loadErrorDesc")}
           </UIText>
           <Pressable onPress={handleRefresh} style={styles.retryBtn}>
             <UIText variant="body-sm" weight="bold" style={{ color: theme.colors.brand[700] }}>
-              إعادة المحاولة
+              {t("common.retry")}
             </UIText>
           </Pressable>
         </View>
@@ -314,13 +288,13 @@ export default function OrderDetailScreen(): React.ReactElement {
     address.formatted ??
     [
       address.street,
-      address.building && `عمارة ${address.building}`,
-      address.floor    && `طابق ${address.floor}`,
-      address.apartment && `شقة ${address.apartment}`,
+      address.building && t("orders.building", { n: address.building }),
+      address.floor    && t("orders.floor",    { n: address.floor    }),
+      address.apartment && t("orders.apt",     { n: address.apartment }),
       address.city,
     ]
       .filter(Boolean)
-      .join("، ");
+      .join(language === "en" ? ", " : "، ");
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -331,13 +305,13 @@ export default function OrderDetailScreen(): React.ReactElement {
         <HeaderBackButton onPress={() => router.back()} />
         <View style={{ flex: 1 }}>
           <UIText variant="eyebrow" color="tertiary" align="right">
-            تفاصيل الطلب
+            {t("orders.orderDetail")}
           </UIText>
           <UIText variant="card-title" align="right" style={styles.headerOrderId}>
             #{shortId}
           </UIText>
         </View>
-        <Badge variant={statusMeta.variant} size="sm">{statusMeta.label}</Badge>
+        <Badge variant={statusMeta.variant} size="sm">{t(statusMeta.labelKey)}</Badge>
       </Animated.View>
 
       <ScrollView
@@ -359,24 +333,24 @@ export default function OrderDetailScreen(): React.ReactElement {
         <Animated.View entering={FadeInDown.delay(30).duration(320)} style={styles.metaRow}>
           <View style={styles.metaChip}>
             <Ionicons name="calendar-outline" size={12} color={theme.colors.slate[500]} />
-            <UIText variant="eyebrow" color="tertiary">{formatDate(order.createdAt)}</UIText>
+            <UIText variant="eyebrow" color="tertiary">{formatDate(order.createdAt, language)}</UIText>
           </View>
           <View style={styles.metaChip}>
             <Ionicons name="time-outline" size={12} color={theme.colors.slate[500]} />
-            <UIText variant="eyebrow" color="tertiary">{formatTime(order.createdAt)}</UIText>
+            <UIText variant="eyebrow" color="tertiary">{formatTime(order.createdAt, language)}</UIText>
           </View>
           {order.items.length > 0 && (
             <View style={styles.metaChip}>
               <Ionicons name="cube-outline" size={12} color={theme.colors.slate[500]} />
               <UIText variant="eyebrow" color="tertiary">
-                {order.items.length} {order.items.length === 1 ? "منتج" : "منتجات"}
+                {t("orders.items", { count: order.items.length })}
               </UIText>
             </View>
           )}
         </Animated.View>
 
         {/* ── Timeline ──────────────────────────────────────────────────── */}
-        <DetailSection title="مسار الطلب" icon="git-branch-outline" delay={60}>
+        <DetailSection title={t("orders.timeline")} icon="git-branch-outline" delay={60}>
           {timeline.map((step, i) => (
             <View key={step.key} style={styles.timelineRow}>
               <View style={styles.timelineLeft}>
@@ -411,7 +385,7 @@ export default function OrderDetailScreen(): React.ReactElement {
                   flex:       1,
                   marginRight: 12,
                 }}>
-                {step.label}
+                {t(step.labelKey)}
               </UIText>
             </View>
           ))}
@@ -419,7 +393,7 @@ export default function OrderDetailScreen(): React.ReactElement {
 
         {/* ── Items ─────────────────────────────────────────────────────── */}
         {order.items.length > 0 && (
-          <DetailSection title="المنتجات المطلوبة" icon="bag-outline" delay={120}>
+          <DetailSection title={t("orders.itemsSection")} icon="bag-outline" delay={120}>
             {order.items.map((item) => (
               <Pressable
                 key={item.productId}
@@ -429,7 +403,7 @@ export default function OrderDetailScreen(): React.ReactElement {
                 ]}
                 onPress={() => router.push(`/product/${item.productId}`)}
                 accessibilityRole="button"
-                accessibilityLabel={`منتج ${item.name}`}>
+                accessibilityLabel={item.name}>
                 {item.imageUrl ? (
                   <SafeImage
                     source={{ uri: item.imageUrl }}
@@ -451,11 +425,11 @@ export default function OrderDetailScreen(): React.ReactElement {
                     weight="bold"
                     align="right"
                     numberOfLines={2}>
-                    {item.name || "منتج"}
+                    {item.name || t("orders.noItems")}
                   </UIText>
                   <View style={styles.itemMeta}>
                     <UIText variant="caption" color="secondary">
-                      الكمية: {item.quantity}
+                      {t("orders.qty", { count: item.quantity })}
                     </UIText>
                     <UIText
                       variant="caption"
@@ -476,7 +450,7 @@ export default function OrderDetailScreen(): React.ReactElement {
         )}
 
         {/* ── Delivery address ──────────────────────────────────────────── */}
-        <DetailSection title="عنوان التوصيل" icon="location-outline" delay={180}>
+        <DetailSection title={t("orders.addressSection")} icon="location-outline" delay={180}>
           <View style={styles.addressCard}>
             <View style={styles.addressRow}>
               <Ionicons
@@ -516,7 +490,7 @@ export default function OrderDetailScreen(): React.ReactElement {
         </DetailSection>
 
         {/* ── Payment ───────────────────────────────────────────────────── */}
-        <DetailSection title="طريقة الدفع" icon="card-outline" delay={240}>
+        <DetailSection title={t("checkout.paymentSection")} icon="card-outline" delay={240}>
           <View style={[styles.paymentCard, { backgroundColor: pmMeta.bg }]}>
             <View style={[styles.paymentIconBox, { backgroundColor: "#fff" }]}>
               <Ionicons name={pmMeta.icon} size={20} color={pmMeta.color} />
@@ -527,14 +501,14 @@ export default function OrderDetailScreen(): React.ReactElement {
                 weight="bold"
                 align="right"
                 style={{ color: pmMeta.color }}>
-                {pmMeta.label}
+                {t(pmMeta.labelKey)}
               </UIText>
               <View style={styles.paymentStatusRow}>
                 <Ionicons name={psDisplay.icon} size={12} color={psDisplay.color} />
                 <UIText
                   variant="caption"
                   style={{ color: psDisplay.color, marginRight: 4 }}>
-                  {psDisplay.label}
+                  {t(psDisplay.labelKey)}
                 </UIText>
               </View>
             </View>
@@ -543,7 +517,7 @@ export default function OrderDetailScreen(): React.ReactElement {
           {/* Transfer number if manual */}
           {isManualPay && order.transferNumber && (
             <View style={styles.transferRow}>
-              <UIText variant="caption" color="tertiary">رقم المُرسِل</UIText>
+              <UIText variant="caption" color="tertiary">{t("orders.transferNumber")}</UIText>
               <UIText variant="body-sm" weight="bold">
                 {order.transferNumber}
               </UIText>
@@ -558,7 +532,7 @@ export default function OrderDetailScreen(): React.ReactElement {
                 color="tertiary"
                 align="right"
                 style={{ marginBottom: 8 }}>
-                إيصال التحويل
+                {t("orders.paymentProof")}
               </UIText>
               <SafeImage
                 source={{ uri: order.paymentProofUrl }}
@@ -570,20 +544,20 @@ export default function OrderDetailScreen(): React.ReactElement {
         </DetailSection>
 
         {/* ── Price breakdown ───────────────────────────────────────────── */}
-        <DetailSection title="ملخص السعر" icon="receipt-outline" delay={300}>
+        <DetailSection title={t("orders.priceSection")} icon="receipt-outline" delay={300}>
           <InfoRow
-            label={`المجموع الفرعي (${order.items.length} منتج)`}
+            label={t("checkout.subtotalRow", { count: order.items.length })}
             value={formatPrice(order.subtotal)}
           />
           <View style={styles.priceDivider} />
           <InfoRow
-            label="رسوم التوصيل"
-            value={order.delivery === 0 ? "مجاني" : formatPrice(order.delivery)}
+            label={t("checkout.deliveryRow")}
+            value={order.delivery === 0 ? t("common.free") : formatPrice(order.delivery)}
             valueColor={order.delivery === 0 ? theme.colors.green[600] : undefined}
           />
           {(order.discountTotal ?? 0) > 0 && (
             <InfoRow
-              label="الخصم"
+              label={t("checkout.discountRow")}
               value={`−${formatPrice(order.discountTotal ?? 0)}`}
               valueColor={theme.colors.green[600]}
             />
@@ -591,7 +565,7 @@ export default function OrderDetailScreen(): React.ReactElement {
           <View style={[styles.priceDivider, { marginVertical: 12 }]} />
           <View style={styles.totalRow}>
             <UIText variant="body" weight="extrabold" color="primary">
-              الإجمالي
+              {t("orders.total")}
             </UIText>
             <UIText
               variant="card-title"
@@ -604,7 +578,7 @@ export default function OrderDetailScreen(): React.ReactElement {
 
         {/* ── Notes ─────────────────────────────────────────────────────── */}
         {order.address.notes ? (
-          <DetailSection title="ملاحظات" icon="chatbubble-outline" delay={360}>
+          <DetailSection title={t("orders.notesSection")} icon="chatbubble-outline" delay={360}>
             <UIText variant="body-sm" color="secondary" align="right" style={{ lineHeight: 22 }}>
               {order.address.notes}
             </UIText>

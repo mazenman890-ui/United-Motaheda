@@ -15,6 +15,7 @@ import { showSuccessSheet, showErrorSheet } from "@/shared/store/appSheetStore";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/Input";
 import { theme } from "@/theme";
 import { MANUAL_PAYMENT_WALLET_NUMBER } from "../constants";
@@ -36,38 +37,38 @@ export const ManualPaymentPanel = memo(function ManualPaymentPanel({
   uploading,
   error,
 }: ManualPaymentPanelProps) {
+  const { t } = useTranslation();
+
   const copyNumber = async () => {
     try {
       await Clipboard.setStringAsync(MANUAL_PAYMENT_WALLET_NUMBER);
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       }
-      showSuccessSheet("تم النسخ ✓", "تم نسخ رقم المحفظة إلى الحافظة.");
+      showSuccessSheet(t("payment.copySuccess"), t("payment.copySuccessMsg"));
     } catch {
-      showErrorSheet("تعذّر النسخ", "لم نتمكن من نسخ الرقم. انسخه يدوياً.");
+      showErrorSheet(t("payment.copyFailed"), t("payment.copyFailedMsg"));
     }
   };
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.hint}>
-        أرسل المبلغ إلى رقم المحفظة ثم أدخل رقم المرسل وارفق صورة الإيصال.
-      </Text>
+      <Text style={styles.hint}>{t("payment.walletHint")}</Text>
 
       <View style={styles.numberBlock}>
         <Text style={styles.walletNumber}>{MANUAL_PAYMENT_WALLET_NUMBER}</Text>
         <Pressable
           onPress={copyNumber}
           accessibilityRole="button"
-          accessibilityLabel="نسخ رقم المحفظة"
+          accessibilityLabel={t("payment.copyWalletA11y")}
           style={({ pressed }) => [styles.copyBtn, pressed && { opacity: 0.85 }]}>
           <Ionicons name="copy-outline" size={18} color="#fff" />
-          <Text style={styles.copyBtnText}>نسخ</Text>
+          <Text style={styles.copyBtnText}>{t("payment.copyNumber")}</Text>
         </Pressable>
       </View>
 
       <Input
-        label="رقم هاتف المرسل أو معرف إنستاباي"
+        label={t("payment.senderReference")}
         value={transferNumber}
         onChangeText={onTransferNumberChange}
         placeholder="01XXXXXXXXX أو InstaPay handle"
@@ -76,7 +77,7 @@ export const ManualPaymentPanel = memo(function ManualPaymentPanel({
         error={error && !transferNumber.trim() ? error : undefined}
       />
 
-      <Text style={styles.uploadLabel}>لقطة شاشة التحويل</Text>
+      <Text style={styles.uploadLabel}>{t("payment.uploadReceipt")}</Text>
       <Pressable
         onPress={onPickReceipt}
         disabled={uploading}
@@ -91,7 +92,7 @@ export const ManualPaymentPanel = memo(function ManualPaymentPanel({
         ) : (
           <View style={styles.uploadPlaceholder}>
             <Ionicons name="image-outline" size={32} color={theme.colors.slate[400]} />
-            <Text style={styles.uploadPlaceholderText}>اضغط لاختيار صورة الإيصال</Text>
+            <Text style={styles.uploadPlaceholderText}>{t("payment.pickReceipt")}</Text>
           </View>
         )}
       </Pressable>

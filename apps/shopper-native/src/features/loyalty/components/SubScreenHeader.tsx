@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { theme } from "@/theme";
 
 interface SubScreenHeaderProps {
@@ -34,6 +35,7 @@ export function SubScreenHeader({
   rightElement,
 }: SubScreenHeaderProps) {
   const router = useRouter();
+  const { t } = useTranslation();
 
   return (
     <View style={styles.container}>
@@ -60,7 +62,7 @@ export function SubScreenHeader({
         onPress={() => router.back()}
         hitSlop={12}
         accessibilityRole="button"
-        accessibilityLabel="رجوع"
+        accessibilityLabel={t("common.back")}
         style={({ pressed }) => [
           styles.backBtn,
           pressed && styles.backBtnPressed,

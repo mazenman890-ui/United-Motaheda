@@ -26,6 +26,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
 import { Text } from "@/shared/ui";
 import { theme } from "@/theme";
 import { useScreenTrace } from "@/features/observability";
@@ -36,7 +37,7 @@ import { useActiveCampaigns } from "../hooks/useActiveCampaigns";
 import { useLoyaltyHistory }  from "../hooks/useLoyaltyHistory";
 import type { LoyaltyBalance, RewardTier, RewardCampaign, LedgerEntry } from "../types";
 
-// Platform-aware useNativeDriver: use native driver on iOS/Android, JS-based on web
+// Platform-aware useNativeDriver
 const useNativeDriver = Platform.OS !== "web";
 
 function blurActiveElementOnWeb() {
@@ -64,6 +65,7 @@ export interface LoyaltyHubScreenProps {
 // ─── Ionicons type alias ──────────────────────────────────────────────────────
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
+type TFunc = ReturnType<typeof useTranslation>["t"];
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -96,9 +98,6 @@ export function LoyaltyHubScreen({
     void campaigns.refetch();
     void history.refetch();
   }, [balance, tiers, campaigns, history]);
-
-  // ── All hooks must be called unconditionally — before any early return ─────
-  // (Rules of Hooks: never call hooks after a conditional return.)
 
   const recentEntries: LedgerEntry[] = useMemo(() => {
     const pages = history.data?.pages ?? [];
@@ -234,30 +233,28 @@ export function LoyaltyHubScreen({
 
 function HubHeader({ onGoToCampaigns }: { onGoToCampaigns?: () => void }) {
   const router = useRouter();
+  const { t } = useTranslation();
   return (
     <View style={styles.hubHeader}>
-      {/* Title — RTL start (visual right) */}
-      <Text style={styles.hubTitle} accessibilityRole="header">برنامج المكافآت</Text>
+      <Text style={styles.hubTitle} accessibilityRole="header">{t("loyalty.hubTitle")}</Text>
 
-      {/* Campaigns badge — middle */}
       {onGoToCampaigns && (
         <Pressable
           onPress={onGoToCampaigns}
           hitSlop={10}
           accessibilityRole="button"
-          accessibilityLabel="العروض النشطة"
+          accessibilityLabel={t("loyalty.hubCampaignsA11y")}
           style={styles.campaignsBadge}>
           <Ionicons name="megaphone-outline" size={15} color={theme.colors.brand.base} />
-          <Text style={styles.campaignsBadgeText}>العروض</Text>
+          <Text style={styles.campaignsBadgeText}>{t("loyalty.hubCampaignsLabel")}</Text>
         </Pressable>
       )}
 
-      {/* Back button — RTL end (visual left) */}
       <Pressable
         onPress={() => router.back()}
         hitSlop={12}
         accessibilityRole="button"
-        accessibilityLabel="رجوع"
+        accessibilityLabel={t("common.back")}
         style={({ pressed }) => [styles.hubBackBtn, pressed && styles.hubBackBtnPressed]}>
         <Ionicons name="chevron-forward" size={22} color={theme.colors.text.primary} />
       </Pressable>
@@ -276,13 +273,13 @@ interface HeroSectionProps {
 }
 
 function HeroSection({ user, balance, currentTier, nextTier }: HeroSectionProps) {
+  const { t } = useTranslation();
   const firstName   = (user.name ?? user.email).split(" ")[0] ?? "عزيزي";
   const tierLabel   = currentTier?.name ?? "برونزي";
   const tierColor   = getTierColor(tierLabel);
   const tierIcon    = getTierIcon(tierLabel);
   const multiplier  = currentTier?.earn_multiplier ?? 1;
 
-  // Balance count-up animation (addListener avoids Arabic-Indic digit crash in interpolate)
   const animVal  = useRef(new RNAnimated.Value(0)).current;
   const prevBal  = useRef(0);
   const [displayBalance, setDisplayBalance] = useState(
@@ -304,7 +301,6 @@ function HeroSection({ user, balance, currentTier, nextTier }: HeroSectionProps)
     return () => animVal.removeListener(id);
   }, [balance.balance, animVal]);
 
-  // Progress 0-1 toward next tier
   const progress = useMemo(() => {
     if (!nextTier) return 1;
     const from  = currentTier?.min_lifetime_points ?? 0;
@@ -317,7 +313,6 @@ function HeroSection({ user, balance, currentTier, nextTier }: HeroSectionProps)
     ? Math.max(0, nextTier.min_lifetime_points - balance.lifetime_earned)
     : null;
 
-  // Avatar initials
   const initials = (user.name ?? user.email)
     .split(" ").slice(0, 2).map((w) => w[0] ?? "").join("").toUpperCase();
 
@@ -331,10 +326,9 @@ function HeroSection({ user, balance, currentTier, nextTier }: HeroSectionProps)
       {/* Top row: greeting + avatar */}
       <View style={styles.heroTopRow}>
         <View style={styles.heroGreeting}>
-          <Text style={styles.heroWelcome}>أهلاً،</Text>
+          <Text style={styles.heroWelcome}>{t("loyalty.heroWelcome")}</Text>
           <Text style={styles.heroName} numberOfLines={1}>{firstName} 👋</Text>
         </View>
-        {/* Avatar with tier-color glow ring */}
         <View style={[styles.avatarRing, { borderColor: tierColor }]}>
           <View style={[styles.avatarInner, { backgroundColor: tierColor + "33" }]}>
             <Text style={[styles.avatarInitials, { color: tierColor }]}>{initials}</Text>
@@ -350,27 +344,29 @@ function HeroSection({ user, balance, currentTier, nextTier }: HeroSectionProps)
         </View>
         {multiplier > 1 && (
           <View style={styles.multiplierBadge}>
-            <Text style={styles.multiplierText}>×{multiplier.toFixed(1)} نقطة/شراء</Text>
+            <Text style={styles.multiplierText}>
+              {t("loyalty.pointsPerPurchase", { n: multiplier.toFixed(1) })}
+            </Text>
           </View>
         )}
       </View>
 
       {/* Balance */}
       <View style={styles.balanceBlock}>
-        <Text style={styles.balanceEyebrow}>رصيدك الحالي</Text>
+        <Text style={styles.balanceEyebrow}>{t("loyalty.balanceEyebrow")}</Text>
         <View style={styles.balanceRow}>
           <Text style={styles.balanceValue}>{displayBalance}</Text>
-          <Text style={styles.balanceUnit}>نقطة</Text>
+          <Text style={styles.balanceUnit}>{t("loyalty.pointsUnit")}</Text>
         </View>
       </View>
 
       {/* Stats row */}
       <View style={styles.statsRow}>
-        <StatPill label="مكتسبة" value={balance.lifetime_earned} />
+        <StatPill label={t("loyalty.statEarned")}   value={balance.lifetime_earned} />
         <View style={styles.statsDiv} />
-        <StatPill label="مستبدلة" value={balance.lifetime_redeemed} />
+        <StatPill label={t("loyalty.statRedeemed")} value={balance.lifetime_redeemed} />
         <View style={styles.statsDiv} />
-        <StatPill label="متاحة" value={balance.balance} highlight />
+        <StatPill label={t("loyalty.statAvailable")} value={balance.balance} highlight />
       </View>
 
       {/* Progress toward next tier */}
@@ -379,8 +375,8 @@ function HeroSection({ user, balance, currentTier, nextTier }: HeroSectionProps)
           <View style={styles.progressMeta}>
             <Text style={styles.progressLabel}>
               {pointsToNext && pointsToNext > 0
-                ? `${pointsToNext.toLocaleString("ar-EG")} نقطة للوصول إلى ${nextTier.name}`
-                : `مبروك! وصلت إلى ${nextTier.name}`}
+                ? t("loyalty.progressLabel", { n: pointsToNext.toLocaleString("ar-EG"), name: nextTier.name })
+                : t("loyalty.progressCongrats", { name: nextTier.name })}
             </Text>
             <Text style={styles.progressPct}>{Math.round(progress * 100)}%</Text>
           </View>
@@ -423,14 +419,15 @@ interface TierJourneyProps {
 }
 
 function TierJourney({ tiers, balance, currentTier, nextTier, onGoToTiers }: TierJourneyProps) {
+  const { t } = useTranslation();
   if (!tiers.length) return null;
 
   return (
     <View style={styles.sectionWrap}>
       <SectionHeader
         icon="trophy-outline"
-        title="رحلة المستويات"
-        ctaLabel="التفاصيل"
+        title={t("loyalty.tierJourney")}
+        ctaLabel={t("loyalty.tierDetails")}
         onCta={onGoToTiers}
       />
       <ScrollView
@@ -477,6 +474,7 @@ interface TierNodeProps {
 }
 
 function TierNode({ tier, color, icon, isReached, isCurrent, isNext }: TierNodeProps) {
+  const { t } = useTranslation();
   const scale = useRef(new RNAnimated.Value(1)).current;
 
   useEffect(() => {
@@ -492,7 +490,6 @@ function TierNode({ tier, color, icon, isReached, isCurrent, isNext }: TierNodeP
 
   return (
     <RNAnimated.View style={[styles.tierNodeWrap, { transform: [{ scale }] }]}>
-      {/* Glow ring for current tier */}
       <View style={[
         styles.tierNodeRing,
         isReached  && { borderColor: color },
@@ -518,18 +515,18 @@ function TierNode({ tier, color, icon, isReached, isCurrent, isNext }: TierNodeP
       ]}>{tier.name}</Text>
       {isCurrent && (
         <View style={[styles.tierCurrentChip, { backgroundColor: color + "22", borderColor: color + "66" }]}>
-          <Text style={[styles.tierCurrentChipText, { color }]}>مستواك</Text>
+          <Text style={[styles.tierCurrentChipText, { color }]}>{t("loyalty.tierCurrentChip")}</Text>
         </View>
       )}
       {isNext && !isCurrent && (
         <View style={styles.tierNextChip}>
-          <Text style={styles.tierNextChipText}>التالي</Text>
+          <Text style={styles.tierNextChipText}>{t("loyalty.tierNextChip")}</Text>
         </View>
       )}
       <Text style={styles.tierNodePts}>
         {tier.min_lifetime_points > 0
-          ? `${tier.min_lifetime_points.toLocaleString("ar-EG")} ن`
-          : "مجاناً"}
+          ? `${tier.min_lifetime_points.toLocaleString("ar-EG")} ${t("loyalty.pointsUnit")}`
+          : t("loyalty.tierFreeLabel")}
       </Text>
     </RNAnimated.View>
   );
@@ -544,12 +541,13 @@ interface CampaignsSectionProps {
 }
 
 function CampaignsSection({ campaigns, isLoading, onSeeAll }: CampaignsSectionProps) {
+  const { t } = useTranslation();
   return (
     <View style={styles.sectionWrap}>
       <SectionHeader
         icon="flame-outline"
-        title="عروض نشطة الآن"
-        ctaLabel="الكل"
+        title={t("loyalty.campaignsSectionTitle")}
+        ctaLabel={t("loyalty.campaignsSectionAll")}
         onCta={onSeeAll}
         accentColor={theme.colors.amber[500]}
       />
@@ -571,6 +569,7 @@ function CampaignsSection({ campaigns, isLoading, onSeeAll }: CampaignsSectionPr
 }
 
 function CampaignCard({ campaign }: { campaign: RewardCampaign }) {
+  const { t } = useTranslation();
   const daysLeft = campaign.ends_at
     ? Math.max(0, Math.ceil(
         (new Date(campaign.ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
@@ -586,10 +585,9 @@ function CampaignCard({ campaign }: { campaign: RewardCampaign }) {
 
   return (
     <LinearGradient colors={gradColors} style={styles.campaignCard}>
-      {/* Multiplier badge */}
       <View style={styles.campaignMultiplier}>
         <Text style={styles.campaignMultiplierText}>×{campaign.multiplier.toFixed(1)}</Text>
-        <Text style={styles.campaignMultiplierSub}>نقطة</Text>
+        <Text style={styles.campaignMultiplierSub}>{t("loyalty.pointsUnit")}</Text>
       </View>
 
       <Text style={styles.campaignName} numberOfLines={2}>{campaign.name}</Text>
@@ -602,17 +600,16 @@ function CampaignCard({ campaign }: { campaign: RewardCampaign }) {
         <View style={styles.campaignMinSpend}>
           <Ionicons name="cart-outline" size={10} color="rgba(255,255,255,0.70)" />
           <Text style={styles.campaignMinSpendText}>
-            حد أدنى {(campaign.min_purchase_cents / 100).toFixed(0)} ج.م
+            {t("loyalty.minSpend", { amount: (campaign.min_purchase_cents / 100).toFixed(0) })}
           </Text>
         </View>
       )}
 
-      {/* Expiry */}
       {daysLeft !== null && (
         <View style={[styles.campaignExpiry, isUrgent && styles.campaignExpiryUrgent]}>
           <Ionicons name="time-outline" size={10} color={isUrgent ? "#FEF3C7" : "rgba(255,255,255,0.60)"} />
           <Text style={[styles.campaignExpiryText, isUrgent && styles.campaignExpiryTextUrgent]}>
-            {daysLeft === 0 ? "آخر يوم!" : `ينتهي بعد ${daysLeft} يوم`}
+            {daysLeft === 0 ? t("loyalty.campaignLastDay") : t("loyalty.campaignDaysLeft", { n: daysLeft })}
           </Text>
         </View>
       )}
@@ -630,38 +627,39 @@ interface QuickDestinationsProps {
 }
 
 function QuickDestinations({ onWallet, onCoupons, onGifts, onHistory }: QuickDestinationsProps) {
+  const { t } = useTranslation();
   return (
     <View style={styles.sectionWrap}>
-      <SectionHeader icon="apps-outline" title="الخدمات" />
+      <SectionHeader icon="apps-outline" title={t("loyalty.servicesTitle")} />
       <View style={styles.destGrid}>
         <DestCard
           icon="wallet-outline"
-          label="محفظتي"
-          sub="الرصيد والقسائم"
+          label={t("loyalty.destWallet")}
+          sub={t("loyalty.destWalletSub")}
           color="#0891B2"
           gradient={["#0891B2", "#0DB8A8"]}
           onPress={onWallet}
         />
         <DestCard
           icon="pricetag-outline"
-          label="قسائم الخصم"
-          sub="استبدل نقاطك"
+          label={t("loyalty.destCoupons")}
+          sub={t("loyalty.destCouponsSub")}
           color="#8B5CF6"
           gradient={["#7C3AED", "#9333EA"]}
           onPress={onCoupons}
         />
         <DestCard
           icon="gift-outline"
-          label="كتالوج الهدايا"
-          sub="هدايا مميزة"
+          label={t("loyalty.destGifts")}
+          sub={t("loyalty.destGiftsSub")}
           color="#EC4899"
           gradient={["#DB2777", "#EC4899"]}
           onPress={onGifts}
         />
         <DestCard
           icon="bar-chart-outline"
-          label="سجل النقاط"
-          sub="كل المعاملات"
+          label={t("loyalty.destHistory")}
+          sub={t("loyalty.destHistorySub")}
           color="#10B981"
           gradient={["#059669", "#10B981"]}
           onPress={onHistory}
@@ -719,12 +717,13 @@ interface RecentActivityProps {
 }
 
 function RecentActivity({ entries, isLoading, isError, onSeeAll, onRetry }: RecentActivityProps) {
+  const { t } = useTranslation();
   return (
     <View style={styles.sectionWrap}>
       <SectionHeader
         icon="receipt-outline"
-        title="آخر المعاملات"
-        ctaLabel="عرض الكل"
+        title={t("loyalty.recentActivity")}
+        ctaLabel={t("loyalty.recentSeeAll")}
         onCta={entries.length > 0 ? onSeeAll : undefined}
       />
       {isLoading ? (
@@ -733,18 +732,18 @@ function RecentActivity({ entries, isLoading, isError, onSeeAll, onRetry }: Rece
         </View>
       ) : isError ? (
         <View style={styles.inlineError}>
-          <Text style={styles.inlineErrorText}>تعذّر التحميل</Text>
+          <Text style={styles.inlineErrorText}>{t("loyalty.recentLoadError")}</Text>
           <Pressable onPress={onRetry} style={styles.retryBtn}
-            accessibilityRole="button" accessibilityLabel="إعادة المحاولة">
+            accessibilityRole="button" accessibilityLabel={t("common.retry")}>
             <Ionicons name="refresh" size={12} color={theme.colors.brand.base} />
-            <Text style={styles.retryText}>إعادة المحاولة</Text>
+            <Text style={styles.retryText}>{t("common.retry")}</Text>
           </Pressable>
         </View>
       ) : entries.length === 0 ? (
         <View style={styles.emptyActivity}>
           <Ionicons name="receipt-outline" size={28} color={theme.colors.text.disabled} />
-          <Text style={styles.emptyActivityText}>لا توجد معاملات بعد</Text>
-          <Text style={styles.emptyActivitySub}>ابدأ التسوق لتكسب نقاطك الأولى!</Text>
+          <Text style={styles.emptyActivityText}>{t("loyalty.recentEmpty")}</Text>
+          <Text style={styles.emptyActivitySub}>{t("loyalty.recentEmptySub")}</Text>
         </View>
       ) : (
         <View style={styles.activityList}>
@@ -756,6 +755,7 @@ function RecentActivity({ entries, isLoading, isError, onSeeAll, onRetry }: Rece
 }
 
 function ActivityRow({ entry }: { entry: LedgerEntry }) {
+  const { t } = useTranslation();
   const isEarn  = entry.delta > 0;
   const icon    = getLedgerIcon(entry.kind);
   const color   = isEarn ? theme.colors.brand.base : theme.colors.rose[500];
@@ -773,7 +773,7 @@ function ActivityRow({ entry }: { entry: LedgerEntry }) {
       </View>
       <View style={styles.activityMeta}>
         <Text style={styles.activitySource} numberOfLines={1}>
-          {getLedgerLabel(entry.kind, entry.source)}
+          {getLedgerLabel(entry.kind, entry.source, t)}
         </Text>
         <Text style={styles.activityDate}>{date}</Text>
       </View>
@@ -781,7 +781,7 @@ function ActivityRow({ entry }: { entry: LedgerEntry }) {
         <Text style={[styles.activityDelta, { color }]}>
           {sign}{Math.abs(entry.delta).toLocaleString("ar-EG")}
         </Text>
-        <Text style={styles.activityPt}>ن</Text>
+        <Text style={styles.activityPt}>{t("loyalty.pointsUnit")}</Text>
       </View>
     </View>
   );
@@ -796,36 +796,38 @@ interface WaysToEarnProps {
 }
 
 function WaysToEarn({ onInvite, onShop, onCampaigns }: WaysToEarnProps) {
+  const { t } = useTranslation();
+
   const tips = [
     {
       icon:    "bag-handle-outline" as IoniconsName,
       color:   "#0891B2",
-      title:   "اشترِ واكسب",
-      body:    "تحصل على نقطة مقابل كل جنيه تنفقه، مع مضاعف يزداد كلما ارتفع مستواك.",
+      title:   t("loyalty.earnShopTitle"),
+      body:    t("loyalty.earnShopBody"),
       onPress: onShop,
-      cta:     "تسوق الآن",
+      cta:     t("loyalty.earnShopCta"),
     },
     {
       icon:    "people-outline" as IoniconsName,
       color:   "#8B5CF6",
-      title:   "ادعُ صديقاً",
-      body:    "احصل على نقاط مكافأة عند كل صديق يكمل أول طلب له باستخدام كودك.",
+      title:   t("loyalty.earnInviteTitle"),
+      body:    t("loyalty.earnInviteBody"),
       onPress: onInvite,
-      cta:     "شارك كودك",
+      cta:     t("loyalty.earnInviteCta"),
     },
     {
       icon:    "flame-outline" as IoniconsName,
       color:   "#F59E0B",
-      title:   "استغل العروض",
-      body:    "تابع العروض الموسمية للحصول على نقاط مضاعفة في فترات محددة.",
+      title:   t("loyalty.earnCampaignsTitle"),
+      body:    t("loyalty.earnCampaignsBody"),
       onPress: onCampaigns,
-      cta:     "العروض",
+      cta:     t("loyalty.earnCampaignsCta"),
     },
   ];
 
   return (
     <View style={styles.sectionWrap}>
-      <SectionHeader icon="bulb-outline" title="كيف تكسب المزيد؟" />
+      <SectionHeader icon="bulb-outline" title={t("loyalty.waysToEarn")} />
       <View style={styles.earnList}>
         {tips.map((tip, i) => (
           <EarnCard key={i} {...tip} />
@@ -911,32 +913,32 @@ function SectionHeader({ icon, title, ctaLabel, onCta, accentColor }: SectionHea
 }
 
 function UnauthPanel() {
+  const { t } = useTranslation();
   return (
     <View style={styles.fullPanel}>
       <View style={styles.fullPanelIcon}>
         <Ionicons name="lock-closed-outline" size={32} color={theme.colors.brand.base} />
       </View>
-      <Text style={styles.fullPanelTitle}>سجّل دخولك للاستمتاع بالمكافآت</Text>
-      <Text style={styles.fullPanelBody}>
-        اكسب نقاطاً مع كل عملية شراء واستبدلها بقسائم وهدايا مميزة.
-      </Text>
+      <Text style={styles.fullPanelTitle}>{t("loyalty.unauthTitle")}</Text>
+      <Text style={styles.fullPanelBody}>{t("loyalty.unauthBody")}</Text>
     </View>
   );
 }
 
 function FullErrorPanel({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.fullPanel}>
       <View style={styles.fullPanelIcon}>
         <Ionicons name="cloud-offline-outline" size={32} color={theme.colors.slate[400]} />
       </View>
-      <Text style={styles.fullPanelTitle}>تعذّر تحميل بيانات المكافآت</Text>
-      <Text style={styles.fullPanelBody}>تحقق من اتصالك وحاول مجدداً.</Text>
+      <Text style={styles.fullPanelTitle}>{t("loyalty.hubErrorTitle")}</Text>
+      <Text style={styles.fullPanelBody}>{t("loyalty.hubErrorBody")}</Text>
       <Pressable onPress={onRetry} style={styles.retryBtnFull}
-        accessibilityRole="button" accessibilityLabel="إعادة المحاولة">
+        accessibilityRole="button" accessibilityLabel={t("common.retry")}>
         <LinearGradient colors={["#0891B2", "#0DB8A8"]} style={styles.retryBtnFullGrad}>
           <Ionicons name="refresh" size={14} color="#fff" />
-          <Text style={styles.retryBtnFullText}>إعادة المحاولة</Text>
+          <Text style={styles.retryBtnFullText}>{t("common.retry")}</Text>
         </LinearGradient>
       </Pressable>
     </View>
@@ -991,16 +993,16 @@ function getLedgerIcon(kind: LedgerEntry["kind"]): IoniconsName {
   }
 }
 
-function getLedgerLabel(kind: LedgerEntry["kind"], source: string): string {
+function getLedgerLabel(kind: LedgerEntry["kind"], source: string, t: TFunc): string {
   switch (kind) {
-    case "earn":     return `شراء — ${source}`;
-    case "redeem":   return "استبدال نقاط";
-    case "bonus":    return "مكافأة إضافية";
-    case "referral": return "مكافأة إحالة";
-    case "cashback": return "استرداد نقدي";
-    case "expire":   return "انتهاء صلاحية نقاط";
-    case "adjust":   return "تعديل يدوي";
-    case "reverse":  return "إلغاء معاملة";
+    case "earn":     return t("loyalty.ledgerKindEarnSource", { source });
+    case "redeem":   return t("loyalty.ledgerKindRedeem");
+    case "bonus":    return t("loyalty.ledgerKindBonus");
+    case "referral": return t("loyalty.ledgerKindReferral");
+    case "cashback": return t("loyalty.ledgerKindCashback");
+    case "expire":   return t("loyalty.ledgerKindExpire");
+    case "adjust":   return t("loyalty.ledgerKindAdjust");
+    case "reverse":  return t("loyalty.ledgerKindReverse");
     default:         return source;
   }
 }

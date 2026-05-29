@@ -110,14 +110,14 @@ export function ProductCardSkeleton() {
       </View>
       {/* Info area — matches ProductCard.gridInfo (padding 14, gap 5) */}
       <View style={{ padding: 14, gap: 8 }}>
-        <Skeleton width="40%" height={10} radius={6} />   {/* eyebrow category */}
-        <Skeleton width="85%" height={13} radius={6} />   {/* name line 1 */}
-        <Skeleton width="60%" height={13} radius={6} />   {/* name line 2 */}
+        <Skeleton width="40%" height={10} radius={6} />
+        <Skeleton width="85%" height={13} radius={6} />
+        <Skeleton width="60%" height={13} radius={6} />
         <View style={{ flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "flex-end", marginTop: 6 }}>
           <View style={{ gap: 4, alignItems: "flex-end" }}>
             <Skeleton width={64} height={18} radius={6} />
           </View>
-          <Skeleton width={38} height={38} radius={12} />  {/* add button */}
+          <Skeleton width={38} height={38} radius={12} />
         </View>
       </View>
     </View>

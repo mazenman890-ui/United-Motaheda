@@ -15,6 +15,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/features/auth";
 import { useNotifications, type AppNotification, type NotifType } from "@/features/notifications";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -24,42 +25,43 @@ type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
 // ─── Type config ──────────────────────────────────────────────────────────
 
-const TYPE_CONFIG: Record<NotifType, { icon: IoniconsName; color: string; bg: string; label: string }> = {
-  order:  { icon: "bag-handle",       color: theme.colors.brand[600],  bg: theme.colors.brand[50],  label: "طلبات" },
-  offer:  { icon: "pricetag",         color: theme.colors.amber[600],  bg: theme.colors.amber[50],  label: "عروض"  },
-  health: { icon: "heart",            color: theme.colors.rose[500],   bg: theme.colors.rose[50],   label: "صحة"   },
-  system: { icon: "settings-outline", color: theme.colors.slate[600],  bg: theme.colors.slate[100], label: "النظام" },
+const TYPE_CONFIG: Record<NotifType, { icon: IoniconsName; color: string; bg: string; labelKey: string }> = {
+  order:  { icon: "bag-handle",       color: theme.colors.brand[600],  bg: theme.colors.brand[50],  labelKey: "notifications.typeOrder"  },
+  offer:  { icon: "pricetag",         color: theme.colors.amber[600],  bg: theme.colors.amber[50],  labelKey: "notifications.typeOffer"  },
+  health: { icon: "heart",            color: theme.colors.rose[500],   bg: theme.colors.rose[50],   labelKey: "notifications.typeHealth" },
+  system: { icon: "settings-outline", color: theme.colors.slate[600],  bg: theme.colors.slate[100], labelKey: "notifications.typeSystem" },
 };
 
 type Filter = "all" | NotifType;
 
-const FILTERS: { key: Filter; label: string }[] = [
-  { key: "all",    label: "الكل" },
-  { key: "order",  label: "طلبات" },
-  { key: "offer",  label: "عروض" },
-  { key: "health", label: "صحة" },
-  { key: "system", label: "النظام" },
+const FILTER_CONFIGS: { key: Filter; labelKey: string }[] = [
+  { key: "all",    labelKey: "notifications.filterAll"   },
+  { key: "order",  labelKey: "notifications.typeOrder"   },
+  { key: "offer",  labelKey: "notifications.typeOffer"   },
+  { key: "health", labelKey: "notifications.typeHealth"  },
+  { key: "system", labelKey: "notifications.typeSystem"  },
 ];
 
 // ─── Time ago ─────────────────────────────────────────────────────────────
 
-function timeAgo(dateStr: string): string {
+function timeAgo(dateStr: string, t: (k: string, opts?: Record<string, unknown>) => string): string {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (diff < 60) return "الآن";
+  if (diff < 60)    return t("notifications.timeNow");
   if (diff < 3600) {
     const m = Math.floor(diff / 60);
-    return m === 1 ? "منذ دقيقة" : `منذ ${m} دقائق`;
+    return m === 1 ? t("notifications.timeMinuteAgo") : t("notifications.timeMinutesAgo", { count: m });
   }
   if (diff < 86400) {
     const h = Math.floor(diff / 3600);
-    return h === 1 ? "منذ ساعة" : `منذ ${h} ساعات`;
+    return h === 1 ? t("notifications.timeHourAgo") : t("notifications.timeHoursAgo", { count: h });
   }
+  if (diff < 172800) return t("notifications.timeYesterday");
   if (diff < 604800) {
     const d = Math.floor(diff / 86400);
-    return d === 1 ? "أمس" : `منذ ${d} أيام`;
+    return t("notifications.timeDaysAgo", { count: d });
   }
   const w = Math.floor(diff / 604800);
-  return w === 1 ? "منذ أسبوع" : `منذ ${w} أسابيع`;
+  return w === 1 ? t("notifications.timeWeekAgo") : t("notifications.timeWeeksAgo", { count: w });
 }
 
 // ─── Notification row ─────────────────────────────────────────────────────
@@ -67,12 +69,13 @@ function timeAgo(dateStr: string): string {
 const NotificationRow = React.memo(function NotificationRow({
   item, onPress,
 }: { item: AppNotification; onPress: () => void }) {
-  const cfg = TYPE_CONFIG[item.type] ?? TYPE_CONFIG.system;
+  const { t } = useTranslation();
+  const cfg   = TYPE_CONFIG[item.type] ?? TYPE_CONFIG.system;
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${item.title}. ${item.body}${!item.isRead ? ". غير مقروء" : ""}`}
+      accessibilityLabel={`${item.title}. ${item.body}`}
       accessibilityState={{ selected: !item.isRead }}
       style={({ pressed }) => [
         styles.notifRow,
@@ -95,13 +98,13 @@ const NotificationRow = React.memo(function NotificationRow({
             numberOfLines={1}>
             {item.title}
           </Text>
-          <Text style={styles.notifTime}>{timeAgo(item.createdAt)}</Text>
+          <Text style={styles.notifTime}>{timeAgo(item.createdAt, t)}</Text>
         </View>
         <Text style={styles.notifBody} numberOfLines={2}>
           {item.body}
         </Text>
         <View style={styles.notifTypePill}>
-          <Text style={[styles.notifTypeText, { color: cfg.color }]}>{cfg.label}</Text>
+          <Text style={[styles.notifTypeText, { color: cfg.color }]}>{t(cfg.labelKey)}</Text>
         </View>
       </View>
     </Pressable>
@@ -111,9 +114,10 @@ const NotificationRow = React.memo(function NotificationRow({
 // ─── Screen ───────────────────────────────────────────────────────────────
 
 export default function NotificationsScreen() {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const router    = useRouter();
+  const insets    = useSafeAreaInsets();
+  const { t }     = useTranslation();
+  const { user }  = useAuth();
 
   const {
     items: notifications,
@@ -174,13 +178,13 @@ export default function NotificationsScreen() {
             onPress={() => router.back()}
             style={styles.backBtn}
             accessibilityRole="button"
-            accessibilityLabel="رجوع">
+            accessibilityLabel={t("common.back")}>
             <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.8)" />
           </Pressable>
-          <Text style={styles.headerTitle}>الإشعارات</Text>
+          <Text style={styles.headerTitle}>{t("notifications.title")}</Text>
           {unreadCount > 0 && (
             <Animated.View entering={FadeIn.duration(200)} style={styles.headerBadge}>
-              <Text style={styles.headerBadgeText}>{unreadCount} جديد</Text>
+              <Text style={styles.headerBadgeText}>{t("notifications.newBadge", { count: unreadCount })}</Text>
             </Animated.View>
           )}
           <Pressable
@@ -194,18 +198,17 @@ export default function NotificationsScreen() {
         {/* Filter chips + mark all */}
         <View style={styles.headerActions}>
           <View style={styles.filterRow}>
-            {FILTERS.map((f) => {
+            {FILTER_CONFIGS.map((f) => {
               const active = filter === f.key;
               return (
                 <Pressable
                   key={f.key}
                   onPress={() => setFilter(f.key)}
                   accessibilityRole="button"
-                  accessibilityLabel={`فلتر: ${f.label}`}
                   accessibilityState={{ selected: active }}
                   style={[styles.filterChip, active && styles.filterChipActive]}>
                   <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
-                    {f.label}
+                    {t(f.labelKey)}
                   </Text>
                 </Pressable>
               );
@@ -215,9 +218,8 @@ export default function NotificationsScreen() {
             <Pressable
               onPress={handleMarkAllRead}
               hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="تحديد جميع الإشعارات كمقروءة">
-              <Text style={styles.markAllText}>قراءة الكل</Text>
+              accessibilityRole="button">
+              <Text style={styles.markAllText}>{t("notifications.markAll")}</Text>
             </Pressable>
           )}
         </View>
@@ -227,7 +229,7 @@ export default function NotificationsScreen() {
       {loading && notifications.length === 0 ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={theme.colors.brand[500]} />
-          <Text style={styles.loadingText}>جاري التحميل...</Text>
+          <Text style={styles.loadingText}>{t("common.loading")}</Text>
         </View>
       ) : (
         <FlatList
@@ -261,8 +263,8 @@ export default function NotificationsScreen() {
             <View style={{ paddingTop: 60 }}>
               <EmptyState
                 icon="notifications-off-outline"
-                title="لا توجد إشعارات"
-                description={filter !== "all" ? "لا توجد إشعارات في هذا القسم" : "ستظهر إشعاراتك هنا عندما تصلك"}
+                title={t("notifications.empty")}
+                description={filter !== "all" ? t("notifications.emptyFiltered") : t("notifications.empty")}
               />
             </View>
           }

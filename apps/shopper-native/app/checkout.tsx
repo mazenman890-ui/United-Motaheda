@@ -18,6 +18,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -26,11 +27,16 @@ import {
   View,
   type DimensionValue,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated";
+import Animated, {
+  FadeIn, FadeInDown, FadeInUp,
+  useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming, withSpring,
+} from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -93,42 +99,29 @@ type Step = "details" | "review" | "success";
 
 // ─── Payment method catalogue ─────────────────────────────────────────────────
 
-const PAYMENT_METHODS: ReadonlyArray<{
-  id: CheckoutPaymentMethod;
-  title: string;
-  description: string;
-  icon: IoniconsName;
-  color: string;
-  bg: string;
+/** Base config for payment methods — i18n keys resolved at render time */
+const PAYMENT_METHOD_CONFIGS: ReadonlyArray<{
+  id:         CheckoutPaymentMethod;
+  titleKey:   string;
+  descKey:    string;
+  icon:       IoniconsName;
+  color:      string;
+  bg:         string;
 }> = [
-  {
-    id: "cod",
-    title: "الدفع عند الاستلام",
-    description: "ادفع نقداً للمندوب",
-    icon: "cash-outline",
-    color: theme.colors.green[600],
-    bg: theme.colors.green[50],
-  },
-  {
-    id: "instapay",
-    title: "إنستاباي",
-    description: "تحويل عبر إنستاباي",
-    icon: "flash-outline",
-    color: theme.colors.purple[600],
-    bg: theme.colors.purple[50],
-  },
-  {
-    id: "vodafone",
-    title: "فودافون كاش",
-    description: "تحويل عبر فودافون كاش",
-    icon: "wallet-outline",
-    color: theme.colors.red[500],
-    bg: theme.colors.red[50],
-  },
+  { id: "cod",      titleKey: "checkout.methodCodTitle",      descKey: "checkout.methodCodDesc",      icon: "cash-outline",   color: theme.colors.green[600],  bg: theme.colors.green[50]  },
+  { id: "instapay", titleKey: "checkout.methodInstapayTitle",  descKey: "checkout.methodInstapayDesc",  icon: "flash-outline",  color: theme.colors.purple[600], bg: theme.colors.purple[50] },
+  { id: "vodafone", titleKey: "checkout.methodVodafoneTitle",  descKey: "checkout.methodVodafoneDesc",  icon: "wallet-outline", color: theme.colors.red[500],    bg: theme.colors.red[50]    },
 ];
 
+/** Arabic label used in order notes / Edge Function (locale-independent). */
+const PAYMENT_LABEL_AR: Record<CheckoutPaymentMethod, string> = {
+  cod:       "الدفع عند الاستلام",
+  instapay:  "إنستاباي",
+  vodafone:  "فودافون كاش",
+};
+
 function paymentLabel(id: CheckoutPaymentMethod): string {
-  return PAYMENT_METHODS.find((m) => m.id === id)?.title ?? "الدفع عند الاستلام";
+  return PAYMENT_LABEL_AR[id] ?? PAYMENT_LABEL_AR.cod;
 }
 
 function buildDefaults(name?: string): CheckoutFormSchema {
@@ -148,6 +141,7 @@ function buildDefaults(name?: string): CheckoutFormSchema {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function CheckoutScreen() {
+  const { t }  = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
@@ -219,6 +213,8 @@ export default function CheckoutScreen() {
     phone: string;
     form:  CheckoutFormSchema;
   } | null>(null);
+
+  const [showAuthGate, setShowAuthGate] = useState(false);
 
   const {
     control,
@@ -306,6 +302,8 @@ export default function CheckoutScreen() {
     if (!valid) {
       if (Platform.OS !== "web")
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      // Scroll to the top of the form so users can see the field errors
+      scrollToTop();
       return;
     }
     if (Platform.OS !== "web")
@@ -330,7 +328,7 @@ export default function CheckoutScreen() {
       if (Platform.OS !== "web")
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     } else {
-      setPromoError("كود الخصم غير صالح");
+      setPromoError(t("checkout.promoInvalid"));
       if (Platform.OS !== "web")
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
     }
@@ -355,7 +353,7 @@ export default function CheckoutScreen() {
       const reservationFailures = await ensureReservations();
       if (reservationFailures.length > 0) {
         const first = reservationFailures[0];
-        setSubmitError(`${first.message} — يرجى تعديل سلتك`);
+        setSubmitError(t("checkout.reservationFailed"));
         if (Platform.OS !== "web")
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
         setSubmitting(false);
@@ -375,12 +373,12 @@ export default function CheckoutScreen() {
 
       if (manual) {
         if (!transferNumber.trim()) {
-          setManualPaymentError("يرجى إدخال رقم هاتف المرسل أو معرف إنستاباي.");
+          setManualPaymentError(t("checkout.missingTransferNum"));
           setSubmitting(false);
           return;
         }
         if (!receiptUri) {
-          setManualPaymentError("يرجى رفع لقطة شاشة التحويل.");
+          setManualPaymentError(t("checkout.missingReceipt"));
           setSubmitting(false);
           return;
         }
@@ -389,7 +387,7 @@ export default function CheckoutScreen() {
           paymentProofUrl = await uploadPaymentReceipt(user.id, receiptUri);
         } catch (uploadErr) {
           setManualPaymentError(
-            uploadErr instanceof Error ? uploadErr.message : "تعذّر رفع إيصال التحويل.",
+            uploadErr instanceof Error ? uploadErr.message : t("checkout.uploadReceiptError"),
           );
           setSubmitting(false);
           setUploadingReceipt(false);
@@ -438,7 +436,7 @@ export default function CheckoutScreen() {
         if (err instanceof CheckoutRequestError) {
           setSubmitError(formatCheckoutError(err, "ar"));
         } else {
-          setSubmitError("تعذّر حفظ الطلب. حاول مجدداً.");
+          setSubmitError(t("checkout.submitError"));
         }
         if (Platform.OS !== "web")
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
@@ -487,12 +485,12 @@ export default function CheckoutScreen() {
       setSubmitting(true);
       setSubmitError(null);
 
-      // Auth guard.
+      // Auth guard — show the beautiful auth gate modal instead of scrolling.
       if (!user?.id) {
-        setSubmitError("يرجى تسجيل الدخول لإتمام الطلب");
         if (Platform.OS !== "web")
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
         setSubmitting(false);
+        setShowAuthGate(true);
         return;
       }
 
@@ -548,7 +546,7 @@ export default function CheckoutScreen() {
         const candidate = (form.phone ?? "").trim() || profilePhone || "";
         const e164 = normalizeEgyptianPhone(candidate);
         if (!e164) {
-          setSubmitError("يرجى إدخال رقم هاتف مصري صحيح للتحقق منه");
+          setSubmitError(t("checkout.invalidPhone"));
           if (Platform.OS !== "web")
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
           setSubmitting(false);
@@ -564,9 +562,7 @@ export default function CheckoutScreen() {
           // or they cancel.
         } catch (err) {
           if (__DEV__) console.warn("[checkout] sendPhoneOtp failed:", err);
-          setSubmitError(
-            "تعذّر إرسال رمز التحقق إلى هاتفك. تحقق من الرقم وحاول مجدداً.",
-          );
+          setSubmitError(t("checkout.otpSendError"));
           if (Platform.OS !== "web")
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
           setSubmitting(false);
@@ -577,7 +573,7 @@ export default function CheckoutScreen() {
       // Phone already verified → straight to order placement.
       await placeOrderForForm(form);
     },
-    [cartLines, user, placeOrderForForm],
+    [cartLines, user, placeOrderForForm, scrollToTop, t],
   );
 
   const handleOtpVerified = useCallback((verifiedPhone: string): void => {
@@ -603,9 +599,7 @@ export default function CheckoutScreen() {
   const handleOtpCancel = useCallback((): void => {
     setOtpPending(null);
     setSubmitting(false);
-    setSubmitError(
-      "لا يمكن إتمام الطلب بدون التحقق من رقم الهاتف. حاول مجدداً.",
-    );
+    setSubmitError(t("checkout.otpCancelled"));
   }, []);
 
   // ──── Empty cart guard ─────────────────────────────────────────────────────
@@ -634,28 +628,36 @@ export default function CheckoutScreen() {
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: theme.colors.bg }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}>
+
+      {/* ── Auth Gate Modal — beautiful intercept when not signed in ── */}
+      <AuthGateModal
+        visible={showAuthGate}
+        onSignIn={() => { setShowAuthGate(false); router.push("/(auth)/login"); }}
+        onDismiss={() => setShowAuthGate(false)}
+      />
+
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <Pressable onPress={() => router.back()} style={styles.headerBtn} hitSlop={8}>
           <Ionicons name="chevron-forward" size={18} color={theme.colors.slate[700]} />
         </Pressable>
         <View style={{ flex: 1 }}>
           <UIText variant="card-title" align="right" style={styles.headerTitleNew}>
-            إتمام الطلب
+            {t("checkout.title")}
           </UIText>
           <UIText variant="eyebrow" color="tertiary" align="right">
-            {step === "details" ? "خطوة 1 من 2  •  تفاصيل التوصيل" : "خطوة 2 من 2  •  مراجعة الطلب"}
+            {step === "details" ? t("checkout.titleStep1") : t("checkout.titleStep2")}
           </UIText>
         </View>
         <View style={styles.headerBadge}>
           <Ionicons name="shield-checkmark" size={12} color={theme.colors.green[700]} />
-          <UIText variant="eyebrow" style={{ color: theme.colors.green[700] }}>آمن</UIText>
+          <UIText variant="eyebrow" style={{ color: theme.colors.green[700] }}>{t("checkout.secure")}</UIText>
         </View>
       </View>
 
       <View style={styles.stepBar}>
-        <StepPill index={1} label="التوصيل" active={step === "details"} done={step === "review"} />
+        <StepPill index={1} label={t("checkout.stepDelivery")} active={step === "details"} done={step === "review"} />
         <StepLine done={step === "review"} />
-        <StepPill index={2} label="المراجعة" active={step === "review"} done={false} />
+        <StepPill index={2} label={t("checkout.stepReview")} active={step === "review"} done={false} />
       </View>
 
       <ScrollView
@@ -672,10 +674,10 @@ export default function CheckoutScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <UIText variant="eyebrow" style={{ color: theme.colors.amber[800] }}>
-                  توصيل مجاني
+                  {t("cart.freeDelivery")}
                 </UIText>
                 <UIText variant="body-sm" align="right" style={styles.freeBannerTitleNew}>
-                  أضف منتجات بقيمة {formatPrice(deliveryQuote.amountToFreeDelivery)} لتوصيل مجاني
+                  {t("checkout.freeBannerTitle", { amount: formatPrice(deliveryQuote.amountToFreeDelivery) })}
                 </UIText>
               </View>
             </View>
@@ -713,6 +715,7 @@ export default function CheckoutScreen() {
               setPaymentMethod(m);
             }}
             subtotal={pricing.subtotal}
+            onSignIn={() => router.push("/(auth)/login")}
           />
         ) : (
           <ReviewStep
@@ -752,7 +755,7 @@ export default function CheckoutScreen() {
       <View style={[styles.cta, { paddingBottom: insets.bottom + 12 }]}>
         <View style={styles.ctaTotals}>
           <View>
-            <UIText variant="eyebrow" color="tertiary" align="right">الإجمالي المستحق</UIText>
+            <UIText variant="eyebrow" color="tertiary" align="right">{t("checkout.dueTotal")}</UIText>
             <UIText variant="sheet-title" align="right" style={styles.ctaTotalValueNew}>
               {formatPrice(pricing.total)}
             </UIText>
@@ -760,7 +763,7 @@ export default function CheckoutScreen() {
           <View style={styles.ctaCount}>
             <Ionicons name="bag-handle" size={12} color={theme.colors.brand[700]} />
             <UIText variant="eyebrow" style={{ color: theme.colors.brand[700] }}>
-              {itemCount} منتج
+              {t("checkout.itemsCount", { count: itemCount })}
             </UIText>
           </View>
         </View>
@@ -780,7 +783,7 @@ export default function CheckoutScreen() {
           onPress={step === "details" ? goToReview : handleSubmit(onSubmit)}>
           <View style={styles.ctaBtnInner}>
             <Text style={styles.ctaBtnText}>
-              {step === "details" ? "متابعة للمراجعة" : "تأكيد الطلب"}
+              {step === "details" ? t("checkout.continueBtn") : t("checkout.confirmBtn")}
             </Text>
             <Ionicons name={step === "details" ? "arrow-back" : "checkmark"} size={16} color="#fff" />
           </View>
@@ -819,6 +822,7 @@ function DetailsStep({
   paymentMethod,
   onPaymentChange,
   subtotal,
+  onSignIn,
 }: {
   control: any;
   errors: any;
@@ -836,25 +840,49 @@ function DetailsStep({
   paymentMethod: CheckoutPaymentMethod;
   onPaymentChange: (m: CheckoutPaymentMethod) => void;
   subtotal: number;
+  onSignIn: () => void;
 }) {
+  const { t, i18n } = useTranslation();
   const hasSavedAccount = Boolean(user?.name || savedProfilePhone);
+  const sep = i18n.language.startsWith("en") ? ", " : "، ";
   const addressSummary = defaultAddress
     ? [
         defaultAddress.street,
-        defaultAddress.building ? `عمارة ${defaultAddress.building}` : null,
-        defaultAddress.floor ? `طابق ${defaultAddress.floor}` : null,
-        defaultAddress.apartment ? `شقة ${defaultAddress.apartment}` : null,
+        defaultAddress.building ? t("orders.building", { n: defaultAddress.building }) : null,
+        defaultAddress.floor ? t("orders.floor", { n: defaultAddress.floor }) : null,
+        defaultAddress.apartment ? t("orders.apt", { n: defaultAddress.apartment }) : null,
       ]
         .filter(Boolean)
-        .join("، ")
+        .join(sep)
     : null;
 
   return (
     <Animated.View entering={FadeIn.duration(220)}>
-      <SectionCard title="فرع التوصيل" icon="storefront-outline" delay={20}>
-        <Text style={styles.branchHint}>
-          سيتم التوصيل من أقرب فرع. يمكنك اختيار فرع آخر إذا أردت:
-        </Text>
+
+      {/* ── Sign-in required banner — shown at the TOP so it's never hidden */}
+      {!user?.id && (
+        <Animated.View entering={FadeInDown.duration(280)} style={styles.signInBanner}>
+          <View style={styles.signInBannerIcon}>
+            <Ionicons name="person-circle-outline" size={22} color={theme.colors.brand[700]} />
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <UIText variant="body-sm" weight="extrabold" align="right" style={{ color: theme.colors.brand[800] }}>
+              {t("checkout.signInRequired")}
+            </UIText>
+            <UIText variant="caption" color="secondary" align="right">
+              {t("checkout.signInDesc")}
+            </UIText>
+          </View>
+          <Pressable onPress={onSignIn} style={styles.signInBannerBtn} hitSlop={4}>
+            <UIText variant="eyebrow" weight="bold" style={{ color: "#fff" }}>
+              {t("checkout.signInBtn")}
+            </UIText>
+          </Pressable>
+        </Animated.View>
+      )}
+
+      <SectionCard title={t("checkout.branchSection")} icon="storefront-outline" delay={20}>
+        <Text style={styles.branchHint}>{t("checkout.branchHint")}</Text>
         <BranchSelector
           selectedId={selectedBranchId ?? deliveryBranch?.id ?? null}
           onSelect={onSelectBranch}
@@ -869,53 +897,49 @@ function DetailsStep({
       </SectionCard>
 
       {hasSavedAccount && (
-        <SectionCard title="بيانات الحساب المحفوظة" icon="person-circle-outline" delay={50}>
-          <Text style={styles.savedHint}>
-            يمكنك استخدام بيانات الحساب الحالية لهذا الطلب أو تعديلها يدوياً دون فقدانها.
-          </Text>
+        <SectionCard title={t("checkout.profileSection")} icon="person-circle-outline" delay={50}>
+          <Text style={styles.savedHint}>{t("checkout.profileHint")}</Text>
           <View style={styles.toggleRow}>
             <Button
               variant={useAccountProfile ? "success" : "outline"}
               size="sm"
               onPress={() => onToggleAccountProfile(true)}
               style={{ flex: 1 }}>
-              استخدم بيانات الحساب
+              {t("checkout.useAccountData")}
             </Button>
             <Button
               variant={!useAccountProfile ? "secondary" : "ghost"}
               size="sm"
               onPress={() => onToggleAccountProfile(false)}
               style={{ flex: 1 }}>
-              أدخل بيانات جديدة
+              {t("checkout.enterNewData")}
             </Button>
           </View>
           <View style={styles.savedMetaRow}>
-            <Text style={styles.savedMetaLabel}>الاسم</Text>
-            <Text style={styles.savedMetaValue}>{user?.name ?? "غير محدد"}</Text>
+            <Text style={styles.savedMetaLabel}>{t("auth.name")}</Text>
+            <Text style={styles.savedMetaValue}>{user?.name ?? "—"}</Text>
           </View>
           <View style={styles.savedMetaRow}>
-            <Text style={styles.savedMetaLabel}>رقم الهاتف</Text>
-            <Text style={styles.savedMetaValue}>{savedProfilePhone ?? "غير محفوظ بعد"}</Text>
+            <Text style={styles.savedMetaLabel}>{t("auth.phone")}</Text>
+            <Text style={styles.savedMetaValue}>{savedProfilePhone ?? "—"}</Text>
           </View>
           <Text style={styles.savedHelp}>
-            {useAccountProfile
-              ? "سيتم استخدام بيانات الحساب الحالية في حقول الاسم والهاتف. يمكنك تعديلها قبل إتمام الطلب."
-              : "اكتب بيانات مختلفة لهذا الطلب. سيبقى حسابك دون تغيير."}
+            {useAccountProfile ? t("checkout.saveProfileHint") : t("checkout.customDataHint")}
           </Text>
         </SectionCard>
       )}
 
-      <SectionCard title="المعلومات الشخصية" icon="person-outline" delay={hasSavedAccount ? 90 : 50}>
+      <SectionCard title={t("checkout.personalSection")} icon="person-outline" delay={hasSavedAccount ? 90 : 50}>
         <Controller
           control={control}
           name="fullName"
           render={({ field }) => (
             <Input
-              label="الاسم الكامل"
+              label={t("checkout.nameLabel")}
               value={field.value}
               onChangeText={field.onChange}
               onBlur={field.onBlur}
-              placeholder="محمد أحمد"
+              placeholder={t("checkout.namePlaceholder")}
               error={errors.fullName?.message}
             />
           )}
@@ -925,7 +949,7 @@ function DetailsStep({
           name="phone"
           render={({ field }) => (
             <Input
-              label="رقم الهاتف"
+              label={t("auth.phone")}
               value={field.value}
               onChangeText={field.onChange}
               onBlur={field.onBlur}
@@ -937,13 +961,11 @@ function DetailsStep({
         />
       </SectionCard>
 
-      <SectionCard title="عنوان التوصيل" icon="location-outline" delay={120}>
+      <SectionCard title={t("checkout.addressSection")} icon="location-outline" delay={120}>
         {defaultAddress ? (
           <View style={styles.savedAddressBanner}>
-            <Text style={styles.savedAddressTitle}>العنوان الافتراضي الخاص بك</Text>
-            <Text style={styles.savedAddressText}>
-              هذا العنوان محفوظ في حسابك ويمكن استخدامه مباشرة أو تغييره لطلب جديد.
-            </Text>
+            <Text style={styles.savedAddressTitle}>{t("checkout.defaultAddrTitle")}</Text>
+            <Text style={styles.savedAddressText}>{t("checkout.defaultAddrHint")}</Text>
             <Text style={styles.savedAddressSummary}>{addressSummary}</Text>
             <View style={styles.toggleRow}>
               <Button
@@ -951,21 +973,19 @@ function DetailsStep({
                 size="sm"
                 onPress={() => onToggleSavedAddress(true)}
                 style={{ flex: 1 }}>
-                استخدم العنوان الافتراضي
+                {t("checkout.useSavedAddress")}
               </Button>
               <Button
                 variant={!useSavedAddress ? "secondary" : "ghost"}
                 size="sm"
                 onPress={() => onToggleSavedAddress(false)}
                 style={{ flex: 1 }}>
-                أدخل عنواناً جديداً
+                {t("checkout.enterNewAddress")}
               </Button>
             </View>
           </View>
         ) : (
-          <Text style={styles.savedAddressText}>
-            لا يوجد عنوان افتراضي محفوظ. اختر عنواناً جديداً أو قم بحفظ عنوانك في صفحة العناوين.
-          </Text>
+          <Text style={styles.savedAddressText}>{t("checkout.noAddrHint")}</Text>
         )}
 
         <View style={styles.cityCard}>
@@ -974,11 +994,11 @@ function DetailsStep({
               <Ionicons name="business-outline" size={14} color={theme.colors.brand[600]} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.cityLabel}>المدينة</Text>
+              <Text style={styles.cityLabel}>{t("checkout.cityLabel")}</Text>
               <Text style={styles.cityValue}>{SUPPORTED_GOVERNORATE.ar}</Text>
             </View>
             <View style={styles.cityBadge}>
-              <Text style={styles.cityBadgeText}>{SUPPORTED_GOVERNORATE.label}</Text>
+              <Text style={styles.cityBadgeText}>{t("checkout.cairoOnly")}</Text>
             </View>
           </View>
         </View>
@@ -988,11 +1008,11 @@ function DetailsStep({
           name="streetName"
           render={({ field }) => (
             <Input
-              label="الشارع والحي"
+              label={t("checkout.streetLabel")}
               value={field.value}
               onChangeText={field.onChange}
               onBlur={field.onBlur}
-              placeholder="مثال: شارع النصر، المعادي"
+              placeholder={t("checkout.streetPlaceholder")}
               error={errors.streetName?.message}
             />
           )}
@@ -1005,10 +1025,10 @@ function DetailsStep({
             render={({ field }) => (
               <View style={{ flex: 1 }}>
                 <Input
-                  label="رقم العمارة"
+                  label={t("checkout.buildingLabel")}
                   value={field.value}
                   onChangeText={field.onChange}
-                  placeholder="١٠"
+                  placeholder="10"
                   keyboardType="number-pad"
                   error={errors.buildingNumber?.message}
                 />
@@ -1021,10 +1041,10 @@ function DetailsStep({
             render={({ field }) => (
               <View style={{ flex: 1 }}>
                 <Input
-                  label="الطابق"
+                  label={t("checkout.floorLabel")}
                   value={field.value ?? ""}
                   onChangeText={field.onChange}
-                  placeholder="٣"
+                  placeholder="3"
                   keyboardType="number-pad"
                   optional
                 />
@@ -1037,10 +1057,10 @@ function DetailsStep({
             render={({ field }) => (
               <View style={{ flex: 1 }}>
                 <Input
-                  label="رقم الشقة"
+                  label={t("checkout.aptLabel")}
                   value={field.value}
                   onChangeText={field.onChange}
-                  placeholder="٥"
+                  placeholder="5"
                   keyboardType="number-pad"
                   error={errors.apartmentNumber?.message}
                 />
@@ -1054,10 +1074,10 @@ function DetailsStep({
           name="note"
           render={({ field }) => (
             <Input
-              label="ملاحظات للمندوب"
+              label={t("checkout.notesLabel")}
               value={field.value ?? ""}
               onChangeText={field.onChange}
-              placeholder="أي تعليمات إضافية…"
+              placeholder={t("checkout.notesPlaceholder")}
               multiline
               numberOfLines={3}
               optional
@@ -1066,7 +1086,7 @@ function DetailsStep({
         />
       </SectionCard>
 
-      <SectionCard title="طريقة الدفع" icon="card-outline" delay={160}>
+      <SectionCard title={t("checkout.paymentSection")} icon="card-outline" delay={160}>
         <PaymentMethodCards
           selected={paymentMethod}
           subtotal={subtotal}
@@ -1088,13 +1108,17 @@ function PaymentMethodCards({
   subtotal:  number;
   onChange:  (m: CheckoutPaymentMethod) => void;
 }) {
-  // Recommend InstaPay for larger orders (smoother for driver handoff);
-  // otherwise COD is the simplest path.
+  const { t } = useTranslation();
   const recommended: CheckoutPaymentMethod = subtotal >= 500 ? "instapay" : "cod";
+  const methods = PAYMENT_METHOD_CONFIGS.map((cfg) => ({
+    ...cfg,
+    title:       t(cfg.titleKey),
+    description: t(cfg.descKey),
+  }));
 
   return (
     <View style={styles.payCardsWrapper}>
-      {PAYMENT_METHODS.map((m, idx) => {
+      {methods.map((m, idx) => {
         const active = selected === m.id;
         const isRec  = m.id === recommended && !active;
 
@@ -1115,20 +1139,17 @@ function PaymentMethodCards({
               {isRec && (
                 <View style={[styles.payCardBadge, { backgroundColor: m.color + "18", borderColor: m.color + "40" }]}>
                   <Ionicons name="star" size={8} color={m.color} />
-                  <Text style={[styles.payCardBadgeText, { color: m.color }]}>موصى به</Text>
+                  <Text style={[styles.payCardBadgeText, { color: m.color }]}>{t("checkout.methodRecommended")}</Text>
                 </View>
               )}
 
               <View style={styles.payCardRow}>
-                {/* Check indicator on the right (RTL layout) */}
                 <View style={[
                   styles.payCardCheck,
                   active && { backgroundColor: m.color, borderColor: m.color },
                 ]}>
                   {active && <Ionicons name="checkmark" size={12} color="#fff" />}
                 </View>
-
-                {/* Icon + text */}
                 <View style={styles.payCardMeta}>
                   <View style={styles.payCardTextBlock}>
                     <Text style={[styles.payCardTitle, active && { color: m.color }]}>
@@ -1194,14 +1215,22 @@ function ReviewStep({
   onApplyPromo: () => void;
   control: any;
 }) {
+  const { t, i18n } = useTranslation();
+  const sep = i18n.language.startsWith("en") ? ", " : "، ";
+  const methods = PAYMENT_METHOD_CONFIGS.map((cfg) => ({
+    ...cfg,
+    title:       t(cfg.titleKey),
+    description: t(cfg.descKey),
+  }));
+
   return (
     <Animated.View entering={FadeIn.duration(220)}>
       {deliveryQuote.branch && (
         <SectionCard
-          title="فرع التوصيل"
+          title={t("checkout.branchSection")}
           icon="storefront-outline"
           delay={20}
-          action={{ label: "تغيير الفرع", onPress: onEditAddress }}>
+          action={{ label: t("checkout.changeBranch"), onPress: onEditAddress }}>
           <BranchCard
             branch={deliveryQuote.branch}
             distanceKm={deliveryQuote.distanceKm ?? undefined}
@@ -1210,40 +1239,40 @@ function ReviewStep({
           <View style={styles.etaPillInline}>
             <Ionicons name="time-outline" size={12} color={theme.colors.brand[600]} />
             <Text style={styles.etaPillText}>
-              التوصيل خلال {deliveryQuote.eta.min}–{deliveryQuote.eta.max} دقيقة
+              {t("checkout.etaText", { min: deliveryQuote.eta.min, max: deliveryQuote.eta.max })}
             </Text>
           </View>
         </SectionCard>
       )}
 
       <SectionCard
-        title="عنوان التوصيل"
+        title={t("checkout.addressSection")}
         icon="location-outline"
         delay={50}
-        action={{ label: "تعديل العنوان", onPress: onEditAddress }}>
+        action={{ label: t("checkout.editAddress"), onPress: onEditAddress }}>
         <Text style={styles.reviewLine}>{values.fullName}</Text>
         <Text style={styles.reviewSub}>{values.phone}</Text>
         <View style={styles.reviewDivider} />
         <Text style={styles.reviewLine}>
           {[
             values.streetName,
-            values.buildingNumber && `عمارة ${values.buildingNumber}`,
-            values.floor && `طابق ${values.floor}`,
-            values.apartmentNumber && `شقة ${values.apartmentNumber}`,
+            values.buildingNumber && t("orders.building", { n: values.buildingNumber }),
+            values.floor && t("orders.floor", { n: values.floor }),
+            values.apartmentNumber && t("orders.apt", { n: values.apartmentNumber }),
             values.city,
           ]
             .filter(Boolean)
-            .join("، ")}
+            .join(sep)}
         </Text>
-        {values.note ? <Text style={styles.reviewSub}>ملاحظات: {values.note}</Text> : null}
+        {values.note ? <Text style={styles.reviewSub}>{values.note}</Text> : null}
       </SectionCard>
 
       <SectionCard
-        title="طريقة الدفع"
+        title={t("checkout.paymentSection")}
         icon="card-outline"
         delay={110}
-        action={{ label: "تعديل", onPress: onEditPayment }}>
-        {PAYMENT_METHODS.map((m) => (
+        action={{ label: t("checkout.editPayment"), onPress: onEditPayment }}>
+        {methods.map((m) => (
           <Pressable
             key={m.id}
             onPress={() => onPaymentChange(m.id)}
@@ -1277,7 +1306,7 @@ function ReviewStep({
             <View style={[styles.posCheck, requestPos && styles.posCheckActive]}>
               {requestPos && <Ionicons name="checkmark" size={11} color="#fff" />}
             </View>
-            <Text style={styles.posLabel}>أطلب ماكينة دفع (POS) مع المندوب</Text>
+            <Text style={styles.posLabel}>{t("checkout.posRequest")}</Text>
           </Pressable>
         )}
 
@@ -1300,14 +1329,14 @@ function ReviewStep({
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.payTitle, { color: theme.colors.slate[400] }]}>
-              رابط دفع إلكتروني
+              {t("checkout.paymentLink")}
             </Text>
-            <Text style={styles.paySub}>قريباً</Text>
+            <Text style={styles.paySub}>{t("checkout.methodComingSoon")}</Text>
           </View>
         </View>
       </SectionCard>
 
-      <SectionCard title="كود الخصم" icon="pricetag-outline" delay={170}>
+      <SectionCard title={t("checkout.promoSection")} icon="pricetag-outline" delay={170}>
         <Controller
           control={control}
           name="promoCode"
@@ -1317,7 +1346,7 @@ function ReviewStep({
                 <Input
                   value={field.value ?? ""}
                   onChangeText={field.onChange}
-                  placeholder="أدخل كود الخصم"
+                  placeholder={t("checkout.promoPlaceholder")}
                   editable={!promoApplied}
                   error={promoError ?? undefined}
                 />
@@ -1327,7 +1356,7 @@ function ReviewStep({
                 disabled={promoApplied}
                 style={[styles.promoBtn, promoApplied && styles.promoBtnApplied]}>
                 <Text style={[styles.promoBtnText, promoApplied && styles.promoBtnTextApplied]}>
-                  {promoApplied ? "مفعّل ✓" : "تطبيق"}
+                  {promoApplied ? t("checkout.promoApplied") : t("checkout.promoApply")}
                 </Text>
               </Pressable>
             </View>
@@ -1336,37 +1365,37 @@ function ReviewStep({
         {promoApplied && (
           <View style={styles.promoSuccess}>
             <Ionicons name="gift" size={13} color={theme.colors.green[600]} />
-            <Text style={styles.promoSuccessText}>تم تفعيل خصم 10%</Text>
+            <Text style={styles.promoSuccessText}>{t("checkout.promoSuccess")}</Text>
           </View>
         )}
       </SectionCard>
 
-      <SectionCard title="ملخص الطلب" icon="receipt-outline" delay={230}>
+      <SectionCard title={t("checkout.summarySection")} icon="receipt-outline" delay={230}>
         <SummaryRow
-          label={`المجموع الفرعي (${pricing.itemCount} منتج)`}
+          label={t("checkout.subtotalRow", { count: pricing.itemCount })}
           value={formatPrice(pricing.subtotal)}
         />
         <SummaryRow
-          label="رسوم التوصيل"
-          value={deliveryQuote.isFree ? "مجاني" : formatPrice(deliveryQuote.cost)}
+          label={t("checkout.deliveryRow")}
+          value={deliveryQuote.isFree ? t("common.free") : formatPrice(deliveryQuote.cost)}
           valueColor={deliveryQuote.isFree ? theme.colors.green[600] : undefined}
         />
         {pricing.discount > 0 && (
           <SummaryRow
-            label="الخصم"
+            label={t("checkout.discountRow")}
             value={`−${formatPrice(pricing.discount)}`}
             valueColor={theme.colors.green[600]}
           />
         )}
         <View style={styles.summaryDivider} />
         <View style={styles.summaryTotalRow}>
-          <Text style={styles.summaryTotalLabel}>الإجمالي</Text>
+          <Text style={styles.summaryTotalLabel}>{t("checkout.totalRow")}</Text>
           <Text style={styles.summaryTotalValue}>{formatPrice(pricing.total)}</Text>
         </View>
         <View style={styles.etaPill}>
           <Ionicons name="time-outline" size={12} color={theme.colors.brand[600]} />
           <Text style={styles.etaText}>
-            التوصيل خلال {deliveryQuote.eta.min}–{deliveryQuote.eta.max} دقيقة
+            {t("checkout.etaText", { min: deliveryQuote.eta.min, max: deliveryQuote.eta.max })}
           </Text>
         </View>
       </SectionCard>
@@ -1500,6 +1529,7 @@ function EmptyCartScreen({
   onBrowse: () => void;
   insets: { top: number };
 }) {
+  const { t } = useTranslation();
   return (
     <View style={[styles.emptyScreen, { paddingTop: insets.top + 80 }]}>
       <Animated.View
@@ -1511,10 +1541,10 @@ function EmptyCartScreen({
         entering={FadeInDown.duration(380).delay(80)}
         style={styles.emptyTextStack}>
         <UIText variant="sheet-title" align="center" style={styles.emptyTitleNew}>
-          السلة فارغة
+          {t("checkout.emptyCartTitle")}
         </UIText>
         <UIText variant="body" color="secondary" align="center" style={styles.emptyDescNew}>
-          أضف منتجات من المتجر لتظهر هنا، ثم تابع لإتمام الطلب
+          {t("checkout.emptyCartDesc")}
         </UIText>
       </Animated.View>
       <Animated.View
@@ -1522,7 +1552,7 @@ function EmptyCartScreen({
         style={{ marginTop: 32, alignSelf: "stretch", paddingHorizontal: 32 }}>
         <Button variant="primary" size="lg" fullWidth gradient onPress={onBrowse}>
           <View style={styles.ctaBtnInner}>
-            <Text style={styles.ctaBtnText}>تصفح المنتجات</Text>
+            <Text style={styles.ctaBtnText}>{t("checkout.browseBtn")}</Text>
             <Ionicons name="arrow-back" size={16} color="#fff" />
           </View>
         </Button>
@@ -1546,10 +1576,9 @@ function SuccessScreen({
   onContinue: () => void;
   onViewOrders: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <View style={[styles.successScreen, { paddingTop: insets.top + 40 }]}>
-      {/* Hero confirmation — brand-glow tile, NOT loud solid-green.
-          Clinical "the action was received" not a victory parade. */}
       <Animated.View
         entering={FadeInDown.duration(460).springify().damping(18)}
         style={styles.successIconWrap}>
@@ -1562,64 +1591,61 @@ function SuccessScreen({
         entering={FadeInDown.delay(100).duration(420)}
         style={styles.successHeadingStack}>
         <UIText variant="screen-title" align="center" style={styles.successTitleNew}>
-          تم استلام طلبك
+          {t("checkout.orderReceived")}
         </UIText>
         <UIText variant="body" color="secondary" align="center" style={styles.successDescNew}>
-          سيتواصل معك المندوب لتأكيد التفاصيل خلال دقائق
+          {t("checkout.orderReceivedDesc")}
         </UIText>
       </Animated.View>
 
-      {/* Total — strongest signal on the screen, anchored above the metadata */}
       <Animated.View
         entering={FadeInDown.delay(180).duration(420)}
         style={styles.successTotalStack}>
         <UIText variant="eyebrow" color="tertiary" align="center">
-          المبلغ الإجمالي
+          {t("checkout.orderTotalLabel")}
         </UIText>
         <UIText variant="metric" align="center" style={styles.successTotalValue}>
           {formatPrice(total)}
         </UIText>
       </Animated.View>
 
-      {/* Compact metadata card — refined dividers, no heavy borders */}
       <Animated.View
         entering={FadeInDown.delay(260).duration(420)}
         style={styles.successCard}>
         <View style={styles.successCardRow}>
-          <UIText variant="body-sm" color="secondary">رقم الطلب</UIText>
+          <UIText variant="body-sm" color="secondary">{t("checkout.orderNumberLabel")}</UIText>
           <UIText variant="body-sm" weight="extrabold">
             {orderId ? orderId.slice(-8).toUpperCase() : "—"}
           </UIText>
         </View>
         <View style={styles.successCardDivider} />
         <View style={styles.successCardRow}>
-          <UIText variant="body-sm" color="secondary">التوصيل المتوقع</UIText>
+          <UIText variant="body-sm" color="secondary">{t("checkout.estimatedDelivery")}</UIText>
           <View style={styles.successEtaPill}>
             <Ionicons name="time-outline" size={12} color={theme.colors.brand[700]} />
             <UIText variant="eyebrow" style={{ color: theme.colors.brand[700] }}>
-              30–60 دقيقة
+              30–60 {t("delivery.minUnit")}
             </UIText>
           </View>
         </View>
         <View style={styles.successCardDivider} />
         <View style={styles.successCardRow}>
-          <UIText variant="body-sm" color="secondary">حالة الطلب</UIText>
+          <UIText variant="body-sm" color="secondary">{t("checkout.orderStatusLabel")}</UIText>
           <View style={styles.successStatusPill}>
             <View style={styles.successStatusDot} />
             <UIText variant="eyebrow" style={{ color: theme.colors.success.strong }}>
-              قيد التحضير
+              {t("checkout.preparingStatus")}
             </UIText>
           </View>
         </View>
       </Animated.View>
 
-      {/* Trust footnote — soft reassurance under the card */}
       <Animated.View
         entering={FadeInDown.delay(340).duration(360)}
         style={styles.successTrustRow}>
         <Ionicons name="shield-checkmark" size={12} color={theme.colors.text.tertiary} />
         <UIText variant="eyebrow" color="tertiary">
-          الدفع آمن  •  بياناتك محمية
+          {t("checkout.trustSeal")}
         </UIText>
       </Animated.View>
 
@@ -1634,17 +1660,288 @@ function SuccessScreen({
         }}>
         <Button variant="primary" size="lg" fullWidth gradient onPress={onViewOrders}>
           <View style={styles.ctaBtnInner}>
-            <Text style={styles.ctaBtnText}>تتبع الطلب</Text>
+            <Text style={styles.ctaBtnText}>{t("checkout.trackOrderBtn")}</Text>
             <Ionicons name="receipt-outline" size={15} color="#fff" />
           </View>
         </Button>
         <Button variant="subtle" size="md" fullWidth onPress={onContinue}>
-          متابعة التسوق
+          {t("checkout.continueShoppingBtn")}
         </Button>
       </Animated.View>
     </View>
   );
 }
+
+// ─── Auth Gate Modal ──────────────────────────────────────────────────────────
+
+function AuthGateModal({
+  visible,
+  onSignIn,
+  onDismiss,
+}: {
+  visible:   boolean;
+  onSignIn:  () => void;
+  onDismiss: () => void;
+}) {
+  const { t } = useTranslation();
+
+  // Pulsing ring animation
+  const ring1 = useSharedValue(1);
+  const ring2 = useSharedValue(1);
+  const ring1Op = useSharedValue(0.5);
+  const ring2Op = useSharedValue(0.3);
+
+  useEffect(() => {
+    if (!visible) return;
+    ring1.value = withRepeat(
+      withSequence(withTiming(1.35, { duration: 1600 }), withTiming(1, { duration: 1200 })),
+      -1, false,
+    );
+    ring1Op.value = withRepeat(
+      withSequence(withTiming(0, { duration: 1600 }), withTiming(0.5, { duration: 1200 })),
+      -1, false,
+    );
+    ring2.value = withRepeat(
+      withSequence(withTiming(1, { duration: 800 }), withTiming(1.6, { duration: 1800 }), withTiming(1, { duration: 800 })),
+      -1, false,
+    );
+    ring2Op.value = withRepeat(
+      withSequence(withTiming(0.3, { duration: 800 }), withTiming(0, { duration: 1800 }), withTiming(0.3, { duration: 800 })),
+      -1, false,
+    );
+  }, [visible, ring1, ring1Op, ring2, ring2Op]);
+
+  const ring1Style = useAnimatedStyle(() => ({
+    transform: [{ scale: ring1.value }],
+    opacity: ring1Op.value,
+  }));
+  const ring2Style = useAnimatedStyle(() => ({
+    transform: [{ scale: ring2.value }],
+    opacity: ring2Op.value,
+  }));
+
+  // Card entrance
+  const cardScale = useSharedValue(0.88);
+  const cardOp    = useSharedValue(0);
+  useEffect(() => {
+    if (visible) {
+      cardScale.value = withSpring(1, { damping: 18, stiffness: 280 });
+      cardOp.value    = withTiming(1, { duration: 240 });
+    } else {
+      cardScale.value = 0.88;
+      cardOp.value    = 0;
+    }
+  }, [visible, cardScale, cardOp]);
+  const cardStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: cardScale.value }],
+    opacity: cardOp.value,
+  }));
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={onDismiss}
+      accessibilityViewIsModal>
+      <Pressable style={agStyles.backdrop} onPress={onDismiss}>
+        <Animated.View style={[agStyles.card, cardStyle]} onStartShouldSetResponder={() => true}>
+
+          {/* ── Animated rings ── */}
+          <View style={agStyles.orbArea}>
+            <Animated.View style={[agStyles.ring, agStyles.ring1, ring2Style]} />
+            <Animated.View style={[agStyles.ring, agStyles.ring2, ring1Style]} />
+            <LinearGradient
+              colors={["#1e3a5f", "#0d5c8e", "#0891b2"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={agStyles.orb}>
+              {/* Inner glow disc */}
+              <View style={agStyles.orbInner}>
+                <Ionicons name="person-circle" size={42} color="rgba(255,255,255,0.95)" />
+              </View>
+            </LinearGradient>
+          </View>
+
+          {/* ── Copy ── */}
+          <Animated.View entering={FadeInDown.delay(120).duration(280)} style={agStyles.copy}>
+            <Text style={agStyles.title}>{t("checkout.authGateTitle")}</Text>
+            <Text style={agStyles.body}>{t("checkout.authGateBody")}</Text>
+          </Animated.View>
+
+          {/* ── Feature pills ── */}
+          <Animated.View entering={FadeInDown.delay(200).duration(280)} style={agStyles.pillsRow}>
+            {(["flash-outline", "shield-checkmark-outline", "location-outline"] as const).map((icon, i) => (
+              <View key={i} style={agStyles.pill}>
+                <Ionicons name={icon} size={11} color="#0891b2" />
+              </View>
+            ))}
+          </Animated.View>
+
+          {/* ── CTA ── */}
+          <Animated.View entering={FadeInUp.delay(260).duration(280)} style={agStyles.actions}>
+            <Pressable
+              onPress={onSignIn}
+              style={({ pressed }) => [agStyles.signInBtn, pressed && { opacity: 0.9 }]}>
+              <LinearGradient
+                colors={["#0891b2", "#0db8a8"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={agStyles.signInGrad}>
+                <Ionicons name="log-in-outline" size={18} color="#fff" />
+                <Text style={agStyles.signInText}>{t("checkout.authGateSignIn")}</Text>
+              </LinearGradient>
+            </Pressable>
+            <Pressable onPress={onDismiss} hitSlop={8} style={agStyles.dismissBtn}>
+              <Text style={agStyles.dismissText}>{t("checkout.authGateDismiss")}</Text>
+            </Pressable>
+          </Animated.View>
+
+        </Animated.View>
+      </Pressable>
+    </Modal>
+  );
+}
+
+const agStyles = StyleSheet.create({
+  backdrop: {
+    flex:            1,
+    backgroundColor: "rgba(2, 10, 22, 0.72)",
+    alignItems:      "center",
+    justifyContent:  "center",
+    padding:         28,
+  },
+  card: {
+    width:           "100%",
+    maxWidth:        360,
+    backgroundColor: "#fff",
+    borderRadius:    32,
+    paddingTop:      0,
+    paddingBottom:   28,
+    paddingHorizontal: 24,
+    alignItems:      "center",
+    overflow:        "hidden",
+    shadowColor:     "#021D2E",
+    shadowOffset:    { width: 0, height: 20 },
+    shadowOpacity:   0.40,
+    shadowRadius:    40,
+    elevation:       24,
+  },
+
+  // Animated orb
+  orbArea: {
+    marginTop:      36,
+    marginBottom:   8,
+    width:          110,
+    height:         110,
+    alignItems:     "center",
+    justifyContent: "center",
+  },
+  ring: {
+    position:     "absolute",
+    borderRadius: 999,
+    borderWidth:  1.5,
+  },
+  ring1: {
+    width:        110,
+    height:       110,
+    borderColor:  "#0891b2",
+  },
+  ring2: {
+    width:        88,
+    height:       88,
+    borderColor:  "#0db8a8",
+  },
+  orb: {
+    width:          76,
+    height:         76,
+    borderRadius:   38,
+    alignItems:     "center",
+    justifyContent: "center",
+  },
+  orbInner: {
+    width:           68,
+    height:          68,
+    borderRadius:    34,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    alignItems:      "center",
+    justifyContent:  "center",
+  },
+
+  copy: {
+    alignItems: "center",
+    gap:        10,
+    marginTop:  16,
+    marginBottom: 4,
+  },
+  title: {
+    fontFamily:    theme.fonts.black,
+    fontSize:      20,
+    color:         "#0F172A",
+    textAlign:     "center",
+    letterSpacing: -0.5,
+    lineHeight:    26,
+  },
+  body: {
+    fontFamily: theme.fonts.regular,
+    fontSize:   13.5,
+    color:      "#64748B",
+    textAlign:  "center",
+    lineHeight: 20,
+    maxWidth:   280,
+  },
+
+  pillsRow: {
+    flexDirection: "row",
+    gap:           8,
+    marginTop:     16,
+    marginBottom:  4,
+  },
+  pill: {
+    width:           32,
+    height:          32,
+    borderRadius:    10,
+    backgroundColor: "#EFF9FC",
+    alignItems:      "center",
+    justifyContent:  "center",
+    borderWidth:     1,
+    borderColor:     "#BAE6F5",
+  },
+
+  actions: {
+    width:    "100%",
+    gap:      10,
+    marginTop: 20,
+  },
+  signInBtn: {
+    borderRadius: 16,
+    overflow:     "hidden",
+  },
+  signInGrad: {
+    flexDirection:     "row",
+    alignItems:        "center",
+    justifyContent:    "center",
+    gap:               10,
+    paddingVertical:   16,
+    borderRadius:      16,
+  },
+  signInText: {
+    fontFamily:    theme.fonts.black,
+    fontSize:      15,
+    color:         "#fff",
+    letterSpacing: -0.3,
+  },
+  dismissBtn: {
+    alignItems:      "center",
+    paddingVertical: 10,
+  },
+  dismissText: {
+    fontFamily: theme.fonts.semibold,
+    fontSize:   13,
+    color:      "#94A3B8",
+  },
+});
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
@@ -1721,6 +2018,38 @@ const styles = StyleSheet.create({
     height:          2,
     backgroundColor: theme.colors.slate[200],
     borderRadius:    1,
+  },
+
+  // Sign-in required banner — prominent, always above the fold
+  signInBanner: {
+    flexDirection:     "row-reverse",
+    alignItems:        "center",
+    gap:               12,
+    backgroundColor:   theme.colors.brand[50],
+    borderRadius:      16,
+    paddingHorizontal: 14,
+    paddingVertical:   14,
+    marginBottom:      16,
+    borderWidth:       1.5,
+    borderColor:       theme.colors.border.brandSoft,
+    ...theme.shadow.brandGlow,
+    shadowOpacity:     0.08,
+  },
+  signInBannerIcon: {
+    width:           40,
+    height:          40,
+    borderRadius:    13,
+    backgroundColor: theme.colors.brand.lighter,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
+    alignItems:      "center",
+    justifyContent:  "center",
+  },
+  signInBannerBtn: {
+    backgroundColor:   theme.colors.brand[600],
+    borderRadius:      10,
+    paddingHorizontal: 12,
+    paddingVertical:   8,
   },
 
   // Free-delivery banner — refined chip card (no loud gradient)

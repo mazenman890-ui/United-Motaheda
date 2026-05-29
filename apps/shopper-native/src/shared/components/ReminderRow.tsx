@@ -10,6 +10,7 @@
 import React from "react";
 import { Pressable, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { theme } from "@/theme";
 import { Text } from "@/shared/ui";
 import { Button } from "@/components/ui/Button";
@@ -38,6 +39,7 @@ export function ReminderRow({
   onSnooze,
   showAction = true,
 }: ReminderRowProps): React.ReactElement {
+  const { t }  = useTranslation();
   const toggle = (): void => onToggle?.(r.id, !r.taken);
 
   return (
@@ -54,7 +56,7 @@ export function ReminderRow({
         hitSlop={8}
         accessibilityRole="checkbox"
         accessibilityState={{ checked: r.taken }}
-        accessibilityLabel={r.taken ? `${r.name} — تم التناول` : `${r.name} — لم يُتناول بعد`}>
+        accessibilityLabel={r.taken ? t("reminder.accessTaken", { name: r.name }) : t("reminder.accessNotTaken", { name: r.name })}>
         <View style={{
           width: 26, height: 26, borderRadius: 13,
           backgroundColor: r.taken ? theme.colors.success.base : "transparent",
@@ -92,11 +94,11 @@ export function ReminderRow({
         <View style={{ flexDirection: "row-reverse", gap: theme.spacing[0.5] }}>
           {onSnooze && (
             <Button size="sm" variant="outline" onPress={() => onSnooze(r.id)}>
-              تأجيل
+              {t("reminder.snooze")}
             </Button>
           )}
           <Button size="sm" variant="primary" onPress={toggle}>
-            تم التناول
+            {t("reminder.markTaken")}
           </Button>
         </View>
       )}

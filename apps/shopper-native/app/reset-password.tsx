@@ -30,6 +30,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/lib/supabase";
 import { updatePassword, authErrorToArabic } from "@/features/auth";
 import { track } from "@/lib/analytics";
@@ -44,6 +45,7 @@ type Phase = "exchanging" | "form" | "success" | "expired";
 const MIN_PASSWORD_LENGTH = 8;
 
 export default function ResetPasswordScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ code?: string }>();
@@ -87,11 +89,11 @@ export default function ResetPasswordScreen() {
 
   const validate = (): string | null => {
     if (password.length < MIN_PASSWORD_LENGTH)
-      return `كلمة المرور يجب أن تكون ${MIN_PASSWORD_LENGTH} أحرف على الأقل`;
+      return t("resetPassword.minLengthError", { min: MIN_PASSWORD_LENGTH });
     if (!/[A-Za-z]/.test(password))
-      return "يجب أن تحتوي كلمة المرور على حرف واحد على الأقل";
+      return t("resetPassword.noLetterError");
     if (password !== confirm)
-      return "كلمتا المرور غير متطابقتين";
+      return t("resetPassword.passwordsNoMatch");
     return null;
   };
 
@@ -125,16 +127,16 @@ export default function ResetPasswordScreen() {
   // ── Render helpers ─────────────────────────────────────────────────────────
 
   const heroTitle = (() => {
-    if (phase === "success") return "تم تغيير كلمة المرور";
-    if (phase === "expired") return "انتهت صلاحية الرابط";
-    return "إعادة تعيين كلمة المرور";
+    if (phase === "success") return t("resetPassword.titleSuccess");
+    if (phase === "expired") return t("resetPassword.titleExpired");
+    return t("resetPassword.titleDefault");
   })();
 
   const heroSubtitle = (() => {
-    if (phase === "success") return "يمكنك الآن تسجيل الدخول بكلمة مرورك الجديدة";
-    if (phase === "expired") return "هذا الرابط منتهي الصلاحية أو استُخدم من قبل";
-    if (phase === "exchanging") return "جارٍ التحقق من الرابط…";
-    return "أدخل كلمة المرور الجديدة لحسابك";
+    if (phase === "success") return t("resetPassword.subtitleSuccess");
+    if (phase === "expired") return t("resetPassword.subtitleExpired");
+    if (phase === "exchanging") return t("resetPassword.subtitleVerifying");
+    return t("resetPassword.subtitleDefault");
   })();
 
   return (
@@ -184,7 +186,7 @@ export default function ResetPasswordScreen() {
             <Animated.View entering={FadeIn.duration(300)} style={styles.centered}>
               <ActivityIndicator size="large" color={theme.colors.brand.base} />
               <Text variant="body" color="secondary" align="center" style={{ marginTop: 16 }}>
-                جارٍ التحقق من الرابط…
+                {t("resetPassword.verifyingBody")}
               </Text>
             </Animated.View>
           )}
@@ -195,23 +197,22 @@ export default function ResetPasswordScreen() {
               <View style={styles.expiredIcon}>
                 <Ionicons name="time-outline" size={36} color={theme.colors.error.base} />
               </View>
-              <Text variant="sheet-title" align="center">انتهت صلاحية الرابط</Text>
+              <Text variant="sheet-title" align="center">{t("resetPassword.expiredTitle")}</Text>
               <Text variant="body" color="secondary" align="center" style={styles.stateBody}>
-                روابط إعادة تعيين كلمة المرور صالحة لمدة 60 دقيقة فقط.
-                اطلب رابطاً جديداً من شاشة تسجيل الدخول.
+                {t("resetPassword.expiredBody")}
               </Text>
               <Button
                 variant="primary"
                 fullWidth
                 gradient
                 onPress={() => router.replace("/(auth)/forgot-password")}>
-                طلب رابط جديد
+                {t("resetPassword.requestNew")}
               </Button>
               <Button
                 variant="ghost"
                 fullWidth
                 onPress={() => router.replace("/(auth)/login")}>
-                العودة لتسجيل الدخول
+                {t("resetPassword.backToLogin")}
               </Button>
             </Animated.View>
           )}
@@ -229,8 +230,8 @@ export default function ResetPasswordScreen() {
               )}
 
               <Input
-                label="كلمة المرور الجديدة"
-                placeholder="8 أحرف على الأقل"
+                label={t("resetPassword.newPasswordLabel")}
+                placeholder={t("resetPassword.newPasswordPlaceholder")}
                 value={password}
                 onChangeText={(v) => { setPassword(v); setError(null); }}
                 secureTextEntry={!showPass}
@@ -256,13 +257,13 @@ export default function ResetPasswordScreen() {
                       />
                     ))}
                   </View>
-                  <Text variant="eyebrow" style={{ color: strength.color }}>{strength.label}</Text>
+                  <Text variant="eyebrow" style={{ color: strength.color }}>{t(strength.labelKey)}</Text>
                 </Animated.View>
               )}
 
               <Input
-                label="تأكيد كلمة المرور"
-                placeholder="أعد إدخال كلمة المرور"
+                label={t("resetPassword.confirmPasswordLabel")}
+                placeholder={t("resetPassword.confirmPlaceholder")}
                 value={confirm}
                 onChangeText={(v) => { setConfirm(v); setError(null); }}
                 secureTextEntry={!showConfirm}
@@ -285,7 +286,7 @@ export default function ResetPasswordScreen() {
                   <Text
                     variant="eyebrow"
                     style={{ color: password === confirm ? theme.colors.success.base : theme.colors.error.base }}>
-                    {password === confirm ? "كلمتا المرور متطابقتان" : "كلمتا المرور غير متطابقتين"}
+                    {password === confirm ? t("resetPassword.passwordsMatch") : t("resetPassword.passwordsNoMatch")}
                   </Text>
                 </Animated.View>
               )}
@@ -298,7 +299,7 @@ export default function ResetPasswordScreen() {
                 loading={loading}
                 onPress={handleSubmit}
                 style={{ marginTop: 8 }}>
-                حفظ كلمة المرور الجديدة
+                {t("resetPassword.saveBtn")}
               </Button>
             </Animated.View>
           )}
@@ -309,16 +310,16 @@ export default function ResetPasswordScreen() {
               <View style={styles.successIcon}>
                 <Ionicons name="checkmark-circle-outline" size={40} color={theme.colors.brand.base} />
               </View>
-              <Text variant="sheet-title" align="center">تم بنجاح!</Text>
+              <Text variant="sheet-title" align="center">{t("resetPassword.successTitle")}</Text>
               <Text variant="body" color="secondary" align="center" style={styles.stateBody}>
-                كلمة مرورك الجديدة جاهزة. يمكنك الآن تسجيل الدخول بها.
+                {t("resetPassword.successBody")}
               </Text>
               <Button
                 variant="primary"
                 fullWidth
                 gradient
                 onPress={() => router.replace("/(tabs)")}>
-                الذهاب إلى التطبيق
+                {t("resetPassword.goToApp")}
               </Button>
             </Animated.View>
           )}
@@ -331,17 +332,17 @@ export default function ResetPasswordScreen() {
 
 // ─── Password strength ────────────────────────────────────────────────────────
 
-function getPasswordStrength(pw: string): { score: number; label: string; color: string } {
+function getPasswordStrength(pw: string): { score: number; labelKey: string; color: string } {
   let score = 0;
   if (pw.length >= 8)  score += 1;
   if (pw.length >= 12) score += 1;
   if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score += 1;
   if (/\d/.test(pw) || /[^A-Za-z0-9]/.test(pw)) score += 1;
 
-  if (score <= 1) return { score: 1, label: "ضعيفة",    color: theme.colors.error.base   };
-  if (score === 2) return { score: 2, label: "مقبولة",   color: theme.colors.warning.base  };
-  if (score === 3) return { score: 3, label: "جيدة",     color: theme.colors.brand.base    };
-  return              { score: 4, label: "قوية جداً",  color: theme.colors.success.base  };
+  if (score <= 1) return { score: 1, labelKey: "resetPassword.strengthWeak",   color: theme.colors.error.base   };
+  if (score === 2) return { score: 2, labelKey: "resetPassword.strengthFair",   color: theme.colors.warning.base  };
+  if (score === 3) return { score: 3, labelKey: "resetPassword.strengthGood",   color: theme.colors.brand.base    };
+  return              { score: 4, labelKey: "resetPassword.strengthStrong",  color: theme.colors.success.base  };
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────

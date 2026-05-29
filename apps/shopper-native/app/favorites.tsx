@@ -13,6 +13,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown, FadeOutRight, Layout } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { useWishlistStore, clearUserWishlist } from "@/stores/wishlist";
 import { useCartStore } from "@/stores/cart";
 import type { NativeProduct } from "@/services/productsApi";
@@ -23,11 +24,12 @@ import { theme } from "@/theme";
 import { formatPrice } from "@/utils/format";
 
 const FavoriteCard = memo(function FavoriteCard({ product, index }: { product: NativeProduct; index: number }) {
-  const router   = useRouter();
-  const toggle   = useWishlistStore((s) => s.toggle);
-  const addItem  = useCartStore((s) => s.addItem);
-  const inCart   = useCartStore((s) => s.items.some((i) => i.productId === product.id));
-  const name     = product.nameAr ?? product.name;
+  const router  = useRouter();
+  const { t }   = useTranslation();
+  const toggle  = useWishlistStore((s) => s.toggle);
+  const addItem = useCartStore((s) => s.addItem);
+  const inCart  = useCartStore((s) => s.items.some((i) => i.productId === product.id));
+  const name    = product.nameAr ?? product.name;
 
   const handleRemove = useCallback(() => {
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
@@ -56,7 +58,7 @@ const FavoriteCard = memo(function FavoriteCard({ product, index }: { product: N
           )}
           {!product.inStock && (
             <View style={styles.outOfStockOverlay}>
-              <UIText variant="eyebrow" color="inverse">نفذ</UIText>
+              <UIText variant="eyebrow" color="inverse">{t("common.outOfStock")}</UIText>
             </View>
           )}
         </View>
@@ -84,14 +86,20 @@ const FavoriteCard = memo(function FavoriteCard({ product, index }: { product: N
           hitSlop={8}
           style={styles.removeBtn}
           accessibilityRole="button"
-          accessibilityLabel={`إزالة ${name} من المفضلة`}>
+          accessibilityLabel={t("wishlist.removeFrom", { name })}>
           <Ionicons name="heart" size={18} color={theme.colors.rose[500]} />
         </Pressable>
         <Pressable
           onPress={handleAddToCart}
           disabled={!product.inStock}
           accessibilityRole="button"
-          accessibilityLabel={!product.inStock ? `${name} غير متوفر` : inCart ? `${name} موجود في السلة` : `إضافة ${name} إلى السلة`}
+          accessibilityLabel={
+            !product.inStock
+              ? t("wishlist.notAvailable", { name })
+              : inCart
+              ? t("wishlist.inCart", { name })
+              : t("wishlist.addToCartLabel", { name })
+          }
           accessibilityState={{ disabled: !product.inStock }}
           style={[styles.cartBtn, inCart && styles.cartBtnActive, !product.inStock && styles.cartBtnDisabled]}>
           <Ionicons
@@ -106,8 +114,9 @@ const FavoriteCard = memo(function FavoriteCard({ product, index }: { product: N
 });
 
 export default function FavoritesScreen() {
-  const router   = useRouter();
-  const insets   = useSafeAreaInsets();
+  const router     = useRouter();
+  const insets     = useSafeAreaInsets();
+  const { t }      = useTranslation();
   // Per-field selectors — avoids whole-store subscription.
   const items      = useWishlistStore((s) => s.items);
   const isHydrated = useWishlistStore((s) => s.isHydrated);
@@ -130,17 +139,17 @@ export default function FavoritesScreen() {
     };
 
     showConfirmSheet(
-      "مسح المفضلة",
-      "هل تريد إزالة جميع المنتجات من المفضلة؟",
+      t("wishlist.clearTitle"),
+      t("wishlist.clearMessage"),
       () => {
         if (Platform.OS !== "web") {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
         }
         doClear();
       },
-      { confirmLabel: "مسح الكل", danger: true },
+      { confirmLabel: t("cart.clearAll"), danger: true },
     );
-  }, [clear, userId]);
+  }, [clear, userId, t]);
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -151,12 +160,12 @@ export default function FavoritesScreen() {
           style={styles.backBtn}
           hitSlop={10}
           accessibilityRole="button"
-          accessibilityLabel="رجوع">
+          accessibilityLabel={t("common.back")}>
           <Ionicons name="arrow-forward" size={18} color={theme.colors.text.primary} />
         </Pressable>
         <View style={{ flex: 1, alignItems: "center" }}>
-          <UIText variant="eyebrow" color="tertiary">المفضلة الخاصة بك</UIText>
-          <UIText variant="card-title" align="center" style={styles.titleNew}>المفضلة</UIText>
+          <UIText variant="eyebrow" color="tertiary">{t("wishlist.yourWishlist")}</UIText>
+          <UIText variant="card-title" align="center" style={styles.titleNew}>{t("wishlist.title")}</UIText>
         </View>
         {items.length > 0 ? (
           <Pressable
@@ -164,9 +173,9 @@ export default function FavoritesScreen() {
             hitSlop={8}
             style={{ minWidth: 60, alignItems: "flex-start" }}
             accessibilityRole="button"
-            accessibilityLabel="مسح جميع المفضلات">
+            accessibilityLabel={t("wishlist.clearAllLabel")}>
             <UIText variant="caption" weight="bold" style={{ color: theme.colors.error.base }}>
-              مسح الكل
+              {t("cart.clearAll")}
             </UIText>
           </Pressable>
         ) : (
@@ -177,9 +186,9 @@ export default function FavoritesScreen() {
       {!isHydrated ? null : items.length === 0 ? (
         <EmptyState
           icon="heart-outline"
-          title="لا توجد منتجات مفضلة"
-          description="أضف المنتجات التي تعجبك إلى المفضلة لتجدها هنا بسرعة"
-          actionLabel="تصفح المنتجات"
+          title={t("wishlist.empty")}
+          description={t("wishlist.emptyDescription")}
+          actionLabel={t("wishlist.browse")}
           onAction={() => router.push("/(tabs)/products")}
         />
       ) : (
@@ -194,7 +203,7 @@ export default function FavoritesScreen() {
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
             <View style={styles.listHeader}>
-              <Badge variant="brand" size="sm">{`${items.length} منتج`}</Badge>
+              <Badge variant="brand" size="sm">{t("products.items", { count: items.length })}</Badge>
             </View>
           }
           renderItem={({ item, index }) => (
@@ -222,9 +231,9 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   header: {
-    flexDirection:    "row-reverse",
-    alignItems:       "center",
-    justifyContent:   "space-between",
+    flexDirection:     "row-reverse",
+    alignItems:        "center",
+    justifyContent:    "space-between",
     paddingHorizontal: theme.layout.pagePaddingH,
     paddingVertical:   14,
     backgroundColor:   theme.colors.surface,

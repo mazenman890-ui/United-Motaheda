@@ -30,6 +30,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { theme } from "@/theme";
 import { useAuth } from "@/features/auth/context";
 import { useAddressStore } from "@/features/addresses";
@@ -37,6 +38,7 @@ import type { Address, AddressFormData } from "@/features/addresses";
 import type { RedemptionAddress } from "../types";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
+type TFunc = ReturnType<typeof useTranslation>["t"];
 
 // ─── Egyptian governorates ────────────────────────────────────────────────────
 
@@ -84,6 +86,17 @@ const addressSchema = z.object({
 
 type AddressFormValues = z.infer<typeof addressSchema>;
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function getAddrLabel(label: string, t: TFunc): string {
+  switch (label) {
+    case "home":   return t("address.labelHome");
+    case "work":   return t("address.labelWork");
+    case "family": return t("address.labelFamily");
+    default:       return t("address.labelOther");
+  }
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 export interface GiftAddressSheetProps {
@@ -109,12 +122,13 @@ export function GiftAddressSheet({
 }: GiftAddressSheetProps) {
   const insets      = useSafeAreaInsets();
   const { user }    = useAuth();
+  const { t }       = useTranslation();
   const addresses   = useAddressStore((s) => s.addresses);
   const loading     = useAddressStore((s) => s.loading);
   const fetch       = useAddressStore((s) => s.fetch);
   const addAddress  = useAddressStore((s) => s.add);
 
-  const [mode, setMode]             = useState<SheetMode>("picker");
+  const [mode, setMode]               = useState<SheetMode>("picker");
   const [govDropdown, setGovDropdown] = useState(false);
 
   // Load saved addresses when sheet opens
@@ -123,7 +137,6 @@ export function GiftAddressSheet({
       fetch(user.id).catch(() => {});
     }
     if (visible) {
-      // Start in picker mode if there are saved addresses, otherwise form
       setMode("picker");
       setGovDropdown(false);
     }
@@ -152,16 +165,19 @@ export function GiftAddressSheet({
               hitSlop={12}
               style={styles.closeBtn}
               accessibilityRole="button"
-              accessibilityLabel="إغلاق"
+              accessibilityLabel={t("common.close")}
             >
               <Ionicons name="close" size={18} color={theme.colors.slate[600]} />
             </Pressable>
             <View style={{ flex: 1 }}>
               <Text style={styles.headerTitle} numberOfLines={1} maxFontSizeMultiplier={1.3}>
-                عنوان التوصيل
+                {t("loyalty.addressSheetTitle")}
               </Text>
               <Text style={styles.headerSub} numberOfLines={1} maxFontSizeMultiplier={1.4}>
-                {giftName} · {pointsCost.toLocaleString("ar-EG")} نقطة
+                {t("loyalty.addressSheetSub", {
+                  gift:   giftName,
+                  points: pointsCost.toLocaleString("ar-EG"),
+                })}
               </Text>
             </View>
           </View>
@@ -170,12 +186,12 @@ export function GiftAddressSheet({
           {hasSaved && (
             <View style={styles.modeRow}>
               <ModeTab
-                label="العناوين المحفوظة"
+                label={t("loyalty.savedAddresses")}
                 active={mode === "picker"}
                 onPress={() => setMode("picker")}
               />
               <ModeTab
-                label="عنوان جديد"
+                label={t("loyalty.newAddress")}
                 active={mode === "form"}
                 onPress={() => setMode("form")}
               />
@@ -241,6 +257,7 @@ interface SavedAddressPickerProps {
 function SavedAddressPicker({
   addresses, loading, onSelect, onAddNew, submitting, insets,
 }: SavedAddressPickerProps) {
+  const { t } = useTranslation();
   const [selectedId, setSelectedId] = useState<string | null>(
     addresses.find((a) => a.is_default)?.id ?? addresses[0]?.id ?? null,
   );
@@ -255,23 +272,23 @@ function SavedAddressPicker({
     if (!addr) return;
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     onSelect({
-      name:     addr.recipient_name,
-      phone:    addr.phone,
+      name:        addr.recipient_name,
+      phone:       addr.phone,
       governorate: addr.city,
       city:        addr.district || addr.city,
       district:    addr.district || undefined,
       street:      addr.street,
-      building: addr.building,
-      floor:    addr.floor,
-      apartment: addr.apartment,
-      notes:     addr.landmark,
+      building:    addr.building,
+      floor:       addr.floor,
+      apartment:   addr.apartment,
+      notes:       addr.landmark,
     });
   }, [addresses, selectedId, onSelect]);
 
   if (loading) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.loadingText}>جارٍ تحميل العناوين…</Text>
+        <Text style={styles.loadingText}>{t("loyalty.loadingAddresses")}</Text>
       </View>
     );
   }
@@ -288,7 +305,11 @@ function SavedAddressPicker({
             onPress={() => setSelectedId(addr.id)}
             accessibilityRole="radio"
             accessibilityState={{ selected: selectedId === addr.id }}
-            accessibilityLabel={`${addr.label === "home" ? "المنزل" : addr.label === "work" ? "العمل" : addr.label}، ${addr.recipient_name}، ${addr.city}`}
+            accessibilityLabel={t("loyalty.addrA11y", {
+              label: getAddrLabel(addr.label, t),
+              name:  addr.recipient_name,
+              city:  addr.city,
+            })}
             style={({ pressed }) => [
               styles.addrCard,
               selectedId === addr.id && styles.addrCardSelected,
@@ -307,7 +328,7 @@ function SavedAddressPicker({
                 <Text style={styles.addrName} maxFontSizeMultiplier={1.3}>{addr.recipient_name}</Text>
                 <View style={styles.addrLabelPill}>
                   <Text style={styles.addrLabelText} maxFontSizeMultiplier={1.2}>
-                    {addr.label === "home" ? "المنزل" : addr.label === "work" ? "العمل" : addr.label === "family" ? "العائلة" : "أخرى"}
+                    {getAddrLabel(addr.label, t)}
                   </Text>
                 </View>
               </View>
@@ -324,11 +345,11 @@ function SavedAddressPicker({
         <Pressable
           onPress={onAddNew}
           accessibilityRole="button"
-          accessibilityLabel="إضافة عنوان جديد"
+          accessibilityLabel={t("loyalty.addNewAddress")}
           style={({ pressed }) => [styles.addNewBtn, pressed && { opacity: 0.85 }]}
         >
           <Ionicons name="add-circle-outline" size={16} color={theme.colors.brand[700]} />
-          <Text style={styles.addNewText}>إضافة عنوان جديد</Text>
+          <Text style={styles.addNewText}>{t("loyalty.addNewAddress")}</Text>
         </Pressable>
       </ScrollView>
 
@@ -337,7 +358,7 @@ function SavedAddressPicker({
           onPress={handleConfirm}
           disabled={!selectedId || submitting}
           accessibilityRole="button"
-          accessibilityLabel="تأكيد العنوان وإرسال الطلب"
+          accessibilityLabel={t("loyalty.confirmAddressA11y")}
           accessibilityState={{ disabled: !selectedId || submitting, busy: submitting }}
           style={({ pressed }) => [
             styles.confirmBtn,
@@ -347,7 +368,7 @@ function SavedAddressPicker({
         >
           <Ionicons name="gift-outline" size={16} color="#fff" />
           <Text style={styles.confirmBtnText} maxFontSizeMultiplier={1.2}>
-            {submitting ? "جارٍ الإرسال…" : "تأكيد الطلب"}
+            {submitting ? t("loyalty.confirmAddressSending") : t("loyalty.confirmOrderLabel")}
           </Text>
         </Pressable>
       </View>
@@ -378,6 +399,7 @@ function AddressForm({
   hasSavedAddresses,
   addAddress,
 }: AddressFormProps) {
+  const { t } = useTranslation();
   const {
     control,
     handleSubmit,
@@ -410,15 +432,11 @@ function AddressForm({
       if (Platform.OS !== "web")
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 
-      // Persist into the user's saved addresses (best-effort).
-      // If persistence fails (e.g., offline), we still proceed with redemption
-      // because the gift redemption record stores the address as jsonb.
       if (saveToProfile && userId) {
         const payload: AddressFormData = {
           label:          "home",
           recipient_name: values.recipientName,
           phone:          values.phone,
-          // We model Egypt as: city=Governorate, district=Area/City.
           city:           values.governorate,
           district:       values.city,
           street:         values.street,
@@ -433,7 +451,7 @@ function AddressForm({
         try {
           await addAddress(userId, payload);
         } catch {
-          setSaveError("تعذر حفظ العنوان في حسابك حالياً. سيتم استخدامه لهذه الهدية فقط.");
+          setSaveError(t("loyalty.addressSaveError"));
         }
       }
 
@@ -448,7 +466,7 @@ function AddressForm({
         notes:       values.notes?.trim() || undefined,
       });
     },
-    [addAddress, hasSavedAddresses, onConfirm, saveToProfile, userId],
+    [addAddress, hasSavedAddresses, onConfirm, saveToProfile, userId, t],
   );
 
   const onError = useCallback(() => {
@@ -470,7 +488,7 @@ function AddressForm({
             name="recipientName"
             render={({ field }) => (
               <FormField
-                label="اسم المستلم"
+                label={t("loyalty.recipientName")}
                 placeholder="الاسم كامل"
                 icon="person-outline"
                 value={field.value}
@@ -489,7 +507,7 @@ function AddressForm({
             name="phone"
             render={({ field }) => (
               <FormField
-                label="رقم الهاتف"
+                label={t("loyalty.phoneField")}
                 placeholder="01xxxxxxxxx"
                 icon="call-outline"
                 keyboardType="phone-pad"
@@ -504,11 +522,11 @@ function AddressForm({
 
         {/* Governorate picker */}
         <Animated.View entering={FadeInDown.delay(100).duration(200)}>
-          <Text style={styles.fieldLabel}>المحافظة</Text>
+          <Text style={styles.fieldLabel}>{t("loyalty.governorateField")}</Text>
           <Pressable
             onPress={() => setGovDropdown(!govDropdown)}
             accessibilityRole="combobox"
-            accessibilityLabel="اختر المحافظة"
+            accessibilityLabel={t("loyalty.chooseGovernorateA11y")}
             accessibilityState={{ expanded: govDropdown }}
             style={[
               styles.fieldBox,
@@ -527,7 +545,7 @@ function AddressForm({
               ]}
               maxFontSizeMultiplier={1.3}
             >
-              {watchedGov || "اختر المحافظة"}
+              {watchedGov || t("loyalty.selectGovernorate")}
             </Text>
           </Pressable>
           {errors.governorate && (
@@ -567,7 +585,7 @@ function AddressForm({
             name="city"
             render={({ field }) => (
               <FormField
-                label="المدينة / الحي"
+                label={t("loyalty.cityField")}
                 placeholder="مثال: مدينة نصر"
                 icon="location-outline"
                 value={field.value}
@@ -586,7 +604,7 @@ function AddressForm({
             name="street"
             render={({ field }) => (
               <FormField
-                label="الشارع"
+                label={t("loyalty.streetField")}
                 placeholder="اسم أو رقم الشارع"
                 value={field.value}
                 onChangeText={field.onChange}
@@ -605,7 +623,7 @@ function AddressForm({
               name="building"
               render={({ field }) => (
                 <FormField
-                  label="رقم المبنى"
+                  label={t("loyalty.buildingField")}
                   placeholder="مثال: 12"
                   value={field.value}
                   onChangeText={field.onChange}
@@ -621,7 +639,7 @@ function AddressForm({
               name="floor"
               render={({ field }) => (
                 <FormField
-                  label="الطابق (اختياري)"
+                  label={t("loyalty.floorField")}
                   placeholder="مثال: 3"
                   value={field.value ?? ""}
                   onChangeText={field.onChange}
@@ -639,7 +657,7 @@ function AddressForm({
             name="notes"
             render={({ field }) => (
               <FormField
-                label="ملاحظات التوصيل (اختياري)"
+                label={t("loyalty.notesField")}
                 placeholder="بجوار مسجد، أمام حديقة…"
                 icon="chatbubble-outline"
                 value={field.value ?? ""}
@@ -669,7 +687,7 @@ function AddressForm({
               color={saveToProfile ? theme.colors.brand[600] : theme.colors.slate[400]}
             />
             <Text style={styles.saveRowText} maxFontSizeMultiplier={1.3}>
-              حفظ هذا العنوان في حسابي
+              {t("loyalty.saveToProfile")}
             </Text>
           </Pressable>
           {saveError && (
@@ -685,7 +703,7 @@ function AddressForm({
           onPress={handleSubmit(onSubmit, onError)}
           disabled={submitting}
           accessibilityRole="button"
-          accessibilityLabel="تأكيد العنوان وإرسال الطلب"
+          accessibilityLabel={t("loyalty.confirmAddressA11y")}
           accessibilityState={{ disabled: submitting, busy: submitting }}
           style={({ pressed }) => [
             styles.confirmBtn,
@@ -695,7 +713,7 @@ function AddressForm({
         >
           <Ionicons name="gift-outline" size={16} color="#fff" />
           <Text style={styles.confirmBtnText} maxFontSizeMultiplier={1.2}>
-            {submitting ? "جارٍ الإرسال…" : "تأكيد الطلب"}
+            {submitting ? t("loyalty.confirmAddressSending") : t("loyalty.confirmOrderLabel")}
           </Text>
         </Pressable>
       </View>

@@ -26,6 +26,7 @@ import Animated, {
   withTiming,
   FadeIn,
 } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -63,16 +64,17 @@ function Stars({ value, size = 14 }: { value: number; size?: number }) {
 
 // ─── Trust badges ─────────────────────────────────────────────────────────────
 
-const TRUST_BADGES: { icon: React.ComponentProps<typeof Ionicons>["name"]; label: string }[] = [
-  { icon: "flash-outline",            label: "توصيل سريع" },
-  { icon: "shield-checkmark-outline", label: "أصلي 100%" },
-  { icon: "refresh-outline",          label: "إرجاع مضمون" },
+const TRUST_BADGES: { icon: React.ComponentProps<typeof Ionicons>["name"]; labelKey: string }[] = [
+  { icon: "flash-outline",            labelKey: "product.trustFastDelivery" },
+  { icon: "shield-checkmark-outline", labelKey: "product.trustOriginal"     },
+  { icon: "refresh-outline",          labelKey: "product.trustReturns"      },
 ];
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function ProductDetailScreen() {
   useScreenTrace("product-detail");
+  const { t, i18n } = useTranslation();
   const { id }    = useLocalSearchParams<{ id: string }>();
   const router    = useRouter();
   const insets    = useSafeAreaInsets();
@@ -198,7 +200,7 @@ export default function ProductDetailScreen() {
         <Pressable
           onPress={() => router.back()}
           accessibilityRole="button"
-          accessibilityLabel="رجوع"
+          accessibilityLabel={t("common.back")}
           style={({ pressed }) => ({
             width: 44, height: 44, borderRadius: 14,
             backgroundColor: "rgba(255,255,255,0.97)",
@@ -213,7 +215,7 @@ export default function ProductDetailScreen() {
             <Pressable
               onPress={handleWishlist}
               accessibilityRole="button"
-              accessibilityLabel={inWishlist ? "إزالة من المفضلة" : "إضافة للمفضلة"}
+              accessibilityLabel={inWishlist ? t("product.removeFromWishlist") : t("product.addToWishlist")}
               style={({ pressed }) => ({
                 width: 44, height: 44, borderRadius: 14,
                 backgroundColor: inWishlist ? theme.colors.rose[50] : "rgba(255,255,255,0.97)",
@@ -299,7 +301,7 @@ export default function ProductDetailScreen() {
                   </UIText>
                 </View>
                 <Badge variant={product.inStock ? "success" : "error"} size="sm">
-                  {product.inStock ? "متاح للشحن" : "نفذ المخزون"}
+                  {product.inStock ? t("product.inStock") : t("product.outOfStock")}
                 </Badge>
               </View>
 
@@ -322,7 +324,7 @@ export default function ProductDetailScreen() {
                   {rating.value}
                 </UIText>
                 <UIText variant="caption" color="tertiary">
-                  ({rating.count} تقييم)
+                  {t("product.ratingCount", { count: rating.count })}
                 </UIText>
               </View>
 
@@ -330,7 +332,7 @@ export default function ProductDetailScreen() {
               <View style={pdStyles.priceRow}>
                 <View style={{ flex: 1, gap: 4 }}>
                   <UIText variant="eyebrow" color="tertiary" align="right">
-                    السعر
+                    {t("product.priceLabel")}
                   </UIText>
                   <View style={{ flexDirection: "row-reverse", alignItems: "baseline", gap: 6 }}>
                     <UIText variant="metric" align="right" style={pdStyles.priceMetric}>
@@ -378,7 +380,9 @@ export default function ProductDetailScreen() {
                       variant="eyebrow"
                       align="center"
                       style={{ color: qty >= maxQty ? theme.colors.error.strong : theme.colors.amber[600] }}>
-                      {qty >= maxQty ? "وصلت للحد الأقصى" : `باقي ${product.stock} قطعة فقط`}
+                      {qty >= maxQty
+                        ? t("product.stockMax")
+                        : t("product.stockRemaining", { count: product.stock })}
                     </UIText>
                   )}
                 </View>
@@ -388,7 +392,7 @@ export default function ProductDetailScreen() {
               <View style={pdStyles.trustRow}>
                 {TRUST_BADGES.map((b, i, arr) => (
                   <View
-                    key={b.label}
+                    key={b.labelKey}
                     style={[
                       pdStyles.trustCell,
                       i < arr.length - 1 && pdStyles.trustCellDivider,
@@ -397,7 +401,7 @@ export default function ProductDetailScreen() {
                       <Ionicons name={b.icon} size={18} color={theme.colors.brand[700]} />
                     </View>
                     <UIText variant="eyebrow" color="secondary" align="center" style={pdStyles.trustLabel}>
-                      {b.label}
+                      {t(b.labelKey)}
                     </UIText>
                   </View>
                 ))}
@@ -407,17 +411,17 @@ export default function ProductDetailScreen() {
               <View style={pdStyles.detailsCard}>
                 <View style={pdStyles.detailsHeader}>
                   <UIText variant="eyebrow" color="tertiary" align="right">
-                    معلومات المنتج
+                    {t("product.detailsEyebrow")}
                   </UIText>
                   <UIText variant="card-title" align="right" style={pdStyles.detailsTitle}>
-                    تفاصيل المنتج
+                    {t("product.details")}
                   </UIText>
                 </View>
                 <View style={pdStyles.detailsBody}>
-                  <DetailRow label="الكود"           value={product.code    ?? "-"} />
-                  <DetailRow label="الباركود"        value={product.barcode ?? "-"} />
-                  <DetailRow label="القسم"           value={product.categoryName ?? "-"} />
-                  <DetailRow label="الاسم الإنجليزي" value={product.nameEn ?? "-"} last />
+                  <DetailRow label={t("product.code")}        value={product.code    ?? "-"} />
+                  <DetailRow label={t("product.barcode")}    value={product.barcode ?? "-"} />
+                  <DetailRow label={t("product.category")}  value={product.categoryName ?? "-"} />
+                  <DetailRow label={t("product.nameEnLabel")} value={product.nameEn ?? "-"} last />
                 </View>
               </View>
 
@@ -430,10 +434,10 @@ export default function ProductDetailScreen() {
                     </View>
                     <View>
                       <UIText variant="eyebrow" color="tertiary" align="right">
-                        قد يعجبك أيضاً
+                        {t("product.relatedEyebrow")}
                       </UIText>
                       <UIText variant="card-title" align="right" style={pdStyles.sectionTitle}>
-                        منتجات من نفس القسم
+                        {t("product.relatedTitle")}
                       </UIText>
                     </View>
                   </View>
@@ -445,7 +449,7 @@ export default function ProductDetailScreen() {
                       <Animated.View key={p.id} entering={FadeIn.duration(240)} style={{ width: 155 }}>
                         <ProductCard
                           product={p}
-                          lang="ar"
+                          lang={i18n.language === "en" ? "en" : "ar"}
                           onPress={() => router.push({ pathname: "/product/[id]", params: { id: p.id } })}
                         />
                       </Animated.View>
@@ -467,7 +471,7 @@ export default function ProductDetailScreen() {
               style={pdStyles.viewCartLink}>
               <Ionicons name="cart-outline" size={14} color={theme.colors.brand[700]} />
               <UIText variant="caption" weight="bold" color="brand">
-                عرض السلة
+                {t("product.viewCart")}
               </UIText>
               <Ionicons name="chevron-back" size={12} color={theme.colors.brand[700]} />
             </Pressable>
@@ -481,10 +485,10 @@ export default function ProductDetailScreen() {
               disabled={!product.inStock}
               onPress={handleAdd}>
               {inCart
-                ? "في السلة — أضف المزيد"
+                ? t("product.inCartAddMore")
                 : product.inStock
-                ? `أضف للسلة — ${formatPrice(product.price * qty)}`
-                : "غير متاح حالياً"}
+                ? t("product.addWithPrice", { price: formatPrice(product.price * qty) })
+                : t("product.unavailable")}
             </Button>
           </Animated.View>
         </View>

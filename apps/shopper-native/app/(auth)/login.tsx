@@ -24,6 +24,7 @@ import { Link, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { signIn, authErrorToArabic } from "@/features/auth";
 import { AppLogo } from "@/shared/components/AppLogo";
 import { track } from "@/lib/analytics";
@@ -34,6 +35,7 @@ import { Text } from "@/shared/ui";
 import { theme } from "@/theme";
 
 export default function LoginScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -46,7 +48,7 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     setError(null);
     if (!email.trim() || !password.trim()) {
-      setError("يرجى إدخال البريد الإلكتروني وكلمة المرور");
+      setError(t("auth.emailPasswordRequired"));
       return;
     }
     setLoading(true);
@@ -96,14 +98,14 @@ export default function LoginScreen() {
             entering={FadeInDown.duration(420).delay(140)}
             style={styles.heroTextWrap}>
             <Text variant="screen-title" color="inverse" align="center" style={styles.heroTitle}>
-              مرحباً بعودتك
+              {t("auth.loginWelcome")}
             </Text>
             <Text
               variant="body"
               color="inverse-muted"
               align="center"
               style={{ marginTop: 6 }}>
-              سجّل دخولك للمتابعة
+              {t("auth.loginSubtitle")}
             </Text>
           </Animated.View>
         </LinearGradient>
@@ -125,7 +127,7 @@ export default function LoginScreen() {
           )}
 
           <Input
-            label="البريد الإلكتروني"
+            label={t("auth.email")}
             placeholder="example@email.com"
             value={email}
             onChangeText={setEmail}
@@ -136,7 +138,7 @@ export default function LoginScreen() {
           />
 
           <Input
-            label="كلمة المرور"
+            label={t("auth.password")}
             placeholder="••••••••"
             value={password}
             onChangeText={setPassword}
@@ -153,7 +155,7 @@ export default function LoginScreen() {
           <View style={styles.forgotRow}>
             <Pressable hitSlop={8} onPress={() => router.push("/(auth)/forgot-password")}>
               <Text variant="caption" color="brand" weight="bold">
-                نسيت كلمة المرور؟
+                {t("auth.forgotPassword")}
               </Text>
             </Pressable>
           </View>
@@ -167,14 +169,14 @@ export default function LoginScreen() {
             onPress={handleLogin}
             gradient
             style={{ marginTop: 4 }}>
-            تسجيل الدخول
+            {t("auth.login")}
           </Button>
 
           {/* Divider — refined hairline */}
           <View style={styles.dividerRow}>
             <View style={styles.divider} />
             <Text variant="caption" color="tertiary" style={{ paddingHorizontal: 4 }}>
-              أو
+              {t("auth.or")}
             </Text>
             <View style={styles.divider} />
           </View>
@@ -182,12 +184,12 @@ export default function LoginScreen() {
           {/* Footer */}
           <View style={styles.footer}>
             <Text variant="body-sm" color="secondary">
-              ليس لديك حساب؟
+              {t("auth.noAccount")}
             </Text>
             <Link href="/(auth)/register" asChild>
               <Pressable hitSlop={6}>
                 <Text variant="body-sm" weight="extrabold" color="brand">
-                  إنشاء حساب جديد
+                  {t("auth.createAccount")}
                 </Text>
               </Pressable>
             </Link>

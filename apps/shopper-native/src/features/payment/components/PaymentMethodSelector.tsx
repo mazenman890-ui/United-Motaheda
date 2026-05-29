@@ -2,6 +2,7 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { PaymentMethodCard } from "./PaymentMethodCard";
 import { usePaymentStore } from "../store";
 import { theme } from "@/theme";
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function PaymentMethodSelector({ compact }: Props) {
+  const { t } = useTranslation();
   const methods = usePaymentStore((s) => s.methods);
   const selected = usePaymentStore((s) => s.selected);
   const setSelected = usePaymentStore((s) => s.setSelected);
@@ -23,8 +25,8 @@ export function PaymentMethodSelector({ compact }: Props) {
             <Ionicons name="shield-checkmark-outline" size={14} color={theme.colors.brand[600]} />
           </View>
           <View>
-            <Text style={styles.headerTitle}>طريقة الدفع</Text>
-            <Text style={styles.headerDesc}>اختر طريقة الدفع المناسبة</Text>
+            <Text style={styles.headerTitle}>{t("payment.paymentMethod")}</Text>
+            <Text style={styles.headerDesc}>{t("payment.selectMethod")}</Text>
           </View>
         </View>
       )}
@@ -45,7 +47,7 @@ export function PaymentMethodSelector({ compact }: Props) {
       {!compact && (
         <Animated.View entering={FadeInDown.delay(250).duration(250)} style={styles.trustRow}>
           <Ionicons name="lock-closed" size={12} color={theme.colors.slate[400]} />
-          <Text style={styles.trustText}>جميع المعاملات مشفرة وآمنة</Text>
+          <Text style={styles.trustText}>{t("payment.allTransactionsSecure")}</Text>
           <Ionicons name="shield-checkmark" size={12} color={theme.colors.green[500]} />
         </Animated.View>
       )}

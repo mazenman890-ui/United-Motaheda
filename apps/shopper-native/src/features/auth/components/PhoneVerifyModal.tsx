@@ -31,6 +31,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeIn, SlideInDown, SlideOutDown } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Text } from "@/shared/ui";
 import { Button } from "@/components/ui/Button";
 import { theme } from "@/theme";
@@ -53,15 +55,15 @@ function formatMmSs(totalSec: number): string {
   return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
 }
 
-function otpErrorToArabic(e: unknown): string {
+function otpErrorMessage(e: unknown, t: TFunction): string {
   const kind = (e as Partial<OtpError>)?.kind;
   switch (kind) {
-    case "rate_limit":   return "محاولات كثيرة. انتظر دقيقة ثم أعد المحاولة.";
-    case "invalid_code": return "الرمز غير صحيح. تحقق مرة أخرى.";
-    case "expired":      return "انتهت صلاحية الرمز. أرسل رمزاً جديداً.";
-    case "invalid_phone":return "رقم الهاتف غير صحيح.";
-    case "network":      return "تعذّر الاتصال بالخادم. حاول مجدداً.";
-    default:             return e instanceof Error && e.message ? e.message : "تعذّر التحقق. حاول مجدداً.";
+    case "rate_limit":    return t("phoneVerify.errorRateLimit");
+    case "invalid_code":  return t("phoneVerify.errorInvalidCode");
+    case "expired":       return t("phoneVerify.errorExpired");
+    case "invalid_phone": return t("phoneVerify.errorInvalidPhone");
+    case "network":       return t("phoneVerify.errorNetwork");
+    default:              return e instanceof Error && e.message ? e.message : t("phoneVerify.errorDefault");
   }
 }
 
@@ -89,6 +91,7 @@ export function PhoneVerifyModal({
   onVerified,
   onCancel,
 }: PhoneVerifyModalProps): React.ReactElement {
+  const { t } = useTranslation();
   // Live phone — starts as initialPhone, mutates when user changes number.
   const [phone, setPhone]           = useState(initialPhone);
   const [mode,  setMode]            = useState<Mode>("code");
@@ -147,7 +150,7 @@ export function PhoneVerifyModal({
       setCode("");
       codeInputRef.current?.focus();
     } catch (e) {
-      setError(otpErrorToArabic(e));
+      setError(otpErrorMessage(e, t));
     } finally {
       setResending(false);
     }
@@ -162,7 +165,7 @@ export function PhoneVerifyModal({
       Keyboard.dismiss();
       onVerified(phone);
     } catch (e) {
-      setError(otpErrorToArabic(e));
+      setError(otpErrorMessage(e, t));
       setSubmitting(false);
     }
   }, [code, phone, signIn, submitting, onVerified]);
@@ -199,7 +202,7 @@ export function PhoneVerifyModal({
     const trimmed = editPhoneInput.trim();
     const newE164 = normalizeEgyptianPhone(trimmed);
     if (!newE164) {
-      setError("رقم الهاتف غير صحيح. تأكد من أنه رقم مصري يبدأ بـ 01.");
+      setError(t("phoneVerify.invalidPhoneLocal"));
       return;
     }
     setEditSending(true);
@@ -214,7 +217,7 @@ export function PhoneVerifyModal({
       setSecondsLeftResend(OTP_RESEND_COOLDOWN_SECONDS);
       setTimeout(() => codeInputRef.current?.focus(), 150);
     } catch (e) {
-      setError(otpErrorToArabic(e));
+      setError(otpErrorMessage(e, t));
     } finally {
       setEditSending(false);
     }
@@ -311,6 +314,7 @@ interface CodeStepProps {
 }
 
 function CodeStep(props: CodeStepProps): React.ReactElement {
+  const { t } = useTranslation();
   const {
     phone, code, onChangeCode, onPressBoxes, inputRef, onChangeNumber,
     onResend, onVerify, onCancel, error, expired,
@@ -325,18 +329,18 @@ function CodeStep(props: CodeStepProps): React.ReactElement {
         <View style={styles.iconTile}>
           <Ionicons name="phone-portrait-outline" size={22} color={theme.colors.brand.base} />
         </View>
-        <Text variant="sheet-title" align="center">تحقق من رقم هاتفك</Text>
+        <Text variant="sheet-title" align="center">{t("phoneVerify.title")}</Text>
         <Text variant="caption" color="secondary" align="center" style={{ marginTop: theme.spacing[0.5] }}>
-          أرسلنا رمزاً مكوّناً من 6 أرقام إلى {maskPhoneForDisplay(phone)}
+          {t("phoneVerify.subtitle", { phone: maskPhoneForDisplay(phone) })}
         </Text>
         <Pressable
           onPress={onChangeNumber}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="تغيير رقم الهاتف"
+          accessibilityLabel={t("phoneVerify.changeNumberA11y")}
           style={{ marginTop: theme.spacing[1] }}>
           <Text variant="caption" weight="bold" style={{ color: theme.colors.brand.base }}>
-            تغيير الرقم
+            {t("phoneVerify.changeNumber")}
           </Text>
         </Pressable>
       </View>
@@ -352,7 +356,7 @@ function CodeStep(props: CodeStepProps): React.ReactElement {
         maxLength={DIGIT_COUNT}
         caretHidden
         style={styles.hiddenInput}
-        accessibilityLabel="رمز التحقق"
+        accessibilityLabel={t("phoneVerify.codeInputA11y")}
       />
 
       {/* Digit boxes */}
@@ -393,7 +397,7 @@ function CodeStep(props: CodeStepProps): React.ReactElement {
       {/* Expiry + Resend */}
       <View style={styles.timerRow}>
         <Text variant="caption" color={expired ? "danger" : "tertiary"}>
-          {expired ? "انتهت صلاحية الرمز" : `صالح لمدة ${formatMmSs(secondsLeftExpiry)}`}
+          {expired ? t("phoneVerify.expired") : t("phoneVerify.validFor", { time: formatMmSs(secondsLeftExpiry) })}
         </Text>
 
         <Pressable
@@ -402,7 +406,7 @@ function CodeStep(props: CodeStepProps): React.ReactElement {
           hitSlop={8}
           accessibilityRole="button"
           accessibilityState={{ disabled: !canResend }}
-          accessibilityLabel="إعادة إرسال الرمز">
+          accessibilityLabel={t("phoneVerify.resendA11y")}>
           <Text
             variant="caption"
             weight="bold"
@@ -410,10 +414,10 @@ function CodeStep(props: CodeStepProps): React.ReactElement {
               color: canResend ? theme.colors.brand.base : theme.colors.text.disabled,
             }}>
             {resending
-              ? "جارٍ الإرسال…"
+              ? t("phoneVerify.sending")
               : canResend
-                ? "إعادة الإرسال"
-                : `إعادة الإرسال خلال ${formatMmSs(secondsLeftResend)}`}
+                ? t("phoneVerify.resend")
+                : t("phoneVerify.resendIn", { time: formatMmSs(secondsLeftResend) })}
           </Text>
         </Pressable>
       </View>
@@ -426,10 +430,10 @@ function CodeStep(props: CodeStepProps): React.ReactElement {
           loading={submitting}
           disabled={!canSubmit || expired}
           onPress={onVerify}>
-          تحقق
+          {t("phoneVerify.verify")}
         </Button>
         <Button variant="ghost" fullWidth onPress={onCancel}>
-          إلغاء
+          {t("phoneVerify.cancel")}
         </Button>
       </View>
     </>
@@ -454,20 +458,21 @@ interface EditStepProps {
 function EditStep({
   value, onChange, inputRef, onSend, onBack, sending, error, canGoBack,
 }: EditStepProps): React.ReactElement {
+  const { t } = useTranslation();
   return (
     <>
       <View style={styles.header}>
         <View style={styles.iconTile}>
           <Ionicons name="create-outline" size={22} color={theme.colors.brand.base} />
         </View>
-        <Text variant="sheet-title" align="center">تغيير رقم الهاتف</Text>
+        <Text variant="sheet-title" align="center">{t("phoneVerify.editTitle")}</Text>
         <Text variant="caption" color="secondary" align="center" style={{ marginTop: theme.spacing[0.5] }}>
-          أدخل رقم الهاتف الجديد لإرسال رمز التحقق إليه
+          {t("phoneVerify.editSubtitle")}
         </Text>
       </View>
 
       <View style={styles.phoneFieldWrap}>
-        <Text variant="caption" weight="bold" align="right">رقم الهاتف</Text>
+        <Text variant="caption" weight="bold" align="right">{t("phoneVerify.phoneLabel")}</Text>
         <View style={[styles.phoneInputBox, error && styles.phoneInputBoxError]}>
           <TextInput
             ref={inputRef}
@@ -479,12 +484,12 @@ function EditStep({
             textAlign="right"
             maxLength={14}
             style={styles.phoneInput}
-            accessibilityLabel="رقم الهاتف الجديد"
+            accessibilityLabel={t("phoneVerify.phoneA11y")}
           />
           <Ionicons name="call-outline" size={18} color={theme.colors.text.tertiary} />
         </View>
         <Text variant="eyebrow" color="tertiary" align="right">
-          رقم مصري يبدأ بـ 01
+          {t("phoneVerify.phoneHint")}
         </Text>
       </View>
 
@@ -499,10 +504,10 @@ function EditStep({
 
       <View style={{ gap: theme.spacing[1], marginTop: theme.spacing[2] }}>
         <Button variant="primary" fullWidth loading={sending} onPress={onSend}>
-          إرسال الرمز
+          {t("phoneVerify.send")}
         </Button>
         <Button variant="ghost" fullWidth onPress={onBack}>
-          {canGoBack ? "العودة إلى التحقق" : "إلغاء"}
+          {canGoBack ? t("phoneVerify.backToVerify") : t("phoneVerify.cancel")}
         </Button>
       </View>
     </>

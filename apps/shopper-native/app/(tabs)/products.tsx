@@ -16,12 +16,15 @@ import { Text as UIText } from "@/shared/ui";
 import { useCartStore } from "@/stores/cart";
 import { useMountTiming } from "@/lib/devTiming";
 import { theme } from "@/theme";
+import { useTranslation } from "react-i18next";
 
 export default function ProductsScreen() {
   useMountTiming("ProductsScreen");
+  const { t, i18n } = useTranslation();
   const router    = useRouter();
   const insets    = useSafeAreaInsets();
   const cartCount = useCartStore((s) => s.itemCount());
+  const lang      = i18n.language === "en" ? "en" as const : "ar" as const;
 
   const { data: categories = [], isLoading: catsLoading, isError, refetch } = useQuery({
     queryKey: ["categories"],
@@ -58,15 +61,15 @@ export default function ProductsScreen() {
                   </View>
                   <View>
                     <UIText variant="eyebrow" color="tertiary" align="right">
-                      تصفح حسب القسم
+                      {t("search.categoriesEyebrow")}
                     </UIText>
                     <UIText variant="sheet-title" align="right" style={styles.headerTitle}>
-                      الأقسام
+                      {t("products.title")}
                     </UIText>
                     <UIText variant="caption" color="muted" align="right" style={styles.headerMeta}>
                       {catsLoading
-                        ? "جاري التحميل…"
-                        : `${categories.length} قسم${totalProducts > 0 ? `  •  ${totalProducts.toLocaleString()} منتج` : ""}`}
+                        ? t("common.loading")
+                        : `${t("products.categoriesCount", { count: categories.length })}${totalProducts > 0 ? `  •  ${t("products.productsCount", { count: totalProducts.toLocaleString() })}` : ""}`}
                     </UIText>
                   </View>
                 </View>
@@ -77,7 +80,7 @@ export default function ProductsScreen() {
                       router.push("/(tabs)/cart");
                     }}
                     accessibilityRole="button"
-                    accessibilityLabel={cartCount > 0 ? `السلة، ${cartCount} عنصر` : "السلة"}
+                    accessibilityLabel={cartCount > 0 ? `${t("tabs.cart")}, ${cartCount}` : t("tabs.cart")}
                     style={styles.headerActionBtn}>
                     <Ionicons name="bag-outline" size={18} color={theme.colors.slate[700]} />
                     {cartCount > 0 && (
@@ -95,16 +98,16 @@ export default function ProductsScreen() {
               <Pressable
                 onPress={() => router.push("/(tabs)/search")}
                 accessibilityRole="button"
-                accessibilityLabel="ابحث في الأقسام والمنتجات"
+                accessibilityLabel={t("search.placeholder")}
                 style={styles.searchPrompt}>
                 <View style={styles.searchPromptIcon}>
                   <Ionicons name="search" size={17} color={theme.colors.slate[500]} />
                 </View>
                 <UIText variant="body-sm" color="tertiary" align="right" style={{ flex: 1 }}>
-                  ابحث في الأقسام والمنتجات…
+                  {t("search.placeholder")}
                 </UIText>
                 <View style={styles.searchPromptKbd}>
-                  <UIText variant="eyebrow" color="secondary">بحث</UIText>
+                  <UIText variant="eyebrow" color="secondary">{t("tabs.search")}</UIText>
                 </View>
               </Pressable>
             </View>
@@ -119,9 +122,9 @@ export default function ProductsScreen() {
                   <Ionicons name="grid" size={14} color={theme.colors.brand[700]} />
                 </View>
                 <View>
-                  <UIText variant="eyebrow" color="tertiary" align="right">جميع الأقسام</UIText>
+                  <UIText variant="eyebrow" color="tertiary" align="right">{t("products.allProducts")}</UIText>
                   <UIText variant="card-title" align="right" style={styles.sectionTitle}>
-                    تسوق حسب القسم
+                    {t("search.categoriesTitle")}
                   </UIText>
                 </View>
               </View>
@@ -137,13 +140,13 @@ export default function ProductsScreen() {
             ) : isError ? (
               <EmptyState
                 icon="wifi-outline"
-                title="تعذر التحميل"
-                description="تحقق من اتصالك بالإنترنت"
-                actionLabel="إعادة المحاولة"
+                title={t("errors.network").split(".")[0]}
+                description={t("errors.network")}
+                actionLabel={t("common.retry")}
                 onAction={() => refetch()}
               />
             ) : categories.length === 0 ? (
-              <EmptyState icon="grid-outline" title="لا توجد أقسام" description="لا توجد أقسام متاحة حالياً" />
+              <EmptyState icon="grid-outline" title={t("products.noProducts")} description={t("products.loading")} />
             ) : (
               <View style={{ flexDirection: "row-reverse", flexWrap: "wrap", gap: 10, paddingHorizontal: 20 }}>
                 {categories.map((item, index) => (
@@ -154,11 +157,11 @@ export default function ProductsScreen() {
                     <CategoryCard
                       category={item}
                       gradientIdx={index}
-                      lang="ar"
+                      lang={lang}
                       variant="tile"
                       onPress={() => {
                         if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
-                        router.push(`/category/${encodeURIComponent(item.id)}`);
+                        router.push({ pathname: "/category/[id]", params: { id: item.id, nameEn: item.nameEn ?? "" } });
                       }}
                     />
                   </Animated.View>
@@ -175,14 +178,14 @@ export default function ProductsScreen() {
                       <Ionicons name="star" size={14} color={theme.colors.amber[700]} />
                     </View>
                     <View>
-                      <UIText variant="eyebrow" color="tertiary" align="right">موصى به</UIText>
+                      <UIText variant="eyebrow" color="tertiary" align="right">{t("home.featuredEyebrow")}</UIText>
                       <UIText variant="card-title" align="right" style={styles.sectionTitle}>
-                        منتجات مميزة
+                        {t("home.featuredTitle")}
                       </UIText>
                     </View>
                   </View>
                   <Pressable onPress={() => router.push("/(tabs)/search")} style={styles.moreBtn} hitSlop={6}>
-                    <UIText variant="caption" weight="bold" color="brand">عرض الكل</UIText>
+                    <UIText variant="caption" weight="bold" color="brand">{t("home.viewAll")}</UIText>
                     <Ionicons name="chevron-back" size={13} color={theme.colors.brand[700]} />
                   </Pressable>
                 </View>
@@ -198,7 +201,7 @@ export default function ProductsScreen() {
                     <View style={{ width: 162 }}>
                       <ProductCard
                         product={item}
-                        lang="ar"
+                        lang={lang}
                         onPress={() => router.push({ pathname: "/product/[id]", params: { id: item.id } })}
                       />
                     </View>

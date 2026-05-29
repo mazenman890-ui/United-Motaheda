@@ -25,15 +25,19 @@ import * as Notifications from "expo-notifications";
 import { registerPushToken } from "../api";
 
 // Foreground handler: show alert + play sound + show in tray even when active.
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// Guard: expo-notifications is a no-op on web and emits a warning if we register
+// listeners there, so skip the module-level setup entirely on that platform.
+if (Platform.OS !== "web") {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 async function ensurePermissions(): Promise<boolean> {
   const { status: existing } = await Notifications.getPermissionsAsync();

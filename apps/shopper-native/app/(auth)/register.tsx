@@ -12,6 +12,7 @@ import { Link, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import {
   signUp,
   authErrorToArabic,
@@ -28,6 +29,7 @@ import { Text } from "@/shared/ui";
 import { theme } from "@/theme";
 
 export default function RegisterScreen() {
+  const { t } = useTranslation();
   const router  = useRouter();
   const insets  = useSafeAreaInsets();
 
@@ -47,13 +49,13 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     setError(null);
-    if (!name.trim()) { setError("يرجى إدخال اسمك الكامل"); return; }
-    if (!email.trim()) { setError("يرجى إدخال البريد الإلكتروني"); return; }
-    if (password.length < 6) { setError("كلمة المرور يجب أن تكون 6 أحرف على الأقل"); return; }
+    if (!name.trim()) { setError(t("auth.nameRequired")); return; }
+    if (!email.trim()) { setError(t("auth.emailRequired")); return; }
+    if (password.length < 6) { setError(t("auth.passwordMinLength")); return; }
     // Phone is optional. If provided, validate EG format.
     const phoneClean = phone.replace(/\D/g, "");
     if (!skipPhone && phoneClean && !/^01[0125]\d{8}$/.test(phoneClean)) {
-      setError("رقم الهاتف غير صحيح. يجب أن يبدأ بـ 01");
+      setError(t("auth.invalidPhone"));
       return;
     }
     const hasPhone = !skipPhone && phoneClean.length > 0;
@@ -75,8 +77,9 @@ export default function RegisterScreen() {
       // silently with "Auth session missing!".
       if (!result.hasSession) {
         setError(
-          "تم إنشاء حسابك! يرجى فتح بريدك الإلكتروني وتأكيد الحساب، ثم سجّل دخولك" +
-            (hasPhone ? " لإكمال التحقق برقم هاتفك." : "."),
+          hasPhone
+            ? t("auth.emailConfirmationWithPhone")
+            : t("auth.emailConfirmationNoPhone"),
         );
         // Don't navigate to tabs — the user has no session and would just
         // see a signed-out home screen. Stay on this screen so they can see
@@ -98,9 +101,7 @@ export default function RegisterScreen() {
           // Surface the failure instead of silently navigating to tabs.
           // The user can still finish their phone verification later from
           // the profile screen, but they should know it didn't happen now.
-          setError(
-            "تم إنشاء الحساب، لكن تعذّر إرسال رمز التحقق إلى هاتفك. يمكنك المتابعة وإكمال التحقق لاحقاً.",
-          );
+          setError(t("auth.otpSendFailedContinue"));
           // Brief delay so the message is readable before navigating.
           setTimeout(() => router.replace("/(tabs)"), 2200);
         }
@@ -158,14 +159,14 @@ export default function RegisterScreen() {
             entering={FadeInDown.duration(420).delay(140)}
             style={styles.heroTextWrap}>
             <Text variant="screen-title" color="inverse" align="center" style={styles.heroTitle}>
-              إنشاء حساب جديد
+              {t("auth.registerWelcome")}
             </Text>
             <Text
               variant="body"
               color="inverse-muted"
               align="center"
               style={{ marginTop: 6 }}>
-              أنشئ حسابك في ثوانٍ — كل ما تحتاجه هو بريدك الإلكتروني
+              {t("auth.registerSubtitleFull")}
             </Text>
           </Animated.View>
         </LinearGradient>
@@ -186,8 +187,8 @@ export default function RegisterScreen() {
           )}
 
           <Input
-            label="الاسم الكامل"
-            placeholder="محمد أحمد"
+            label={t("auth.fullName")}
+            placeholder={t("auth.namePlaceholder")}
             value={name}
             onChangeText={setName}
             autoCapitalize="words"
@@ -196,7 +197,7 @@ export default function RegisterScreen() {
           />
 
           <Input
-            label="البريد الإلكتروني"
+            label={t("auth.email")}
             placeholder="example@email.com"
             value={email}
             onChangeText={setEmail}
@@ -208,7 +209,7 @@ export default function RegisterScreen() {
 
           <View>
             <Input
-              label="رقم الهاتف"
+              label={t("auth.phone")}
               placeholder="01xxxxxxxxx"
               value={phone}
               onChangeText={(v) => { setPhone(v); if (v) setSkipPhone(false); }}
@@ -216,7 +217,7 @@ export default function RegisterScreen() {
               optional
               editable={!skipPhone}
               leftIcon={<Ionicons name="call-outline" size={18} color={theme.colors.text.tertiary} />}
-              hint="يستخدم للتأكيدات وتنبيهات الطلبات"
+              hint={t("auth.phoneHint")}
             />
             <Pressable
               onPress={() => { setSkipPhone((v) => !v); if (!skipPhone) setPhone(""); }}
@@ -228,14 +229,14 @@ export default function RegisterScreen() {
                 {skipPhone && <Ionicons name="checkmark" size={12} color="#fff" />}
               </View>
               <Text variant="caption" color={skipPhone ? "brand" : "secondary"} weight="semibold">
-                تخطي الآن — سأضيف رقمي لاحقاً
+                {t("auth.skipPhone")}
               </Text>
             </Pressable>
           </View>
 
           <Input
-            label="كلمة المرور"
-            placeholder="••••••••  (6 أحرف على الأقل)"
+            label={t("auth.password")}
+            placeholder={t("auth.passwordPlaceholderHint")}
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPass}
@@ -255,32 +256,32 @@ export default function RegisterScreen() {
             onPress={handleRegister}
             gradient
             style={{ marginTop: 6 }}>
-            إنشاء الحساب
+            {t("auth.registerBtn")}
           </Button>
 
           <View style={styles.dividerRow}>
             <View style={styles.divider} />
             <Text variant="caption" color="tertiary" style={{ paddingHorizontal: 4 }}>
-              أو
+              {t("auth.or")}
             </Text>
             <View style={styles.divider} />
           </View>
 
           <View style={styles.footer}>
             <Text variant="body-sm" color="secondary">
-              لديك حساب بالفعل؟
+              {t("auth.alreadyAccount")}
             </Text>
             <Link href="/(auth)/login" asChild>
               <Pressable hitSlop={6}>
                 <Text variant="body-sm" weight="extrabold" color="brand">
-                  تسجيل الدخول
+                  {t("auth.login")}
                 </Text>
               </Pressable>
             </Link>
           </View>
 
           <Text variant="eyebrow" color="tertiary" align="center" style={styles.terms}>
-            بإنشاء حساب فأنت توافق على سياسة الخصوصية وشروط الاستخدام
+            {t("auth.termsNote")}
           </Text>
         </Animated.View>
       </ScrollView>

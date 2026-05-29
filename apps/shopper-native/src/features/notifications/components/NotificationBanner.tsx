@@ -12,6 +12,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
+import { useTranslation } from "react-i18next";
 import { useBannerStore } from "../banner-store";
 import { theme } from "@/theme";
 
@@ -26,17 +27,18 @@ const TYPE_META: Record<string, {
   color:    string;
   bg:       string;
   gradient: [string, string];
-  label:    string;
+  labelKey: string;
 }> = {
-  order:  { icon: "bag-check-outline",    color: theme.colors.brand[600],       bg: theme.colors.brand[50],    gradient: [theme.colors.brand[700],     theme.colors.brand[500]],     label: "تحديث الطلب"  },
-  offer:  { icon: "pricetag-outline",     color: theme.colors.warning.strong,   bg: theme.colors.warning.bg,   gradient: [theme.colors.warning.strong, theme.colors.amber[400]],     label: "عرض خاص"      },
-  health: { icon: "heart-circle-outline", color: theme.colors.success.strong,   bg: theme.colors.success.bg,   gradient: [theme.colors.success.strong, theme.colors.green[400]],     label: "تنبيه صحي"    },
-  system: { icon: "sparkles-outline",     color: theme.colors.purple[600],      bg: theme.colors.purple[50],   gradient: [theme.colors.purple[700],    theme.colors.purple[500]],     label: "إشعار النظام" },
+  order:  { icon: "bag-check-outline",    color: theme.colors.brand[600],       bg: theme.colors.brand[50],    gradient: [theme.colors.brand[700],     theme.colors.brand[500]],     labelKey: "notification.order"  },
+  offer:  { icon: "pricetag-outline",     color: theme.colors.warning.strong,   bg: theme.colors.warning.bg,   gradient: [theme.colors.warning.strong, theme.colors.amber[400]],     labelKey: "notification.offer"  },
+  health: { icon: "heart-circle-outline", color: theme.colors.success.strong,   bg: theme.colors.success.bg,   gradient: [theme.colors.success.strong, theme.colors.green[400]],     labelKey: "notification.health" },
+  system: { icon: "sparkles-outline",     color: theme.colors.purple[600],      bg: theme.colors.purple[50],   gradient: [theme.colors.purple[700],    theme.colors.purple[500]],     labelKey: "notification.system" },
 };
 
 // ─── Banner ───────────────────────────────────────────────────────────────────
 
 export function NotificationBanner() {
+  const { t }         = useTranslation();
   const router        = useRouter();
   const insets        = useSafeAreaInsets();
   const banner        = useBannerStore((s) => s.banner);
@@ -138,7 +140,7 @@ export function NotificationBanner() {
 
         {/* Text content */}
         <View style={styles.textCol}>
-          <Text style={[styles.bannerLabel, { color: meta.color }]}>{meta.label}</Text>
+          <Text style={[styles.bannerLabel, { color: meta.color }]}>{t(meta.labelKey)}</Text>
           <Text style={styles.bannerTitle} numberOfLines={1}>{banner.title}</Text>
           <Text style={styles.bannerBody}  numberOfLines={1}>{banner.body}</Text>
         </View>

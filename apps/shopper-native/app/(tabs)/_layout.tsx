@@ -1,12 +1,14 @@
 /**
- * Tab Layout — Floating Glass Tab Bar
+ * Tab Layout — Dark Bar with Top Indicator
  *
- * A premium pill-shaped floating tab bar that hovers above the content with
- * a glass-morphism blur, gradient active dot, and elastic spring animations.
- * Each active tab pops with an electric brand-glow indicator.
+ * Pattern used by Linear, Stripe, Revolut, and other premium apps:
+ *   • Dark background so the bar reads as distinct from content
+ *   • Active tab: gradient top-indicator line + filled brand-color icon + bold label
+ *   • Inactive tab: outline icon + muted label — no shapes, no backgrounds
+ *   • Zero floating elements — everything contained within the bar bounds
  */
 
-import React, { useEffect, useCallback } from "react";
+import React, { useCallback, useEffect } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -29,37 +31,52 @@ import { theme } from "@/theme";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
+// ─── Tab configuration ────────────────────────────────────────────────────────
+
 interface TabConfig {
   active:   IoniconsName;
   inactive: IoniconsName;
-  grad:     [string, string];
+  color:    string;              // single color for icon + label when active
+  grad:     [string, string];   // gradient for the indicator line
 }
 
 const TAB_CONFIG: Record<string, TabConfig> = {
-  index:    {
-    active: "home",           inactive: "home-outline",
-    grad:   ["#0DB8A8", "#0891B2"],
+  index: {
+    active:   "home",
+    inactive: "home-outline",
+    color:    "#0DB8A8",
+    grad:     ["#0DB8A8", "#0891B2"],
   },
   products: {
-    active: "grid",           inactive: "grid-outline",
-    grad:   ["#6366F1", "#4F46E5"],
+    active:   "grid",
+    inactive: "grid-outline",
+    color:    "#818CF8",
+    grad:     ["#818CF8", "#6366F1"],
   },
-  orders:   {
-    active: "cube",           inactive: "cube-outline",
-    grad:   ["#F59E0B", "#D97706"],
+  orders: {
+    active:   "cube",
+    inactive: "cube-outline",
+    color:    "#FCD34D",
+    grad:     ["#FCD34D", "#F59E0B"],
   },
-  profile:  {
-    active: "person-circle",  inactive: "person-circle-outline",
-    grad:   ["#EC4899", "#BE185D"],
+  profile: {
+    active:   "person-circle",
+    inactive: "person-circle-outline",
+    color:    "#F472B6",
+    grad:     ["#F472B6", "#EC4899"],
   },
 };
 
-const TAB_I18N_KEY: Record<string, string> = {
+const TAB_LABEL_KEY: Record<string, string> = {
   index:    "tabs.home",
   products: "tabs.products",
   orders:   "tabs.orders",
   profile:  "tabs.profile",
 };
+
+// ─── Animation preset ─────────────────────────────────────────────────────────
+
+const SPRING = { damping: 22, stiffness: 320, mass: 0.7 } as const;
 
 // ─── Tab Item ─────────────────────────────────────────────────────────────────
 
@@ -73,77 +90,84 @@ interface TabItemProps {
 function TabItem({ name, focused, badge, onPress }: TabItemProps) {
   const { t } = useTranslation();
   const cfg   = TAB_CONFIG[name] ?? TAB_CONFIG.index;
-  const label = t(TAB_I18N_KEY[name] ?? "tabs.home");
+  const label = t(TAB_LABEL_KEY[name] ?? "tabs.home");
 
   const progress = useSharedValue(focused ? 1 : 0);
-  const scale    = useSharedValue(focused ? 1.0 : 0.92);
 
   useEffect(() => {
-    progress.value = withSpring(focused ? 1 : 0, { damping: 18, stiffness: 360, mass: 0.75 });
-    scale.value    = withSpring(focused ? 1.0 : 0.92, { damping: 16, stiffness: 380, mass: 0.8 });
-  }, [focused, progress, scale]);
+    progress.value = withSpring(focused ? 1 : 0, SPRING);
+  }, [focused, progress]);
 
-  // The pill "active container" — expands from a dot to a full pill
-  const pillAnim = useAnimatedStyle(() => ({
-    opacity:   interpolate(progress.value, [0, 1], [0, 1],      Extrapolation.CLAMP),
+  // Top indicator: scaleX 0 → 1, opacity 0 → 1
+  const indicatorStyle = useAnimatedStyle(() => ({
+    opacity:   interpolate(progress.value, [0, 1], [0, 1],   Extrapolation.CLAMP),
     transform: [
-      { scaleX: interpolate(progress.value, [0, 1], [0.4, 1], Extrapolation.CLAMP) },
-      { scaleY: interpolate(progress.value, [0, 1], [0.6, 1], Extrapolation.CLAMP) },
+      { scaleX: interpolate(progress.value, [0, 1], [0, 1], Extrapolation.CLAMP) },
     ],
   }));
 
-  // Icon lifts slightly when active
-  const iconAnim = useAnimatedStyle(() => ({
+  // Icon: scale up, slight lift
+  const iconStyle = useAnimatedStyle(() => ({
     transform: [
-      { scale:       scale.value },
-      { translateY:  interpolate(progress.value, [0, 1], [0, -1], Extrapolation.CLAMP) },
+      { scale:      interpolate(progress.value, [0, 1], [0.88, 1.06], Extrapolation.CLAMP) },
+      { translateY: interpolate(progress.value, [0, 1], [0, -2],      Extrapolation.CLAMP) },
     ],
   }));
 
-  // Label fades in when focused
-  const labelAnim = useAnimatedStyle(() => ({
-    opacity:   interpolate(progress.value, [0, 1], [0, 1], Extrapolation.CLAMP),
+  // Label: match icon lift
+  const labelStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateY: interpolate(progress.value, [0, 1], [4, 0], Extrapolation.CLAMP) },
+      { translateY: interpolate(progress.value, [0, 1], [0, -1], Extrapolation.CLAMP) },
     ],
   }));
+
+  // Light bar — inactive tabs use dark slate at reduced opacity
+  const iconColor  = focused ? cfg.color                   : "rgba(100,116,139,0.60)";
+  const labelColor = focused ? cfg.color                   : "rgba(100,116,139,0.55)";
+  const labelFont  = focused ? theme.fonts.black           : theme.fonts.regular;
+  const iconSize   = focused ? 24 : 22;
 
   const handlePress = useCallback(() => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    }
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     onPress();
   }, [onPress]);
 
   return (
-    <Pressable onPress={handlePress} style={styles.tabItem} hitSlop={8}>
-      {/* Active pill container */}
-      <Animated.View style={[styles.pillContainer, pillAnim]}>
+    <Pressable
+      onPress={handlePress}
+      hitSlop={6}
+      accessibilityRole="tab"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: focused }}
+      style={styles.tabItem}>
+
+      {/* ── Top indicator — gradient line, stays inside bounds ── */}
+      <Animated.View style={[styles.indicatorWrap, indicatorStyle]}>
         <LinearGradient
           colors={cfg.grad}
           start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
+          end={{ x: 1, y: 0 }}
+          style={styles.indicatorLine}
         />
       </Animated.View>
 
-      {/* Icon */}
-      <Animated.View style={iconAnim}>
+      {/* ── Icon ── */}
+      <Animated.View style={iconStyle}>
         <Ionicons
           name={focused ? cfg.active : cfg.inactive}
-          size={focused ? 22 : 21}
-          color={focused ? "#FFFFFF" : "rgba(100,116,139,0.85)"}
+          size={iconSize}
+          color={iconColor}
         />
       </Animated.View>
 
-      {/* Label — only visible when focused */}
-      <Animated.Text
-        style={[styles.label, { color: "#fff" }, labelAnim]}
-        numberOfLines={1}>
-        {label}
-      </Animated.Text>
+      {/* ── Label — always visible ── */}
+      <Animated.View style={labelStyle}>
+        <Text numberOfLines={1} style={[styles.label, { color: labelColor, fontFamily: labelFont }]}>
+          {label}
+        </Text>
+      </Animated.View>
 
-      {/* Notification badge */}
+      {/* ── Notification badge ── */}
       {badge != null && badge > 0 && (
         <View style={styles.badge}>
           <Text style={styles.badgeText}>{badge > 9 ? "9+" : badge}</Text>
@@ -167,25 +191,21 @@ function BottomTabBar({ state, navigation }: BottomTabBarProps) {
         target:            route.key,
         canPreventDefault: true,
       });
-      if (!focused && !event.defaultPrevented) {
-        navigation.navigate(route.name);
-      }
+      if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
     },
     [navigation],
   );
 
   const visibleRoutes = state.routes.filter((r) => r.name in TAB_CONFIG);
-  const pb = Math.max(insets.bottom + 6, 20);
 
   return (
-    <View style={[styles.floatWrap, { paddingBottom: pb }]}>
-      <View style={styles.tabBar}>
-        {/* Glass-white overlay */}
-        <View style={styles.glassOverlay} />
-
+    <View style={[styles.barOuter, { paddingBottom: Math.max(insets.bottom, 4) }]}>
+      {/* Hairline separator — 1px dark line at top of bar */}
+      <View style={styles.topHairline} />
+      <View style={styles.barInner}>
         {visibleRoutes.map((route) => {
-          const realIndex = state.routes.findIndex((r) => r.key === route.key);
-          const focused   = state.index === realIndex;
+          const realIdx = state.routes.findIndex((r) => r.key === route.key);
+          const focused = state.index === realIdx;
           return (
             <TabItem
               key={route.key}
@@ -212,8 +232,6 @@ export default function TabLayout() {
       <Tabs.Screen name="products" />
       <Tabs.Screen name="orders"   />
       <Tabs.Screen name="profile"  />
-
-      {/* Hidden routes */}
       <Tabs.Screen name="cart"   options={{ href: null }} />
       <Tabs.Screen name="search" options={{ href: null }} />
     </Tabs>
@@ -222,92 +240,92 @@ export default function TabLayout() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const BAR_HEIGHT  = 62;
-const PILL_H      = 44;
-const PILL_W      = 68;
-const BAR_RADIUS  = 32;
+const BAR_H        = 62;
+const INDICATOR_W  = 28;
+const INDICATOR_H  = 3;
 
 const styles = StyleSheet.create({
-  // The floating wrapper that positions the bar above the safe-area
-  floatWrap: {
-    position:       "absolute",
-    bottom:         0,
-    left:           0,
-    right:          0,
-    paddingHorizontal: 16,
-    alignItems:     "center",
+
+  // Outer bar: clean white, flush to bottom, upward shadow
+  barOuter: {
+    width:           "100%",
+    backgroundColor: "#FFFFFF",
+    shadowColor:     "#0C1A2E",
+    shadowOffset:    { width: 0, height: -2 },
+    shadowOpacity:   0.07,
+    shadowRadius:    10,
+    elevation:       12,
   },
 
-  // The actual floating pill bar
-  tabBar: {
-    flexDirection:        "row",
-    width:                "100%",
-    maxWidth:             500,
-    height:               BAR_HEIGHT,
-    borderRadius:         BAR_RADIUS,
-    backgroundColor:      "rgba(15, 23, 42, 0.94)",
-    borderWidth:          1,
-    borderColor:          "rgba(255, 255, 255, 0.10)",
-    overflow:             "hidden",
-    alignItems:           "center",
-    paddingHorizontal:    8,
-    // Elevation/shadow
-    shadowColor:          "#000",
-    shadowOffset:         { width: 0, height: 8 },
-    shadowOpacity:        0.35,
-    shadowRadius:         24,
-    elevation:            20,
+  // Single-pixel separator between content and bar
+  topHairline: {
+    height:          StyleSheet.hairlineWidth,
+    backgroundColor: "rgba(15,23,42,0.10)",
   },
 
-  // Subtle white glass sheen on top half
-  glassOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius:   BAR_RADIUS,
-    backgroundColor: "rgba(255,255,255,0.02)",
+  // Inner row of tab items
+  barInner: {
+    flexDirection:    "row",
+    height:           BAR_H,
+    alignItems:       "center",
+    paddingHorizontal: 4,
   },
 
+  // Each tab fills equal space
   tabItem: {
     flex:           1,
-    height:         BAR_HEIGHT,
+    height:         BAR_H,
     alignItems:     "center",
     justifyContent: "center",
-    gap:            2,
+    gap:            3,
+    paddingTop:     INDICATOR_H, // make room for the indicator at the very top
     position:       "relative",
   },
 
-  // Gradient pill behind the icon when active
-  pillContainer: {
+  // Gradient indicator line — INSIDE the bar, no overflow
+  indicatorWrap: {
     position:     "absolute",
-    width:        PILL_W,
-    height:       PILL_H,
-    borderRadius: PILL_H / 2,
+    top:          0,              // flush with the top edge of each tab item
+    width:        INDICATOR_W,
+    height:       INDICATOR_H,
+    borderRadius: INDICATOR_H,
     overflow:     "hidden",
   },
-
-  label: {
-    fontSize:    9.5,
-    fontFamily:  theme.fonts.bold,
-    letterSpacing: 0.3,
-    textAlign:   "center",
+  indicatorLine: {
+    flex: 1,
   },
 
+  // Label — always rendered
+  label: {
+    fontSize:      10,
+    letterSpacing: 0.2,
+    textAlign:     "center",
+    lineHeight:    13,
+  },
+
+  // Notification badge
   badge: {
     position:          "absolute",
-    top:               8,
-    right:             "18%",
-    minWidth:          15,
-    height:            15,
+    top:               6,
+    right:             "14%",
+    minWidth:          16,
+    height:            16,
     borderRadius:      8,
     backgroundColor:   theme.colors.error.base,
     alignItems:        "center",
     justifyContent:    "center",
     paddingHorizontal: 3,
-    borderWidth:       1.5,
-    borderColor:       "rgba(15,23,42,0.94)",
+    borderWidth:       2,
+    borderColor:       "#FFFFFF",
+    shadowColor:       theme.colors.error.base,
+    shadowOffset:      { width: 0, height: 2 },
+    shadowOpacity:     0.55,
+    shadowRadius:      4,
+    elevation:         5,
   },
   badgeText: {
     color:      "#fff",
-    fontSize:   8,
+    fontSize:   8.5,
     fontFamily: theme.fonts.black,
     lineHeight: 11,
   },

@@ -22,11 +22,13 @@ import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { PhoneVerifyModal, sendPhoneOtp } from "@/features/auth";
 import { Text } from "@/shared/ui";
 import { theme } from "@/theme";
 
 export default function VerifyPhoneScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { phone } = useLocalSearchParams<{ phone?: string }>();
   const phoneStr = typeof phone === "string" ? phone : "";
@@ -47,7 +49,7 @@ export default function VerifyPhoneScreen() {
       } catch (e) {
         if (__DEV__) console.warn("[verify-phone] sendPhoneOtp failed:", e);
         if (cancelled) return;
-        setErrorMsg("تعذّر إرسال رمز التحقق. يمكنك المتابعة وإكمال التحقق لاحقاً.");
+        setErrorMsg(t("verifyPhone.errorDefault"));
         setStage("error");
         setTimeout(() => router.replace("/(tabs)"), 2200);
       }
@@ -79,12 +81,10 @@ export default function VerifyPhoneScreen() {
             entering={FadeInUp.duration(420).delay(160)}
             style={styles.textStack}>
             <Text variant="sheet-title" align="center" style={styles.title}>
-              {isError ? "تعذّر التحقق" : "جارٍ إرسال رمز التحقق"}
+              {isError ? t("verifyPhone.errorTitle") : t("verifyPhone.sendingTitle")}
             </Text>
             <Text variant="body" color="secondary" align="center" style={styles.subtitle}>
-              {isError
-                ? errorMsg
-                : "سيصلك خلال ثوانٍ على رقم هاتفك للتحقق من حسابك"}
+              {isError ? errorMsg : t("verifyPhone.sendingSubtitle")}
             </Text>
           </Animated.View>
 
@@ -98,7 +98,7 @@ export default function VerifyPhoneScreen() {
           <View style={styles.trustFootnote}>
             <Ionicons name="shield-checkmark" size={12} color={theme.colors.text.tertiary} />
             <Text variant="eyebrow" color="tertiary">
-              التحقق مشفّر ومحمي
+              {t("verifyPhone.trustNote")}
             </Text>
           </View>
         </Animated.View>

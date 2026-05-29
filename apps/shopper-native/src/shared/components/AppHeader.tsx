@@ -19,6 +19,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { useCartStore } from "@/stores/cart";
 import { theme } from "@/theme";
 
@@ -44,6 +45,7 @@ export function AppHeader({
   showCart    = true,
   withInsets  = true,
 }: AppHeaderProps): React.ReactElement {
+  const { t }     = useTranslation();
   const router    = useRouter();
   const insets    = useSafeAreaInsets();
   const cartCount = useCartStore((s) => s.itemCount());
@@ -66,7 +68,7 @@ export function AppHeader({
             hitSlop={10}
             style={styles.iconBtn}
             accessibilityRole="button"
-            accessibilityLabel="رجوع">
+            accessibilityLabel={t("common.back")}>
             {/* RTL-correct: arrow-forward visually points to start in RTL */}
             <Ionicons name="arrow-forward" size={20} color={subtle} />
           </Pressable>
@@ -95,7 +97,7 @@ export function AppHeader({
               hitSlop={8}
               style={styles.iconBtn}
               accessibilityRole="button"
-              accessibilityLabel={cartCount > 0 ? `السلة، ${cartCount} عنصر` : "السلة"}>
+              accessibilityLabel={cartCount > 0 ? t("common.cartWithCount", { count: cartCount }) : t("common.cartLabel")}>
               <Ionicons name="bag-outline" size={22} color={subtle} />
               {cartCount > 0 && (
                 <View

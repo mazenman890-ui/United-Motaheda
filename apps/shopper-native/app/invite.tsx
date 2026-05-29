@@ -20,13 +20,13 @@ import Animated, {
 } from "react-native-reanimated";
 import { useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/theme";
 import { useAuth } from "@/features/auth/context";
 import { SubScreenHeader } from "@/features/loyalty/components/SubScreenHeader";
 import { useReferralCode, useReferralRewards } from "@/features/loyalty/hooks/useReferralCode";
 
-const APP_NAME = "صيدليات المتحدة";
 
 function blurActiveElementOnWeb() {
   if (Platform.OS !== "web" || typeof globalThis === "undefined") return;
@@ -40,9 +40,11 @@ function blurActiveElementOnWeb() {
 // ─── Screen ────────────────────────────────────────────────────────────────────
 
 export default function InviteScreen() {
+  const { t, i18n } = useTranslation();
   const insets   = useSafeAreaInsets();
   const { user } = useAuth();
   const isAuthed = !!user;
+  const locale   = i18n.language.startsWith("en") ? "en-US" : "ar-EG";
 
   const { data: referral, isLoading } = useReferralCode(isAuthed);
   const { data: rewards = [] }        = useReferralRewards(isAuthed);
@@ -62,8 +64,8 @@ export default function InviteScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       <SubScreenHeader
-        title="ادعُ صديقاً"
-        subtitle="أكسب نقاطاً مقابل كل إحالة"
+        title={t("invite.title")}
+        subtitle={t("invite.subtitle")}
       />
 
       <ScrollView
@@ -81,9 +83,9 @@ export default function InviteScreen() {
             <View style={styles.heroBadge}>
               <Ionicons name="people" size={28} color="#fff" />
             </View>
-            <UIText style={styles.heroTitle}>شارك {APP_NAME} مع أصدقائك</UIText>
+            <UIText style={styles.heroTitle}>{t("invite.heroTitle", { appName: t("common.appName") })}</UIText>
             <UIText style={styles.heroSub}>
-              لكل صديق يكمل طلبه الأول ستحصل على نقاط مكافأة مباشرةً في محفظتك
+              {t("invite.heroSub")}
             </UIText>
           </Animated.View>
 
@@ -95,9 +97,9 @@ export default function InviteScreen() {
         {/* ── Stats row ──────────────────────────────────── */}
         {isAuthed && (
           <Animated.View entering={FadeInDown.duration(380).delay(100)} style={styles.statsRow}>
-            <StatCell icon="people-outline"   label="إجمالي الإحالات" value={totalReferrals} color="#7C3AED" />
+            <StatCell icon="people-outline"   label={t("invite.statReferrals")} value={totalReferrals} color="#7C3AED" />
             <View style={styles.statsDivider} />
-            <StatCell icon="star-outline"     label="نقاط مكتسبة"    value={totalPoints}    color="#F59E0B" />
+            <StatCell icon="star-outline"     label={t("invite.statPoints")}    value={totalPoints}    color="#F59E0B" />
           </Animated.View>
         )}
 
@@ -118,25 +120,25 @@ export default function InviteScreen() {
 
         {/* ── How it works ────────────────────────────────── */}
         <Animated.View entering={FadeInDown.duration(380).delay(260)} style={styles.howWrap}>
-          <UIText style={styles.howTitle}>كيف تعمل الإحالة؟</UIText>
+          <UIText style={styles.howTitle}>{t("invite.howTitle")}</UIText>
           <View style={styles.howList}>
             <HowStep
-              num="١"
+              num="1"
               color="#7C3AED"
-              title="انسخ كودك الخاص"
-              body="كل حساب لديه كود فريد لا يتكرر"
+              title={t("invite.howStep1Title")}
+              body={t("invite.howStep1Body")}
             />
             <HowStep
-              num="٢"
+              num="2"
               color="#0891B2"
-              title="شاركه مع صديق"
-              body="أرسل الكود أو الرابط عبر واتساب أو أي تطبيق"
+              title={t("invite.howStep2Title")}
+              body={t("invite.howStep2Body")}
             />
             <HowStep
-              num="٣"
+              num="3"
               color="#10B981"
-              title="اكسب عند أول طلب"
-              body="بعد إتمام صديقك لأول طلب ستُضاف النقاط فوراً"
+              title={t("invite.howStep3Title")}
+              body={t("invite.howStep3Body")}
             />
           </View>
         </Animated.View>
@@ -144,7 +146,7 @@ export default function InviteScreen() {
         {/* ── Past referrals ───────────────────────────────── */}
         {rewards.length > 0 && (
           <Animated.View entering={FadeInDown.duration(380).delay(320)} style={styles.histWrap}>
-            <UIText style={styles.histTitle}>سجل الإحالات</UIText>
+            <UIText style={styles.histTitle}>{t("invite.histTitle")}</UIText>
             <View style={styles.histList}>
               {rewards.map((r) => (
                 <View key={r.id} style={styles.histRow}>
@@ -152,9 +154,9 @@ export default function InviteScreen() {
                     <Ionicons name="person-add-outline" size={15} color="#7C3AED" />
                   </View>
                   <UIText style={styles.histDate}>
-                    {new Date(r.created_at).toLocaleDateString("ar-EG", { day: "numeric", month: "short" })}
+                    {new Date(r.created_at).toLocaleDateString(locale, { day: "numeric", month: "short" })}
                   </UIText>
-                  <UIText style={styles.histPts}>+{r.points_granted.toLocaleString("ar-EG")} ن</UIText>
+                  <UIText style={styles.histPts}>+{r.points_granted.toLocaleString(locale)} {t("invite.pointsUnit")}</UIText>
                 </View>
               ))}
             </View>
@@ -168,6 +170,7 @@ export default function InviteScreen() {
 // ─── Code card (authenticated + code exists) ────────────────────────────────────
 
 function CodeCard({ code }: { code: string }) {
+  const { t } = useTranslation();
   const [copied, setCopied]   = useState(false);
   const [sharing, setSharing] = useState(false);
   const scale = useSharedValue(1);
@@ -182,13 +185,13 @@ function CodeCard({ code }: { code: string }) {
     // Share just the raw code so the user can select "Copy" from the system sheet.
     // This is the standard clipboard workaround when expo-clipboard is not installed.
     try {
-      await Share.share({ message: code, title: "كود الدعوة" });
+      await Share.share({ message: code, title: t("invite.shareTitle") });
     } catch {
       // dismissed — no-op
     }
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
-  }, [code, scale]);
+  }, [code, scale, t]);
 
   const handleShare = useCallback(async () => {
     if (sharing) return;
@@ -196,31 +199,31 @@ function CodeCard({ code }: { code: string }) {
     try {
       if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
       await Share.share({
-        message: `🎁 استخدم كود الدعوة الخاص بي في صيدليات المتحدة واحصل على مكافأة عند أول طلب!\n\nالكود: ${code}`,
-        title:   "دعوة للانضمام لصيدليات المتحدة",
+        message: t("invite.shareMessage", { code }),
+        title:   t("invite.shareDialogTitle"),
       });
     } catch {
       // User dismissed the share sheet — not an error
     } finally {
       setSharing(false);
     }
-  }, [code, sharing]);
+  }, [code, sharing, t]);
 
   return (
     <Animated.View style={[styles.codeCard, anim]}>
-      <UIText style={styles.codeLabel}>كود الدعوة الخاص بك</UIText>
+      <UIText style={styles.codeLabel}>{t("invite.yourCode")}</UIText>
 
       {/* Code display */}
       <View style={styles.codeBox}>
         <UIText style={styles.codeText}>{code}</UIText>
-        <Pressable onPress={handleCopy} hitSlop={8} style={styles.copyBtn} accessibilityRole="button" accessibilityLabel="نسخ الكود">
+        <Pressable onPress={handleCopy} hitSlop={8} style={styles.copyBtn} accessibilityRole="button" accessibilityLabel={t("invite.copyCode")}>
           <Ionicons
             name={copied ? "checkmark-circle" : "copy-outline"}
             size={20}
             color={copied ? theme.colors.brand[600] : theme.colors.slate[500]}
           />
           <UIText style={[styles.copyLabel, copied && { color: theme.colors.brand[600] }]}>
-            {copied ? "تم النسخ!" : "نسخ"}
+            {copied ? t("invite.copied") : t("invite.copy")}
           </UIText>
         </Pressable>
       </View>
@@ -228,7 +231,7 @@ function CodeCard({ code }: { code: string }) {
       {copied && (
         <Animated.View entering={FadeIn.duration(160)} style={styles.copiedBanner}>
           <Ionicons name="checkmark-circle" size={13} color={theme.colors.brand[700]} />
-          <UIText style={styles.copiedText}>تم نسخ الكود إلى الحافظة</UIText>
+          <UIText style={styles.copiedText}>{t("invite.codeCopied")}</UIText>
         </Animated.View>
       )}
 
@@ -237,7 +240,7 @@ function CodeCard({ code }: { code: string }) {
         onPress={handleShare}
         disabled={sharing}
         accessibilityRole="button"
-        accessibilityLabel="مشاركة كود الدعوة"
+        accessibilityLabel={t("invite.shareCode")}
         style={({ pressed }) => [styles.shareBtn, pressed && { opacity: 0.88 }]}>
         <LinearGradient
           colors={["#7C3AED", "#9333EA"]}
@@ -245,7 +248,7 @@ function CodeCard({ code }: { code: string }) {
           end={{ x: 1, y: 0 }}
           style={styles.shareBtnGrad}>
           <Ionicons name="share-social-outline" size={18} color="#fff" />
-          <UIText style={styles.shareBtnText}>مشاركة كود الدعوة</UIText>
+          <UIText style={styles.shareBtnText}>{t("invite.shareCode")}</UIText>
         </LinearGradient>
       </Pressable>
 
@@ -253,10 +256,10 @@ function CodeCard({ code }: { code: string }) {
       <Pressable
         onPress={handleShare}
         accessibilityRole="button"
-        accessibilityLabel="مشاركة عبر واتساب"
+        accessibilityLabel={t("invite.whatsappShare")}
         style={styles.waBtn}>
         <Ionicons name="logo-whatsapp" size={16} color="#25D366" />
-        <UIText style={styles.waBtnText}>مشاركة سريعة عبر واتساب</UIText>
+        <UIText style={styles.waBtnText}>{t("invite.whatsappShare")}</UIText>
       </Pressable>
     </Animated.View>
   );
@@ -265,14 +268,15 @@ function CodeCard({ code }: { code: string }) {
 // ─── No referral code yet ────────────────────────────────────────────────────────
 
 function NoCodeCard() {
+  const { t } = useTranslation();
   return (
     <View style={[styles.codeCard, { alignItems: "center", paddingVertical: 28, gap: 10 }]}>
       <View style={styles.noCodeIcon}>
         <Ionicons name="hourglass-outline" size={28} color={theme.colors.slate[400]} />
       </View>
-      <UIText style={styles.codeLabel}>لم يتم إنشاء كودك بعد</UIText>
+      <UIText style={styles.codeLabel}>{t("invite.noCodeTitle")}</UIText>
       <UIText style={{ fontFamily: theme.fonts.regular, fontSize: 13, color: theme.colors.text.tertiary, textAlign: "center" }}>
-        أكمل أول طلب شراء لتفعيل كود الإحالة الخاص بك
+        {t("invite.noCodeBody")}
       </UIText>
     </View>
   );
@@ -281,14 +285,15 @@ function NoCodeCard() {
 // ─── Unauthenticated card ────────────────────────────────────────────────────────
 
 function UnauthCard() {
+  const { t } = useTranslation();
   return (
     <View style={[styles.codeCard, { alignItems: "center", paddingVertical: 28, gap: 10 }]}>
       <View style={styles.noCodeIcon}>
         <Ionicons name="lock-closed-outline" size={28} color={theme.colors.slate[400]} />
       </View>
-      <UIText style={styles.codeLabel}>سجّل دخولك أولاً</UIText>
+      <UIText style={styles.codeLabel}>{t("invite.unauthTitle")}</UIText>
       <UIText style={{ fontFamily: theme.fonts.regular, fontSize: 13, color: theme.colors.text.tertiary, textAlign: "center" }}>
-        يجب تسجيل الدخول للحصول على كود الإحالة الخاص بك
+        {t("invite.unauthBody")}
       </UIText>
     </View>
   );
@@ -297,12 +302,14 @@ function UnauthCard() {
 // ─── Stat cell ────────────────────────────────────────────────────────────────────
 
 function StatCell({ icon, label, value, color }: { icon: React.ComponentProps<typeof Ionicons>["name"]; label: string; value: number; color: string }) {
+  const { i18n } = useTranslation();
+  const locale   = i18n.language.startsWith("en") ? "en-US" : "ar-EG";
   return (
     <View style={styles.statCell}>
       <View style={[styles.statIcon, { backgroundColor: color + "18" }]}>
         <Ionicons name={icon} size={18} color={color} />
       </View>
-      <UIText style={styles.statValue}>{value.toLocaleString("ar-EG")}</UIText>
+      <UIText style={styles.statValue}>{value.toLocaleString(locale)}</UIText>
       <UIText style={styles.statLabel}>{label}</UIText>
     </View>
   );

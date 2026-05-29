@@ -10,19 +10,21 @@
 
 import React from "react";
 import { useLocalSearchParams } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { ComingSoonScreen } from "@/shared/components";
 import { usePrescription } from "@/features/prescriptions";
 
 export default function Page(): React.ReactElement {
+  const { t }  = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const rx     = usePrescription(id);
 
   return (
     <ComingSoonScreen
-      title={rx?.name ?? "وصفة"}
+      title={rx?.name ?? t("prescriptions.detailFallback")}
       subtitle={rx
         ? `${rx.dose} · ${rx.doctor}`
-        : "تفاصيل الوصفة قيد التطوير"}
+        : t("prescriptions.detailSubtitle")}
       icon="medkit-outline"
     />
   );

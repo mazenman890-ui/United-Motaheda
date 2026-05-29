@@ -31,6 +31,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -65,12 +66,12 @@ type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
 type SortKey = "newest" | "price_asc" | "price_desc" | "name_asc";
 
-const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: "newest",     label: "الأحدث" },
-  { key: "price_asc",  label: "الأرخص" },
-  { key: "price_desc", label: "الأغلى" },
-  { key: "name_asc",   label: "أ-ي" },
-];
+const SORT_KEYS: Record<SortKey, string> = {
+  newest:     "search.sortNewest",
+  price_asc:  "search.sortPriceAsc",
+  price_desc: "search.sortPriceDesc",
+  name_asc:   "search.sortNameAsc",
+};
 
 const TRENDING: { term: string; icon: IoniconsName; color: string; bg: string }[] = [
   { term: "باراسيتامول", icon: "medkit",         color: theme.colors.brand[700],   bg: theme.colors.brand.lighter   },
@@ -103,6 +104,7 @@ function Hl({ text, q, style, lines }: { text: string; q: string; style?: any; l
 const SuggRow = React.memo(function SuggRow({
   product, query, onPress, index, selected,
 }: { product: NativeProduct; query: string; onPress: () => void; index: number; selected: boolean }) {
+  const { t } = useTranslation();
   const name = product.nameAr ?? product.name;
   return (
     <Animated.View entering={FadeInRight.delay(index * 25).duration(220)}>
@@ -130,7 +132,7 @@ const SuggRow = React.memo(function SuggRow({
         </UIText>
         {!product.inStock && (
           <View style={s.suggOos}>
-            <UIText variant="eyebrow" style={{ color: theme.colors.error.strong }}>نفذ</UIText>
+            <UIText variant="eyebrow" style={{ color: theme.colors.error.strong }}>{t("common.outOfStock")}</UIText>
           </View>
         )}
         <Ionicons name="arrow-back" size={12} color={theme.colors.slate[300]} />
@@ -145,8 +147,9 @@ const SuggRow = React.memo(function SuggRow({
 
 export default function SearchScreen() {
   useScreenTrace("search");
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const { t, i18n } = useTranslation();
+  const router      = useRouter();
+  const insets   = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
 
   // ── State ──
@@ -328,13 +331,13 @@ export default function SearchScreen() {
     if (!results.length) return [];
     const map = new Map<string, NativeProduct[]>();
     for (const p of results) {
-      const key = p.categoryName || "أخرى";
+      const key = p.categoryName || t("common.other");
       const arr = map.get(key) ?? [];
       arr.push(p);
       map.set(key, arr);
     }
     return Array.from(map.entries()).map(([cat, items]) => ({ cat, items }));
-  }, [results]);
+  }, [results, t]);
 
   return (
     <View style={s.screen}>
@@ -350,19 +353,18 @@ export default function SearchScreen() {
             </View>
             <View>
               <UIText variant="eyebrow" color="tertiary" align="right">
-                اكتشف المنتجات
+                {t("search.eyebrow")}
               </UIText>
               <UIText variant="card-title" align="right" style={s.headerTitle}>
-                البحث
+                {t("search.title")}
               </UIText>
             </View>
           </View>
           {hasResults && totalCount > 0 && !isSearching && (
             <Animated.View entering={FadeIn.duration(200)} style={s.countPill}>
               <UIText variant="caption" weight="black" color="brand">
-                {totalCount.toLocaleString()}
+                {t("search.resultCount", { count: totalCount.toLocaleString() })}
               </UIText>
-              <UIText variant="eyebrow" color="brand">نتيجة</UIText>
             </Animated.View>
           )}
         </View>
@@ -385,7 +387,7 @@ export default function SearchScreen() {
             <TextInput
               ref={inputRef}
               style={s.barInput}
-              placeholder="ابحث عن دواء، مستحضر، أو كود…"
+              placeholder={t("search.placeholder")}
               placeholderTextColor={theme.colors.text.tertiary}
               value={query}
               onChangeText={(v) => { setQuery(v); setSelectedIdx(-1); }}
@@ -438,7 +440,7 @@ export default function SearchScreen() {
                 setShowFilters((v) => !v);
               }}
               accessibilityRole="button"
-              accessibilityLabel="تصفية النتائج"
+              accessibilityLabel={t("search.filterLabel")}
               style={[s.barFilterBtn, (showFilters || filterCount > 0) && s.barFilterBtnActive]}>
               <Ionicons
                 name="options-outline"
@@ -456,7 +458,7 @@ export default function SearchScreen() {
               <Pressable
                 onPress={() => submit()}
                 accessibilityRole="button"
-                accessibilityLabel="بحث"
+                accessibilityLabel={t("search.searchBtn")}
                 style={({ pressed }) => [s.barSubmit, pressed && { opacity: 0.85 }]}>
                 <Ionicons name="return-down-back" size={14} color="#fff" />
               </Pressable>
@@ -480,7 +482,7 @@ export default function SearchScreen() {
         {/* Quiet keyboard hint */}
         {focused && !hasResults && debouncedQ.length < 2 && (
           <Animated.View entering={FadeIn.duration(180)} style={s.hint}>
-            <UIText variant="eyebrow" color="tertiary">اكتب للبحث أو اضغط Enter</UIText>
+            <UIText variant="eyebrow" color="tertiary">{t("search.hint")}</UIText>
           </Animated.View>
         )}
       </View>
@@ -492,27 +494,27 @@ export default function SearchScreen() {
         {showFilters && (
           <Animated.View entering={FadeInDown.duration(220)} style={s.filterPanel}>
             <View style={s.filterHeader}>
-              <UIText variant="eyebrow" color="tertiary">خيارات التصفية</UIText>
+              <UIText variant="eyebrow" color="tertiary">{t("search.filterTitle")}</UIText>
               {filterCount > 0 && (
                 <Pressable onPress={resetFilters} hitSlop={6}>
-                  <UIText variant="caption" weight="bold" color="brand">إعادة الضبط</UIText>
+                  <UIText variant="caption" weight="bold" color="brand">{t("search.reset")}</UIText>
                 </Pressable>
               )}
             </View>
 
             <View style={s.chipsRow}>
-              {SORT_OPTIONS.map((o) => {
-                const on = sortBy === o.key;
+              {(Object.keys(SORT_KEYS) as SortKey[]).map((key) => {
+                const on = sortBy === key;
                 return (
                   <Pressable
-                    key={o.key}
-                    onPress={() => { setSortBy(o.key); if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {}); }}
+                    key={key}
+                    onPress={() => { setSortBy(key); if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {}); }}
                     style={[s.chip, on && s.chipOn]}>
                     <UIText
                       variant="caption"
                       weight={on ? "black" : "bold"}
                       style={{ color: on ? "#fff" : theme.colors.text.secondary }}>
-                      {o.label}
+                      {t(SORT_KEYS[key])}
                     </UIText>
                   </Pressable>
                 );
@@ -524,7 +526,7 @@ export default function SearchScreen() {
               style={s.toggleRow}>
               <View style={s.toggleLeft}>
                 <Ionicons name="cube-outline" size={14} color={theme.colors.slate[600]} />
-                <UIText variant="body-sm" weight="bold" color="secondary">المتاح فقط</UIText>
+                <UIText variant="body-sm" weight="bold" color="secondary">{t("search.inStockOnly")}</UIText>
               </View>
               <View style={[s.sw, inStockOnly && s.swOn]}>
                 <View style={[s.swThumb, inStockOnly && s.swThumbOn]} />
@@ -541,7 +543,7 @@ export default function SearchScreen() {
                     variant="caption"
                     weight={!catFilter ? "black" : "bold"}
                     style={{ color: !catFilter ? "#fff" : theme.colors.text.secondary }}>
-                    الكل
+                    {t("search.all")}
                   </UIText>
                 </Pressable>
                 {categories.slice(0, 12).map((cat: NativeCategory) => {
@@ -580,9 +582,9 @@ export default function SearchScreen() {
                       <Ionicons name="time-outline" size={13} color={theme.colors.slate[600]} />
                     </View>
                     <View>
-                      <UIText variant="eyebrow" color="tertiary" align="right">سجل البحث</UIText>
+                      <UIText variant="eyebrow" color="tertiary" align="right">{t("search.recentEyebrow")}</UIText>
                       <UIText variant="card-title" align="right" style={s.sectionTitleNew}>
-                        بحثت عنه سابقاً
+                        {t("search.recentTitle")}
                       </UIText>
                     </View>
                   </View>
@@ -591,7 +593,7 @@ export default function SearchScreen() {
                     AsyncStorage.removeItem(RECENTS_KEY).catch(() => {});
                   }} hitSlop={6}>
                     <UIText variant="caption" weight="bold" style={{ color: theme.colors.error.base }}>
-                      مسح
+                      {t("search.clearRecents")}
                     </UIText>
                   </Pressable>
                 </View>
@@ -617,9 +619,9 @@ export default function SearchScreen() {
                   <Ionicons name="trending-up" size={14} color={theme.colors.brand[700]} />
                 </View>
                 <View>
-                  <UIText variant="eyebrow" color="tertiary" align="right">الأكثر شعبية</UIText>
+                  <UIText variant="eyebrow" color="tertiary" align="right">{t("search.trendingEyebrow")}</UIText>
                   <UIText variant="card-title" align="right" style={s.sectionTitleNew}>
-                    الأكثر بحثاً
+                    {t("search.trendingTitle")}
                   </UIText>
                 </View>
               </View>
@@ -654,9 +656,9 @@ export default function SearchScreen() {
                     <Ionicons name="grid-outline" size={14} color={theme.colors.brand[700]} />
                   </View>
                   <View>
-                    <UIText variant="eyebrow" color="tertiary" align="right">تصفح حسب القسم</UIText>
+                    <UIText variant="eyebrow" color="tertiary" align="right">{t("search.categoriesEyebrow")}</UIText>
                     <UIText variant="card-title" align="right" style={s.sectionTitleNew}>
-                      الأقسام
+                      {t("search.categoriesTitle")}
                     </UIText>
                   </View>
                 </View>
@@ -698,12 +700,12 @@ export default function SearchScreen() {
             refreshing={resultsRefreshing}
             onRefresh={refetchResults}
             contentContainerStyle={{ paddingBottom: theme.layout.tabBarHeight + 24 }}
-            lang="ar"
+            lang={i18n.language === "en" ? "en" : "ar"}
             ListHeaderComponent={
               hasResults && grouped.length > 1 ? (
                 <Animated.View entering={FadeInDown.duration(220)} style={s.groupHeader}>
                   <UIText variant="eyebrow" color="tertiary" align="right" style={s.groupEyebrow}>
-                    تصفية بالقسم
+                    {t("search.groupFilter")}
                   </UIText>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.groupChipsRow}>
                     {grouped.map((g) => {
@@ -748,17 +750,17 @@ export default function SearchScreen() {
                 <View style={{ paddingTop: 60, paddingHorizontal: 20, gap: 20 }}>
                   <EmptyState
                     icon="search-outline"
-                    title="لا توجد نتائج"
+                    title={t("search.noResults")}
                     description={
                       detectSearchLang(submitted) === "arabic"
-                        ? `لم يُعثر على نتائج لـ "${submitted}". جرّب كتابة اسم المنتج بالإنجليزية أو اختر من الاقتراحات أدناه.`
-                        : `جرّب كلمة مختلفة أو تحقق من الإملاء لـ "${submitted}"`
+                        ? t("search.noResultsDescAr", { query: submitted })
+                        : t("search.noResultsDescEn", { query: submitted })
                     }
                   />
                   {/* Quick-search suggestions for empty state */}
                   <View style={s.emptyTrendWrap}>
                     <UIText variant="eyebrow" color="tertiary" align="right" style={{ marginBottom: 10 }}>
-                      جرّب هذه البحوث الشائعة
+                      {t("search.tryPopular")}
                     </UIText>
                     <View style={s.emptyTrendChips}>
                       {TRENDING.slice(0, 4).map((t) => (
@@ -795,6 +797,7 @@ export default function SearchScreen() {
         )}
 
         {/* ─── Suggestions overlay — elevated white card ──────────── */}
+        {/* bottom: tabBarHeight keeps the card above the floating nav bar  */}
         {showSugg && (
           <Animated.View
             entering={FadeInDown.springify().damping(22).stiffness(300)}
@@ -805,28 +808,32 @@ export default function SearchScreen() {
               <View style={s.suggHeader}>
                 <View style={s.suggHeaderLeft}>
                   <Ionicons name="sparkles" size={12} color={theme.colors.brand[700]} />
-                  <UIText variant="eyebrow" color="tertiary">اقتراحات</UIText>
+                  <UIText variant="eyebrow" color="tertiary">{t("search.suggestions")}</UIText>
                 </View>
                 {suggFetching && <ActivityIndicator size="small" color={theme.colors.brand[600]} />}
               </View>
 
-              {!suggFetching && suggestions.length === 0 && (
-                <View style={s.suggEmpty}>
-                  <Ionicons name="search-outline" size={22} color={theme.colors.slate[300]} />
-                  <UIText variant="caption" color="tertiary">لا توجد اقتراحات لـ "{debouncedQ}"</UIText>
-                </View>
-              )}
-
-              {suggestions.map((p, i) => (
-                <SuggRow
-                  key={p.id}
-                  product={p}
-                  query={debouncedQ}
-                  onPress={() => tapSugg(p)}
-                  index={i}
-                  selected={selectedIdx === i}
-                />
-              ))}
+              {/* Scrollable rows — clipped to never overlap the tab bar */}
+              <ScrollView bounces={false} keyboardShouldPersistTaps="handled" style={{ flexShrink: 1 }}>
+                {!suggFetching && suggestions.length === 0 && (
+                  <View style={s.suggEmpty}>
+                    <Ionicons name="search-outline" size={22} color={theme.colors.slate[300]} />
+                    <UIText variant="caption" color="tertiary">
+                      {t("search.noSuggestions", { query: debouncedQ })}
+                    </UIText>
+                  </View>
+                )}
+                {suggestions.map((p, i) => (
+                  <SuggRow
+                    key={p.id}
+                    product={p}
+                    query={debouncedQ}
+                    onPress={() => tapSugg(p)}
+                    index={i}
+                    selected={selectedIdx === i}
+                  />
+                ))}
+              </ScrollView>
 
               {suggestions.length > 0 && (
                 <Pressable
@@ -834,7 +841,7 @@ export default function SearchScreen() {
                   style={({ pressed }) => [s.suggShowAll, pressed && { opacity: 0.88 }]}>
                   <Ionicons name="search" size={14} color={theme.colors.brand[700]} />
                   <UIText variant="caption" weight="bold" color="brand">
-                    عرض كل نتائج "{debouncedQ}"
+                    {t("search.showAll", { query: debouncedQ })}
                   </UIText>
                   <Ionicons name="return-down-back" size={13} color={theme.colors.brand[700]} />
                 </Pressable>
@@ -1006,17 +1013,21 @@ const s = StyleSheet.create({
   },
 
   // ── Suggestions overlay — elevated white card
+  // bottom: tabBarHeight ensures the card never extends behind the floating nav
   suggOverlay: {
     position: "absolute",
     top:      8,
     left:     12,
     right:    12,
+    bottom:   theme.layout.tabBarHeight,
     zIndex:   100,
+    overflow: "hidden",
   },
   suggCard: {
     backgroundColor: theme.colors.surface,
     borderRadius:    18,
     overflow:        "hidden",
+    flexShrink:      1,
     ...theme.shadow.lg,
     shadowOpacity:   0.10,
   },

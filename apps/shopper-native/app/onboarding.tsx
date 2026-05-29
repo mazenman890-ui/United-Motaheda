@@ -32,6 +32,7 @@ import Animated, {
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useTranslation } from "react-i18next";
 import { AppLogo } from "@/shared/components/AppLogo";
 import { Text } from "@/shared/ui";
 import { theme } from "@/theme";
@@ -53,9 +54,9 @@ type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
 interface Slide {
   id: number;
-  eyebrow: string;
-  title: string;
-  body: string;
+  eyebrowKey: string;
+  titleKey: string;
+  bodyKey: string;
   icon?: IoniconsName;
   gradient: readonly [string, string, string];
   ringColor: string;
@@ -68,36 +69,36 @@ interface Slide {
 // ──────────────────────────────────────────
 const SLIDES: Slide[] = [
   {
-    id: 1,
-    eyebrow: "صيدلية المتحدة",
-    title: "صحتك\nأولويتنا",
-    body: "أكثر من 52,000 منتج صيدلاني أصلي في متناول يدك في أي وقت",
-    gradient: ["#044039", "#087A6F", "#0DB8A8"],
-    ringColor: "rgba(92, 224, 210, 0.28)",
-    accent: "#5CE0D2",
-    logoSlide: true,
+    id:         1,
+    eyebrowKey: "onboarding.slide1Eyebrow",
+    titleKey:   "onboarding.slide1Title",
+    bodyKey:    "onboarding.slide1Body",
+    gradient:   ["#044039", "#087A6F", "#0DB8A8"],
+    ringColor:  "rgba(92, 224, 210, 0.28)",
+    accent:     "#5CE0D2",
+    logoSlide:  true,
   },
   {
-    id: 2,
-    icon: "flash" as IoniconsName,
-    eyebrow: "توصيل سريع",
-    title: "في بابك\nبأسرع وقت",
-    body: "أدوية أصلية توصّل إلى باب منزلك في نفس اليوم مع دفع مريح عند الاستلام",
-    gradient: ["#07152A", "#0C2240", "#1A4570"],
-    ringColor: "rgba(8, 145, 178, 0.30)",
-    accent: "#2CCCBD",
-    logoSlide: false,
+    id:         2,
+    icon:       "flash" as IoniconsName,
+    eyebrowKey: "onboarding.slide2Eyebrow",
+    titleKey:   "onboarding.slide2Title",
+    bodyKey:    "onboarding.slide2Body",
+    gradient:   ["#07152A", "#0C2240", "#1A4570"],
+    ringColor:  "rgba(8, 145, 178, 0.30)",
+    accent:     "#2CCCBD",
+    logoSlide:  false,
   },
   {
-    id: 3,
-    icon: "shield-checkmark" as IoniconsName,
-    eyebrow: "ضمان الجودة",
-    title: "أصلي ومضمون\n100%",
-    body: "فريق صيدلاني محترف وأدوية معتمدة ومضمونة — لكل داء دواء",
-    gradient: ["#022C27", "#044039", "#065C54"],
-    ringColor: "rgba(153, 240, 230, 0.25)",
-    accent: "#99F0E6",
-    logoSlide: false,
+    id:         3,
+    icon:       "shield-checkmark" as IoniconsName,
+    eyebrowKey: "onboarding.slide3Eyebrow",
+    titleKey:   "onboarding.slide3Title",
+    bodyKey:    "onboarding.slide3Body",
+    gradient:   ["#022C27", "#044039", "#065C54"],
+    ringColor:  "rgba(153, 240, 230, 0.25)",
+    accent:     "#99F0E6",
+    logoSlide:  false,
   },
 ];
 
@@ -306,6 +307,7 @@ const ProgressDot = React.memo(
 // Main screen
 // ──────────────────────────────────────────
 export default function OnboardingScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const flatRef = useRef<FlatList<Slide>>(null);
@@ -460,7 +462,7 @@ export default function OnboardingScreen() {
         <View
           style={styles.dotsRow}
           accessibilityRole="progressbar"
-          accessibilityLabel={`الشريحة ${current + 1} من ${SLIDES.length}`}
+          accessibilityLabel={t("onboarding.slideProgress", { n: current + 1, total: SLIDES.length })}
           accessibilityValue={{ min: 0, max: SLIDES.length - 1, now: current }}
         >
           {SLIDES.map((s, i) => (
@@ -482,12 +484,12 @@ export default function OnboardingScreen() {
                 weight="extrabold"
                 style={{ color: theme.colors.brand.strong, letterSpacing: 0.3 }}
               >
-                {slide.eyebrow}
+                {t(slide.eyebrowKey)}
               </Text>
             </View>
 
             {/* Title */}
-            <Text style={styles.title}>{slide.title}</Text>
+            <Text style={styles.title}>{t(slide.titleKey)}</Text>
 
             {/* Body */}
             <Text
@@ -496,7 +498,7 @@ export default function OnboardingScreen() {
               align="center"
               style={{ lineHeight: 29 }}
             >
-              {slide.body}
+              {t(slide.bodyKey)}
             </Text>
           </Animated.View>
         </View>
@@ -508,10 +510,10 @@ export default function OnboardingScreen() {
               onPress={finish}
               hitSlop={12}
               accessibilityRole="button"
-              accessibilityLabel="تخطى الإعداد التمهيدي"
+              accessibilityLabel={t("onboarding.skipLabel")}
             >
               <Text variant="caption" color="tertiary" style={{ letterSpacing: 0.3 }}>
-                تخطى
+                {t("onboarding.skip")}
               </Text>
             </Pressable>
           ) : (
@@ -522,11 +524,11 @@ export default function OnboardingScreen() {
             <Pressable
               onPress={goNext}
               accessibilityRole="button"
-              accessibilityLabel={isLast ? "ابدأ الآن" : "التالي"}
+              accessibilityLabel={isLast ? t("onboarding.start") : t("onboarding.next")}
               style={({ pressed }) => [styles.cta, pressed && { opacity: 0.88 }]}
             >
               <Text variant="body" weight="extrabold" style={{ color: "#fff" }}>
-                {isLast ? "ابدأ الآن" : "التالي"}
+                {isLast ? t("onboarding.start") : t("onboarding.next")}
               </Text>
               <View style={styles.ctaIconWrap}>
                 <Ionicons

@@ -43,6 +43,7 @@ import Animated, {
   type SharedValue,
 } from "react-native-reanimated";
 import { onlineManager } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { theme } from "@/theme";
 import { Text } from "@/shared/ui";
 import { recordDuration, addBreadcrumb } from "@/features/observability";
@@ -72,6 +73,7 @@ const ICONS: IconSpec[] = [
 ];
 
 export function SplashOverlay(): React.ReactElement | null {
+  const { t }               = useTranslation();
   const [render, setRender] = useState(!alreadyShown);
   const [offline]           = useState(() => !onlineManager.isOnline());
 
@@ -214,7 +216,7 @@ export function SplashOverlay(): React.ReactElement | null {
             align="center"
             style={{ letterSpacing: 1.4 }}
           >
-            {offline ? "وضع غير متصل" : "مرحباً بك في"}
+            {offline ? t("splash.offline") : t("splash.welcome")}
           </Text>
         </Animated.View>
 
@@ -229,7 +231,7 @@ export function SplashOverlay(): React.ReactElement | null {
 
         <Animated.View style={titleAnim}>
           <Text variant="screen-title" align="center" style={{ marginTop: theme.spacing[1] }}>
-            صيدلية المتحدة
+            {t("splash.appName")}
           </Text>
           <Text
             variant="caption"

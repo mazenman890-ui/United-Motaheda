@@ -11,6 +11,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
+import { useAppLanguage } from "@/i18n/LanguageProvider";
 import { useAuth } from "@/features/auth";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
@@ -26,44 +28,47 @@ import { useOrders } from "../hooks/useOrders";
 const STATUS_META: Record<
   OrderStatus,
   {
-    label:   string;
-    variant: "success" | "warning" | "brand" | "error" | "neutral";
-    icon:    React.ComponentProps<typeof Ionicons>["name"];
+    labelKey: string;
+    variant:  "success" | "warning" | "brand" | "error" | "neutral";
+    icon:     React.ComponentProps<typeof Ionicons>["name"];
   }
 > = {
-  pending:         { label: "قيد المعالجة",        variant: "warning", icon: "time-outline"             },
-  pending_payment: { label: "بانتظار الدفع",        variant: "warning", icon: "card-outline"             },
-  processing:      { label: "جارٍ التجهيز",         variant: "brand",   icon: "refresh-outline"          },
-  shipped:         { label: "في الطريق",            variant: "brand",   icon: "car-outline"              },
-  delivered:       { label: "تم التسليم",           variant: "success", icon: "checkmark-circle-outline" },
-  cancelled:       { label: "ملغي",                 variant: "error",   icon: "close-circle-outline"     },
+  pending:         { labelKey: "orders.pending",    variant: "warning", icon: "time-outline"             },
+  pending_payment: { labelKey: "orders.pendingPayment", variant: "warning", icon: "card-outline"         },
+  processing:      { labelKey: "orders.processing", variant: "brand",   icon: "refresh-outline"          },
+  shipped:         { labelKey: "orders.shipped",    variant: "brand",   icon: "car-outline"              },
+  delivered:       { labelKey: "orders.delivered",  variant: "success", icon: "checkmark-circle-outline" },
+  cancelled:       { labelKey: "orders.cancelled",  variant: "error",   icon: "close-circle-outline"     },
 };
 
 // ─── Payment status helpers ───────────────────────────────────────────────────
 
-function paymentStatusMeta(paymentStatus: string): {
+function paymentStatusMeta(
+  paymentStatus: string,
+  t: (k: string) => string,
+): {
   label: string;
   color: string;
   bg:    string;
 } {
   switch (paymentStatus) {
     case "pending_verification":
-      return { label: "بانتظار التحقق", color: theme.colors.amber[700], bg: theme.colors.amber[50] };
+      return { label: t("orders.paymentPendingVerification"), color: theme.colors.amber[700], bg: theme.colors.amber[50] };
     case "verified":
     case "paid":
-      return { label: "تم الدفع",       color: theme.colors.green[700], bg: theme.colors.green[50] };
+      return { label: t("orders.paymentVerified"),            color: theme.colors.green[700], bg: theme.colors.green[50] };
     case "failed":
-      return { label: "فشل الدفع",      color: theme.colors.red[700],   bg: theme.colors.red[50] };
+      return { label: t("orders.paymentFailed"),              color: theme.colors.red[700],   bg: theme.colors.red[50] };
     default:
-      return { label: "",               color: "",                       bg: "" };
+      return { label: "",                                      color: "",                       bg: "" };
   }
 }
 
 // ─── Date formatting ──────────────────────────────────────────────────────────
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, language: string): string {
   try {
-    return new Date(iso).toLocaleDateString("ar-EG", {
+    return new Date(iso).toLocaleDateString(language === "en" ? "en-US" : "ar-EG", {
       day:   "numeric",
       month: "long",
       year:  "numeric",
@@ -112,11 +117,13 @@ const OrderCard = memo(function OrderCard({
   index:   number;
   onPress: (id: string) => void;
 }): React.ReactElement {
+  const { t }          = useTranslation();
+  const { language }   = useAppLanguage();
   const meta       = STATUS_META[order.status] ?? STATUS_META.pending;
   const firstItem  = order.items[0];
   const extraCount = order.items.length - 1;
   const shortId    = order.id.slice(-8).toUpperCase();
-  const pmStatus   = paymentStatusMeta(order.paymentStatus ?? "");
+  const pmStatus   = paymentStatusMeta(order.paymentStatus ?? "", t);
 
   return (
     <Animated.View
@@ -132,7 +139,7 @@ const OrderCard = memo(function OrderCard({
         ]}
         onPress={() => onPress(order.id)}
         accessibilityRole="button"
-        accessibilityLabel={`طلب رقم ${shortId}`}>
+        accessibilityLabel={`${t("orders.orderLabel")} ${shortId}`}>
 
         {/* ── Header ────────────────────────────────────────────────────── */}
         <View style={styles.cardHeader}>
@@ -141,17 +148,17 @@ const OrderCard = memo(function OrderCard({
               <Ionicons name="bag-outline" size={16} color={theme.colors.brand[700]} />
             </View>
             <View>
-              <UIText variant="eyebrow" color="tertiary" align="right">رقم الطلب</UIText>
+              <UIText variant="eyebrow" color="tertiary" align="right">{t("orders.orderLabel")}</UIText>
               <UIText variant="card-title" align="right" style={styles.orderIdText}>
                 #{shortId}
               </UIText>
               <UIText variant="caption" color="muted" align="right" style={styles.orderDateText}>
-                {formatDate(order.createdAt)}
+                {formatDate(order.createdAt, language)}
               </UIText>
             </View>
           </View>
           <View style={styles.badgeStack}>
-            <Badge variant={meta.variant} size="sm">{meta.label}</Badge>
+            <Badge variant={meta.variant} size="sm">{t(meta.labelKey)}</Badge>
             {pmStatus.label ? (
               <View style={[styles.pmBadge, { backgroundColor: pmStatus.bg }]}>
                 <UIText variant="eyebrow" style={{ color: pmStatus.color }}>
@@ -185,16 +192,16 @@ const OrderCard = memo(function OrderCard({
               weight="bold"
               align="right"
               numberOfLines={1}>
-              {firstItem?.name || "منتج"}
+              {firstItem?.name || t("orders.noItems")}
             </UIText>
             {order.items.length > 1 && (
               <UIText variant="caption" color="tertiary" align="right">
-                +{extraCount} منتجات أخرى
+                {t("orders.moreItems", { count: extraCount })}
               </UIText>
             )}
             {order.items.length === 0 && (
               <UIText variant="caption" color="muted" align="right">
-                {order.items.length === 0 ? "لا توجد منتجات" : ""}
+                {t("orders.noItems")}
               </UIText>
             )}
           </View>
@@ -208,7 +215,7 @@ const OrderCard = memo(function OrderCard({
 
         {/* ── Footer ────────────────────────────────────────────────────── */}
         <View style={styles.cardFooter}>
-          <UIText variant="body-sm" color="secondary">الإجمالي</UIText>
+          <UIText variant="body-sm" color="secondary">{t("orders.total")}</UIText>
           <UIText
             variant="card-title"
             weight="black"
@@ -233,6 +240,7 @@ export function OrdersScreen({
 }: OrdersScreenProps): React.ReactElement {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t }  = useTranslation();
   const { user } = useAuth();
 
   const {
@@ -252,7 +260,7 @@ export function OrdersScreen({
 
   return (
     <View style={styles.screen}>
-      <AppHeader title="طلباتي" showBack={showBack} />
+      <AppHeader title={t("orders.title")} showBack={showBack} />
 
       {isLoading ? (
         <View style={[styles.list, { paddingBottom: insets.bottom + 24, gap: 12 }]}>
@@ -261,9 +269,9 @@ export function OrdersScreen({
       ) : isSuccess && orders.length === 0 ? (
         <EmptyState
           icon="bag-outline"
-          title="لا توجد طلبات بعد"
-          description="لم تقم بأي طلب حتى الآن. تصفح منتجاتنا وابدأ التسوق"
-          actionLabel="تسوق الآن"
+          title={t("orders.empty")}
+          description={t("orders.emptyDescription")}
+          actionLabel={t("common.shopNow")}
           onAction={() => router.push("/(tabs)/products")}
         />
       ) : (
@@ -286,13 +294,13 @@ export function OrdersScreen({
           ListHeaderComponent={
             <View style={styles.listHeader}>
               <UIText variant="eyebrow" color="tertiary" align="right">
-                سجل الطلبات
+                {t("orders.eyebrow")}
               </UIText>
               <UIText
                 variant="card-title"
                 align="right"
                 style={styles.listHeaderTitle}>
-                {orders.length} طلب
+                {t("orders.countOrders", { count: orders.length })}
               </UIText>
             </View>
           }

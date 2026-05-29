@@ -7,12 +7,9 @@
  * is the source of truth.
  *
  * Redemption flow:
- *   1. Tap "استبدل" على هدية.
- *   2. Sheet يطلب عنوان توصيل كامل (اختيار عنوان محفوظ أو إدخال عنوان جديد).
- *   3. يتم إرسال الطلب (أو إضافته لقائمة الإرسال عند عدم توفر اتصال).
- *
- * Follows the same skeleton / empty / error / accessibility patterns as
- * LoyaltyWalletScreen.
+ *   1. Tap redeem on a gift.
+ *   2. Sheet requests full delivery address (saved or new).
+ *   3. Request is sent (or queued when offline).
  */
 
 import React, { useCallback, useState } from "react";
@@ -29,6 +26,7 @@ import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
 import { theme } from "@/theme";
 import { useScreenTrace } from "@/features/observability";
 import { SubScreenHeader } from "../components/SubScreenHeader";
@@ -39,6 +37,8 @@ import { GiftAddressSheet } from "../components/GiftAddressSheet";
 import type { GiftCatalogItem, GiftInventory, RedemptionAddress } from "../types";
 import { showErrorSheet, showSuccessSheet } from "@/shared/store/appSheetStore";
 
+type TFunc = ReturnType<typeof useTranslation>["t"];
+
 interface CatalogEntry extends GiftCatalogItem {
   inventory?: GiftInventory;
 }
@@ -46,6 +46,7 @@ interface CatalogEntry extends GiftCatalogItem {
 export function GiftCatalogScreen() {
   useScreenTrace("loyalty-gifts");
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   const balance = useLoyaltyBalance();
   const gifts   = useGiftCatalog();
@@ -70,38 +71,42 @@ export function GiftCatalogScreen() {
       const currentBalance = balance.data?.balance ?? 0;
       if (currentBalance < gift.points_cost) {
         showErrorSheet(
-          "نقاط غير كافية",
-          `تحتاج ${gift.points_cost.toLocaleString("ar-EG")} نقطة لاستبدال "${gift.name}". رصيدك الحالي ${currentBalance.toLocaleString("ar-EG")}.`,
+          t("loyalty.insufficientPointsTitle"),
+          t("loyalty.giftInsufficientBody", {
+            cost:    gift.points_cost.toLocaleString("ar-EG"),
+            name:    gift.name,
+            balance: currentBalance.toLocaleString("ar-EG"),
+          }),
         );
         return;
       }
       setActiveGift(gift);
       setSheetVisible(true);
     },
-    [balance.data],
+    [balance.data, t],
   );
 
-  // Clear in-flight flag + show error alert on settle.
+  // Clear in-flight flag + show error/success alert on settle.
   React.useEffect(() => {
     if (!redeem.isPending && redeemingGiftId !== null) {
       setRedeemingGiftId(null);
       if (redeem.isError && redeem.error) {
-        showErrorSheet("تعذر الاستبدال", decodeRedeemError(redeem.error));
+        showErrorSheet(t("loyalty.redeemErrorTitle"), decodeRedeemError(redeem.error, t));
         redeem.reset();
       } else if (redeem.isSuccess && redeem.data) {
         showSuccessSheet(
-          "تم الاستبدال 🎁",
-          `تم حجز هديتك. سيتم التواصل معك خلال 14 يوماً.\nرصيدك الجديد: ${redeem.data.balance.toLocaleString("ar-EG")} نقطة.`,
+          t("loyalty.giftRedeemSuccessTitle"),
+          t("loyalty.giftRedeemSuccessBody", { balance: redeem.data.balance.toLocaleString("ar-EG") }),
         );
         redeem.reset();
         setSheetVisible(false);
         setActiveGift(null);
       }
     }
-  }, [redeem.isPending, redeem.isError, redeem.error, redeem.isSuccess, redeem.data, redeemingGiftId, redeem.reset]);
+  }, [redeem.isPending, redeem.isError, redeem.error, redeem.isSuccess, redeem.data, redeemingGiftId, redeem.reset, t]);
 
   const closeSheet = useCallback(() => {
-    if (redeem.isPending) return; // prevent mid-flight cancellation
+    if (redeem.isPending) return;
     setSheetVisible(false);
     setActiveGift(null);
   }, [redeem.isPending]);
@@ -115,16 +120,16 @@ export function GiftCatalogScreen() {
       setSheetVisible(false);
       setActiveGift(null);
       showSuccessSheet(
-        "تمت إضافة الطلب ✓",
-        "لا يوجد اتصال بالإنترنت حالياً. تم حفظ طلب الاستبدال وسيتم إرساله تلقائياً عند عودة الاتصال.",
+        t("loyalty.giftQueuedTitle"),
+        t("loyalty.giftQueuedBody"),
       );
     }
-  }, [activeGift, redeem]);
+  }, [activeGift, redeem, t]);
 
   if (gifts.isLoading) {
     return (
       <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-        <SubScreenHeader title="كتالوج الهدايا" subtitle="استبدل نقاطك بهدايا مميزة" />
+        <SubScreenHeader title={t("loyalty.giftCatalogTitle")} subtitle={t("loyalty.giftCatalogSubtitle")} />
         <ScrollView contentContainerStyle={{ padding: 16 }}>
           <ListSkeleton rows={3} />
         </ScrollView>
@@ -135,7 +140,7 @@ export function GiftCatalogScreen() {
   if (gifts.isError) {
     return (
       <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-        <SubScreenHeader title="كتالوج الهدايا" subtitle="استبدل نقاطك بهدايا مميزة" />
+        <SubScreenHeader title={t("loyalty.giftCatalogTitle")} subtitle={t("loyalty.giftCatalogSubtitle")} />
         <ErrorPanel onRetry={() => void gifts.refetch()} />
       </View>
     );
@@ -145,7 +150,7 @@ export function GiftCatalogScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-      <SubScreenHeader title="كتالوج الهدايا" subtitle="استبدل نقاطك بهدايا مميزة" />
+      <SubScreenHeader title={t("loyalty.giftCatalogTitle")} subtitle={t("loyalty.giftCatalogSubtitle")} />
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 32, paddingHorizontal: 16 }}
         refreshControl={
@@ -153,17 +158,17 @@ export function GiftCatalogScreen() {
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={theme.colors.brand[600]}
-            accessibilityLabel="تحديث الكتالوج"
+            accessibilityLabel={t("loyalty.giftCatalogRefreshA11y")}
           />
         }
         showsVerticalScrollIndicator={false}
       >
         {balance.data && (
           <View style={styles.balanceChip} accessibilityRole="text"
-                accessibilityLabel={`رصيد النقاط ${balance.data.balance} نقطة`}>
+                accessibilityLabel={t("loyalty.balanceA11y", { n: balance.data.balance })}>
             <Ionicons name="star" size={14} color={theme.colors.brand[700]} />
             <Text style={styles.balanceText} maxFontSizeMultiplier={1.3}>
-              رصيدك: {balance.data.balance.toLocaleString("ar-EG")} نقطة
+              {t("loyalty.balanceChipText", { n: balance.data.balance.toLocaleString("ar-EG") })}
             </Text>
           </View>
         )}
@@ -172,7 +177,7 @@ export function GiftCatalogScreen() {
           <View style={{ paddingTop: 60 }}>
             <EmptyRow
               icon="gift-outline"
-              message="لا توجد هدايا متاحة حالياً. تحقق مرة أخرى قريباً."
+              message={t("loyalty.giftCatalogEmpty")}
             />
           </View>
         ) : (
@@ -210,6 +215,7 @@ interface GiftRowProps {
 }
 
 function GiftRow({ gift, currentBalance, isRedeeming, onRedeem }: GiftRowProps) {
+  const { t } = useTranslation();
   const available =
     gift.inventory
       ? Math.max(gift.inventory.total_stock - gift.inventory.reserved - gift.inventory.fulfilled, 0)
@@ -221,7 +227,7 @@ function GiftRow({ gift, currentBalance, isRedeeming, onRedeem }: GiftRowProps) 
 
   return (
     <View style={styles.giftCard} accessibilityRole="text"
-          accessibilityLabel={`${gift.name}, ${gift.points_cost} نقطة`}>
+          accessibilityLabel={t("loyalty.giftA11y", { name: gift.name, points: gift.points_cost.toLocaleString("ar-EG") })}>
       <View style={styles.giftThumb}>
         {gift.image_url ? (
           <Image
@@ -236,13 +242,13 @@ function GiftRow({ gift, currentBalance, isRedeeming, onRedeem }: GiftRowProps) 
         {lowStock && (
           <View style={styles.stockPill}>
             <Text style={styles.stockPillText} maxFontSizeMultiplier={1.2}>
-              متبقي {available}
+              {t("loyalty.giftStockRemaining", { n: available })}
             </Text>
           </View>
         )}
         {soldOut && (
           <View style={styles.oosOverlay}>
-            <Text style={styles.oosText} maxFontSizeMultiplier={1.2}>نفذ</Text>
+            <Text style={styles.oosText} maxFontSizeMultiplier={1.2}>{t("loyalty.giftSoldOutPill")}</Text>
           </View>
         )}
       </View>
@@ -267,7 +273,7 @@ function GiftRow({ gift, currentBalance, isRedeeming, onRedeem }: GiftRowProps) 
             onPress={onRedeem}
             disabled={disabled}
             accessibilityRole="button"
-            accessibilityLabel={`استبدال ${gift.name} بـ ${gift.points_cost} نقطة`}
+            accessibilityLabel={t("loyalty.redeemBtnA11y", { name: gift.name, cost: gift.points_cost.toLocaleString("ar-EG") })}
             accessibilityState={{ disabled, busy: isRedeeming }}
             style={({ pressed }) => [
               styles.redeemBtn,
@@ -284,7 +290,13 @@ function GiftRow({ gift, currentBalance, isRedeeming, onRedeem }: GiftRowProps) 
               ]}
               maxFontSizeMultiplier={1.2}
             >
-              {isRedeeming ? "جارٍ…" : soldOut ? "نفذ" : !canAfford ? "غير كافٍ" : "استبدل"}
+              {isRedeeming
+                ? t("loyalty.redeemLoading")
+                : soldOut
+                ? t("loyalty.giftRedeemSoldOut")
+                : !canAfford
+                ? t("loyalty.giftRedeemInsufficient")
+                : t("loyalty.giftRedeem")}
             </Text>
           </Pressable>
         </View>
@@ -296,10 +308,11 @@ function GiftRow({ gift, currentBalance, isRedeeming, onRedeem }: GiftRowProps) 
 // ─── Shared sub-views ───────────────────────────────────────────────────────
 
 function ListSkeleton({ rows }: { rows: number }) {
+  const { t } = useTranslation();
   return (
     <View>
       {Array.from({ length: rows }).map((_, i) => (
-        <View key={i} style={[styles.giftCard, styles.skeletonRow]} accessibilityLabel="جارٍ التحميل" />
+        <View key={i} style={[styles.giftCard, styles.skeletonRow]} accessibilityLabel={t("common.loading")} />
       ))}
     </View>
   );
@@ -315,34 +328,35 @@ function EmptyRow({ icon, message }: { icon: React.ComponentProps<typeof Ionicon
 }
 
 function ErrorPanel({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.errorPanel}>
       <Ionicons name="cloud-offline-outline" size={36} color={theme.colors.slate[400]} />
-      <Text style={styles.errorTitle} maxFontSizeMultiplier={1.4}>تعذر تحميل الكتالوج</Text>
+      <Text style={styles.errorTitle} maxFontSizeMultiplier={1.4}>{t("loyalty.giftCatalogErrorTitle")}</Text>
       <Text style={styles.errorBody} maxFontSizeMultiplier={1.5}>
-        تحقق من اتصالك وحاول مرة أخرى.
+        {t("loyalty.giftCatalogErrorBody")}
       </Text>
       <Pressable
         onPress={onRetry}
         accessibilityRole="button"
-        accessibilityLabel="إعادة المحاولة"
+        accessibilityLabel={t("common.retry")}
         style={({ pressed }) => [styles.primaryBtn, pressed && { opacity: 0.9 }]}
       >
         <Ionicons name="refresh" size={14} color="#fff" />
-        <Text style={styles.primaryBtnText}>إعادة المحاولة</Text>
+        <Text style={styles.primaryBtnText}>{t("common.retry")}</Text>
       </Pressable>
     </View>
   );
 }
 
-function decodeRedeemError(error: Error): string {
+function decodeRedeemError(error: Error, t: TFunc): string {
   const m = error.message ?? "";
-  if (m.includes("insufficient_balance")) return "نقاط غير كافية لاستبدال هذه الهدية.";
-  if (m.includes("out_of_stock"))         return "نفذت الكمية من هذه الهدية.";
-  if (m.includes("gift_not_available"))   return "هذه الهدية غير متاحة الآن.";
-  if (m.includes("account_frozen"))       return "حسابك مجمَّد مؤقتاً — تواصل مع الدعم.";
-  if (m.includes("not_authenticated"))    return "يرجى تسجيل الدخول أولاً.";
-  return "تعذر إتمام الاستبدال. حاول مرة أخرى.";
+  if (m.includes("insufficient_balance")) return t("loyalty.redeemErrorInsufficientBalance");
+  if (m.includes("out_of_stock"))         return t("loyalty.giftRedeemErrorOutOfStock");
+  if (m.includes("gift_not_available"))   return t("loyalty.giftRedeemErrorNotAvailable");
+  if (m.includes("account_frozen"))       return t("loyalty.redeemErrorAccountFrozen");
+  if (m.includes("not_authenticated"))    return t("loyalty.redeemErrorNotAuthenticated");
+  return t("loyalty.redeemErrorDefault");
 }
 
 // ─── Styles ─────────────────────────────────────────────────────────────────

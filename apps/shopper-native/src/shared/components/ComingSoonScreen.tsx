@@ -10,6 +10,7 @@
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { AppHeader } from "./AppHeader";
 import { Text } from "@/shared/ui";
 import { theme } from "@/theme";
@@ -25,6 +26,7 @@ export function ComingSoonScreen({
   subtitle,
   icon = "construct-outline",
 }: ComingSoonScreenProps): React.ReactElement {
+  const { t } = useTranslation();
   return (
     <View style={styles.screen}>
       <AppHeader title={title} showBack />
@@ -32,7 +34,7 @@ export function ComingSoonScreen({
         <View style={styles.iconWrap}>
           <Ionicons name={icon} size={32} color={theme.colors.brand.base} />
         </View>
-        <Text variant="eyebrow" color="brand">قريباً</Text>
+        <Text variant="eyebrow" color="brand">{t("common.comingSoon")}</Text>
         <Text variant="sheet-title" align="center">{title}</Text>
         {subtitle && (
           <Text variant="body" color="secondary" align="center">

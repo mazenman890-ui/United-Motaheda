@@ -14,6 +14,7 @@
 import React from "react";
 import { View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { theme } from "@/theme";
 import { Card, Text } from "@/shared/ui";
 import { Button } from "@/components/ui/Button";
@@ -45,7 +46,7 @@ const SEVERITY_CONFIG: Record<InteractionSeverity, {
   bannerFg: string;
   pinBg:    string;
   badge:    "neutral" | "warning" | "error";
-  label:    string;
+  labelKey: string;
   accent:   string;
 }> = {
   mild: {
@@ -53,7 +54,7 @@ const SEVERITY_CONFIG: Record<InteractionSeverity, {
     bannerFg: theme.colors.warning.text,
     pinBg:    theme.colors.warning.base,
     badge:    "neutral",
-    label:    "خفيف",
+    labelKey: "interaction.severity.mild",
     accent:   theme.colors.warning.base,
   },
   moderate: {
@@ -61,7 +62,7 @@ const SEVERITY_CONFIG: Record<InteractionSeverity, {
     bannerFg: theme.colors.warning.text,
     pinBg:    theme.colors.warning.base,
     badge:    "warning",
-    label:    "متوسط",
+    labelKey: "interaction.severity.moderate",
     accent:   theme.colors.warning.base,
   },
   severe: {
@@ -69,12 +70,13 @@ const SEVERITY_CONFIG: Record<InteractionSeverity, {
     bannerFg: theme.colors.error.text,
     pinBg:    theme.colors.error.base,
     badge:    "error",
-    label:    "شديد",
+    labelKey: "interaction.severity.severe",
     accent:   theme.colors.error.base,
   },
 };
 
 function DrugPip({ drug }: { drug: DrugRef }): React.ReactElement {
+  const { t } = useTranslation();
   return (
     <View style={{ flex: 1, alignItems: "center" }}>
       <View style={{
@@ -89,7 +91,7 @@ function DrugPip({ drug }: { drug: DrugRef }): React.ReactElement {
       {drug.dose && <Text variant="eyebrow" color="tertiary" align="center">{drug.dose}</Text>}
       {drug.status && (
         <Text variant="eyebrow" color="tertiary" align="center" style={{ marginTop: 2 }}>
-          {drug.status === "current" ? "حالي" : "جديد"}
+          {drug.status === "current" ? t("interaction.drugCurrent") : t("interaction.drugNew")}
         </Text>
       )}
     </View>
@@ -108,6 +110,7 @@ export function InteractionBanner({
   onCancel,
   variant = "card",
 }: InteractionBannerProps): React.ReactElement {
+  const { t } = useTranslation();
   const cfg = SEVERITY_CONFIG[severity];
 
   return (
@@ -130,13 +133,13 @@ export function InteractionBanner({
         </View>
         <View style={{ flex: 1 }}>
           <Text variant="caption" weight="extrabold" align="right" style={{ color: cfg.bannerFg }}>
-            تم رصد تفاعل دوائي
+            {t("interaction.detected")}
           </Text>
           <Text variant="eyebrow" color="secondary" align="right" style={{ marginTop: 1 }}>
-            راجعنا أدويتك الفعّالة قبل الإضافة
+            {t("interaction.checkMeds")}
           </Text>
         </View>
-        <Badge variant={cfg.badge} size="md">{cfg.label}</Badge>
+        <Badge variant={cfg.badge} size="md">{t(cfg.labelKey)}</Badge>
       </View>
 
       <View style={{ padding: theme.spacing[2] }}>
@@ -162,7 +165,7 @@ export function InteractionBanner({
         {watchFor && watchFor.length > 0 && (
           <View style={{ marginTop: theme.spacing[1.5], gap: theme.spacing[1] }}>
             <Text variant="eyebrow" color="tertiary" align="right">
-              ما يجب الانتباه له
+              {t("interaction.watchFor")}
             </Text>
             {watchFor.map((w) => (
               <View key={w} style={{ flexDirection: "row-reverse", alignItems: "center", gap: theme.spacing[1] }}>
@@ -181,18 +184,18 @@ export function InteractionBanner({
                 fullWidth
                 leftIcon={<Ionicons name="chatbox" size={16} color="#fff" />}
                 onPress={onAskPharmacist}>
-                اسأل الصيدلي · مجاناً
+                {t("interaction.askPharmacist")}
               </Button>
             )}
             <View style={{ flexDirection: "row-reverse", gap: theme.spacing[1] }}>
               {onCancel && (
                 <View style={{ flex: 1 }}>
-                  <Button variant="outline" fullWidth onPress={onCancel}>إلغاء</Button>
+                  <Button variant="outline" fullWidth onPress={onCancel}>{t("interaction.cancel")}</Button>
                 </View>
               )}
               {onProceed && (
                 <View style={{ flex: 1 }}>
-                  <Button variant="dark" fullWidth onPress={onProceed}>إضافة بأي حال</Button>
+                  <Button variant="dark" fullWidth onPress={onProceed}>{t("interaction.addAnyway")}</Button>
                 </View>
               )}
             </View>

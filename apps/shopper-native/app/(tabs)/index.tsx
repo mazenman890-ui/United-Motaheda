@@ -39,9 +39,10 @@ import Animated, {
 import {
   fetchCategories,
   fetchFeaturedProducts,
+  fetchProductsPage,
   type NativeProduct,
   type NativeCategory,
-} from "@/services/productsApi";
+} from "@/features/products";
 import { CategoryCard } from "@/components/CategoryCard";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductCardSkeleton, CategoryCardSkeleton } from "@/components/ui/Skeleton";
@@ -51,6 +52,7 @@ import { useCartStore } from "@/stores/cart";
 import { useAuth } from "@/features/auth";
 import { AppLogo } from "@/shared/components/AppLogo";
 import { useMountTiming } from "@/lib/devTiming";
+import { useTranslation } from "react-i18next";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -60,9 +62,9 @@ const PROMO_SLIDES = [
   {
     id:       "1",
     gradient: ["#021D2E", "#053348", "#0A4A65"] as [string, string, string],
-    tag:      "كود UNITED10",
-    title:    "خصم 10%\nعلى طلبك الأول",
-    sub:      "استخدم الكود عند إتمام الطلب",
+    tagKey:   "home.heroTag1",
+    titleKey: "home.heroTitle1",
+    subKey:   "home.heroSub1",
     icon:     "ticket"  as IoniconsName,
     accent:   "#0DB8A8",
     glowColor:"rgba(13,184,168,0.18)",
@@ -71,9 +73,9 @@ const PROMO_SLIDES = [
   {
     id:       "2",
     gradient: ["#064E3B", "#065C54", "#0A9A8C"] as [string, string, string],
-    tag:      "توصيل سريع  •  القاهرة",
-    title:    "خلال 30–60\nدقيقة",
-    sub:      "توصيل مجاني فوق 500 ج.م",
+    tagKey:   "home.heroTag2",
+    titleKey: "home.heroTitle2",
+    subKey:   "home.heroSub2",
     icon:     "bicycle" as IoniconsName,
     accent:   "#34D399",
     glowColor:"rgba(52,211,153,0.18)",
@@ -82,9 +84,9 @@ const PROMO_SLIDES = [
   {
     id:       "3",
     gradient: ["#3B0764", "#5B21B6", "#6D28D9"] as [string, string, string],
-    tag:      "برنامج الولاء",
-    title:    "اجمع نقاطك\nواستبدلها",
-    sub:      "1 نقطة عن كل 10 ج.م تنفقها",
+    tagKey:   "home.heroTag3",
+    titleKey: "home.heroTitle3",
+    subKey:   "home.heroSub3",
     icon:     "diamond" as IoniconsName,
     accent:   "#C084FC",
     glowColor:"rgba(192,132,252,0.18)",
@@ -98,6 +100,7 @@ const PromoCarousel = memo(function PromoCarousel({
   onSlidePress,
 }: { onSlidePress: (route: string) => void }) {
   const { width: screenW } = useWindowDimensions();
+  const { t }              = useTranslation();
   const listRef    = useRef<FlatList>(null);
   const [current, setCurrent] = useState(0);
   const currentRef = useRef(0);
@@ -155,7 +158,7 @@ const PromoCarousel = memo(function PromoCarousel({
                     <View style={promoStyles.tagRow}>
                       <View style={[promoStyles.tagPill, { backgroundColor: item.accent + "28", borderColor: item.accent + "50" }]}>
                         <UIText variant="eyebrow" style={{ color: item.accent, letterSpacing: 0.5 }}>
-                          {item.tag}
+                          {t(item.tagKey)}
                         </UIText>
                       </View>
                     </View>
@@ -164,14 +167,14 @@ const PromoCarousel = memo(function PromoCarousel({
                       color="inverse"
                       align="right"
                       style={[promoStyles.title, { letterSpacing: -0.6 }]}>
-                      {item.title}
+                      {t(item.titleKey)}
                     </UIText>
                     <UIText
                       variant="body-sm"
                       color="inverse-muted"
                       align="right"
                       style={promoStyles.sub}>
-                      {item.sub}
+                      {t(item.subKey)}
                     </UIText>
                   </View>
 
@@ -243,15 +246,15 @@ const CountdownUnit = memo(function CountdownUnit({
 // ─── Quick Actions ────────────────────────────────────────────────────────────
 
 const QUICK_ACTIONS: {
-  icon:  IoniconsName;
-  label: string;
-  grad:  [string, string];
-  route: string;
+  icon:     IoniconsName;
+  labelKey: string;
+  grad:     [string, string];
+  route:    string;
 }[] = [
-  { icon: "scan-outline",          label: "وصفة",     grad: ["#6D28D9", "#7C3AED"], route: "/(tabs)/search"   },
-  { icon: "leaf-outline",          label: "فيتامينات", grad: ["#065F46", "#059669"], route: "/(tabs)/products" },
-  { icon: "heart-circle-outline",  label: "الأم والطفل",grad: ["#9D174D", "#DB2777"], route: "/(tabs)/products" },
-  { icon: "pricetag-outline",      label: "العروض",   grad: ["#B45309", "#D97706"], route: "/(tabs)/search"   },
+  { icon: "scan-outline",         labelKey: "home.qaRx",       grad: ["#6D28D9", "#7C3AED"], route: "/(tabs)/search"   },
+  { icon: "leaf-outline",         labelKey: "home.qaVitamins", grad: ["#065F46", "#059669"], route: "/(tabs)/products" },
+  { icon: "heart-circle-outline", labelKey: "home.qaMomBaby",  grad: ["#9D174D", "#DB2777"], route: "/(tabs)/products" },
+  { icon: "pricetag-outline",     labelKey: "home.qaOffers",   grad: ["#B45309", "#D97706"], route: "/(tabs)/search"   },
 ];
 
 const QuickAction = memo(function QuickAction({
@@ -269,16 +272,17 @@ const QuickAction = memo(function QuickAction({
       onPressIn={handleIn}
       onPressOut={handleOut}
       style={{ flex: 1, alignItems: "center", gap: 8 }}>
-      <Animated.View style={[quickStyles.tile, anim]}>
+      {/* Shadow wrapper is separate from clip so Android elevation doesn't
+          hide font-based icons inside an overflow:hidden view */}
+      <Animated.View style={[quickStyles.shadow, anim]}>
         <LinearGradient
           colors={grad}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        {/* Glass shine */}
-        <View style={quickStyles.shine} />
-        <Ionicons name={icon} size={22} color="rgba(255,255,255,0.95)" />
+          style={quickStyles.tile}>
+          <View style={quickStyles.shine} />
+          <Ionicons name={icon} size={22} color="rgba(255,255,255,0.95)" />
+        </LinearGradient>
       </Animated.View>
       <UIText variant="caption" weight="bold" align="center" style={quickStyles.label}>
         {label}
@@ -299,6 +303,7 @@ const SectionHeader = memo(function SectionHeader({
   onMore?:  () => void;
   rightSlot?: React.ReactNode;
 }) {
+  const { t } = useTranslation();
   return (
     <View style={shStyles.row}>
       <View style={shStyles.left}>
@@ -322,7 +327,7 @@ const SectionHeader = memo(function SectionHeader({
       </View>
       {rightSlot ?? (onMore && (
         <Pressable onPress={onMore} style={shStyles.moreBtn} hitSlop={6}>
-          <UIText variant="caption" weight="bold" color="brand">عرض الكل</UIText>
+          <UIText variant="caption" weight="bold" color="brand">{t("home.viewAll")}</UIText>
           <Ionicons name="chevron-back" size={12} color={theme.colors.brand[700]} />
         </Pressable>
       ))}
@@ -337,7 +342,10 @@ const SALE_DISCOUNTS = [25, 15, 20, 30, 10, 20];
 const FlashSaleSection = memo(function FlashSaleSection({
   products,
   onProductPress,
-}: { products: NativeProduct[]; onProductPress: (id: string) => void }) {
+  onViewAll,
+}: { products: NativeProduct[]; onProductPress: (id: string) => void; onViewAll?: () => void }) {
+  const { t, i18n } = useTranslation();
+  const lang        = i18n.language === "en" ? "en" as const : "ar" as const;
   const { h, m, s } = useEndOfDayCountdown();
   const items       = products.slice(0, 6);
   if (items.length === 0) return null;
@@ -345,17 +353,18 @@ const FlashSaleSection = memo(function FlashSaleSection({
   return (
     <View style={{ gap: 16 }}>
       <SectionHeader
-        eyebrow="ينتهي في آخر اليوم"
-        title="عروض اليوم"
+        eyebrow={t("home.flashEnds")}
+        title={t("home.flashTitle")}
         icon="flash"
         accent="#EF4444"
+        onMore={onViewAll}
         rightSlot={
           <View style={cntStyles.timerRow}>
-            <CountdownUnit value={s} label="ث" grad={["#DC2626", "#EF4444"]} />
+            <CountdownUnit value={s} label={t("home.flashSec")} grad={["#DC2626", "#EF4444"]} />
             <Text style={cntStyles.colon}>:</Text>
-            <CountdownUnit value={m} label="د" grad={["#D97706", "#F59E0B"]} />
+            <CountdownUnit value={m} label={t("home.flashMin")} grad={["#D97706", "#F59E0B"]} />
             <Text style={cntStyles.colon}>:</Text>
-            <CountdownUnit value={h} label="س" grad={["#0891B2", "#0DB8A8"]} />
+            <CountdownUnit value={h} label={t("home.flashHrs")} grad={["#0891B2", "#0DB8A8"]} />
           </View>
         }
       />
@@ -371,6 +380,7 @@ const FlashSaleSection = memo(function FlashSaleSection({
           <View style={{ width: 162 }}>
             <ProductCard
               product={item}
+              lang={lang}
               badge="sale"
               discountPercent={SALE_DISCOUNTS[index % SALE_DISCOUNTS.length]}
               onPress={() => onProductPress(item.id)}
@@ -386,6 +396,8 @@ const FlashSaleSection = memo(function FlashSaleSection({
 
 export default function HomeScreen() {
   useMountTiming("HomeScreen");
+  const { t, i18n } = useTranslation();
+  const lang         = i18n.language === "en" ? "en" as const : "ar" as const;
   const router    = useRouter();
   const insets    = useSafeAreaInsets();
   const cartCount = useCartStore((s) => s.itemCount());
@@ -394,24 +406,38 @@ export default function HomeScreen() {
   const { data: categories = [], refetch: refCats, isLoading: catsLoading } =
     useQuery({ queryKey: ["categories"], queryFn: fetchCategories });
 
+  // Featured products — curated selection via dedicated RPC
   const { data: featured = [], refetch: refFeat, isLoading: featLoading, isRefetching } =
     useQuery({ queryKey: ["featured"], queryFn: () => fetchFeaturedProducts(12) });
 
+  // Flash-sale rail — cheapest in-stock products (distinct from featured)
+  const { data: flashPage, refetch: refFlash, isLoading: flashLoading } =
+    useQuery({
+      queryKey: ["flash-sale"],
+      queryFn:  () => fetchProductsPage({ sortBy: "price_asc", pageSize: 12, inStock: true }),
+    });
+  const flashProducts = flashPage?.products ?? [];
+
+  // Only show categories that actually have products (DB-driven counts)
+  const visibleCategories = categories.some(c => c.count > 0)
+    ? categories.filter(c => c.count > 0)
+    : categories; // seeds fallback — show all even if counts are 0
+
   const onRefresh = useCallback(async () => {
-    await Promise.all([refCats(), refFeat()]);
-  }, [refCats, refFeat]);
+    await Promise.all([refCats(), refFeat(), refFlash()]);
+  }, [refCats, refFeat, refFlash]);
 
   const renderCategory = useCallback(
     ({ item, index }: { item: NativeCategory; index: number }) => (
       <CategoryCard
         category={item}
         gradientIdx={index}
-        lang="ar"
+        lang={lang}
         variant="pill"
-        onPress={() => router.push({ pathname: "/category/[id]", params: { id: item.id } })}
+        onPress={() => router.push({ pathname: "/category/[id]", params: { id: item.id, nameEn: item.nameEn ?? "" } })}
       />
     ),
-    [router],
+    [router, lang],
   );
 
   const renderFeatured = useCallback(
@@ -419,16 +445,18 @@ export default function HomeScreen() {
       <View style={{ flex: 1 }}>
         <ProductCard
           product={item}
-          lang="ar"
+          lang={lang}
           badge={index === 0 ? "hot" : index === 2 ? "new" : undefined}
           onPress={() => router.push({ pathname: "/product/[id]", params: { id: item.id } })}
         />
       </View>
     ),
-    [router],
+    [router, lang],
   );
 
-  const greeting = user?.name ? `مرحباً، ${user.name.split(" ")[0]} 👋` : "مرحباً بك 👋";
+  const greeting = user?.name
+    ? t("home.greeting",      { name: user.name.split(" ")[0] })
+    : t("home.greetingGuest");
 
   // Pulsing beacon for hero
   const beaconScale = useSharedValue(1);
@@ -517,9 +545,11 @@ export default function HomeScreen() {
             <UIText variant="eyebrow" align="right" style={hStyles.greetingText}>
               {greeting}
             </UIText>
-            <Text style={hStyles.heroTitle}>{"ابحث عن\nدوائك بسهولة"}</Text>
+            <Text style={hStyles.heroTitle}>
+              {t("home.heroTaglineTitle")}
+            </Text>
             <Text style={hStyles.heroSub}>
-              توصيل خلال ٣٠–٦٠ دق  •  أدوية أصلية  •  القاهرة فقط
+              {t("home.heroTaglineSub")}
             </Text>
           </Animated.View>
 
@@ -529,13 +559,13 @@ export default function HomeScreen() {
               onPress={() => router.push("/(tabs)/search")}
               style={hStyles.searchBar}>
               <Ionicons name="search-outline" size={17} color="rgba(255,255,255,0.65)" />
-              <Text style={hStyles.searchPlaceholder}>ابحث عن دواء، كود، أو مستحضر…</Text>
+              <Text style={hStyles.searchPlaceholder}>{t("search.placeholder")}</Text>
               <LinearGradient
                 colors={["rgba(13,184,168,0.5)", "rgba(8,145,178,0.5)"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={hStyles.searchKbd}>
-                <Text style={hStyles.searchKbdText}>بحث</Text>
+                <Text style={hStyles.searchKbdText}>{t("tabs.search")}</Text>
               </LinearGradient>
             </Pressable>
           </Animated.View>
@@ -547,25 +577,25 @@ export default function HomeScreen() {
           style={hStyles.trustWrap}>
           <View style={hStyles.trustCard}>
             {([
-              { icon: "flash-outline"           as IoniconsName, label: "توصيل سريع",       grad: ["#D97706", "#F59E0B"] as [string, string] },
-              { icon: "shield-checkmark-outline" as IoniconsName, label: "أدوية أصلية",      grad: ["#059669", "#10B981"] as [string, string] },
-              { icon: "wallet-outline"           as IoniconsName, label: "دفع عند الاستلام", grad: ["#0891B2", "#0DB8A8"] as [string, string] },
-              { icon: "refresh-outline"          as IoniconsName, label: "إرجاع مضمون",      grad: ["#6D28D9", "#7C3AED"] as [string, string] },
-            ]).map((t, i, arr) => (
+              { icon: "flash-outline"           as IoniconsName, label: t("cart.fastDelivery"),    grad: ["#D97706", "#F59E0B"] as [string, string] },
+              { icon: "shield-checkmark-outline" as IoniconsName, label: t("home.origMedicines"),         grad: ["#059669", "#10B981"] as [string, string] },
+              { icon: "wallet-outline"           as IoniconsName, label: t("checkout.methodCodTitle"),     grad: ["#0891B2", "#0DB8A8"] as [string, string] },
+              { icon: "refresh-outline"          as IoniconsName, label: t("cart.guaranteedReturns"), grad: ["#6D28D9", "#7C3AED"] as [string, string] },
+            ]).map((b, i, arr) => (
               <View
-                key={t.label}
+                key={b.icon}
                 style={[
                   hStyles.trustCell,
                   i < arr.length - 1 && hStyles.trustDivider,
                 ]}>
                 <LinearGradient
-                  colors={t.grad}
+                  colors={b.grad}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={hStyles.trustIcon}>
-                  <Ionicons name={t.icon} size={13} color="#fff" />
+                  <Ionicons name={b.icon} size={13} color="#fff" />
                 </LinearGradient>
-                <UIText variant="eyebrow" align="center" style={hStyles.trustLabel}>{t.label}</UIText>
+                <UIText variant="eyebrow" align="center" style={hStyles.trustLabel}>{b.label}</UIText>
               </View>
             ))}
           </View>
@@ -588,16 +618,16 @@ export default function HomeScreen() {
           entering={FadeInDown.duration(420).delay(190)}
           style={hStyles.section}>
           <SectionHeader
-            eyebrow="مفضّلات سريعة"
-            title="تسوق بسرعة"
+            eyebrow={t("home.catalogEyebrow")}
+            title={t("home.quickSearch")}
             icon="apps-outline"
           />
           <View style={hStyles.quickRow}>
             {QUICK_ACTIONS.map((qa) => (
               <QuickAction
-                key={qa.label}
+                key={qa.labelKey}
                 icon={qa.icon}
-                label={qa.label}
+                label={t(qa.labelKey)}
                 grad={qa.grad}
                 onPress={() => {
                   if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
@@ -613,8 +643,8 @@ export default function HomeScreen() {
           entering={FadeInDown.duration(420).delay(230)}
           style={hStyles.section}>
           <SectionHeader
-            eyebrow="جميع الأقسام"
-            title="تسوق حسب القسم"
+            eyebrow={t("products.allProducts")}
+            title={t("search.categoriesTitle")}
             icon="grid-outline"
             onMore={() => router.push("/(tabs)/products")}
           />
@@ -629,7 +659,7 @@ export default function HomeScreen() {
             />
           ) : (
             <FlatList
-              data={categories}
+              data={visibleCategories}
               keyExtractor={(c) => c.id}
               horizontal inverted
               showsHorizontalScrollIndicator={false}
@@ -641,14 +671,15 @@ export default function HomeScreen() {
           )}
         </Animated.View>
 
-        {/* ── Flash Sale ───────────────────────────────────────────────── */}
-        {!featLoading && featured.length > 0 && (
+        {/* ── Flash Sale — cheapest in-stock products (distinct from featured) */}
+        {!flashLoading && flashProducts.length > 0 && (
           <Animated.View
             entering={FadeInDown.duration(420).delay(270)}
             style={hStyles.sectionTall}>
             <FlashSaleSection
-              products={featured}
+              products={flashProducts}
               onProductPress={(id) => router.push({ pathname: "/product/[id]", params: { id } })}
+              onViewAll={() => router.push("/deals" as any)}
             />
           </Animated.View>
         )}
@@ -658,11 +689,11 @@ export default function HomeScreen() {
           entering={FadeInDown.duration(420).delay(310)}
           style={hStyles.section}>
           <SectionHeader
-            eyebrow="موصى به من فريقنا الصيدلاني"
-            title="منتجات مميزة"
+            eyebrow={t("home.featuredEyebrow")}
+            title={t("home.featuredTitle")}
             icon="star-outline"
             accent={theme.colors.amber[700]}
-            onMore={() => router.push("/(tabs)/search")}
+            onMore={() => router.push("/featured" as any)}
           />
           {featLoading ? (
             <FlatList
@@ -711,11 +742,13 @@ export default function HomeScreen() {
               </LinearGradient>
               <View style={{ flex: 1 }}>
                 <UIText variant="eyebrow" align="right" style={{ color: "#5EEAD4", letterSpacing: 0.5 }}>
-                  دعم صيدلاني  •  ٢٤ ساعة
+                  {t("home.pharmacistCard")}
                 </UIText>
-                <Text style={hStyles.supportTitle}>تحتاج استشارة؟</Text>
+                <Text style={hStyles.supportTitle}>
+                  {t("home.needAdvice")}
+                </Text>
                 <Text style={hStyles.supportSub}>
-                  فريقنا الصيدلاني يردّ على واتساب خلال دقائق
+                  {t("home.pharmacistReply")}
                 </Text>
               </View>
             </View>
@@ -726,7 +759,9 @@ export default function HomeScreen() {
               }
               style={({ pressed }) => [hStyles.supportCTA, { opacity: pressed ? 0.92 : 1 }]}>
               <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
-              <Text style={hStyles.supportCTAText}>تواصل عبر واتساب</Text>
+              <Text style={hStyles.supportCTAText}>
+                {t("home.chatWhatsapp")}
+              </Text>
               <View style={hStyles.supportArrow}>
                 <Ionicons name="chevron-back" size={12} color="#64748B" />
               </View>
@@ -1176,6 +1211,16 @@ const shStyles = StyleSheet.create({
 
 // ── Quick actions ─────────────────────────────────────────────────────────────
 const quickStyles = StyleSheet.create({
+  // Outer animated wrapper — carries the shadow/elevation only (no overflow clip)
+  shadow: {
+    borderRadius:  20,
+    shadowColor:   "#000",
+    shadowOffset:  { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius:  10,
+    elevation:     5,
+  },
+  // Inner gradient container — clips to rounded corners
   tile: {
     width:          62,
     height:         62,
@@ -1183,11 +1228,6 @@ const quickStyles = StyleSheet.create({
     alignItems:     "center",
     justifyContent: "center",
     overflow:       "hidden",
-    shadowColor:    "#000",
-    shadowOffset:   { width: 0, height: 4 },
-    shadowOpacity:  0.22,
-    shadowRadius:   10,
-    elevation:      5,
   },
   shine: {
     position:        "absolute",

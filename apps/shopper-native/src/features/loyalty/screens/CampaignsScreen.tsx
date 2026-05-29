@@ -16,6 +16,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
 import { theme } from "@/theme";
 import { useScreenTrace } from "@/features/observability";
 import { SubScreenHeader } from "../components/SubScreenHeader";
@@ -25,6 +26,7 @@ import type { RewardCampaign } from "../types";
 export function CampaignsScreen() {
   useScreenTrace("loyalty-campaigns");
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   const campaigns = useActiveCampaigns();
 
@@ -38,10 +40,10 @@ export function CampaignsScreen() {
   if (campaigns.isLoading) {
     return (
       <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-        <SubScreenHeader title="الحملات والعروض" subtitle="عروض نشطة لمضاعفة نقاطك" />
+        <SubScreenHeader title={t("loyalty.campaignsTitle")} subtitle={t("loyalty.campaignsSubtitle")} />
         <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }}>
           {Array.from({ length: 3 }).map((_, i) => (
-            <View key={i} style={[styles.card, styles.skeletonCard]} accessibilityLabel="جارٍ التحميل" />
+            <View key={i} style={[styles.card, styles.skeletonCard]} accessibilityLabel={t("common.loading")} />
           ))}
         </ScrollView>
       </View>
@@ -51,18 +53,18 @@ export function CampaignsScreen() {
   if (campaigns.isError) {
     return (
       <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-        <SubScreenHeader title="الحملات والعروض" subtitle="عروض نشطة لمضاعفة نقاطك" />
+        <SubScreenHeader title={t("loyalty.campaignsTitle")} subtitle={t("loyalty.campaignsSubtitle")} />
         <View style={styles.centerPanel}>
           <Ionicons name="cloud-offline-outline" size={36} color={theme.colors.slate[400]} />
-          <Text style={styles.errorTitle} maxFontSizeMultiplier={1.4}>تعذر تحميل الحملات</Text>
+          <Text style={styles.errorTitle} maxFontSizeMultiplier={1.4}>{t("loyalty.campaignsErrorTitle")}</Text>
           <Pressable
             onPress={() => void campaigns.refetch()}
             accessibilityRole="button"
-            accessibilityLabel="إعادة المحاولة"
+            accessibilityLabel={t("common.retry")}
             style={({ pressed }) => [styles.primaryBtn, pressed && { opacity: 0.9 }]}
           >
             <Ionicons name="refresh" size={14} color="#fff" />
-            <Text style={styles.primaryBtnText}>إعادة المحاولة</Text>
+            <Text style={styles.primaryBtnText}>{t("common.retry")}</Text>
           </Pressable>
         </View>
       </View>
@@ -73,7 +75,7 @@ export function CampaignsScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-      <SubScreenHeader title="الحملات والعروض" subtitle="عروض نشطة لمضاعفة نقاطك" />
+      <SubScreenHeader title={t("loyalty.campaignsTitle")} subtitle={t("loyalty.campaignsSubtitle")} />
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 32 }}
         refreshControl={
@@ -81,7 +83,7 @@ export function CampaignsScreen() {
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor={theme.colors.brand[600]}
-            accessibilityLabel="تحديث الحملات"
+            accessibilityLabel={t("loyalty.campaignsRefreshA11y")}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -90,10 +92,10 @@ export function CampaignsScreen() {
           <View style={styles.centerPanel}>
             <Ionicons name="megaphone-outline" size={36} color={theme.colors.slate[300]} />
             <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
-              لا توجد حملات نشطة
+              {t("loyalty.campaignsEmpty")}
             </Text>
             <Text style={styles.emptyBody} maxFontSizeMultiplier={1.5}>
-              تابعنا لتكون أول من يعلم بالعروض القادمة.
+              {t("loyalty.campaignsEmptyBody")}
             </Text>
           </View>
         ) : (
@@ -109,13 +111,14 @@ export function CampaignsScreen() {
 // ─── Campaign card ───────────────────────────────────────────────────────────
 
 function CampaignCard({ campaign }: { campaign: RewardCampaign }) {
+  const { t } = useTranslation();
   const countdown = useCountdown(campaign.ends_at);
 
   return (
     <View
       style={styles.card}
       accessibilityRole="text"
-      accessibilityLabel={`${campaign.name}، مضاعف ${campaign.multiplier}×`}
+      accessibilityLabel={`${campaign.name}، ${t("loyalty.tierEarnMultiplier", { n: campaign.multiplier })}`}
     >
       <View style={styles.cardHead}>
         <View style={styles.multiplierBadge}>
@@ -141,7 +144,7 @@ function CampaignCard({ campaign }: { campaign: RewardCampaign }) {
           <View style={styles.metaChip}>
             <Ionicons name="cart-outline" size={12} color={theme.colors.text.tertiary} />
             <Text style={styles.metaText} maxFontSizeMultiplier={1.3}>
-              حد أدنى {(campaign.min_purchase_cents / 100).toLocaleString("ar-EG")} ج.م
+              {t("loyalty.minSpend", { amount: (campaign.min_purchase_cents / 100).toLocaleString("ar-EG") })}
             </Text>
           </View>
         )}
@@ -169,6 +172,7 @@ function CampaignCard({ campaign }: { campaign: RewardCampaign }) {
 // ─── Countdown hook ───────────────────────────────────────────────────────────
 
 function useCountdown(endsAt: string | null): string | null {
+  const { t } = useTranslation();
   const [label, setLabel] = useState<string | null>(null);
 
   useEffect(() => {
@@ -176,20 +180,20 @@ function useCountdown(endsAt: string | null): string | null {
     const tick = () => {
       const diff = new Date(endsAt).getTime() - Date.now();
       if (diff <= 0) {
-        setLabel("انتهت");
+        setLabel(t("loyalty.countdownEnded"));
         return;
       }
       const d = Math.floor(diff / 86_400_000);
       const h = Math.floor((diff % 86_400_000) / 3_600_000);
       const m = Math.floor((diff % 3_600_000) / 60_000);
-      if (d > 0)     setLabel(`ينتهي خلال ${d} يوم`);
-      else if (h > 0) setLabel(`ينتهي خلال ${h} ساعة`);
-      else            setLabel(`ينتهي خلال ${m} دقيقة`);
+      if (d > 0)      setLabel(t("loyalty.countdownDays",  { d }));
+      else if (h > 0) setLabel(t("loyalty.countdownHours", { h }));
+      else            setLabel(t("loyalty.countdownMins",  { m }));
     };
     tick();
     const id = setInterval(tick, 60_000);
     return () => clearInterval(id);
-  }, [endsAt]);
+  }, [endsAt, t]);
 
   return label;
 }
