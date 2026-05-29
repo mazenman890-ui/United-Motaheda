@@ -1,20 +1,16 @@
 /**
- * Checkout API service — ported from shopper-web's shopperCheckoutApi.ts.
+ * Checkout API service — uses the shared Railway backend.
  *
- * Differences from web:
- *  - Uses the shared @/lib/supabase client (RN async-storage backed).
- *  - Network error patterns expanded for RN's fetch failure messages
- *    ("Network request failed" in addition to "Failed to fetch").
- *  - Persistence payload bridge is omitted — order syncing belongs to
- *    a separate orders feature (next phase).
+ * Both the web and the native app now call the same Railway /orders endpoint,
+ * guaranteeing consistent order creation, delivery fee calculation, and
+ * zone validation across platforms.
+ *
+ * Fallback: if Railway is unreachable we re-throw a typed CheckoutRequestError
+ * so the AppSheet can show an actionable error to the user.
  */
 
-import {
-  FunctionsFetchError,
-  FunctionsHttpError,
-  FunctionsRelayError,
-} from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { railwayApi, RailwayApiError } from "@/lib/railwayApi";
 import { CheckoutRequestError } from "./errors";
 import type {
   CheckoutConflict,
@@ -22,7 +18,6 @@ import type {
   CreateOrderResult,
 } from "./types";
 
-const EDGE_FUNCTION_NAME = "create-order";
 const TIMEOUT_MS = 20_000;
 
 interface EdgeFunctionResponse {
@@ -125,162 +120,87 @@ export async function createCheckoutOrder(
 ): Promise<CreateOrderResult> {
   await ensureUserProfile(command);
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const { customer, cart, address, pricing, note, coordinates, branchId, paymentMethod } =
+    command as any;
+
+  // Build the Railway request payload
+  const railwayPayload = {
+    idempotencyKey: command.idempotencyKey ?? `app-${Date.now()}`,
+    customerName:   customer?.fullName  ?? command.customer?.fullName  ?? "",
+    customerPhone:  customer?.phone     ?? command.customer?.phone     ?? "",
+    address:        typeof address === "object" ? address : { formatted: String(address ?? "") },
+    note:           note ?? "",
+    coordinates:    coordinates ?? { lat: 30.0444, lng: 31.2357 },   // Cairo centre fallback
+    branchId:       branchId ?? undefined,
+    cart: {
+      items: (cart?.items ?? []).map((item: any) => ({
+        productId: item.productId ?? item.product_id,
+        name:      item.name ?? item.productId ?? "",
+        quantity:  item.quantity,
+        unitPrice: item.unitPrice ?? item.unit_price ?? 0,
+      })),
+      subtotal: pricing?.subtotal ?? 0,
+    },
+    expectedPricing: {
+      subtotal:    pricing?.subtotal    ?? 0,
+      discount:    pricing?.discount    ?? 0,
+      tax:         pricing?.tax         ?? 0,
+      deliveryFee: pricing?.deliveryFee ?? pricing?.shipping ?? 0,
+      total:       pricing?.total       ?? 0,
+    },
+    paymentMethod: paymentMethod ?? "cod",
+  };
 
   try {
-    const { data, error } = await supabase.functions.invoke<EdgeFunctionResponse>(
-      EDGE_FUNCTION_NAME,
-      {
-        body: command,
-        signal: controller.signal,
-      },
-    );
-
-    clearTimeout(timer);
-
-    if (error) {
-      if (error instanceof FunctionsHttpError) {
-        const httpStatus = error.context?.status as number | undefined;
-        let message = `Order service error (HTTP ${httpStatus ?? "?"})`;
-        let conflicts: CheckoutConflict[] = [];
-        let shouldRefreshCatalog = false;
-
-        try {
-          const body = (await error.context?.json?.()) as {
-            error?: string;
-            code?: string;
-            conflicts?: CheckoutConflict[];
-            shouldRefreshCatalog?: boolean;
-          } | null;
-
-          if (body?.error) message = body.error;
-          if (Array.isArray(body?.conflicts)) conflicts = body.conflicts;
-          if (body?.shouldRefreshCatalog) shouldRefreshCatalog = true;
-        } catch {
-          // body wasn't JSON
-        }
-
-        if (
-          httpStatus === 403 &&
-          (message.toLowerCase().includes("profile not found") ||
-            message.toLowerCase().includes("profile"))
-        ) {
-          throw new CheckoutRequestError(
-            "لم يتم العثور على ملفك الشخصي. يرجى تسجيل الخروج وإعادة تسجيل الدخول ثم المحاولة مرة أخرى.\n" +
-              "Your account profile was not found. Please sign out and sign back in, then try again.",
-            [],
-            false,
-            "AUTH",
-            false,
-          );
-        }
-
-        if (httpStatus === 401 || httpStatus === 403) {
-          throw new CheckoutRequestError(
-            "انتهت صلاحية جلستك. يرجى تسجيل الدخول مرة أخرى.\n" +
-              "Your session has expired. Please sign in again.",
-            [],
-            false,
-            "AUTH",
-            false,
-          );
-        }
-
-        throw new CheckoutRequestError(
-          message,
-          conflicts,
-          shouldRefreshCatalog,
-          conflicts.length > 0 ? "CONFLICT" : "FUNCTION_ERROR",
-          false,
-        );
-      }
-
-      if (error instanceof FunctionsRelayError) {
-        throw new CheckoutRequestError(
-          "خدمة الطلبات غير متاحة مؤقتاً. يرجى المحاولة بعد قليل.",
-          [],
-          false,
-          "NETWORK",
-          true,
-        );
-      }
-
-      if (error instanceof FunctionsFetchError) {
-        throw new CheckoutRequestError(
-          "تعذر إرسال الطلب بسبب مشكلة في الشبكة. تحقق من اتصالك وأعد المحاولة.",
-          [],
-          false,
-          "NETWORK",
-          true,
-        );
-      }
-
-      throw new CheckoutRequestError(
-        (error as { message?: string }).message ?? "Unexpected error submitting order.",
-        [],
-        false,
-        "FUNCTION_ERROR",
-        false,
-      );
-    }
-
-    if (!data?.order?.id || !data?.order?.created_at) {
-      throw new CheckoutRequestError(
-        "استجابة غير مكتملة من خدمة الطلبات. يرجى المحاولة مرة أخرى.",
-        [],
-        false,
-        "BAD_RESPONSE",
-        false,
-      );
-    }
+    const result = await railwayApi.createOrder(railwayPayload);
 
     return {
-      orderId: data.order.id,
-      createdAt: data.order.created_at,
-      status: data.order.status ?? "pending",
-      paymentStatus: data.order.payment_status ?? "pending",
-      paymentReference: data.order.payment_reference ?? null,
-      idempotentReplay: data.order.idempotent_replay ?? false,
-      conflicts: data.conflicts ?? [],
+      orderId:          result.orderId,
+      createdAt:        result.createdAt,
+      status:           result.status ?? "pending",
+      paymentStatus:    "pending",
+      paymentReference: null,
+      idempotentReplay: false,
+      conflicts:        [],
     };
   } catch (error) {
-    clearTimeout(timer);
-
     if (error instanceof CheckoutRequestError) throw error;
 
-    // Aborted (timeout) — RN doesn't always preserve the AbortError name
-    if (
-      error instanceof Error &&
-      (error.name === "AbortError" || error.message === "Aborted")
-    ) {
+    if (error instanceof RailwayApiError) {
+      if (error.code === "TIMEOUT") {
+        throw new CheckoutRequestError(
+          "انتهت مهلة الاتصال. تحقق من اتصالك وأعد المحاولة.",
+          [], false, "TIMEOUT", true,
+        );
+      }
+      if (error.code === "NETWORK") {
+        throw new CheckoutRequestError(
+          "تعذر الوصول إلى خدمة الطلبات. تحقق من اتصالك بالإنترنت.",
+          [], false, "NETWORK", true,
+        );
+      }
+      if (error.status === 401 || error.status === 403) {
+        throw new CheckoutRequestError(
+          "انتهت صلاحية جلستك. يرجى تسجيل الدخول مرة أخرى.",
+          [], false, "AUTH", false,
+        );
+      }
       throw new CheckoutRequestError(
-        "انتهت مهلة الاتصال. تحقق من اتصالك وأعد المحاولة.",
-        [],
-        false,
-        "TIMEOUT",
-        true,
+        error.message ?? "تعذر إرسال الطلب حالياً.",
+        [], false, "FUNCTION_ERROR", false,
       );
     }
 
-    if (error instanceof TypeError && isNetworkErrorMessage(error.message)) {
+    if (error instanceof TypeError && isNetworkErrorMessage((error as Error).message)) {
       throw new CheckoutRequestError(
         "تعذر الوصول إلى خدمة الطلبات. تحقق من اتصالك بالإنترنت.",
-        [],
-        false,
-        "NETWORK",
-        true,
+        [], false, "NETWORK", true,
       );
     }
 
     throw new CheckoutRequestError(
-      error instanceof Error
-        ? error.message
-        : "تعذر إرسال الطلب حالياً. يرجى المحاولة مرة أخرى.",
-      [],
-      false,
-      "UNKNOWN",
-      false,
+      error instanceof Error ? error.message : "تعذر إرسال الطلب حالياً.",
+      [], false, "UNKNOWN", false,
     );
   }
 }

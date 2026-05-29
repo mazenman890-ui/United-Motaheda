@@ -7,7 +7,6 @@ import React, {
 } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -35,6 +34,7 @@ import { ADDRESS_LABELS } from "../types";
 import type { Address, AddressFormData } from "../types";
 import { SUPPORTED_GOVERNORATE } from "@/features/delivery/constants";
 import { theme } from "@/theme";
+import { showConfirmSheet } from "@/shared/store/appSheetStore";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -327,13 +327,11 @@ export function AddressFormDrawer({
         return;
       }
 
-      Alert.alert(
+      showConfirmSheet(
         "تجاهل التغييرات؟",
-        "لديك تغييرات غير محفوظة. هل تريد الخروج؟",
-        [
-          { text: "البقاء", style: "cancel" },
-          { text: "تجاهل", style: "destructive", onPress: onClose },
-        ],
+        "لديك تغييرات غير محفوظة. هل تريد الخروج بدون حفظ؟",
+        onClose,
+        { confirmLabel: "تجاهل التغييرات", danger: true, cancelLabel: "البقاء" },
       );
     } else {
       onClose();

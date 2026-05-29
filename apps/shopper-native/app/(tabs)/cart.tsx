@@ -1,12 +1,12 @@
 import React, { memo, useCallback } from "react";
 import {
-  Alert,
   FlatList,
   Platform,
   Pressable,
   StyleSheet,
   View,
 } from "react-native";
+import { showConfirmSheet } from "@/shared/store/appSheetStore";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -201,18 +201,20 @@ export default function CartScreen() {
         </View>
         <Pressable
           onPress={() => {
-            if (Platform.OS === "web") { clearCart(); return; }
-            Alert.alert("مسح السلة", "هل تريد إزالة جميع المنتجات من سلتك؟", [
-              { text: "إلغاء", style: "cancel" },
-              {
-                text: "مسح الكل",
-                style: "destructive",
-                onPress: () => {
+            if (Platform.OS !== "web") {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+            }
+            showConfirmSheet(
+              "مسح السلة",
+              "هل تريد إزالة جميع المنتجات من سلتك؟ لا يمكن التراجع عن هذا.",
+              () => {
+                if (Platform.OS !== "web") {
                   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-                  clearCart();
-                },
+                }
+                clearCart();
               },
-            ]);
+              { confirmLabel: "مسح الكل", danger: true },
+            );
           }}
           hitSlop={8}
           accessibilityRole="button"
@@ -483,14 +485,16 @@ const styles = StyleSheet.create({
     flex:          1,
   },
   progressTrack: {
-    height:          5,
-    backgroundColor: theme.colors.slate[200],
+    height:          6,
+    backgroundColor: theme.colors.slate[100],
     borderRadius:    3,
     overflow:        "hidden",
+    borderWidth:     1,
+    borderColor:     theme.colors.slate[200],
   },
   progressFill: {
     height:          "100%",
-    backgroundColor: theme.colors.brand[600],
+    backgroundColor: "#0DB8A8",
     borderRadius:    3,
   },
 

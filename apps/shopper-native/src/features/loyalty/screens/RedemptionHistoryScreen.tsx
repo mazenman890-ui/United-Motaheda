@@ -7,7 +7,6 @@
 
 import React, { useCallback, useMemo } from "react";
 import {
-  Alert,
   Platform,
   Pressable,
   RefreshControl,
@@ -25,6 +24,7 @@ import { SubScreenHeader } from "../components/SubScreenHeader";
 import { useRedemptions } from "../hooks/useRedemptions";
 import { useCancelGiftRedemption } from "../hooks/useCancelGiftRedemption";
 import type { GiftRedemption, GiftRedemptionState } from "../types";
+import { showConfirmSheet } from "@/shared/store/appSheetStore";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -52,21 +52,15 @@ export function RedemptionHistoryScreen() {
 
   const handleCancel = useCallback(
     (r: GiftRedemption) => {
-      Alert.alert(
+      showConfirmSheet(
         "إلغاء الطلب",
         "سيتم إلغاء الطلب وإعادة النقاط المخصومة إلى رصيدك.",
-        [
-          { text: "تراجع", style: "cancel" },
-          {
-            text: "تأكيد الإلغاء",
-            style: "destructive",
-            onPress: () => {
-              if (Platform.OS !== "web")
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-              cancel.cancel({ redemptionId: r.id, reason: "user_cancelled" });
-            },
-          },
-        ],
+        () => {
+          if (Platform.OS !== "web")
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+          cancel.cancel({ redemptionId: r.id, reason: "user_cancelled" });
+        },
+        { confirmLabel: "تأكيد الإلغاء", danger: true },
       );
     },
     [cancel],

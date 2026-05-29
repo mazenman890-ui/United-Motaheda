@@ -14,7 +14,8 @@
  */
 
 import React, { useCallback } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { showSuccessSheet } from "@/shared/store/appSheetStore";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -70,7 +71,7 @@ export function AddRxEntry(): React.ReactElement {
   const insets = useSafeAreaInsets();
 
   const showComingSoon = useCallback((title: string) => {
-    Alert.alert(title, "قريباً", [{ text: "حسناً", style: "default" }]);
+    showSuccessSheet(title, "هذه الميزة قادمة قريباً. ترقّب التحديثات!");
   }, []);
 
   const options: EntryOption[] = [

@@ -524,7 +524,7 @@ export const zIndex = {
 // ─── Layout constants ─────────────────────────────────────────────────────────
 
 export const layout = {
-  tabBarHeight:      68,
+  tabBarHeight:      96,   // floating bar: 62px height + safe-area + margin
   headerHeight:      56,
   bottomSheetRadius: 28,
   cardRadius:        16,

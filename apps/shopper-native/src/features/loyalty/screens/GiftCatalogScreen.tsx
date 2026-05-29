@@ -17,7 +17,6 @@
 
 import React, { useCallback, useState } from "react";
 import {
-  Alert,
   Platform,
   Pressable,
   RefreshControl,
@@ -38,6 +37,7 @@ import { useLoyaltyBalance } from "../hooks/useLoyaltyBalance";
 import { useQueuedRedeemGift } from "../hooks/useQueuedRedeemGift";
 import { GiftAddressSheet } from "../components/GiftAddressSheet";
 import type { GiftCatalogItem, GiftInventory, RedemptionAddress } from "../types";
+import { showErrorSheet, showSuccessSheet } from "@/shared/store/appSheetStore";
 
 interface CatalogEntry extends GiftCatalogItem {
   inventory?: GiftInventory;
@@ -69,7 +69,7 @@ export function GiftCatalogScreen() {
     (gift: CatalogEntry) => {
       const currentBalance = balance.data?.balance ?? 0;
       if (currentBalance < gift.points_cost) {
-        Alert.alert(
+        showErrorSheet(
           "نقاط غير كافية",
           `تحتاج ${gift.points_cost.toLocaleString("ar-EG")} نقطة لاستبدال "${gift.name}". رصيدك الحالي ${currentBalance.toLocaleString("ar-EG")}.`,
         );
@@ -86,11 +86,11 @@ export function GiftCatalogScreen() {
     if (!redeem.isPending && redeemingGiftId !== null) {
       setRedeemingGiftId(null);
       if (redeem.isError && redeem.error) {
-        Alert.alert("تعذر الاستبدال", decodeRedeemError(redeem.error));
+        showErrorSheet("تعذر الاستبدال", decodeRedeemError(redeem.error));
         redeem.reset();
       } else if (redeem.isSuccess && redeem.data) {
-        Alert.alert(
-          "تم الاستبدال",
+        showSuccessSheet(
+          "تم الاستبدال 🎁",
           `تم حجز هديتك. سيتم التواصل معك خلال 14 يوماً.\nرصيدك الجديد: ${redeem.data.balance.toLocaleString("ar-EG")} نقطة.`,
         );
         redeem.reset();
@@ -114,8 +114,8 @@ export function GiftCatalogScreen() {
       setRedeemingGiftId(null);
       setSheetVisible(false);
       setActiveGift(null);
-      Alert.alert(
-        "تمت إضافة الطلب",
+      showSuccessSheet(
+        "تمت إضافة الطلب ✓",
         "لا يوجد اتصال بالإنترنت حالياً. تم حفظ طلب الاستبدال وسيتم إرساله تلقائياً عند عودة الاتصال.",
       );
     }

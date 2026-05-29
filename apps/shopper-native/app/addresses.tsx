@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Alert,
   FlatList,
   Platform,
   Pressable,
@@ -8,6 +7,7 @@ import {
   StyleSheet,
   View,
 } from "react-native";
+import { showConfirmSheet, showErrorSheet } from "@/shared/store/appSheetStore";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -100,18 +100,16 @@ export default function AddressesScreen() {
 
   const handleDelete = useCallback(
     (addr: Address) => {
-      Alert.alert("حذف العنوان", `هل تريد حذف "${addr.recipient_name}" نهائياً؟`, [
-        { text: "إلغاء", style: "cancel" },
-        {
-          text: "حذف",
-          style: "destructive",
-          onPress: () => {
-            if (Platform.OS !== "web")
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-            removeAddress(addr.id);
-          },
+      showConfirmSheet(
+        "حذف العنوان",
+        `هل تريد حذف عنوان "${addr.recipient_name}" نهائياً؟ لا يمكن التراجع عن هذا.`,
+        () => {
+          if (Platform.OS !== "web")
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+          removeAddress(addr.id);
         },
-      ]);
+        { confirmLabel: "حذف", danger: true },
+      );
     },
     [removeAddress]
   );
@@ -138,7 +136,7 @@ export default function AddressesScreen() {
         }
         setDrawerVisible(false);
       } catch {
-        Alert.alert("خطأ", "تعذر حفظ العنوان. حاول مرة أخرى.");
+        showErrorSheet("خطأ في الحفظ", "تعذر حفظ العنوان. حاول مرة أخرى.");
       } finally {
         setSubmitting(false);
       }

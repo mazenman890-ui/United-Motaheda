@@ -1,7 +1,6 @@
 import "./_initWeb";
 import "../global.css";
 import React, { useEffect } from "react";
-import { Alert } from "react-native";
 import { Stack } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
@@ -24,6 +23,8 @@ import {
   usePushNotificationRegistration,
 } from "@/features/notifications";
 import { ErrorBoundary, PharmacyBootstrap, SplashOverlay } from "@/shared/components";
+import { AppSheet } from "@/shared/components/AppSheet";
+import { showErrorSheet } from "@/shared/store/appSheetStore";
 import { queryClient } from "@/lib/queryClient";
 import { persistOptions } from "@/lib/queryPersister";
 import { NetworkBridge } from "@/lib/networkStatus";
@@ -77,9 +78,9 @@ function CartReservationNotifier() {
   const last = useCartStore((s) => s.lastReservationError);
   useEffect(() => {
     if (!last) return;
-    Alert.alert("مشكلة في الحجز", last.message, [
-      { text: "حسناً", onPress: () => useCartStore.getState().clearReservationError() },
-    ]);
+    showErrorSheet("مشكلة في الحجز", last.message, {
+      onRetry: () => useCartStore.getState().clearReservationError(),
+    });
   }, [last]);
   return null;
 }
@@ -148,6 +149,7 @@ export default function RootLayout() {
               )}
             </Stack>
             <NotificationBanner />
+            <AppSheet />
           </AuthProvider>
           </LanguageProvider>
         </PersistQueryClientProvider>

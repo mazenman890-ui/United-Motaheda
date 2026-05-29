@@ -108,12 +108,16 @@ export const ProductGrid = React.memo(function ProductGrid({
         ListFooterComponent={ListFooterComponent}
         ListEmptyComponent={ListEmptyComponent}
         refreshControl={refreshControl}
-        initialNumToRender={8}
-        maxToRenderPerBatch={12}
-        updateCellsBatchingPeriod={50}
-        windowSize={10}
+        initialNumToRender={6}
+        maxToRenderPerBatch={8}
+        updateCellsBatchingPeriod={80}
+        windowSize={7}
+        removeClippedSubviews
         style={{ flex: 1 }}
-        extraData={products.length}
+        // No extraData — ProductCard reads cart/wishlist directly from Zustand
+        // stores, so it re-renders via store subscriptions rather than through
+        // the list's extraData prop. Passing products.length was triggering a
+        // full visible-items re-render on every next-page load.
       />
     );
   }
@@ -126,14 +130,16 @@ export const ProductGrid = React.memo(function ProductGrid({
       getItemType={getItemType}
       renderItem={renderItem}
       numColumns={2}
-      // Card: 170px image + ~150px info area = ~320px per row.
-      // Providing estimatedItemSize lets FlashList pre-compute scroll positions
-      // without waiting for per-item onLayout measurements, eliminating the
-      // synchronous layout-pass jank that caused the scroll lag.
-      estimatedItemSize={320}
-      drawDistance={Platform.OS === "android" ? 400 : 300}
+      // Card: 172px image + 14+14 padding + ~9.5 category label + ~40 name
+      // (2 lines × 20px) + ~14 stars row + ~34 price/button + 20 gap = ~317px.
+      // Tight estimate → fewer scroll-position miscalculations on first render.
+      estimatedItemSize={317}
+      // drawDistance: pre-render 1.5 screen-heights ahead so the user never
+      // sees blank cells during normal scrolling.  Larger values increase
+      // mount/unmount work; smaller values risk visible blanks on fast flings.
+      drawDistance={Platform.OS === "android" ? 280 : 240}
       onEndReached={onEndReached}
-      onEndReachedThreshold={0.5}
+      onEndReachedThreshold={0.6}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={containerStyle}
       ListHeaderComponent={ListHeaderComponent}
@@ -141,7 +147,7 @@ export const ProductGrid = React.memo(function ProductGrid({
       ListEmptyComponent={ListEmptyComponent}
       refreshControl={refreshControl}
       style={{ flex: 1 }}
-      extraData={products.length}
+      // No extraData — see FlatList note above.
     />
   );
 });

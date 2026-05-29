@@ -1,11 +1,11 @@
 import React, { memo, useCallback } from "react";
 import {
-  Alert,
   Platform,
   Pressable,
   StyleSheet,
   View,
 } from "react-native";
+import { showConfirmSheet } from "@/shared/store/appSheetStore";
 import { FlashList } from "@shopify/flash-list";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -129,24 +129,16 @@ export default function FavoritesScreen() {
       }
     };
 
-    if (Platform.OS === "web") {
-      doClear();
-      return;
-    }
-    Alert.alert(
+    showConfirmSheet(
       "مسح المفضلة",
       "هل تريد إزالة جميع المنتجات من المفضلة؟",
-      [
-        { text: "إلغاء", style: "cancel" },
-        {
-          text: "مسح الكل",
-          style: "destructive",
-          onPress: () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-            doClear();
-          },
-        },
-      ],
+      () => {
+        if (Platform.OS !== "web") {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+        }
+        doClear();
+      },
+      { confirmLabel: "مسح الكل", danger: true },
     );
   }, [clear, userId]);
 

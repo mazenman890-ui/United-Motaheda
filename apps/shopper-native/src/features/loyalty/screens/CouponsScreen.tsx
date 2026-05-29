@@ -11,7 +11,6 @@
 
 import React, { useCallback, useMemo, useState } from "react";
 import {
-  Alert,
   Platform,
   Pressable,
   RefreshControl,
@@ -31,6 +30,7 @@ import { useUserCoupons } from "../hooks/useUserCoupons";
 import { useLoyaltyBalance } from "../hooks/useLoyaltyBalance";
 import { useRedeemCoupon } from "../hooks/useRedeemCoupon";
 import type { Coupon, CouponBatch, CouponDiscountKind } from "../types";
+import { showErrorSheet, showConfirmSheet } from "@/shared/store/appSheetStore";
 
 export function CouponsScreen() {
   useScreenTrace("loyalty-coupons");
@@ -59,28 +59,22 @@ export function CouponsScreen() {
     (batch: CouponBatch) => {
       const currentBalance = balance.data?.balance ?? 0;
       if (currentBalance < batch.points_cost) {
-        Alert.alert(
+        showErrorSheet(
           "نقاط غير كافية",
           `تحتاج ${batch.points_cost.toLocaleString("ar-EG")} نقطة لاستبدال هذه القسيمة. رصيدك الحالي ${currentBalance.toLocaleString("ar-EG")}.`,
         );
         return;
       }
-      Alert.alert(
+      showConfirmSheet(
         "تأكيد الاستبدال",
         `سيتم خصم ${batch.points_cost.toLocaleString("ar-EG")} نقطة من رصيدك مقابل "${batch.name}".`,
-        [
-          { text: "إلغاء", style: "cancel" },
-          {
-            text: "استبدال",
-            style: "default",
-            onPress: () => {
-              if (Platform.OS !== "web")
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-              setRedeemingBatchId(batch.id);
-              redeem.redeem({ batchId: batch.id });
-            },
-          },
-        ],
+        () => {
+          if (Platform.OS !== "web")
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+          setRedeemingBatchId(batch.id);
+          redeem.redeem({ batchId: batch.id });
+        },
+        { confirmLabel: "استبدال" },
       );
     },
     [balance.data, redeem],
@@ -91,10 +85,7 @@ export function CouponsScreen() {
     if (!redeem.isPending && redeemingBatchId !== null) {
       setRedeemingBatchId(null);
       if (redeem.isError && redeem.error) {
-        Alert.alert(
-          "تعذر الاستبدال",
-          decodeRedeemError(redeem.error),
-        );
+        showErrorSheet("تعذر الاستبدال", decodeRedeemError(redeem.error));
       }
     }
   }, [redeem.isPending, redeem.isError, redeem.error, redeemingBatchId]);

@@ -4,7 +4,6 @@
 
 import React, { memo } from "react";
 import {
-  Alert,
   Image,
   Platform,
   Pressable,
@@ -12,6 +11,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { showSuccessSheet, showErrorSheet } from "@/shared/store/appSheetStore";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
@@ -42,9 +42,9 @@ export const ManualPaymentPanel = memo(function ManualPaymentPanel({
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       }
-      Alert.alert("تم النسخ", "تم نسخ رقم المحفظة إلى الحافظة.");
+      showSuccessSheet("تم النسخ ✓", "تم نسخ رقم المحفظة إلى الحافظة.");
     } catch {
-      Alert.alert("تعذّر النسخ", "لم نتمكن من نسخ الرقم. انسخه يدوياً.");
+      showErrorSheet("تعذّر النسخ", "لم نتمكن من نسخ الرقم. انسخه يدوياً.");
     }
   };
 

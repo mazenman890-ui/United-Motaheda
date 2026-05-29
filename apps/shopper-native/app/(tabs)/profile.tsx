@@ -370,23 +370,31 @@ export default function ProfileScreen() {
         {user && (
           <Animated.View entering={FadeInDown.delay(280).duration(280)} style={styles.quickGrid}>
             {([
-              { icon: "bag-handle-outline", label: "طلباتي", color: theme.colors.brand[600], bg: theme.colors.brand[50], route: "/orders"    },
-              { icon: "heart-outline",      label: "المفضلة", color: theme.colors.rose[500],  bg: theme.colors.rose[50],  route: "/favorites" },
-              { icon: "diamond-outline",    label: "الولاء",  color: "#9333EA",               bg: theme.colors.purple[50], route: "/loyalty"  },
-              { icon: "location-outline",   label: "العناوين", color: theme.colors.amber[600], bg: theme.colors.amber[50], route: "/addresses" },
-            ] as const).map((a) => (
+              { icon: "bag-handle-outline" as IoniconsName, label: "طلباتي",  grad: ["#0891B2", "#0DB8A8"] as [string,string], route: "/orders"    },
+              { icon: "heart-outline"      as IoniconsName, label: "المفضلة", grad: ["#E11D48", "#F43F5E"] as [string,string], route: "/favorites" },
+              { icon: "diamond-outline"    as IoniconsName, label: "الولاء",  grad: ["#7C3AED", "#9333EA"] as [string,string], route: "/loyalty"   },
+              { icon: "location-outline"   as IoniconsName, label: "العناوين",grad: ["#D97706", "#F59E0B"] as [string,string], route: "/addresses" },
+            ]).map((a) => (
               <Pressable
                 key={a.label}
                 onPress={() => {
                   if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
                   router.push(a.route as Parameters<typeof router.push>[0]);
                 }}
-                style={({ pressed }) => [styles.quickGridItem, pressed && { transform: [{ scale: 0.955 }], opacity: 0.85 }]}>
-                <View style={[
-                  styles.quickGridIcon,
-                  { backgroundColor: a.bg, borderColor: `${a.color}22` },
+                style={({ pressed }) => [
+                  styles.quickGridItem,
+                  pressed && { transform: [{ scale: 0.94 }], opacity: 0.88 },
                 ]}>
-                  <Ionicons name={a.icon} size={20} color={a.color} />
+                <View style={styles.quickGridIconWrap}>
+                  <LinearGradient
+                    colors={a.grad}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  {/* Top shine */}
+                  <View style={styles.quickGridShine} />
+                  <Ionicons name={a.icon} size={20} color="rgba(255,255,255,0.95)" />
                 </View>
                 <UIText variant="caption" weight="bold" align="center" color="secondary">
                   {a.label}
@@ -796,7 +804,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     alignItems:        "center",
     gap:               10,
-    ...theme.shadow.card,
+    shadowColor:       "#0C2240",
+    shadowOffset:      { width: 0, height: 3 },
+    shadowOpacity:     0.08,
+    shadowRadius:      8,
+    elevation:         3,
+  },
+  quickGridIconWrap: {
+    width:           52,
+    height:          52,
+    borderRadius:    16,
+    alignItems:      "center",
+    justifyContent:  "center",
+    overflow:        "hidden",
+    shadowColor:     "#000",
+    shadowOffset:    { width: 0, height: 3 },
+    shadowOpacity:   0.20,
+    shadowRadius:    8,
+    elevation:       4,
+  },
+  quickGridShine: {
+    position:        "absolute",
+    top:             0,
+    left:            0,
+    right:           0,
+    height:          "50%",
+    backgroundColor: "rgba(255,255,255,0.16)",
+    borderTopLeftRadius:  16,
+    borderTopRightRadius: 16,
   },
   quickGridIcon: {
     width:           46,
