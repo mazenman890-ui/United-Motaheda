@@ -798,6 +798,12 @@
                    "noResultsDescAr":  "No results for \"{{query}}\". Try searching in Arabic or choose from the suggestions below.",
                    "noResultsDescEn":  "Try a different keyword or check the spelling for \"{{query}}\"",
                    "tryPopular":  "Try these popular searches",
+                   "trending0":   "Paracetamol",
+                   "trending1":   "Panadol",
+                   "trending2":   "Vitamin C",
+                   "trending3":   "Ibuprofen",
+                   "trending4":   "Congestal",
+                   "trending5":   "Moisturizing Cream",
                    "loadMore":  "Load More"
                },
     "sheet":  {

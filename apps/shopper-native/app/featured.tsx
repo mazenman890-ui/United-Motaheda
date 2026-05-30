@@ -33,15 +33,7 @@ import { fetchCategories } from "@/services/productsApi";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { theme } from "@/theme";
 
-// ─── Badge assignment (deterministic by position) ─────────────────────────────
-
-type Badge = "hot" | "new" | "sale" | undefined;
-function pickBadge(index: number): Badge {
-  if (index % 11 === 0) return "hot";
-  if (index % 7  === 0) return "new";
-  if (index % 13 === 0) return "sale";
-  return undefined;
-}
+// Badge is driven by real product fields (isBestseller/isNew/isSale) in ProductCard.
 
 // ─── Category chip ────────────────────────────────────────────────────────────
 

@@ -47,19 +47,9 @@ interface ProductCardProps {
   discountPercent?: number;
 }
 
-// ─── Rating helpers ───────────────────────────────────────────────────────────
+// ─── Rating display (only shown when product has real rating data) ─────────────
 
-function deterministicRating(id: string): { value: number; count: number } {
-  const n = id.split("").reduce((s, c) => s + c.charCodeAt(0), 0);
-  return {
-    value: Math.round((3.6 + (n % 14) / 10) * 10) / 10,
-    count: 22 + (n % 170),
-  };
-}
-
-// Single-icon + number rating — replaces 5 Ionicons per card with 1 icon + 1
-// text node, cutting per-card element count and avoiding 5 font glyph lookups.
-function Stars({ value, size = 11 }: { value: number; size?: number }) {
+function Stars({ value, count, size = 11 }: { value: number; count?: number | null; size?: number }) {
   return (
     <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 3 }}>
       <Ionicons name="star" size={size} color="#F59E0B" />
@@ -71,6 +61,7 @@ function Stars({ value, size = 11 }: { value: number; size?: number }) {
           lineHeight: size + 2,
         }}>
         {value.toFixed(1)}
+        {count != null && count > 0 ? ` (${count})` : ""}
       </UIText>
     </View>
   );
@@ -251,15 +242,25 @@ export const ProductCard = memo(function ProductCard({
     ? (product.nameAr ?? product.name)
     : (product.nameEn ?? product.name);
 
-  const rating    = useMemo(() => deterministicRating(product.id), [product.id]);
+  // Only show ratings when real data exists — never fake a value
+  const hasRating = product.ratingAvg != null && product.ratingAvg > 0;
   const isLowStock = product.stock > 0 && product.stock <= 3;
-  const origPrice  = discountPercent ? product.price / (1 - discountPercent / 100) : null;
+  const origPrice  = resolvedDiscount ? product.price / (1 - resolvedDiscount / 100) : null;
 
-  // Badge
+  // Badge — prefer real product flags, fall back to explicit prop, never fake
+  const resolvedBadge =
+    product.isBestseller ? "hot" :
+    product.isNew        ? "new" :
+    product.isSale       ? "sale" :
+    badge; // explicit override from caller (e.g. deals screen passing "sale")
+
+  // Discount — prefer real field, fall back to caller prop
+  const resolvedDiscount = product.discountPercent ?? discountPercent ?? null;
+
   const badgeMeta =
-    badge === "new"  ? { label: t("products.badgeNew"),                                    grad: ["#2563EB", "#1D4ED8"]  as [string, string] } :
-    badge === "hot"  ? { label: t("products.badgeBestSeller"),                             grad: ["#EF4444", "#B91C1C"]  as [string, string] } :
-    badge === "sale" ? { label: t("products.badgeSale", { n: discountPercent ?? 0 }),      grad: ["#F59E0B", "#D97706"]  as [string, string] } :
+    resolvedBadge === "new"  ? { label: t("products.badgeNew"),                                               grad: ["#2563EB", "#1D4ED8"] as [string, string] } :
+    resolvedBadge === "hot"  ? { label: t("products.badgeBestSeller"),                                        grad: ["#EF4444", "#B91C1C"] as [string, string] } :
+    resolvedBadge === "sale" ? { label: t("products.badgeSale", { n: Math.round(resolvedDiscount ?? 0) }),    grad: ["#F59E0B", "#D97706"] as [string, string] } :
     null;
 
   // ── GRID variant ───────────────────────────────────────────────────────────
@@ -364,13 +365,12 @@ export const ProductCard = memo(function ProductCard({
             {displayName}
           </UIText>
 
-          {/* Stars row */}
-          <View style={styles.starsRow}>
-            <Stars value={rating.value} size={10} />
-            <UIText variant="eyebrow" style={styles.ratingText}>
-              {rating.value} ({rating.count})
-            </UIText>
-          </View>
+          {/* Stars row — only shown when product has real ratings */}
+          {hasRating && (
+            <View style={styles.starsRow}>
+              <Stars value={product.ratingAvg!} count={product.ratingCount} size={10} />
+            </View>
+          )}
 
           {/* Price + Add button */}
           <View style={styles.priceRow}>
@@ -460,10 +460,11 @@ export const ProductCard = memo(function ProductCard({
         <UIText variant="body-sm" weight="bold" align="right" numberOfLines={2} style={styles.rowProductName}>
           {displayName}
         </UIText>
-        <View style={[styles.starsRow, { marginTop: 4 }]}>
-          <Stars value={rating.value} size={9} />
-          <UIText variant="eyebrow" style={styles.ratingText}>({rating.count})</UIText>
-        </View>
+        {hasRating && (
+          <View style={[styles.starsRow, { marginTop: 4 }]}>
+            <Stars value={product.ratingAvg!} count={product.ratingCount} size={9} />
+          </View>
+        )}
         <View style={styles.rowPriceRow}>
           <View style={styles.priceInner}>
             <UIText variant="card-title" weight="black" style={styles.priceValue}>

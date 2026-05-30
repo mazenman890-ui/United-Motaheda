@@ -73,13 +73,13 @@ const SORT_KEYS: Record<SortKey, string> = {
   name_asc:   "search.sortNameAsc",
 };
 
-const TRENDING: { term: string; icon: IoniconsName; color: string; bg: string }[] = [
-  { term: "باراسيتامول", icon: "medkit",         color: theme.colors.brand[700],   bg: theme.colors.brand.lighter   },
-  { term: "بانادول",      icon: "medical",        color: theme.colors.purple[700],  bg: theme.colors.purple[50]      },
-  { term: "فيتامين C",   icon: "sunny-outline",  color: theme.colors.amber[700],   bg: theme.colors.amber[50]       },
-  { term: "بروفين",       icon: "fitness",        color: theme.colors.rose[600],    bg: theme.colors.rose[50]        },
-  { term: "كونجستال",     icon: "thermometer",    color: theme.colors.info.strong,  bg: theme.colors.info.bg         },
-  { term: "كريم مرطب",   icon: "water-outline",  color: theme.colors.brand[700],   bg: theme.colors.brand.lighter   },
+const TRENDING_META: { termKey: string; icon: IoniconsName; color: string; bg: string }[] = [
+  { termKey: "search.trending0", icon: "medkit",         color: theme.colors.brand[700],   bg: theme.colors.brand.lighter   },
+  { termKey: "search.trending1", icon: "medical",        color: theme.colors.purple[700],  bg: theme.colors.purple[50]      },
+  { termKey: "search.trending2", icon: "sunny-outline",  color: theme.colors.amber[700],   bg: theme.colors.amber[50]       },
+  { termKey: "search.trending3", icon: "fitness",        color: theme.colors.rose[600],    bg: theme.colors.rose[50]        },
+  { termKey: "search.trending4", icon: "thermometer",    color: theme.colors.info.strong,  bg: theme.colors.info.bg         },
+  { termKey: "search.trending5", icon: "water-outline",  color: theme.colors.brand[700],   bg: theme.colors.brand.lighter   },
 ];
 
 // ─── Highlight match — premium subtle background ───────────────────────────
@@ -626,8 +626,8 @@ export default function SearchScreen() {
                 </View>
               </View>
               <View style={s.trendGrid}>
-                {(popularSearches.length > 0 ? popularSearches : TRENDING.map((t) => t.term)).map((term, i) => {
-                  const meta = TRENDING.find((t) => t.term === term) ?? TRENDING[i % TRENDING.length];
+                {(popularSearches.length > 0 ? popularSearches : TRENDING_META.map((m) => t(m.termKey))).map((term, i) => {
+                  const meta = TRENDING_META.find((m) => t(m.termKey) === term) ?? TRENDING_META[i % TRENDING_META.length];
                   return (
                     <Pressable
                       key={term}
@@ -763,23 +763,26 @@ export default function SearchScreen() {
                       {t("search.tryPopular")}
                     </UIText>
                     <View style={s.emptyTrendChips}>
-                      {TRENDING.slice(0, 4).map((t) => (
-                        <Pressable
-                          key={t.term}
-                          onPress={() => quickSearch(t.term)}
-                          style={({ pressed }) => [
-                            s.emptyTrendChip,
-                            { borderColor: `${t.color}40` },
-                            pressed && { opacity: 0.8 },
-                          ]}>
-                          <View style={[s.emptyTrendIcon, { backgroundColor: t.bg }]}>
-                            <Ionicons name={t.icon} size={12} color={t.color} />
-                          </View>
-                          <UIText variant="caption" weight="bold" style={{ color: t.color }}>
-                            {t.term}
-                          </UIText>
-                        </Pressable>
-                      ))}
+                      {TRENDING_META.slice(0, 4).map((m) => {
+                        const term = t(m.termKey);
+                        return (
+                          <Pressable
+                            key={m.termKey}
+                            onPress={() => quickSearch(term)}
+                            style={({ pressed }) => [
+                              s.emptyTrendChip,
+                              { borderColor: `${m.color}40` },
+                              pressed && { opacity: 0.8 },
+                            ]}>
+                            <View style={[s.emptyTrendIcon, { backgroundColor: m.bg }]}>
+                              <Ionicons name={m.icon} size={12} color={m.color} />
+                            </View>
+                            <UIText variant="caption" weight="bold" style={{ color: m.color }}>
+                              {term}
+                            </UIText>
+                          </Pressable>
+                        );
+                      })}
                     </View>
                   </View>
                 </View>

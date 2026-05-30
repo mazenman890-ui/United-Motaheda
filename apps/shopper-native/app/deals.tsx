@@ -79,13 +79,12 @@ function DigitBlock({ value, label }: { value: string; label: string }) {
 
 // ─── Hero product ─────────────────────────────────────────────────────────────
 
-const HERO_DISCOUNT = 35;
-
 const HeroDeal = React.memo(function HeroDeal({
   product, lang, onPress,
 }: { product: NativeProduct; lang: "ar" | "en"; onPress: () => void }) {
   const { t } = useTranslation();
-  const name  = lang === "en" ? (product.nameEn ?? product.name) : product.name;
+  const name     = lang === "en" ? (product.nameEn ?? product.name) : product.name;
+  const discount = product.discountPercent ?? null;
   const scale = useSharedValue(1);
   const anim  = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
@@ -110,10 +109,12 @@ const HeroDeal = React.memo(function HeroDeal({
                 )}
               </View>
               <View style={s.heroInfo}>
-                <LinearGradient colors={["#EF4444", "#DC2626"]} style={s.heroBadge}>
-                  <Ionicons name="flash" size={11} color="#fff" />
-                  <Text style={s.heroBadgeText}>{t("products.badgeSale", { n: HERO_DISCOUNT })}</Text>
-                </LinearGradient>
+                {discount != null && (
+                  <LinearGradient colors={["#EF4444", "#DC2626"]} style={s.heroBadge}>
+                    <Ionicons name="flash" size={11} color="#fff" />
+                    <Text style={s.heroBadgeText}>{t("products.badgeSale", { n: Math.round(discount) })}</Text>
+                  </LinearGradient>
+                )}
                 <Text style={s.heroName} numberOfLines={2}>{name}</Text>
                 <View style={s.heroPriceRow}>
                   <Text style={s.heroPrice}>{product.price.toFixed(2)}</Text>
@@ -131,10 +132,6 @@ const HeroDeal = React.memo(function HeroDeal({
     </Animated.View>
   );
 });
-
-// ─── Discount pool (deterministic by index) ───────────────────────────────────
-
-const DISCOUNTS = [30, 20, 25, 15, 35, 20, 25, 30, 15, 20, 18, 22];
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
