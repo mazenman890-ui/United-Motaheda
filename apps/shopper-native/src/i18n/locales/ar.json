@@ -35,7 +35,9 @@
                    "required":  "مطلوب",
                    "previous":  "السابق",
                    "decrement":  "إنقاص",
-                   "increment":  "زيادة"
+                   "increment":  "زيادة",
+                   "ok":         "حسناً",
+                   "gotIt":      "فهمت، شكراً"
                },
     "cart":  {
                  "eyebrow":  "عربة التسوق",
