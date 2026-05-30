@@ -26,13 +26,17 @@ const SORT_OPTIONS: { id: ProductSortMode; labelKey: string; icon: React.Compone
 
 export default function CategoryScreen() {
   const { t, i18n } = useTranslation();
-  const params = useLocalSearchParams<{ id?: string | string[]; nameEn?: string | string[] }>();
-  const rawId    = Array.isArray(params.id)     ? params.id[0]     : params.id;
-  const rawNameEn= Array.isArray(params.nameEn) ? params.nameEn[0] : params.nameEn;
-  const id       = typeof rawId === "string" && rawId.length > 0 ? decodeURIComponent(rawId) : undefined;
-  const nameEn   = typeof rawNameEn === "string" && rawNameEn.length > 0 ? decodeURIComponent(rawNameEn) : undefined;
-  // Display title respects current language
-  const displayTitle = i18n.language === "en" && nameEn ? nameEn : (id ?? t("category.defaultName"));
+  const params    = useLocalSearchParams<{ id?: string | string[]; nameEn?: string | string[]; name?: string | string[] }>();
+  const rawId     = Array.isArray(params.id)     ? params.id[0]     : params.id;
+  const rawNameEn = Array.isArray(params.nameEn) ? params.nameEn[0] : params.nameEn;
+  const rawName   = Array.isArray(params.name)   ? params.name[0]   : params.name;
+  const id        = typeof rawId     === "string" && rawId.length     > 0 ? decodeURIComponent(rawId)     : undefined;
+  const nameEn    = typeof rawNameEn === "string" && rawNameEn.length > 0 ? decodeURIComponent(rawNameEn) : undefined;
+  const catName   = typeof rawName   === "string" && rawName.length   > 0 ? decodeURIComponent(rawName)   : undefined;
+  // Respect language: prefer nameEn in English, Arabic name otherwise
+  const displayTitle = i18n.language === "en" && nameEn
+    ? nameEn
+    : (catName ?? id ?? t("category.defaultName"));
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [sortBy, setSortBy]           = useState<ProductSortMode>("newest");

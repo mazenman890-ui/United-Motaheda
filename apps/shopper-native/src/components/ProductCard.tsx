@@ -237,12 +237,12 @@ export const ProductCard = memo(function ProductCard({
         : Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       ).catch(() => {});
     }
-    // Crisp single-pop: quick shrink → snap back to exactly 1.0.
-    // Springs that overshoot and slowly settle read as "stuck" on web, so we
-    // use fast timing for the dip and a tight spring that lands precisely at 1.
+    // Crisp single-pop: fast dip → near-critically-damped spring that lands
+    // precisely at 1.0 with no lingering oscillation.
+    // damping ratio ≈ 0.87 (22 / 2√(450×0.4)) → minimal overshoot, snappy.
     hrtScale.value = withSequence(
-      withTiming(0.82, { duration: 90 }),
-      withSpring(1.0,  { damping: 12, stiffness: 420, mass: 0.5 }),
+      withTiming(0.80, { duration: 75 }),
+      withSpring(1.0,  { damping: 22, stiffness: 450, mass: 0.4 }),
     );
     toggleWishlist(product);
   }, [product, toggleWishlist, hrtScale, inWishlist]);

@@ -1,8 +1,11 @@
 /**
- * Featured — Best Sellers & Staff Picks
+ * Featured — Editor's Picks
  *
- * Full-screen infinite-scroll grid of featured / hand-picked products.
- * Star badges on cards, category filter rail, elegant gradient header.
+ * A premium editorial-style browsing screen with:
+ *   • Warm amber gradient header with "Editor's Pick" framing
+ *   • Sticky category filter pill rail
+ *   • Staggered 2-column grid with new/hot/sale badges
+ *   • Smooth category-switch animation (FadeInDown per row)
  */
 
 import React, { useCallback, useMemo, useState } from "react";
@@ -19,11 +22,17 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { useInfiniteProducts, type NativeProduct } from "@/features/products";
 import { fetchCategories } from "@/services/productsApi";
@@ -31,9 +40,72 @@ import { ProductCard } from "@/components/ProductCard";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { theme } from "@/theme";
 
-// ─── Screen ──────────────────────────────────────────────────────────────────
+// ─── Badge logic ──────────────────────────────────────────────────────────────
 
-export default function FeaturedScreen() {
+type Badge = "hot" | "new" | "sale" | undefined;
+function pickBadge(index: number): Badge {
+  if (index % 11 === 0) return "hot";
+  if (index % 7  === 0) return "new";
+  if (index % 13 === 0) return "sale";
+  return undefined;
+}
+
+// ─── Category chip ────────────────────────────────────────────────────────────
+
+function CatChip({
+  label, active, onPress,
+}: { label: string; active: boolean; onPress: () => void }) {
+  const scale = useSharedValue(1);
+  const anim  = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  return (
+    <Animated.View style={anim}>
+      <Pressable
+        onPress={() => {
+          scale.value = withSpring(0.92, { damping: 16, stiffness: 400 });
+          setTimeout(() => { scale.value = withSpring(1.0, { damping: 14, stiffness: 350 }); }, 80);
+          if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
+          onPress();
+        }}
+        style={[fc.chip, active && fc.chipActive]}>
+        {active && (
+          <LinearGradient colors={["#B45309", "#D97706"]} style={fc.chipGrad} />
+        )}
+        <Text style={[fc.chipText, active && fc.chipTextActive]} numberOfLines={1}>
+          {label}
+        </Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+// ─── Grid item ────────────────────────────────────────────────────────────────
+
+const GridItem = React.memo(function GridItem({
+  item, index, lang, onPress,
+}: {
+  item:    NativeProduct;
+  index:   number;
+  lang:    "ar" | "en";
+  onPress: () => void;
+}) {
+  return (
+    <Animated.View
+      style={fc.cell}
+      entering={FadeInDown.duration(300).delay((index % 6) * 45)}>
+      <ProductCard
+        product={item}
+        lang={lang}
+        badge={pickBadge(index)}
+        discountPercent={pickBadge(index) === "sale" ? 15 : undefined}
+        onPress={onPress}
+      />
+    </Animated.View>
+  );
+});
+
+// ─── Main screen ──────────────────────────────────────────────────────────────
+
+export default function FeaturedScreen(): React.ReactElement {
   const { t, i18n } = useTranslation();
   const lang        = i18n.language === "en" ? "en" as const : "ar" as const;
   const router      = useRouter();
@@ -42,8 +114,8 @@ export default function FeaturedScreen() {
   const [selectedCat, setSelectedCat] = useState<string | undefined>(undefined);
 
   const { data: categories = [] } = useQuery({
-    queryKey: ["categories"],
-    queryFn:  fetchCategories,
+    queryKey:  ["categories"],
+    queryFn:   fetchCategories,
     staleTime: 5 * 60_000,
   });
 
@@ -58,12 +130,12 @@ export default function FeaturedScreen() {
     fetchNextPage,
     refetch,
   } = useInfiniteProducts({
-    sortBy:     "name_asc",
+    sortBy:     "newest",
     categoryId: selectedCat,
     pageSize:   20,
   });
 
-  const handleProductPress = useCallback(
+  const handlePress = useCallback(
     (p: NativeProduct) => {
       if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
       router.push({ pathname: "/product/[id]", params: { id: p.id } });
@@ -71,92 +143,91 @@ export default function FeaturedScreen() {
     [router],
   );
 
-  const renderItem = useCallback(
-    ({ item, index }: { item: NativeProduct; index: number }) => (
-      <Animated.View
-        style={styles.cell}
-        entering={FadeInDown.duration(280).delay((index % 6) * 40)}>
-        <ProductCard
-          product={item}
-          lang={lang}
-          badge={index % 5 === 0 ? "hot" : index % 7 === 0 ? "new" : undefined}
-          onPress={() => handleProductPress(item)}
+  // Pill rail
+  const CatRail = useMemo(() => (
+    <View style={fc.railWrap}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={fc.railContent}>
+        <CatChip
+          label={t("products.allProducts")}
+          active={!selectedCat}
+          onPress={() => setSelectedCat(undefined)}
         />
-      </Animated.View>
-    ),
-    [lang, handleProductPress],
-  );
-
-  // Category rail: "All" + categories
-  const CategoryRail = useMemo(() => (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.catRailContent}
-      style={styles.catRail}>
-      {/* All */}
-      <Pressable
-        onPress={() => { if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {}); setSelectedCat(undefined); }}
-        style={[styles.catChip, !selectedCat && styles.catChipActive]}>
-        <Text style={[styles.catChipText, !selectedCat && styles.catChipTextActive]}>
-          {t("products.allProducts")}
-        </Text>
-      </Pressable>
-      {categories.map((c) => {
-        const active = selectedCat === c.id;
-        const display = lang === "en" ? (c.nameEn ?? c.name) : c.name;
-        return (
-          <Pressable
-            key={c.id}
-            onPress={() => { if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {}); setSelectedCat(c.id); }}
-            style={[styles.catChip, active && styles.catChipActive]}>
-            <Text style={[styles.catChipText, active && styles.catChipTextActive]} numberOfLines={1}>
-              {display}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
+        {categories.map((c) => {
+          const display = lang === "en" ? (c.nameEn ?? c.name) : c.name;
+          return (
+            <CatChip
+              key={c.id}
+              label={display}
+              active={selectedCat === c.id}
+              onPress={() => setSelectedCat((prev) => prev === c.id ? undefined : c.id)}
+            />
+          );
+        })}
+      </ScrollView>
+    </View>
   ), [categories, selectedCat, lang, t]);
 
   const Header = useMemo(() => (
     <>
       <LinearGradient
-        colors={["#451A03", "#78350F", "#F59E0B"]}
+        colors={["#3B1500", "#6B2800", "#B45309"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <View style={styles.headerGlow1} />
-        <View style={styles.headerGlow2} />
+        style={[fc.header, { paddingTop: insets.top + 12 }]}>
 
-        <View style={styles.topRow}>
-          <Pressable onPress={() => router.back()} hitSlop={10} style={styles.backBtn}>
+        {/* Decorative orbs */}
+        <View style={[fc.orb, { top: -50, right: -50, width: 180, height: 180 }]} />
+        <View style={[fc.orb, { bottom: -20, left: -20, width: 80, height: 80, backgroundColor: "rgba(255,255,255,0.04)" }]} />
+
+        {/* Top row */}
+        <View style={fc.topRow}>
+          <Pressable onPress={() => router.back()} hitSlop={10} style={fc.backBtn}>
             <Ionicons name="arrow-forward" size={16} color="#fff" />
           </Pressable>
+
           <View style={{ flex: 1 }}>
-            <Text style={styles.eyebrow}>{t("home.featuredEyebrow").toUpperCase()}</Text>
-            <Text style={styles.title}>{t("home.featuredTitle")}</Text>
+            <Text style={fc.eyebrow}>{t("home.featuredEyebrow").toUpperCase()}</Text>
+            <Text style={fc.headerTitle}>{t("home.featuredTitle")}</Text>
             {totalCount > 0 && (
-              <Text style={styles.metaText}>{totalCount.toLocaleString()} {t("products.allProducts").toLowerCase()}</Text>
+              <Text style={fc.headerMeta}>{totalCount.toLocaleString()} {t("products.allProducts").toLowerCase()}</Text>
             )}
           </View>
+
           {/* Star decoration */}
-          <View style={styles.starBadge}>
-            <Ionicons name="star" size={22} color="#FCD34D" />
+          <View style={fc.starWrap}>
+            <Ionicons name="star" size={24} color="#FCD34D" />
           </View>
         </View>
+
+        {/* Stat pills */}
+        <View style={fc.statsRow}>
+          {[
+            { icon: "cube-outline"            as const, label: t("products.badgeNew"),        color: "#FCD34D" },
+            { icon: "trending-up-outline"     as const, label: t("products.badgeBestSeller"), color: "#FCD34D" },
+            { icon: "checkmark-circle-outline"as const, label: t("product.trustOriginal"),    color: "#FCD34D" },
+          ].map((pill) => (
+            <View key={pill.label} style={fc.statPill}>
+              <Ionicons name={pill.icon} size={12} color={pill.color} />
+              <Text style={[fc.statText, { color: pill.color }]}>{pill.label}</Text>
+            </View>
+          ))}
+        </View>
       </LinearGradient>
-      {CategoryRail}
+
+      {CatRail}
     </>
-  ), [insets.top, totalCount, t, router, CategoryRail]);
+  ), [insets.top, totalCount, t, router, CatRail]);
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+      <View style={fc.screen}>
         {Header}
-        <View style={styles.skeletonGrid}>
+        <View style={fc.skeletonGrid}>
           {Array.from({ length: 6 }).map((_, i) => (
-            <View key={i} style={styles.cell}><ProductCardSkeleton /></View>
+            <View key={i} style={fc.cell}><ProductCardSkeleton /></View>
           ))}
         </View>
       </View>
@@ -165,13 +236,13 @@ export default function FeaturedScreen() {
 
   if (isError) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+      <View style={fc.screen}>
         {Header}
-        <View style={styles.centeredPanel}>
+        <View style={fc.center}>
           <Ionicons name="wifi-outline" size={44} color={theme.colors.slate[300]} />
-          <Text style={styles.panelTitle}>{t("common.error")}</Text>
-          <Pressable onPress={() => void refetch()} style={styles.retryBtn}>
-            <Text style={styles.retryText}>{t("common.retry")}</Text>
+          <Text style={fc.errorTitle}>{t("common.error")}</Text>
+          <Pressable onPress={() => void refetch()} style={fc.retryBtn}>
+            <Text style={fc.retryText}>{t("common.retry")}</Text>
           </Pressable>
         </View>
       </View>
@@ -179,16 +250,14 @@ export default function FeaturedScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+    <View style={fc.screen}>
       <FlatList
         data={products}
         keyExtractor={(p) => p.id}
         numColumns={2}
-        columnWrapperStyle={styles.row}
-        contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 32 }]}
+        columnWrapperStyle={fc.row}
+        contentContainerStyle={[fc.list, { paddingBottom: insets.bottom + 36 }]}
         showsVerticalScrollIndicator={false}
-        ListHeaderComponent={Header}
-        renderItem={renderItem}
         onEndReached={() => { if (hasNextPage && !isFetchingNextPage) void fetchNextPage(); }}
         onEndReachedThreshold={0.4}
         refreshControl={
@@ -199,9 +268,21 @@ export default function FeaturedScreen() {
             colors={[theme.colors.amber[600]]}
           />
         }
+        ListHeaderComponent={Header}
+        renderItem={({ item, index }) => (
+          <GridItem item={item} index={index} lang={lang} onPress={() => handlePress(item)} />
+        )}
+        ListEmptyComponent={
+          !isLoading ? (
+            <View style={fc.emptyWrap}>
+              <Ionicons name="search-outline" size={44} color={theme.colors.slate[300]} />
+              <Text style={fc.emptyTitle}>{t("products.noProducts")}</Text>
+            </View>
+          ) : null
+        }
         ListFooterComponent={
           isFetchingNextPage
-            ? <View style={styles.footerLoader}><ActivityIndicator color={theme.colors.amber[600]} /></View>
+            ? <View style={fc.footer}><ActivityIndicator color={theme.colors.amber[600]} /></View>
             : null
         }
       />
@@ -211,84 +292,134 @@ export default function FeaturedScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const fc = StyleSheet.create({
+  screen: {
+    flex:            1,
+    backgroundColor: "#F4F7FA",
+  },
   header: {
     paddingHorizontal: 16,
     paddingBottom:     20,
-    gap:               14,
+    gap:               16,
     overflow:          "hidden",
   },
-  headerGlow1: {
-    position: "absolute", right: -40, top: -40,
-    width: 160, height: 160, borderRadius: 80,
-    backgroundColor: "rgba(255,255,255,0.08)",
-  },
-  headerGlow2: {
-    position: "absolute", left: -30, bottom: -30,
-    width: 100, height: 100, borderRadius: 50,
-    backgroundColor: "rgba(255,255,255,0.05)",
+  orb: {
+    position:        "absolute",
+    borderRadius:    90,
+    backgroundColor: "rgba(255,255,255,0.06)",
   },
   topRow: {
-    flexDirection: "row-reverse", alignItems: "center", gap: 12,
+    flexDirection: "row-reverse",
+    alignItems:    "center",
+    gap:           12,
   },
   backBtn: {
-    width: 38, height: 38, borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.18)",
-    alignItems: "center", justifyContent: "center",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.25)",
+    width:           38,
+    height:          38,
+    borderRadius:    12,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems:      "center",
+    justifyContent:  "center",
+    borderWidth:     1,
+    borderColor:     "rgba(255,255,255,0.22)",
   },
   eyebrow: {
-    fontFamily: theme.fonts.bold, fontSize: 10,
-    color: "rgba(255,255,255,0.65)", letterSpacing: 0.6, marginBottom: 2,
+    fontFamily:    theme.fonts.bold,
+    fontSize:      9.5,
+    color:         "rgba(255,255,255,0.55)",
+    letterSpacing: 0.8,
+    marginBottom:  3,
   },
-  title: {
-    fontFamily: theme.fonts.black, fontSize: 24,
-    color: "#fff", letterSpacing: -0.5, textAlign: "right",
+  headerTitle: {
+    fontFamily:    theme.fonts.black,
+    fontSize:      26,
+    color:         "#fff",
+    letterSpacing: -0.5,
+    textAlign:     "right",
+    lineHeight:    32,
   },
-  metaText: {
-    fontFamily: theme.fonts.regular, fontSize: 12,
-    color: "rgba(255,255,255,0.55)", textAlign: "right", marginTop: 2,
+  headerMeta: {
+    fontFamily: theme.fonts.regular,
+    fontSize:   11.5,
+    color:      "rgba(255,255,255,0.50)",
+    textAlign:  "right",
+    marginTop:  2,
   },
-  starBadge: {
-    width: 44, height: 44, borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.18)",
-    alignItems: "center", justifyContent: "center",
+  starWrap: {
+    width:           44,
+    height:          44,
+    borderRadius:    14,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    alignItems:      "center",
+    justifyContent:  "center",
+    borderWidth:     1,
+    borderColor:     "rgba(255,255,255,0.18)",
+  },
+  statsRow: {
+    flexDirection: "row",
+    gap:           8,
+    justifyContent: "flex-end",
+  },
+  statPill: {
+    flexDirection:     "row-reverse",
+    alignItems:        "center",
+    gap:               5,
+    backgroundColor:   "rgba(255,255,255,0.10)",
+    borderRadius:      999,
+    paddingHorizontal: 10,
+    paddingVertical:   5,
+    borderWidth:       1,
+    borderColor:       "rgba(255,255,255,0.16)",
+  },
+  statText: {
+    fontFamily: theme.fonts.semibold,
+    fontSize:   10,
+    letterSpacing: 0.2,
   },
 
   // Category rail
-  catRail: {
-    backgroundColor: theme.colors.surface,
+  railWrap: {
+    backgroundColor:   "#fff",
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.border.hairline,
+    borderBottomColor: "rgba(15,23,42,0.07)",
+    shadowColor:       "#000",
+    shadowOffset:      { width: 0, height: 2 },
+    shadowOpacity:     0.04,
+    shadowRadius:      4,
+    elevation:         2,
   },
-  catRailContent: {
+  railContent: {
     paddingHorizontal: 14,
-    paddingVertical:   10,
+    paddingVertical:   11,
     gap:               8,
     flexDirection:     "row-reverse",
   },
-  catChip: {
+  chip: {
     paddingHorizontal: 14,
     paddingVertical:   7,
     borderRadius:      20,
-    backgroundColor:   theme.colors.surfaceSunken,
+    backgroundColor:   "#F1F5F9",
     borderWidth:       1,
-    borderColor:       theme.colors.border.default,
+    borderColor:       "rgba(15,23,42,0.08)",
+    overflow:          "hidden",
   },
-  catChipActive: {
-    backgroundColor: theme.colors.amber[50],
-    borderColor:     theme.colors.amber[400],
+  chipActive: {
+    borderColor: "transparent",
   },
-  catChipText: {
+  chipGrad: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  chipText: {
     fontFamily: theme.fonts.semibold,
-    fontSize:   12,
+    fontSize:   12.5,
     color:      theme.colors.text.secondary,
   },
-  catChipTextActive: {
-    color:      theme.colors.amber[700],
+  chipTextActive: {
+    color:      "#fff",
     fontFamily: theme.fonts.black,
   },
 
+  // Grid
   list: {
     paddingHorizontal: 12,
     paddingTop:        16,
@@ -307,21 +438,47 @@ const styles = StyleSheet.create({
     padding:       12,
     gap:           12,
   },
-  footerLoader: {
-    paddingVertical: 20, alignItems: "center",
+
+  // States
+  footer: {
+    paddingVertical: 22,
+    alignItems:      "center",
   },
-  centeredPanel: {
-    flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 32,
+  center: {
+    flex:           1,
+    alignItems:     "center",
+    justifyContent: "center",
+    gap:            12,
+    padding:        32,
   },
-  panelTitle: {
-    fontFamily: theme.fonts.black, fontSize: 16,
-    color: theme.colors.text.primary, textAlign: "center",
+  errorTitle: {
+    fontFamily: theme.fonts.black,
+    fontSize:   16,
+    color:      theme.colors.text.primary,
+    textAlign:  "center",
   },
   retryBtn: {
-    paddingHorizontal: 20, paddingVertical: 10,
-    borderRadius: 12, backgroundColor: theme.colors.amber[600], marginTop: 4,
+    paddingHorizontal: 24,
+    paddingVertical:   11,
+    borderRadius:      14,
+    backgroundColor:   theme.colors.amber[600],
+    marginTop:         4,
   },
   retryText: {
-    fontFamily: theme.fonts.black, fontSize: 13, color: "#fff",
+    fontFamily: theme.fonts.black,
+    fontSize:   13,
+    color:      "#fff",
+  },
+  emptyWrap: {
+    alignItems:     "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+    gap:            14,
+  },
+  emptyTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize:   15,
+    color:      theme.colors.text.secondary,
+    textAlign:  "center",
   },
 });

@@ -434,7 +434,7 @@ export default function HomeScreen() {
         gradientIdx={index}
         lang={lang}
         variant="pill"
-        onPress={() => router.push({ pathname: "/category/[id]", params: { id: item.id, nameEn: item.nameEn ?? "" } })}
+        onPress={() => router.push({ pathname: "/category/[id]", params: { id: item.id, nameEn: item.nameEn ?? "", name: item.name ?? "" } })}
       />
     ),
     [router, lang],
@@ -679,7 +679,7 @@ export default function HomeScreen() {
             <FlashSaleSection
               products={flashProducts}
               onProductPress={(id) => router.push({ pathname: "/product/[id]", params: { id } })}
-              onViewAll={() => router.push("/deals" as any)}
+              onViewAll={() => router.push({ pathname: "/deals" })}
             />
           </Animated.View>
         )}
@@ -693,7 +693,7 @@ export default function HomeScreen() {
             title={t("home.featuredTitle")}
             icon="star-outline"
             accent={theme.colors.amber[700]}
-            onMore={() => router.push("/featured" as any)}
+            onMore={() => router.push({ pathname: "/featured" })}
           />
           {featLoading ? (
             <FlatList
