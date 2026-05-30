@@ -51,5 +51,6 @@ const defaultOptions: DefaultOptions = {
 
 export const queryClient = new QueryClient({ defaultOptions });
 
-/** Bump when query key shape or persisted DTOs change — wipes stale cache. */
-export const QUERY_CACHE_BUSTER = "v1";
+/** Bump when query key shape or persisted DTOs change — wipes stale cache.
+ *  v2: wiped after ProductCard TDZ crash-fix + i18n addressForm refactor. */
+export const QUERY_CACHE_BUSTER = "v2";

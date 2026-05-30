@@ -7,17 +7,43 @@
  *
  * AsyncStorage is intentionally NOT replaced. Supabase auth, zustand persists,
  * and userDataWipe.ts still depend on it; ripping that out is a separate slice.
+ *
+ * Safety: both instances are created inside a try/catch. If the MMKV native
+ * module fails to initialise (JSI not ready, corrupted DB file after a
+ * force-kill, incompatible binary after an OTA update) the app falls back to
+ * an in-memory Map so the JS thread can at least boot and show the error
+ * boundary instead of dying before React starts.
  */
 
 import { MMKV } from "react-native-mmkv";
 
-export const appKV = new MMKV({
-  id: "united-app-v1",
-});
+// ─── In-memory fallback ──────────────────────────────────────────────────────
+// Implements the subset of MMKV's API that this codebase actually calls.
+// Data is not persisted across launches, but prevents a hard pre-React crash.
+class MemoryKV {
+  private readonly store = new Map<string, string>();
+  getString(key: string): string | undefined { return this.store.get(key); }
+  set(key: string, value: string | number | boolean): void {
+    this.store.set(key, String(value));
+  }
+  delete(key: string): void { this.store.delete(key); }
+}
 
-export const queryCacheKV = new MMKV({
-  id: "united-query-cache-v1",
-});
+type KV = MMKV | MemoryKV;
+
+function createMMKV(id: string): KV {
+  try {
+    return new MMKV({ id });
+  } catch (e) {
+    // Log in every environment — this is a serious infra problem the developer
+    // needs to know about, even in production (use your crash reporter here).
+    console.error(`[MMKV] failed to create instance "${id}" — using memory fallback:`, e);
+    return new MemoryKV();
+  }
+}
+
+export const appKV      = createMMKV("united-app-v1");
+export const queryCacheKV = createMMKV("united-query-cache-v1");
 
 /**
  * SyncStorage interface compatible with @tanstack/query-sync-storage-persister.
@@ -29,7 +55,7 @@ export interface SyncStorage {
   removeItem(key: string): void;
 }
 
-function syncStorageFor(kv: MMKV): SyncStorage {
+function syncStorageFor(kv: KV): SyncStorage {
   return {
     getItem(key) {
       const v = kv.getString(key);
