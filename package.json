@@ -12,7 +12,13 @@
     "preview": "npm run preview --workspace @pharmacy/shopper-web",
     "typecheck": "tsc -p apps/shopper-web/tsconfig.json --noEmit",
     "lint": "npm run typecheck && node scripts/check-no-console.mjs",
-    "ingest-products": "node scripts/ingest-products.mjs"
+    "ingest-products": "node scripts/ingest-products.mjs",
+    "railway:build:api": "bash scripts/railway/build-api.sh",
+    "railway:build:shopper-web": "bash scripts/railway/build-shopper-web.sh",
+    "railway:build:shopper-native": "bash scripts/railway/build-shopper-native.sh",
+    "railway:start:api": "bash scripts/railway/start-api.sh",
+    "railway:start:shopper-web": "bash scripts/railway/start-shopper-web.sh",
+    "railway:start:shopper-native": "bash scripts/railway/start-shopper-native.sh"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -95,6 +101,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "4.7.0",
     "expo": "~55.0.0",
+    "serve": "^14.2.4",
     "tailwindcss": "4.1.12",
     "typescript": "^6.0.2",
     "vite": "^6.4.1"
