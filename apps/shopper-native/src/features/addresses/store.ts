@@ -6,6 +6,7 @@ import {
   deleteAddress,
   setDefaultAddress,
 } from "./api";
+import { geocodeAddress } from "@/lib/geocoding";
 import type { Address, AddressFormData } from "./types";
 
 interface AddressState {
@@ -43,7 +44,21 @@ export const useAddressStore = create<AddressState>((set, get) => ({
         addresses: s.addresses.map((a) => ({ ...a, is_default: false })),
       }));
     }
-    const created = await createAddress(userId, form);
+
+    // Geocode the address to get coordinates for delivery zone lookup
+    const coords = await geocodeAddress({
+      street:   form.street,
+      building: form.building,
+      district: form.district,
+      city:     form.city,
+    });
+
+    const formWithCoords: AddressFormData = {
+      ...form,
+      ...(coords ? { lat: coords.lat, lng: coords.lng } : {}),
+    };
+
+    const created = await createAddress(userId, formWithCoords);
     set((s) => ({ addresses: [created, ...s.addresses] }));
     return created;
   },
@@ -58,7 +73,22 @@ export const useAddressStore = create<AddressState>((set, get) => ({
       }),
     }));
     try {
-      await updateAddress(id, userId, form);
+      // Re-geocode if any address fields changed
+      const addressFields: (keyof AddressFormData)[] = ["street", "building", "district", "city"];
+      const hasAddressChange = addressFields.some((k) => k in form);
+      let formWithCoords = form;
+      if (hasAddressChange && form.street && form.district && form.city) {
+        const coords = await geocodeAddress({
+          street:   form.street,
+          building: form.building ?? "",
+          district: form.district,
+          city:     form.city,
+        });
+        if (coords) {
+          formWithCoords = { ...form, lat: coords.lat, lng: coords.lng };
+        }
+      }
+      await updateAddress(id, userId, formWithCoords);
     } catch {
       // Revert on failure
       await get().fetch(userId);
