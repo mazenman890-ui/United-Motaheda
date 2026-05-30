@@ -34,6 +34,7 @@
                    "cartWithCount":  "السلة، {{count}} عنصر",
                    "required":  "مطلوب",
                    "previous":  "السابق",
+                   "next":      "التالي",
                    "decrement":  "إنقاص",
                    "increment":  "زيادة",
                    "ok":         "حسناً",
@@ -907,7 +908,11 @@
                         "summaryLabelStreet":  "الشارع",
                         "summaryLabelBuilding":  "المبنى",
                         "setDefault":  "تعيين كعنوان افتراضي",
-                        "setDefaultDesc":  "سيُستخدم تلقائياً عند الطلب"
+                        "setDefaultDesc":  "سيُستخدم تلقائياً عند الطلب",
+                        "mapPlaceholderHint":  "ستظهر الخريطة بعد حفظ العنوان",
+                        "locating":            "جاري تحديد الموقع…",
+                        "openInMaps":          "فتح في الخرائط",
+                        "locationVerified":    "موقع مُحدَّد"
                     },
     "orderStatus":  {
                         "pending":  "قيد المعالجة",

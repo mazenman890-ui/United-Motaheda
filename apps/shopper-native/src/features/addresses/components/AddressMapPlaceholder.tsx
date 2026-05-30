@@ -28,6 +28,7 @@ import Animated, {
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
+import { useTranslation } from "react-i18next";
 import { geocodeAddress } from "@/lib/geocoding";
 import { theme } from "@/theme";
 
@@ -79,6 +80,7 @@ function openInMaps(lat: number, lng: number) {
 
 // ─── Pulsing placeholder (no coords yet) ────────────────────────────────────
 function MapPlaceholder({ height }: { height: number }) {
+  const { t } = useTranslation();
   const opacity = useSharedValue(0.4);
   useEffect(() => {
     opacity.value = withRepeat(withTiming(0.9, { duration: 1100 }), -1, true);
@@ -111,7 +113,7 @@ function MapPlaceholder({ height }: { height: number }) {
       <View style={styles.placeholderLabel}>
         <Ionicons name="navigate-circle-outline" size={14} color={theme.colors.brand[600]} />
         <Text style={styles.placeholderText}>
-          ستظهر الخريطة بعد حفظ العنوان
+          {t("addressForm.mapPlaceholderHint")}
         </Text>
       </View>
     </View>
@@ -126,7 +128,8 @@ export function AddressMapPlaceholder({
   compact = false,
   height: heightProp,
 }: Props) {
-  const height   = heightProp ?? (compact ? 120 : 200);
+  const { t }  = useTranslation();
+  const height = heightProp ?? (compact ? 120 : 200);
 
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     lat != null && lng != null ? { lat, lng } : null,
@@ -161,7 +164,7 @@ export function AddressMapPlaceholder({
     return loading ? (
       <View style={[styles.loadingBox, { height }]}>
         <ActivityIndicator color={theme.colors.brand[600]} />
-        <Text style={styles.loadingText}>جاري تحديد الموقع…</Text>
+        <Text style={styles.loadingText}>{t("addressForm.locating")}</Text>
       </View>
     ) : (
       <MapPlaceholder height={height} />
@@ -200,14 +203,14 @@ export function AddressMapPlaceholder({
         hitSlop={8}
       >
         <Ionicons name="map-outline" size={13} color={theme.colors.brand[700]} />
-        <Text style={styles.openMapsText}>فتح في الخرائط</Text>
+        <Text style={styles.openMapsText}>{t("addressForm.openInMaps")}</Text>
       </Pressable>
 
       {/* Verified badge */}
       {!compact && (
         <View style={styles.verifiedBadge}>
           <Ionicons name="checkmark-circle" size={12} color="#059669" />
-          <Text style={styles.verifiedText}>موقع مُحدَّد</Text>
+          <Text style={styles.verifiedText}>{t("addressForm.locationVerified")}</Text>
         </View>
       )}
     </View>

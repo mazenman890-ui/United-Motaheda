@@ -245,6 +245,10 @@ export const ProductCard = memo(function ProductCard({
   // Only show ratings when real data exists — never fake a value
   const hasRating = product.ratingAvg != null && product.ratingAvg > 0;
   const isLowStock = product.stock > 0 && product.stock <= 3;
+
+  // Discount — prefer real field, fall back to caller prop
+  const resolvedDiscount = product.discountPercent ?? discountPercent ?? null;
+
   const origPrice  = resolvedDiscount ? product.price / (1 - resolvedDiscount / 100) : null;
 
   // Badge — prefer real product flags, fall back to explicit prop, never fake
@@ -253,9 +257,6 @@ export const ProductCard = memo(function ProductCard({
     product.isNew        ? "new" :
     product.isSale       ? "sale" :
     badge; // explicit override from caller (e.g. deals screen passing "sale")
-
-  // Discount — prefer real field, fall back to caller prop
-  const resolvedDiscount = product.discountPercent ?? discountPercent ?? null;
 
   const badgeMeta =
     resolvedBadge === "new"  ? { label: t("products.badgeNew"),                                               grad: ["#2563EB", "#1D4ED8"] as [string, string] } :

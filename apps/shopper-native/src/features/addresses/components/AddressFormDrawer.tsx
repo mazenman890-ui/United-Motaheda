@@ -146,9 +146,10 @@ export function AddressFormDrawer({
   onSubmit,
   loading,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const isEdit = !!address;
+  const cityDisplay = i18n.language === "en" ? SUPPORTED_GOVERNORATE.en : SUPPORTED_GOVERNORATE.ar;
 
   const [form, setForm] = useState<AddressFormData>(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof AddressFormData, string>>>({});
@@ -659,7 +660,7 @@ function StepContent({
                       color={theme.colors.slate[400]}
                     />
                     <Text style={[fieldStyles.input, styles.readonlyText]}>
-                      {SUPPORTED_GOVERNORATE.ar}
+                      {cityDisplay}
                     </Text>
                   </View>
                 </View>
