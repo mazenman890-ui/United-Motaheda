@@ -728,9 +728,23 @@ function StepContent({
     case "confirm":
       return (
         <Animated.View entering={FadeIn.duration(300)} style={styles.stepContainer}>
-          {/* Map preview card */}
+          {/* Map preview card — uses saved coords if editing, otherwise geocodes from form */}
           <View style={styles.card}>
-            <AddressMapPlaceholder lat={address?.lat} lng={address?.lng} />
+            <AddressMapPlaceholder
+              lat={address?.lat}
+              lng={address?.lng}
+              height={200}
+              addressHint={
+                !address?.lat
+                  ? {
+                      street:   form.street,
+                      building: form.building,
+                      district: form.district,
+                      city:     form.city,
+                    }
+                  : undefined
+              }
+            />
             <View style={styles.mapHint}>
               <Ionicons
                 name="navigate-outline"
