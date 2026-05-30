@@ -1,29 +1,32 @@
 /**
- * requestLocation — ask for GPS permission and store coordinates.
+ * requestAndStoreLocation — ask for GPS and store coordinates.
  *
- * Called once after the user signs in or registers so the delivery
- * context has real coordinates immediately for the first cart session.
- * Silent on denial — the user can always grant it later from settings.
+ * Uses the standard Web Geolocation API (navigator.geolocation) which
+ * works on both web browsers and React Native / Expo without requiring
+ * any extra package. Called once after login/register so the delivery
+ * context has real coordinates from the first cart session.
  */
 
-import * as Location from "expo-location";
 import { useLocationState } from "@/features/delivery/locationStore";
 
-export async function requestAndStoreLocation(): Promise<void> {
-  try {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== "granted") return;
+export function requestAndStoreLocation(): void {
+  if (typeof navigator === "undefined" || !navigator.geolocation) return;
 
-    const loc = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
-    });
-
-    useLocationState.getState().setCoordinates({
-      lat: loc.coords.latitude,
-      lng: loc.coords.longitude,
-    });
-    useLocationState.getState().setPermission("granted");
-  } catch {
-    // GPS unavailable (emulator, denied, timeout) — fail silently
-  }
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      useLocationState.getState().setCoordinates({
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      });
+      useLocationState.getState().setPermission("granted");
+    },
+    () => {
+      useLocationState.getState().setPermission("denied");
+    },
+    {
+      enableHighAccuracy: true,
+      timeout:            8_000,
+      maximumAge:         60_000,
+    },
+  );
 }

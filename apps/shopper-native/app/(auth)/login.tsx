@@ -57,7 +57,7 @@ export default function LoginScreen() {
     try {
       await signIn(email.trim().toLowerCase(), password);
       track("login_completed");
-      void requestAndStoreLocation(); // ask for GPS in background, don't block navigation
+      requestAndStoreLocation(); // triggers GPS permission prompt, non-blocking
       router.replace("/(tabs)");
     } catch (e) {
       if (__DEV__) console.warn("[login] signIn failed:", e);

@@ -104,10 +104,11 @@ export default function RegisterScreen() {
           // the profile screen, but they should know it didn't happen now.
           setError(t("auth.otpSendFailedContinue"));
           // Brief delay so the message is readable before navigating.
-          setTimeout(() => { void requestAndStoreLocation(); router.replace("/(tabs)"); }, 2200);
+          setTimeout(() => { requestAndStoreLocation(); router.replace("/(tabs)"); }, 2200);
         }
       } else {
-        { void requestAndStoreLocation(); router.replace("/(tabs)"); };
+        requestAndStoreLocation();
+        router.replace("/(tabs)");
       }
     } catch (e) {
       if (__DEV__) console.warn("[register] signUp failed:", e);
@@ -122,14 +123,16 @@ export default function RegisterScreen() {
   const handleOtpVerified = (_verifiedPhone: string) => {
     track("signup_completed", { phone_verified: true });
     setOtpPhone(null);
-    { void requestAndStoreLocation(); router.replace("/(tabs)"); };
+    requestAndStoreLocation();
+    router.replace("/(tabs)");
   };
 
   const handleOtpCancel = () => {
     // User dismissed the OTP modal. Account already exists; they can verify
     // the phone later. Send them into the app.
     setOtpPhone(null);
-    { void requestAndStoreLocation(); router.replace("/(tabs)"); };
+    requestAndStoreLocation();
+    router.replace("/(tabs)");
   };
 
   return (
