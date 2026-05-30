@@ -122,12 +122,12 @@ export function showAuthSheet(onLoginPress?: () => void, onRegisterPress?: () =>
 export function showOutOfZoneSheet() {
   useAppSheetStore.getState().show({
     type:        "out-of-zone",
-    title:       "خارج نطاق التوصيل",
-    message:     "موقعك خارج نطاق خدمة التوصيل المتاحة حالياً.\nنخدم القاهرة فقط في الوقت الحالي.",
+    title:       i18n.t("sheet.outOfZoneTitle"),
+    message:     i18n.t("sheet.outOfZoneMessage"),
     dismissible: true,
     actions:     [
       {
-        label:   "فهمت، شكراً",
+        label:   i18n.t("common.gotIt"),
         variant: "primary",
         onPress: () => useAppSheetStore.getState().hide(),
       },
