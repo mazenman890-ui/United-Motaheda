@@ -138,20 +138,20 @@ export function showOutOfZoneSheet() {
 export function showNetworkSheet(onRetry?: () => void) {
   useAppSheetStore.getState().show({
     type:        "network",
-    title:       "لا يوجد اتصال بالإنترنت",
-    message:     "تحقق من اتصالك بالإنترنت وأعد المحاولة.",
+    title:       i18n.t("sheet.networkTitle"),
+    message:     i18n.t("sheet.networkMessage"),
     dismissible: true,
     actions:     onRetry
       ? [
           {
-            label:   "إعادة المحاولة",
+            label:   i18n.t("common.retry"),
             variant: "primary",
             onPress: () => { useAppSheetStore.getState().hide(); onRetry(); },
           },
         ]
       : [
           {
-            label:   "حسناً",
+            label:   i18n.t("common.ok"),
             variant: "primary",
             onPress: () => useAppSheetStore.getState().hide(),
           },
@@ -176,7 +176,7 @@ export function showConfirmSheet(
     dismissible: true,
     actions:     [
       {
-        label:   opts?.confirmLabel ?? i18n.t("sheet.confirm"),
+        label:   opts?.confirmLabel ?? i18n.t("common.confirm"),
         variant: opts?.danger ? "danger" : "primary",
         onPress: () => { useAppSheetStore.getState().hide(); onConfirm(); },
       },
