@@ -799,6 +799,16 @@
                    "loadMore":  "Load More"
                },
     "sheet":  {
+                  "badge":  {
+                                "error":      "Error",
+                                "warning":    "Warning",
+                                "success":    "Success",
+                                "info":       "Info",
+                                "auth":       "Sign In",
+                                "outOfZone":  "Out of Zone",
+                                "confirm":    "Confirm",
+                                "network":    "Network"
+                            },
                   "confirm":  "Confirm",
                   "cancel":  "Cancel",
                   "done":  "Done",
