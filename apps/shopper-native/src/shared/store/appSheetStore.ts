@@ -72,19 +72,19 @@ export function showErrorSheet(
     actions:     opts?.onRetry
       ? [
           {
-            label:   "حاول مرة أخرى",
+            label:   i18n.t("common.retry"),
             variant: "primary",
             onPress: () => { useAppSheetStore.getState().hide(); opts.onRetry!(); },
           },
           {
-            label:   "إغلاق",
+            label:   i18n.t("common.close"),
             variant: "ghost",
             onPress: () => useAppSheetStore.getState().hide(),
           },
         ]
       : [
           {
-            label:   "حسناً",
+            label:   i18n.t("common.ok"),
             variant: "primary",
             onPress: () => useAppSheetStore.getState().hide(),
           },
