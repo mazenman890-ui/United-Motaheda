@@ -181,7 +181,7 @@ export function showConfirmSheet(
         onPress: () => { useAppSheetStore.getState().hide(); onConfirm(); },
       },
       {
-        label:   opts?.cancelLabel ?? i18n.t("sheet.cancel"),
+        label:   opts?.cancelLabel ?? i18n.t("common.cancel"),
         variant: "ghost",
         onPress: () => useAppSheetStore.getState().hide(),
       },
@@ -197,7 +197,7 @@ export function showSuccessSheet(title: string, message: string, onOk?: () => vo
     dismissible: true,
     actions:     [
       {
-        label:   i18n.t("common.ok"),
+        label:   i18n.t("common.gotIt"),
         variant: "primary",
         onPress: () => { useAppSheetStore.getState().hide(); onOk?.(); },
       },
