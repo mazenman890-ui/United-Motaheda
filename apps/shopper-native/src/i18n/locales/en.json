@@ -297,7 +297,9 @@
                    "required":  "Required",
                    "previous":  "Previous",
                    "decrement":  "Decrease",
-                   "increment":  "Increase"
+                   "increment":  "Increase",
+                   "ok":         "OK",
+                   "gotIt":      "Got It"
                },
     "delivery":  {
                      "title":  "Delivery Info",
@@ -812,7 +814,13 @@
                   "confirm":  "Confirm",
                   "cancel":  "Cancel",
                   "done":  "Done",
-                  "dismiss":  "Dismiss"
+                  "dismiss":  "Dismiss",
+                  "authTitle":        "Sign In Required",
+                  "authMessage":      "Please sign in to continue with this step.",
+                  "outOfZoneTitle":   "Outside Delivery Zone",
+                  "outOfZoneMessage": "Your location is outside our current delivery area. We currently serve Cairo only.",
+                  "networkTitle":     "No Internet Connection",
+                  "networkMessage":   "Check your internet connection and try again."
               },
     "splash":  {
                    "tagline":  "Your Trusted Pharmacy",
