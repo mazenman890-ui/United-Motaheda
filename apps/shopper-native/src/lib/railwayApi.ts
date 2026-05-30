@@ -143,7 +143,7 @@ export const railwayApi = {
   /** Real delivery quote — zone-polygon engine on Railway server. */
   getDeliveryQuote: (body: {
     coordinates:        { lat: number; lng: number };
-    cart:               { items: RailwayCartItem[]; subtotal: number };
+    cart:               { items: RailwayCartItem[]; itemCount: number; subtotal: number };
     requestedBranchId?: string;
   }) =>
     railwayFetch<RailwayDeliveryQuote>("/delivery/quote", {

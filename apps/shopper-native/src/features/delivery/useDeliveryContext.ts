@@ -103,7 +103,7 @@ export function useDeliveryContext(): DeliveryContext {
     queryFn: () =>
       railwayApi.getDeliveryQuote({
         coordinates:       queryCoords,
-        cart:              { items: cartItems, subtotal },
+        cart:              { items: cartItems, itemCount: items.reduce((s, i) => s + i.quantity, 0), subtotal },
         requestedBranchId: selectedBranchId ?? undefined,
       }),
     staleTime:            60_000,
