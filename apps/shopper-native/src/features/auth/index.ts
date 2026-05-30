@@ -4,7 +4,7 @@ export {
   type AuthUser,
 } from "./api";
 export { AuthProvider, useAuth } from "./context";
-export { authErrorToArabic } from "./errorMap";
+export { getAuthError, authErrorToArabic } from "./errorMap";
 export {
   sendPhoneOtp,
   verifyPhoneOtp,

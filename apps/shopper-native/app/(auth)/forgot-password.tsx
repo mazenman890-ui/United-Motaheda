@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
-import { requestPasswordReset, authErrorToArabic } from "@/features/auth";
+import { requestPasswordReset, getAuthError } from "@/features/auth";
 import { track } from "@/lib/analytics";
 import { captureError } from "@/lib/crashReporter";
 import { Input } from "@/components/ui/Input";
@@ -32,7 +32,7 @@ import { Text } from "@/shared/ui";
 import { theme } from "@/theme";
 
 export default function ForgotPasswordScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -61,7 +61,7 @@ export default function ForgotPasswordScreen() {
     } catch (e) {
       if (__DEV__) console.warn("[forgot-password] failed:", e);
       captureError(e, { surface: "forgot-password" });
-      setError(authErrorToArabic(e));
+      setError(getAuthError(e, i18n.language));
     } finally {
       setLoading(false);
     }

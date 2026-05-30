@@ -60,7 +60,7 @@ export async function signUp(
     },
   });
   if (error) throw error;
-  if (!data.user) throw new Error("لم يتم إنشاء الحساب، يرجى المحاولة مجدداً");
+  if (!data.user) throw new Error("Account was not created, please try again.");
 
   // Profile row creation is handled server-side by the `handle_new_user`
   // trigger on auth.users. We used to also upsert client-side here as a

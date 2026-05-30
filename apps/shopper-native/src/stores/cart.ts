@@ -111,7 +111,7 @@ interface CartState {
 function clampQuantity(product: NativeProduct | undefined, requested: number): number {
   if (!product) return 0;
   if (!product.inStock || product.stock <= 0) return 0;
-  return Math.min(requested, Math.max(1, Math.ceil(product.stock)));
+  return Math.min(requested, Math.max(1, Math.floor(product.stock)));
 }
 
 function itemsToLines(items: CartItem[]): CheckoutLineInput[] {
@@ -135,8 +135,15 @@ function mirror(label: string, fn: () => Promise<unknown>): void {
 
 /** Parse the RPC error code/message produced by reserve_inventory. */
 function parseReserveError(e: unknown): { reason: string; available?: number } {
-  const message = e instanceof Error ? e.message : String(e ?? "");
-  // Server raises e.g. `insufficient_stock|available=0|requested=1`
+  // Supabase throws plain PostgrestError objects (not Error instances), so we
+  // must check for a .message property before falling back to String().
+  const message =
+    e instanceof Error
+      ? e.message
+      : e !== null && typeof e === "object" && "message" in e
+        ? String((e as { message: unknown }).message ?? "")
+        : String(e ?? "");
+  // Server raises e.g. `insufficient_stock|available=2|requested=3`
   if (message.startsWith("insufficient_stock")) {
     const m = /available=(\d+)/.exec(message);
     return { reason: "insufficient_stock", available: m ? Number(m[1]) : 0 };
@@ -258,10 +265,15 @@ export const useCartStore = create<CartState>((set, get) => ({
             const item = s.items.find((i) => i.productId === product.id);
             if (!item) return s;
             const prevQty = item.quantity - qty;
+            const realStock = validation?.available ?? 0;
             const next =
               prevQty <= 0
                 ? s.items.filter((i) => i.productId !== product.id)
-                : s.items.map((i) => (i.productId === product.id ? { ...i, quantity: prevQty } : i));
+                : s.items.map((i) =>
+                    i.productId === product.id
+                      ? { ...i, quantity: prevQty, product: { ...i.product, stock: realStock > 0 ? realStock : prevQty } }
+                      : i,
+                  );
             storageSet(STORAGE_KEYS.cart, next);
             if (s.userId) {
               if (prevQty <= 0) {
@@ -275,8 +287,8 @@ export const useCartStore = create<CartState>((set, get) => ({
               lastReservationError: {
                 productId: product.id,
                 message:
-                  validation && validation.available && validation.available > 0
-                    ? `الكمية المتاحة فقط ${validation.available}`
+                  realStock > 0
+                    ? `الكمية المتاحة فقط ${realStock}`
                     : "نفذ المخزون لهذا المنتج",
                 ts: Date.now(),
               },
@@ -312,11 +324,17 @@ export const useCartStore = create<CartState>((set, get) => ({
           const item = s.items.find((i) => i.productId === product.id);
           if (!item) return s;
           const prevQty = item.quantity - qty;
+          const realStock =
+            parsed.reason === "insufficient_stock" && parsed.available != null
+              ? parsed.available
+              : prevQty;
           const next =
             prevQty <= 0
               ? s.items.filter((i) => i.productId !== product.id)
               : s.items.map((i) =>
-                  i.productId === product.id ? { ...i, quantity: prevQty } : i,
+                  i.productId === product.id
+                    ? { ...i, quantity: prevQty, product: { ...i.product, stock: realStock } }
+                    : i,
                 );
           storageSet(STORAGE_KEYS.cart, next);
 
@@ -452,7 +470,12 @@ export const useCartStore = create<CartState>((set, get) => ({
                 lastReservationError: { productId, message: "نفذ المخزون لهذا المنتج", ts: Date.now() },
               };
             }
-            const next = s.items.map((i) => (i.productId === productId ? { ...i, quantity: clamp } : i));
+            // Write real stock ceiling back so + button is disabled correctly
+            const next = s.items.map((i) =>
+              i.productId === productId
+                ? { ...i, quantity: clamp, product: { ...i.product, stock: clamp } }
+                : i,
+            );
             storageSet(STORAGE_KEYS.cart, next);
             if (s.userId) {
               mirror("upsert(clamp)", () => upsertCartItem(s.userId as string, { ...item, quantity: clamp }));
@@ -505,7 +528,12 @@ export const useCartStore = create<CartState>((set, get) => ({
               lastReservationError: { productId, message: "نفذ المخزون لهذا المنتج", ts: Date.now() },
             };
           }
-          const next = s.items.map((i) => (i.productId === productId ? { ...i, quantity: clamp } : i));
+          // Write clamp back into product.stock so isAtMax is correct going forward
+          const next = s.items.map((i) =>
+            i.productId === productId
+              ? { ...i, quantity: clamp, product: { ...i.product, stock: clamp } }
+              : i,
+          );
           storageSet(STORAGE_KEYS.cart, next);
           if (s.userId) {
             mirror("upsert(clamp)", () => upsertCartItem(s.userId as string, { ...item, quantity: clamp }));

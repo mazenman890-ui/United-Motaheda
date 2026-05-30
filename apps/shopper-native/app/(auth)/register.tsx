@@ -15,7 +15,7 @@ import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import {
   signUp,
-  authErrorToArabic,
+  getAuthError,
   sendPhoneOtp,
   PhoneVerifyModal,
   PHONE_VERIFICATION_ENABLED,
@@ -29,7 +29,7 @@ import { Text } from "@/shared/ui";
 import { theme } from "@/theme";
 
 export default function RegisterScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router  = useRouter();
   const insets  = useSafeAreaInsets();
 
@@ -112,7 +112,7 @@ export default function RegisterScreen() {
       if (__DEV__) console.warn("[register] signUp failed:", e);
       captureError(e, { surface: "register" });
       track("signup_failed", { reason: e instanceof Error ? e.message.slice(0, 80) : "unknown" });
-      setError(authErrorToArabic(e));
+      setError(getAuthError(e, i18n.language));
     } finally {
       setLoading(false);
     }

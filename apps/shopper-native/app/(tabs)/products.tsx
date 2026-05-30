@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { FlatList, Platform, Pressable, StyleSheet, View, type DimensionValue } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -27,14 +27,30 @@ export default function ProductsScreen() {
   const lang      = i18n.language === "en" ? "en" as const : "ar" as const;
 
   const { data: categories = [], isLoading: catsLoading, isError, refetch } = useQuery({
-    queryKey: ["categories"],
-    queryFn: fetchCategories,
+    queryKey:  ["categories"],
+    queryFn:   fetchCategories,
+    staleTime: 10 * 60_000,  // categories change infrequently
   });
 
   const { data: featured = [], isLoading: featLoading } = useQuery({
-    queryKey: ["featured"],
-    queryFn: () => fetchFeaturedProducts(12),
+    queryKey:  ["featured"],
+    queryFn:   () => fetchFeaturedProducts(12),
+    staleTime: 5 * 60_000,
   });
+
+  // Memoised navigation handlers — stable references stop FlatList renderItem
+  // from re-running on every parent render.
+  const goSearch   = useCallback(() => { if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {}); router.push("/(tabs)/search"); }, [router]);
+  const goCart     = useCallback(() => { if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {}); router.push("/(tabs)/cart"); }, [router]);
+  const goCategory = useCallback(
+    (item: { id: string; nameEn?: string; name: string }) =>
+      router.push({ pathname: "/category/[id]", params: { id: item.id, nameEn: item.nameEn ?? "", name: item.name ?? "" } }),
+    [router],
+  );
+  const goProduct  = useCallback(
+    (id: string) => router.push({ pathname: "/product/[id]", params: { id } }),
+    [router],
+  );
 
   const totalProducts = categories.reduce((sum, c) => sum + c.count, 0);
   const hasRealCounts = totalProducts > 0;
@@ -75,10 +91,7 @@ export default function ProductsScreen() {
                 </View>
                 <View style={styles.headerActions}>
                   <Pressable
-                    onPress={() => {
-                      if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
-                      router.push("/(tabs)/cart");
-                    }}
+                    onPress={goCart}
                     accessibilityRole="button"
                     accessibilityLabel={cartCount > 0 ? `${t("tabs.cart")}, ${cartCount}` : t("tabs.cart")}
                     style={styles.headerActionBtn}>
@@ -96,7 +109,7 @@ export default function ProductsScreen() {
 
               {/* Search prompt — light surface, links to /search */}
               <Pressable
-                onPress={() => router.push("/(tabs)/search")}
+                onPress={goSearch}
                 accessibilityRole="button"
                 accessibilityLabel={t("search.placeholder")}
                 style={styles.searchPrompt}>
@@ -159,10 +172,7 @@ export default function ProductsScreen() {
                       gradientIdx={index}
                       lang={lang}
                       variant="tile"
-                      onPress={() => {
-                        if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
-                        router.push({ pathname: "/category/[id]", params: { id: item.id, nameEn: item.nameEn ?? "" } });
-                      }}
+                      onPress={() => goCategory(item)}
                     />
                   </Animated.View>
                 ))}
@@ -184,7 +194,7 @@ export default function ProductsScreen() {
                       </UIText>
                     </View>
                   </View>
-                  <Pressable onPress={() => router.push("/(tabs)/search")} style={styles.moreBtn} hitSlop={6}>
+                  <Pressable onPress={goSearch} style={styles.moreBtn} hitSlop={6}>
                     <UIText variant="caption" weight="bold" color="brand">{t("home.viewAll")}</UIText>
                     <Ionicons name="chevron-back" size={13} color={theme.colors.brand[700]} />
                   </Pressable>
@@ -202,7 +212,7 @@ export default function ProductsScreen() {
                       <ProductCard
                         product={item}
                         lang={lang}
-                        onPress={() => router.push({ pathname: "/product/[id]", params: { id: item.id } })}
+                        onPress={() => goProduct(item.id)}
                       />
                     </View>
                   )}

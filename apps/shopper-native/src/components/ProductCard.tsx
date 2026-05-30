@@ -204,7 +204,7 @@ export const ProductCard = memo(function ProductCard({
   const handlePressIn  = () => { cardScale.value = withSpring(0.975, { damping: 20, stiffness: 420 }); };
   const handlePressOut = () => { cardScale.value = withSpring(1.0,   { damping: 18, stiffness: 380 }); };
 
-  const maxQty = product.inStock && product.stock > 0 ? Math.ceil(product.stock) : 0;
+  const maxQty = product.inStock && product.stock > 0 ? Math.floor(product.stock) : 0;
   const isAtMax = maxQty > 0 && cartQty >= maxQty;
 
   const handleAddToCart = useCallback(() => {

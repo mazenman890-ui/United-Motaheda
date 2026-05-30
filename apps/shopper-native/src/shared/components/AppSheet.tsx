@@ -329,10 +329,10 @@ const s = StyleSheet.create({
     paddingBottom: 4,
   },
   iconGlowWrap: {
-    shadowOffset:  { width: 0, height: 8 },
-    shadowOpacity: 1,
-    shadowRadius:  20,
-    elevation:     0,
+    width:         72,
+    height:        72,
+    borderRadius:  36,
+    overflow:      "hidden",
   },
   iconCircle: {
     width:          72,

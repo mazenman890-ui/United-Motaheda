@@ -60,6 +60,19 @@ export const ProductGrid = React.memo(function ProductGrid({
   const keyExtractor = useCallback((item: NativeProduct) => item.id, []);
   const getItemType  = useCallback(() => ITEM_TYPE_PRODUCT, []);
 
+  // Provide exact layout dimensions so FlashList never needs a measurement pass.
+  // Eliminates the first-render jitter where cards momentarily appear at the
+  // wrong vertical position before FlashList corrects the scroll offset.
+  // Card anatomy: 172 image + (14 padding × 2) + 10 category + 40 name (2×20)
+  // + 14 stars + 8 price-row margin + 40 price/button + 5 cell padding = ~317 px.
+  const overrideItemLayout = useCallback(
+    (layout: { span?: number; size?: number }) => {
+      layout.size = 317;
+      layout.span = 1;
+    },
+    [],
+  );
+
   const renderItem = useCallback(
     ({ item }: { item: NativeProduct }) => (
       <View style={cellStyle}>
@@ -134,10 +147,11 @@ export const ProductGrid = React.memo(function ProductGrid({
       // (2 lines × 20px) + ~14 stars row + ~34 price/button + 20 gap = ~317px.
       // Tight estimate → fewer scroll-position miscalculations on first render.
       estimatedItemSize={317}
+      overrideItemLayout={overrideItemLayout}
       // drawDistance: pre-render 1.5 screen-heights ahead so the user never
       // sees blank cells during normal scrolling.  Larger values increase
       // mount/unmount work; smaller values risk visible blanks on fast flings.
-      drawDistance={Platform.OS === "android" ? 280 : 240}
+      drawDistance={Platform.OS === "android" ? 300 : 250}
       onEndReached={onEndReached}
       onEndReachedThreshold={0.6}
       showsVerticalScrollIndicator={false}

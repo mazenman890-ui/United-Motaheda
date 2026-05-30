@@ -1,101 +1,161 @@
 /**
  * useDeliveryContext — unified delivery pricing source.
  *
- * Mirrors the web canonical `useDeliveryContext` (apps/shopper-web/
- * src/app/hooks/useDeliveryContext.ts) so Cart, CartDrawer, and Checkout
- * all produce IDENTICAL delivery quotes for the same cart + location
- * state. Eliminates the prior drift where Cart screen used a local
- * hardcoded `25 EGP` fallback while CartDrawer + Checkout went through
- * `useDeliveryQuote`.
+ * Always calls the Railway /delivery/quote endpoint so the fee is real
+ * (zone-polygon engine, per-zone cost, live deliverability).
  *
- * Pipeline:
+ * Coordinate resolution order:
+ *   1. Customer GPS coordinates (most accurate)
+ *   2. Saved default address lat/lng
+ *   3. Selected branch lat/lng (user picked a branch explicitly)
+ *   4. Primary branch lat/lng (absolute fallback — gives the base zone fee)
  *
- *   cart subtotal ─┐
- *                  ├──► useDeliveryQuote ──► DeliveryQuote
- *   location ──────┤      (branch-aware Haversine,
- *   (coords +      │       Cairo bounds, threshold,
- *    branch id +   │       primary-branch fallback)
- *    address) ────┘
- *
- * Reactivity:
- *   - Recomputes when cart items change (productId/quantity).
- *   - Recomputes when coords change (GPS update OR address selection).
- *   - Recomputes when selectedBranchId changes (explicit branch pick).
- *   - Recomputes when default-address city changes (legacy fallback).
- *
- * Stability:
- *   - The returned object reference is stable across renders that don't
- *     change the underlying values (memoised by `useDeliveryQuote`).
- *   - Per-field zustand selectors prevent unnecessary re-renders.
- *
- * Usage:
- *
- *   const delivery = useDeliveryContext();
- *   const pricing  = useMemo(
- *     () => createCheckoutPricing(lines, { shippingFee: delivery.cost }),
- *     [lines, delivery.cost],
- *   );
+ * The static Haversine + flat-fee hook is only used while the Railway
+ * query is loading or if it fails, so the UI never blocks.
  */
 
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useCartStore } from "@/stores/cart";
 import { useAddressStore } from "@/features/addresses";
+import { railwayApi } from "@/lib/railwayApi";
 import { useDeliveryQuote } from "./useDeliveryQuote";
 import { useLocationState } from "./locationStore";
+import { useBranches } from "./branches/useBranches";
+import { getPrimaryBranch } from "./branches/data";
+import { FREE_DELIVERY_THRESHOLD } from "./constants";
 import type { DeliveryQuote } from "./types";
 
 export interface DeliveryContext extends DeliveryQuote {
-  /** Live cart subtotal that fed the quote — exposed for screens that
-   *  want to display "أضف X ج.م لتوصيل مجاني" without re-summing. */
   subtotal: number;
-  /** True when no address/coords/branch yet — pricing falls back to
-   *  primary-branch flat-rate. Useful for the cart screen's empty hint. */
   isResolvedFromContext: boolean;
 }
 
 export function useDeliveryContext(): DeliveryContext {
-  // ── Cart subtotal ───────────────────────────────────────────────────────
-  // Live, reactive — re-runs whenever a line item changes.
+  // ── Cart state ──────────────────────────────────────────────────────────
   const subtotal = useCartStore((s) => s.subtotal());
+  const items    = useCartStore((s) => s.items);
 
-  // ── Location state (zustand persist) ────────────────────────────────────
-  // Per-field selectors — re-render only when the field actually changes.
+  // ── Location state ──────────────────────────────────────────────────────
   const coordinates      = useLocationState((s) => s.coordinates);
   const selectedBranchId = useLocationState((s) => s.selectedBranchId);
   const selectedArea     = useLocationState((s) => s.selectedArea);
 
-  // ── Default address fallback ────────────────────────────────────────────
-  // When the user hasn't granted GPS yet but has a default saved address,
-  // use its lat/lng + city for the quote. This is what makes the cart
-  // tab show real branch-aware pricing for returning users.
+  // ── Saved address fallback ──────────────────────────────────────────────
   const defaultAddress = useAddressStore((s) =>
     s.addresses.find((a) => a.is_default) ?? s.addresses[0] ?? null,
   );
 
-  const effectiveCoords = useMemo(() => {
+  // ── Branches (for branch-coord fallback) ────────────────────────────────
+  const { data: branches = [] } = useBranches();
+
+  // ── Resolve the best available coordinates ──────────────────────────────
+  const queryCoords = useMemo(() => {
+    // 1. Real GPS
     if (coordinates) return coordinates;
-    if (defaultAddress && typeof defaultAddress.lat === "number" && typeof defaultAddress.lng === "number") {
+    // 2. Saved address with geocoded lat/lng
+    if (
+      defaultAddress &&
+      typeof defaultAddress.lat === "number" &&
+      typeof defaultAddress.lng === "number"
+    ) {
       return { lat: defaultAddress.lat, lng: defaultAddress.lng };
     }
-    return null;
-  }, [coordinates, defaultAddress]);
+    // 3. Selected branch centroid
+    if (selectedBranchId) {
+      const b = branches.find((br) => br.id === selectedBranchId);
+      if (b) return { lat: b.lat, lng: b.lng };
+    }
+    // 4. Primary branch (always gives a real zone-based fee instead of flat constant)
+    const primary = getPrimaryBranch();
+    return { lat: primary.lat, lng: primary.lng };
+  }, [coordinates, defaultAddress, selectedBranchId, branches]);
 
   const effectiveCity = useMemo(() => {
     if (selectedArea) return selectedArea;
     return defaultAddress?.city;
   }, [selectedArea, defaultAddress?.city]);
 
-  // ── Delegate to the canonical quote engine ──────────────────────────────
-  const quote = useDeliveryQuote({
+  // Whether we have a real customer location (affects isResolvedFromContext)
+  const hasRealLocation = !!(coordinates || defaultAddress?.lat || selectedBranchId);
+
+  // ── Cart items for Railway API ──────────────────────────────────────────
+  const cartItems = useMemo(
+    () =>
+      items.map((i) => ({
+        productId: i.productId,
+        name:      i.product.name,
+        quantity:  i.quantity,
+        unitPrice: i.product.price,
+      })),
+    [items],
+  );
+
+  // ── Railway real quote — always enabled ─────────────────────────────────
+  const { data: railwayQuote, isLoading: railwayLoading } = useQuery({
+    queryKey: [
+      "delivery/quote",
+      queryCoords.lat,
+      queryCoords.lng,
+      selectedBranchId,
+      subtotal,
+    ],
+    queryFn: () =>
+      railwayApi.getDeliveryQuote({
+        coordinates:       queryCoords,
+        cart:              { items: cartItems, subtotal },
+        requestedBranchId: selectedBranchId ?? undefined,
+      }),
+    staleTime:            60_000,
+    retry:                1,
+    refetchOnWindowFocus: false,
+  });
+
+  // ── Static fallback (used while Railway loads or on failure) ────────────
+  const staticQuote = useDeliveryQuote({
     subtotal,
     branchId:       selectedBranchId,
-    customerCoords: effectiveCoords,
+    customerCoords: coordinates ?? undefined,
     address:        effectiveCity ? { city: effectiveCity } : undefined,
   });
 
-  return useMemo<DeliveryContext>(() => ({
-    ...quote,
+  // ── Merge ───────────────────────────────────────────────────────────────
+  return useMemo<DeliveryContext>(() => {
+    if (railwayQuote) {
+      const outOfServiceMessage =
+        railwayQuote.reasonCode === "OUT_OF_CAIRO" ? "نخدم القاهرة فقط حالياً" :
+        railwayQuote.reasonCode === "OUT_OF_ZONE"  ? "العنوان خارج نطاق التوصيل" :
+        railwayQuote.reasonCode === "NO_BRANCH"    ? "لا يوجد فرع متاح في منطقتك" :
+        null;
+
+      return {
+        cost:                 railwayQuote.cost ?? 0,
+        eta:                  railwayQuote.eta
+                                ? { min: railwayQuote.eta.minMinutes, max: railwayQuote.eta.maxMinutes }
+                                : { min: 30, max: 60 },
+        isDeliverable:        railwayQuote.isDeliverable,
+        isFree:               railwayQuote.breakdown?.freeDeliveryApplied ?? false,
+        amountToFreeDelivery: Math.max(0, FREE_DELIVERY_THRESHOLD - subtotal),
+        isLoading:            railwayLoading,
+        branch:               staticQuote.branch,
+        distanceKm:           railwayQuote.distanceKm,
+        outOfServiceMessage,
+        subtotal,
+        isResolvedFromContext: hasRealLocation,
+      };
+    }
+
+    // Railway still loading or failed — use static
+    return {
+      ...staticQuote,
+      subtotal,
+      isResolvedFromContext: hasRealLocation,
+    };
+  }, [
+    railwayQuote,
+    railwayLoading,
+    staticQuote,
     subtotal,
-    isResolvedFromContext: !!(selectedBranchId || effectiveCoords || effectiveCity),
-  }), [quote, subtotal, selectedBranchId, effectiveCoords, effectiveCity]);
+    hasRealLocation,
+  ]);
 }

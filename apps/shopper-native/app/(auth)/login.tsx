@@ -25,7 +25,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
-import { signIn, authErrorToArabic } from "@/features/auth";
+import { signIn, getAuthError } from "@/features/auth";
 import { AppLogo } from "@/shared/components/AppLogo";
 import { track } from "@/lib/analytics";
 import { captureError } from "@/lib/crashReporter";
@@ -35,7 +35,7 @@ import { Text } from "@/shared/ui";
 import { theme } from "@/theme";
 
 export default function LoginScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -61,7 +61,7 @@ export default function LoginScreen() {
       if (__DEV__) console.warn("[login] signIn failed:", e);
       captureError(e, { surface: "login" });
       track("login_failed", { reason: e instanceof Error ? e.message.slice(0, 80) : "unknown" });
-      setError(authErrorToArabic(e));
+      setError(getAuthError(e, i18n.language));
     } finally {
       setLoading(false);
     }

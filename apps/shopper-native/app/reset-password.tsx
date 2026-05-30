@@ -32,7 +32,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import Animated, { FadeIn, FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/lib/supabase";
-import { updatePassword, authErrorToArabic } from "@/features/auth";
+import { updatePassword, getAuthError } from "@/features/auth";
 import { track } from "@/lib/analytics";
 import { captureError } from "@/lib/crashReporter";
 import { Input } from "@/components/ui/Input";
@@ -45,7 +45,7 @@ type Phase = "exchanging" | "form" | "success" | "expired";
 const MIN_PASSWORD_LENGTH = 8;
 
 export default function ResetPasswordScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ code?: string }>();
@@ -58,32 +58,81 @@ export default function ResetPasswordScreen() {
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState<string | null>(null);
 
-  // Exchange the PKCE code for a recovery session exactly once.
-  const exchangedRef = useRef(false);
+  // Guards against the exchange being attempted twice (StrictMode double-invoke).
+  const startedRef = useRef(false);
 
   useEffect(() => {
-    if (exchangedRef.current) return;
-    exchangedRef.current = true;
+    // `resolved` tracks whether any strategy has already moved us out of the
+    // "exchanging" phase. We check it — not startedRef — inside the timeout so
+    // the timeout always fires even if the exchange started but never finished.
+    let resolved  = false;
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout>;
 
-    const code = typeof params.code === "string" ? params.code.trim() : "";
-    if (!code) {
-      setPhase("expired");
-      return;
+    const finish = (success: boolean) => {
+      if (resolved || cancelled) return;
+      resolved = true;
+      clearTimeout(timeoutId);
+      if (success) {
+        track("reset_password_link_opened");
+        setPhase("form");
+      } else {
+        setPhase("expired");
+      }
+    };
+
+    // ── Hard 8-second timeout ────────────────────────────────────────────────
+    // Fires regardless of whether the exchange started. If exchangeCodeForSession
+    // hangs (network timeout, invalid code, server unreachable), this is the
+    // only escape hatch. The previous bug: we were guarding with `!exchangedRef`
+    // which was set to true before the async call — so the timeout always no-oped.
+    timeoutId = setTimeout(() => finish(false), 8_000);
+
+    // ── Strategy A: Supabase fires PASSWORD_RECOVERY automatically ───────────
+    // The Supabase client auto-detects the code/hash in the URL (detectSessionInUrl)
+    // and fires this event. Also fires after a successful exchangeCodeForSession.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") finish(true);
+    });
+
+    // ── Strategy B: Manual PKCE exchange ────────────────────────────────────
+    // Required on native where detectSessionInUrl is false. On web, Supabase
+    // may have already fired the event before this listener was attached; in
+    // that case getSession() catches it first (see Strategy C below).
+    if (!startedRef.current) {
+      startedRef.current = true;
+
+      const rawCode = Array.isArray(params.code) ? params.code[0] : params.code;
+      const code    = typeof rawCode === "string" ? rawCode.trim() : "";
+
+      if (code) {
+        supabase.auth
+          .exchangeCodeForSession(code)
+          .then(({ error: exErr }) => {
+            // On success the PASSWORD_RECOVERY event fires → finish(true).
+            // On error we move to expired directly.
+            if (exErr) {
+              if (__DEV__) console.warn("[reset-password] exchange failed:", exErr.message);
+              finish(false);
+            }
+            // Intentionally no `finish(true)` here — let the event do it so
+            // we never double-call finish().
+          })
+          .catch(() => finish(false));
+      }
     }
 
-    supabase.auth
-      .exchangeCodeForSession(code)
-      .then(({ error: exErr }) => {
-        if (exErr) {
-          if (__DEV__) console.warn("[reset-password] exchange failed:", exErr.message);
-          setPhase("expired");
-        } else {
-          track("reset_password_link_opened");
-          setPhase("form");
-        }
-      })
-      .catch(() => setPhase("expired"));
-  }, [params.code]);
+    // detectSessionInUrl is false on this client — Supabase never auto-processes
+    // the URL, so there is no race to catch here. Do NOT call getSession() and
+    // treat any existing session as a recovery; that would be a security hole
+    // (any previously-signed-in user could open the password form).;
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
+  }, []); // intentionally runs once — params.code is read directly inside
 
   // ── Validate locally before hitting the server ─────────────────────────────
 
@@ -114,7 +163,7 @@ export default function ResetPasswordScreen() {
     } catch (e) {
       if (__DEV__) console.warn("[reset-password] updatePassword failed:", e);
       captureError(e, { surface: "reset-password" });
-      setError(authErrorToArabic(e));
+      setError(getAuthError(e, i18n.language));
     } finally {
       setLoading(false);
     }

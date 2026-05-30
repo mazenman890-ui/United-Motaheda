@@ -29,6 +29,11 @@ import type { NativeProduct, ProductFilters, ProductPage } from "../types";
 
 const DEFAULT_PAGE_SIZE  = 20;
 const SEARCH_DEBOUNCE_MS = 300;
+// Hard cap: never accumulate more than this many pages in memory regardless of
+// how long the user has been scrolling. At 20 items/page this is 2 000 items —
+// more than any realistic pharmacy catalog. Prevents unbounded memory growth
+// if a user leaves a list running for a very long time.
+const DEFAULT_MAX_PAGES  = 100;
 
 // Separate stale windows: browsing a category is low-churn and should survive
 // back-navigation without re-fetching; live search results need to feel fresh.
@@ -43,6 +48,9 @@ export interface UseInfiniteProductsArgs {
   maxPrice?:   number;
   sortBy?:     ProductFilters["sortBy"];
   pageSize?:   number;
+  /** Maximum pages to keep in memory. Defaults to 100 (≈2 000 items at 20/page).
+   *  When reached, `hasNextPage` becomes false so infinite scroll stops naturally. */
+  maxPages?:   number;
   /** If false, the query is disabled. Defaults to true. */
   enabled?:    boolean;
 }
@@ -70,6 +78,7 @@ export function useInfiniteProducts(args: UseInfiniteProductsArgs = {}): UseInfi
     maxPrice,
     sortBy   = "newest",
     pageSize = DEFAULT_PAGE_SIZE,
+    maxPages = DEFAULT_MAX_PAGES,
     enabled  = true,
   } = args;
 
@@ -98,7 +107,10 @@ export function useInfiniteProducts(args: UseInfiniteProductsArgs = {}): UseInfi
         pageSize,
         signal,
       }),
-    getNextPageParam: (last) => (last.hasNextPage ? last.currentPage + 1 : undefined),
+    getNextPageParam: (last, allPages) => {
+      if (allPages.length >= maxPages) return undefined;
+      return last.hasNextPage ? last.currentPage + 1 : undefined;
+    },
     placeholderData:  keepPreviousData,
     enabled,
     staleTime: isSearchMode ? SEARCH_STALE_MS : BROWSE_STALE_MS,
