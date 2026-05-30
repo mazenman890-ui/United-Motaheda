@@ -23,6 +23,7 @@ import {
 import { AppLogo } from "@/shared/components/AppLogo";
 import { track } from "@/lib/analytics";
 import { captureError } from "@/lib/crashReporter";
+import { requestAndStoreLocation } from "@/lib/requestLocation";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Text } from "@/shared/ui";
@@ -103,10 +104,10 @@ export default function RegisterScreen() {
           // the profile screen, but they should know it didn't happen now.
           setError(t("auth.otpSendFailedContinue"));
           // Brief delay so the message is readable before navigating.
-          setTimeout(() => router.replace("/(tabs)"), 2200);
+          setTimeout(() => { void requestAndStoreLocation(); router.replace("/(tabs)"); }, 2200);
         }
       } else {
-        router.replace("/(tabs)");
+        { void requestAndStoreLocation(); router.replace("/(tabs)"); };
       }
     } catch (e) {
       if (__DEV__) console.warn("[register] signUp failed:", e);
@@ -121,14 +122,14 @@ export default function RegisterScreen() {
   const handleOtpVerified = (_verifiedPhone: string) => {
     track("signup_completed", { phone_verified: true });
     setOtpPhone(null);
-    router.replace("/(tabs)");
+    { void requestAndStoreLocation(); router.replace("/(tabs)"); };
   };
 
   const handleOtpCancel = () => {
     // User dismissed the OTP modal. Account already exists; they can verify
     // the phone later. Send them into the app.
     setOtpPhone(null);
-    router.replace("/(tabs)");
+    { void requestAndStoreLocation(); router.replace("/(tabs)"); };
   };
 
   return (

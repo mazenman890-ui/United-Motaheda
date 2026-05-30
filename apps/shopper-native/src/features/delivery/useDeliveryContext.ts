@@ -21,8 +21,6 @@ import { useAddressStore } from "@/features/addresses";
 import { railwayApi } from "@/lib/railwayApi";
 import { useDeliveryQuote } from "./useDeliveryQuote";
 import { useLocationState } from "./locationStore";
-import { useBranches } from "./branches/useBranches";
-import { getPrimaryBranch } from "./branches/data";
 import { FREE_DELIVERY_THRESHOLD } from "./constants";
 import type { DeliveryQuote } from "./types";
 
@@ -46,9 +44,6 @@ export function useDeliveryContext(): DeliveryContext {
     s.addresses.find((a) => a.is_default) ?? s.addresses[0] ?? null,
   );
 
-  // ── Branches (for branch-coord fallback) ────────────────────────────────
-  const { data: branches = [] } = useBranches();
-
   // ── Resolve the best available coordinates ──────────────────────────────
   const queryCoords = useMemo(() => {
     // 1. Real GPS
@@ -61,15 +56,10 @@ export function useDeliveryContext(): DeliveryContext {
     ) {
       return { lat: defaultAddress.lat, lng: defaultAddress.lng };
     }
-    // 3. Selected branch centroid
-    if (selectedBranchId) {
-      const b = branches.find((br) => br.id === selectedBranchId);
-      if (b) return { lat: b.lat, lng: b.lng };
-    }
-    // 4. Primary branch (always gives a real zone-based fee instead of flat constant)
-    const primary = getPrimaryBranch();
-    return { lat: primary.lat, lng: primary.lng };
-  }, [coordinates, defaultAddress, selectedBranchId, branches]);
+    // No real customer location — don't fake it with branch coordinates.
+    // Using branch coords as customer = distance 0, misleading quote.
+    return null;
+  }, [coordinates, defaultAddress]);
 
   const effectiveCity = useMemo(() => {
     if (selectedArea) return selectedArea;
