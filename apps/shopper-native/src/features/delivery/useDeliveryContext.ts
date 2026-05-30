@@ -81,18 +81,19 @@ export function useDeliveryContext(): DeliveryContext {
     [items],
   );
 
-  // ── Railway real quote — always enabled ─────────────────────────────────
+  // ── Railway real quote (only when we have real customer coordinates) ────────
   const { data: railwayQuote, isLoading: railwayLoading } = useQuery({
     queryKey: [
       "delivery/quote",
-      queryCoords.lat,
-      queryCoords.lng,
+      queryCoords?.lat,
+      queryCoords?.lng,
       selectedBranchId,
       subtotal,
     ],
+    enabled: queryCoords !== null,
     queryFn: () =>
       railwayApi.getDeliveryQuote({
-        coordinates:       queryCoords,
+        coordinates:       queryCoords!,
         cart:              { items: cartItems, itemCount: items.reduce((s, i) => s + i.quantity, 0), subtotal },
         requestedBranchId: selectedBranchId ?? undefined,
       }),
