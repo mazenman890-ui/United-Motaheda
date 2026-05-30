@@ -9,6 +9,7 @@
  */
 
 import { create } from "zustand";
+import i18n from "i18next";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -175,12 +176,12 @@ export function showConfirmSheet(
     dismissible: true,
     actions:     [
       {
-        label:   opts?.confirmLabel ?? "تأكيد",
+        label:   opts?.confirmLabel ?? i18n.t("sheet.confirm"),
         variant: opts?.danger ? "danger" : "primary",
         onPress: () => { useAppSheetStore.getState().hide(); onConfirm(); },
       },
       {
-        label:   opts?.cancelLabel ?? "إلغاء",
+        label:   opts?.cancelLabel ?? i18n.t("sheet.cancel"),
         variant: "ghost",
         onPress: () => useAppSheetStore.getState().hide(),
       },
@@ -196,7 +197,7 @@ export function showSuccessSheet(title: string, message: string, onOk?: () => vo
     dismissible: true,
     actions:     [
       {
-        label:   "رائع!",
+        label:   i18n.t("common.ok"),
         variant: "primary",
         onPress: () => { useAppSheetStore.getState().hide(); onOk?.(); },
       },
