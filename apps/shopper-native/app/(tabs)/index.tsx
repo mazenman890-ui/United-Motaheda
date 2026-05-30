@@ -68,7 +68,7 @@ const PROMO_SLIDES = [
     icon:     "ticket"  as IoniconsName,
     accent:   "#0DB8A8",
     glowColor:"rgba(13,184,168,0.18)",
-    route:    "/(tabs)/products",
+    route:    "/deals",
   },
   {
     id:       "2",
@@ -254,7 +254,7 @@ const QUICK_ACTIONS: {
   { icon: "scan-outline",         labelKey: "home.qaRx",       grad: ["#6D28D9", "#7C3AED"], route: "/(tabs)/search"   },
   { icon: "leaf-outline",         labelKey: "home.qaVitamins", grad: ["#065F46", "#059669"], route: "/(tabs)/products" },
   { icon: "heart-circle-outline", labelKey: "home.qaMomBaby",  grad: ["#9D174D", "#DB2777"], route: "/(tabs)/products" },
-  { icon: "pricetag-outline",     labelKey: "home.qaOffers",   grad: ["#B45309", "#D97706"], route: "/(tabs)/search"   },
+  { icon: "pricetag-outline",     labelKey: "home.qaOffers",   grad: ["#B45309", "#D97706"], route: "/deals"            },
 ];
 
 const QuickAction = memo(function QuickAction({

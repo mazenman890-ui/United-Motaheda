@@ -133,11 +133,6 @@ export const CategoryCard = memo(function CategoryCard({
             style={{ lineHeight: isPill ? 15 : 17 }}>
             {label}
           </UIText>
-          {category.count > 0 && (
-            <UIText variant="eyebrow" style={{ color: "rgba(255,255,255,0.72)" }}>
-              {t("products.itemCount", { n: category.count })}
-            </UIText>
-          )}
         </View>
       </LinearGradient>
     </AnimPressable>

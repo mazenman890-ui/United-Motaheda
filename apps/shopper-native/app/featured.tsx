@@ -191,9 +191,6 @@ export default function FeaturedScreen(): React.ReactElement {
           <View style={{ flex: 1 }}>
             <Text style={fc.eyebrow}>{t("home.featuredEyebrow").toUpperCase()}</Text>
             <Text style={fc.headerTitle}>{t("home.featuredTitle")}</Text>
-            {totalCount > 0 && (
-              <Text style={fc.headerMeta}>{totalCount.toLocaleString()} {t("products.allProducts").toLowerCase()}</Text>
-            )}
           </View>
 
           {/* Star decoration */}

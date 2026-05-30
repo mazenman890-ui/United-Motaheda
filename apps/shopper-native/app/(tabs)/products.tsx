@@ -69,7 +69,7 @@ export default function ProductsScreen() {
                     <UIText variant="caption" color="muted" align="right" style={styles.headerMeta}>
                       {catsLoading
                         ? t("common.loading")
-                        : `${t("products.categoriesCount", { count: categories.length })}${totalProducts > 0 ? `  •  ${t("products.productsCount", { count: totalProducts.toLocaleString() })}` : ""}`}
+                        : t("products.categoriesCount", { count: categories.length })}
                     </UIText>
                   </View>
                 </View>

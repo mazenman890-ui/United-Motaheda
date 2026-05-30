@@ -10,7 +10,6 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   Platform,
   Pressable,
@@ -96,8 +95,7 @@ function HeroDeal({
   onPress:  () => void;
 }) {
   const { t }    = useTranslation();
-  const origPrice = product.price / (1 - discount / 100);
-  const name      = lang === "en" ? (product.nameEn ?? product.name) : product.name;
+  const name = lang === "en" ? (product.nameEn ?? product.name) : product.name;
   const scale     = useSharedValue(1);
   const anim      = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
@@ -138,13 +136,11 @@ function HeroDeal({
                 <View style={s.heroPriceRow}>
                   <Text style={s.heroPrice}>{product.price.toFixed(2)}</Text>
                   <Text style={s.heroCurrency}>{t("common.currency")}</Text>
-                  <Text style={s.heroOrig}>{origPrice.toFixed(0)} {t("common.currency")}</Text>
                 </View>
 
                 <View style={s.heroSavings}>
-                  <Text style={s.heroSavingsText}>
-                    {t("home.flashTitle")} — {(origPrice - product.price).toFixed(0)} {t("common.currency")} {lang === "en" ? "off" : "خصم"}
-                  </Text>
+                  <Ionicons name="flash" size={11} color="#FCA5A5" />
+                  <Text style={s.heroSavingsText}>{t("home.flashSale")}</Text>
                 </View>
               </View>
             </View>
@@ -185,18 +181,16 @@ export default function DealsScreen(): React.ReactElement {
 
   const {
     products,
-    totalCount,
     isLoading,
     isError,
-    isFetchingNextPage,
     isRefreshing,
-    hasNextPage,
-    fetchNextPage,
     refetch,
-  } = useInfiniteProducts({ sortBy: "price_asc", inStock: true, pageSize: 20 });
+  } = useInfiniteProducts({ sortBy: "price_asc", inStock: true, pageSize: 12 });
 
-  const heroProd   = products[0];
-  const gridProds  = products.slice(1);
+  // Curated: cap at 12, hero is first, grid is the rest
+  const curated   = products.slice(0, 12);
+  const heroProd  = curated[0];
+  const gridProds = curated.slice(1);
 
   const handlePress = useCallback(
     (p: NativeProduct) => {
@@ -242,9 +236,6 @@ export default function DealsScreen(): React.ReactElement {
             <Text style={s.eyebrow}>{t("home.flashEnds").toUpperCase()}</Text>
           </View>
           <Text style={s.headerTitle}>{t("home.flashTitle")}</Text>
-          {totalCount > 0 && (
-            <Text style={s.headerMeta}>{totalCount.toLocaleString()} {t("products.allProducts").toLowerCase()}</Text>
-          )}
         </View>
 
         {/* Flame icon */}
@@ -265,7 +256,7 @@ export default function DealsScreen(): React.ReactElement {
         </View>
       </View>
     </LinearGradient>
-  ), [insets.top, h, m, sec, totalCount, t, router, dotAnim]);
+  ), [insets.top, h, m, sec, t, router, dotAnim]);
 
   if (isLoading) {
     return (
@@ -304,8 +295,6 @@ export default function DealsScreen(): React.ReactElement {
         columnWrapperStyle={s.row}
         contentContainerStyle={[s.list, { paddingBottom: insets.bottom + 36 }]}
         showsVerticalScrollIndicator={false}
-        onEndReached={() => { if (hasNextPage && !isFetchingNextPage) void fetchNextPage(); }}
-        onEndReachedThreshold={0.4}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -336,11 +325,7 @@ export default function DealsScreen(): React.ReactElement {
         renderItem={({ item, index }) => (
           <GridItem item={item} index={index} lang={lang} onPress={() => handlePress(item)} />
         )}
-        ListFooterComponent={
-          isFetchingNextPage
-            ? <View style={s.footer}><ActivityIndicator color="#EF4444" /></View>
-            : null
-        }
+        ListFooterComponent={<View style={{ height: 8 }} />}
       />
     </View>
   );

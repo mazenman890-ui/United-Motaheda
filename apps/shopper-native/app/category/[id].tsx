@@ -108,11 +108,6 @@ export default function CategoryScreen() {
             <UIText variant="sheet-title" color="inverse" align="right" numberOfLines={1} style={{ letterSpacing: -0.3, marginTop: 2 }}>
               {displayTitle}
             </UIText>
-            {totalCount > 0 && (
-              <UIText variant="body-sm" color="inverse-muted" align="right" style={{ marginTop: 2 }}>
-                {t("category.productCount", { count: totalCount.toLocaleString() })}
-              </UIText>
-            )}
           </View>
           <Pressable
             onPress={() => router.push("/(tabs)/cart")}

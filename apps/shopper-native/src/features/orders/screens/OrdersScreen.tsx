@@ -113,6 +113,11 @@ function UnauthenticatedState({ showBack }: { showBack: boolean }): React.ReactE
     <View style={{ flex: 1, backgroundColor: "#F4F7FA" }}>
       <AppHeader title={t("orders.title")} showBack={showBack} />
 
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+        showsVerticalScrollIndicator={false}
+        bounces>
+
       {/* Hero */}
       <LinearGradient
         colors={["#021D2E", "#032840", "#053C5A"]}
@@ -192,6 +197,8 @@ function UnauthenticatedState({ showBack }: { showBack: boolean }): React.ReactE
           <Text style={authS.privacyText}>{t("orders.privacyNote")}</Text>
         </View>
       </Animated.View>
+
+      </ScrollView>
     </View>
   );
 }
