@@ -95,12 +95,12 @@ export function showErrorSheet(
 export function showAuthSheet(onLoginPress?: () => void, onRegisterPress?: () => void) {
   useAppSheetStore.getState().show({
     type:        "auth",
-    title:       "تسجيل الدخول مطلوب",
-    message:     "يرجى تسجيل الدخول أولاً للاستمرار في هذه الخطوة.",
+    title:       i18n.t("sheet.authTitle"),
+    message:     i18n.t("sheet.authMessage"),
     dismissible: true,
     actions: [
       {
-        label:   "تسجيل الدخول",
+        label:   i18n.t("auth.login"),
         variant: "primary",
         onPress: () => {
           useAppSheetStore.getState().hide();
@@ -108,7 +108,7 @@ export function showAuthSheet(onLoginPress?: () => void, onRegisterPress?: () =>
         },
       },
       {
-        label:   "إنشاء حساب جديد",
+        label:   i18n.t("auth.createAccount"),
         variant: "secondary",
         onPress: () => {
           useAppSheetStore.getState().hide();
