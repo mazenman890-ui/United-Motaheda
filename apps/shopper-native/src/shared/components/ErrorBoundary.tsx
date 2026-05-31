@@ -10,13 +10,18 @@
  * (e.g. CategoryStatsDock's error state). This boundary handles the
  * RENDER-phase failure mode — not network errors, which features
  * handle locally with try/catch.
+ *
+ * IMPORTANT — font safety: DefaultFallback intentionally uses NO custom
+ * fontFamily. Cairo fonts may not yet be registered when this boundary
+ * fires during early boot (e.g. a provider crash on the very first
+ * render). On Android, an unregistered fontFamily name makes Text render
+ * as invisible blank space, not fall back gracefully. Omitting fontFamily
+ * forces the OS system font, which is always available.
  */
 
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useTranslation } from "react-i18next";
-import { theme } from "@/theme";
 import { captureError } from "@/lib/crashReporter";
 
 interface Props {
@@ -73,21 +78,28 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 }
 
+/**
+ * DefaultFallback intentionally uses NO custom fontFamily anywhere. Cairo
+ * may not be registered yet when this renders (early boot crash). System
+ * font is always available and produces visible text on all platforms.
+ */
 function DefaultFallback({ error, onReset }: { error: Error; onReset: () => void }) {
-  const { t } = useTranslation();
   return (
     <View style={styles.container}>
       <View style={styles.iconWrap}>
-        <Ionicons name="warning-outline" size={36} color={theme.colors.amber[600]} />
+        <Ionicons name="warning-outline" size={36} color="#D97706" />
       </View>
-      <Text style={styles.title}>{t("errors.unexpected")}</Text>
+
+      {/* Hardcoded bilingual strings — no useTranslation() dependency so this
+          renders even before i18n or LanguageProvider is mounted. */}
+      <Text style={styles.title}>{"حدث خطأ غير متوقع\nSomething went wrong"}</Text>
       <Text style={styles.body}>
-        {t("errors.unexpectedBody")}
+        {"أعد تشغيل التطبيق أو اضغط على إعادة المحاولة\nPlease restart the app or tap Retry."}
       </Text>
 
       {__DEV__ && (
         <View style={styles.devBox}>
-          <Text style={styles.devLabel}>Dev info:</Text>
+          <Text style={styles.devLabel}>Dev — error message:</Text>
           <Text style={styles.devText} selectable>
             {error.message}
           </Text>
@@ -96,7 +108,7 @@ function DefaultFallback({ error, onReset }: { error: Error; onReset: () => void
 
       <Pressable onPress={onReset} style={styles.btn}>
         <Ionicons name="refresh" size={14} color="#fff" />
-        <Text style={styles.btnText}>{t("common.retry")}</Text>
+        <Text style={styles.btnText}>{"إعادة المحاولة / Retry"}</Text>
       </Pressable>
     </View>
   );
@@ -105,7 +117,7 @@ function DefaultFallback({ error, onReset }: { error: Error; onReset: () => void
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.bg,
+    backgroundColor: "#F4F7FA",
     alignItems: "center",
     justifyContent: "center",
     padding: 28,
@@ -115,23 +127,25 @@ const styles = StyleSheet.create({
     width: 84,
     height: 84,
     borderRadius: 26,
-    backgroundColor: theme.colors.amber[50],
+    backgroundColor: "#FFFBEB",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: theme.colors.amber[100],
+    borderColor: "#FEF3C7",
   },
   title: {
-    fontSize: 18,
-    fontFamily: theme.fonts.black,
-    color: theme.colors.text.primary,
+    // No fontFamily — always uses system font so text is visible even when
+    // Cairo hasn't loaded yet.
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#0F1724",
     textAlign: "center",
+    lineHeight: 26,
   },
   body: {
-    fontSize: 12,
-    fontFamily: theme.fonts.regular,
-    color: theme.colors.slate[500],
+    fontSize: 13,
+    color: "#64748B",
     textAlign: "center",
     lineHeight: 20,
     maxWidth: 320,
@@ -140,36 +154,34 @@ const styles = StyleSheet.create({
     alignSelf: "stretch",
     padding: 12,
     borderRadius: 12,
-    backgroundColor: theme.colors.slate[50],
+    backgroundColor: "#F8FAFC",
     borderWidth: 1,
-    borderColor: theme.colors.slate[200],
+    borderColor: "#E2E8F0",
     marginTop: 8,
   },
   devLabel: {
     fontSize: 10,
-    fontFamily: theme.fonts.black,
-    color: theme.colors.slate[500],
+    fontWeight: "700",
+    color: "#64748B",
     marginBottom: 4,
   },
   devText: {
     fontSize: 11,
-    fontFamily: theme.fonts.regular,
-    color: theme.colors.slate[700],
+    color: "#334155",
   },
   btn: {
     flexDirection: "row-reverse",
     alignItems: "center",
     gap: 8,
-    backgroundColor: theme.colors.brand[600],
+    backgroundColor: "#0891B2",
     paddingHorizontal: 22,
     paddingVertical: 13,
     borderRadius: 14,
     marginTop: 12,
-    ...theme.shadow.brand,
   },
   btnText: {
     fontSize: 13,
-    fontFamily: theme.fonts.black,
+    fontWeight: "700",
     color: "#fff",
   },
 });

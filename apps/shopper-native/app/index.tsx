@@ -4,8 +4,6 @@ import { Redirect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ONBOARDING_KEY } from "@/lib/onboardingKey";
 
-export { ONBOARDING_KEY };
-
 export default function Entry() {
   const [target, setTarget] = useState<"/(tabs)" | "/onboarding" | null>(null);
 

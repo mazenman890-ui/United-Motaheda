@@ -71,12 +71,18 @@ export const queryPersister = createSyncStoragePersister({
     try {
       return JSON.parse(raw) as PersistedClient;
     } catch (e) {
-      // Corrupted cache — wipe it then re-throw so createSyncStoragePersister
-      // handles the error itself and returns undefined to PersistQueryClientProvider.
-      // Never return undefined directly — the provider crashes accessing .clientState on it.
+      // Corrupted or incompatible cache (e.g. after an OTA update that changed
+      // the data shape). Wipe it and return an empty-but-valid PersistedClient
+      // so PersistQueryClientProvider boots with a clean slate instead of
+      // propagating the exception. Re-throwing here was previously masking the
+      // real error and causing the root ErrorBoundary to fire in some edge cases.
       if (__DEV__) console.warn("[queryPersister] deserialize failed, clearing cache:", e);
       try { queryCacheStorage.removeItem("rq-cache"); } catch { /* ignore */ }
-      throw e;
+      return {
+        buster:      "",
+        timestamp:   0,
+        clientState: { queries: [], mutations: [] },
+      } as unknown as PersistedClient;
     }
   },
 });

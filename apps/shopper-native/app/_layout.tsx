@@ -93,7 +93,7 @@ function CartReservationNotifier() {
 export default function RootLayout() {
   // All user-data stores are auth-aware and hydrated inside PharmacyBootstrap
   // (fires on user.id change). Root mount only handles fonts + RTL + splash.
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Cairo_400Regular,
     Cairo_600SemiBold,
     Cairo_700Bold,
@@ -102,9 +102,24 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (!fontsLoaded) return;
-    SplashScreen.hideAsync().catch(() => {});
-  }, [fontsLoaded]);
+    // Hide the native splash as soon as fonts are ready OR if loading failed.
+    // Without the fontError branch, a font-load failure (network error, corrupt
+    // OTA asset) leaves SplashScreen.preventAutoHideAsync() in effect forever,
+    // freezing the app on the native splash screen.
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [fontsLoaded, fontError]);
+
+  // Safety net: if fonts neither load nor error within 8 s (e.g. the hook
+  // stalls on a broken OTA update), force-hide the splash so the app is at
+  // least usable (with system font fallback).
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      SplashScreen.hideAsync().catch(() => {});
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <ErrorBoundary surface="root">
@@ -161,8 +176,14 @@ export default function RootLayout() {
       </SafeAreaProvider>
       {/* JS splash overlay — appears once per app launch after native splash
           hides, fades out after ~1.2 s. Mounted at the root so it sits above
-          every route. */}
-      <SplashOverlay />
+          every route.
+          Wrapped in its own ErrorBoundary so a Reanimated/asset crash inside
+          SplashOverlay (most likely after an OTA update with a native module
+          version mismatch) is silently swallowed rather than propagating to
+          the root boundary and showing the grey error screen to the user. */}
+      <ErrorBoundary surface="splash-overlay" fallback={() => null}>
+        <SplashOverlay />
+      </ErrorBoundary>
     </GestureHandlerRootView>
     </ErrorBoundary>
   );

@@ -13,7 +13,6 @@ import React, {
 import { useTranslation } from "react-i18next";
 import {
   getStoredLanguage,
-  initI18n,
   setAppLanguage,
   type AppLanguage,
 } from "./index";
@@ -27,7 +26,9 @@ interface LanguageContextValue {
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  initI18n();
+  // initI18n() intentionally NOT called here — i18n is initialised as a
+  // module-level side-effect when `@/i18n` is imported in _layout.tsx.
+  // Calling it during render is a React anti-pattern (side-effects in render).
   const { i18n } = useTranslation();
   const [language, setLanguageState] = useState<AppLanguage>(getStoredLanguage);
 
