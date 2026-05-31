@@ -71,10 +71,12 @@ export const queryPersister = createSyncStoragePersister({
     try {
       return JSON.parse(raw) as PersistedClient;
     } catch (e) {
-      // Corrupted cache (e.g. app killed mid-write) — wipe and start fresh.
+      // Corrupted cache — wipe it then re-throw so createSyncStoragePersister
+      // handles the error itself and returns undefined to PersistQueryClientProvider.
+      // Never return undefined directly — the provider crashes accessing .clientState on it.
       if (__DEV__) console.warn("[queryPersister] deserialize failed, clearing cache:", e);
       try { queryCacheStorage.removeItem("rq-cache"); } catch { /* ignore */ }
-      return undefined as unknown as PersistedClient;
+      throw e;
     }
   },
 });

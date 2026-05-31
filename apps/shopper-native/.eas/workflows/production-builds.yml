@@ -1,0 +1,21 @@
+name: Production Builds
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  android_production:
+    name: Android — Production AAB
+    type: build
+    params:
+      platform: android
+      profile: production
+
+  # ios_production:          ← uncomment after running: eas credentials --platform ios
+  #   name: iOS — Production IPA
+  #   type: build
+  #   params:
+  #     platform: ios
+  #     profile: production
