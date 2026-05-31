@@ -95,7 +95,9 @@ export default function ProductDetailScreen() {
 
   const hrtAnim    = useAnimatedStyle(() => ({ transform: [{ scale: hrtScale.value }] }));
   const btnAnim    = useAnimatedStyle(() => ({ transform: [{ scale: btnScale.value }] }));
-  const stickyHdr  = useAnimatedStyle(() => ({ opacity: withTiming(headerOpac.value, { duration: 180 }) }));
+  // withTiming belongs in the setter (handleScroll), not inside useAnimatedStyle —
+  // calling it here starts a new animation worklet every frame instead of once on change.
+  const stickyHdr  = useAnimatedStyle(() => ({ opacity: headerOpac.value }));
 
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", id],
@@ -104,7 +106,7 @@ export default function ProductDetailScreen() {
   });
 
   // Max quantity the user is allowed to add — capped at live stock.
-  const maxQty = product?.inStock ? Math.max(1, Math.ceil(product.stock)) : 0;
+  const maxQty = product?.inStock ? Math.max(1, Math.ceil(product.stock ?? 0)) : 0;
 
   // If product reloads with a lower stock than the current qty selector, clamp down.
   useEffect(() => {
@@ -130,7 +132,10 @@ export default function ProductDetailScreen() {
   const rating = deterministicRating(id ?? "");
 
   const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    headerOpac.value = e.nativeEvent.contentOffset.y > 300 ? 1 : 0;
+    const target = e.nativeEvent.contentOffset.y > 300 ? 1 : 0;
+    if (headerOpac.value !== target) {
+      headerOpac.value = withTiming(target, { duration: 180 });
+    }
   }, [headerOpac]);
 
   const handleAdd = useCallback(() => {

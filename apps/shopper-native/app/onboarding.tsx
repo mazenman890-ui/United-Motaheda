@@ -348,14 +348,13 @@ export default function OnboardingScreen() {
 
   // Animate content when slide changes
   useEffect(() => {
-    // Quick exit animation
     contentOpacity.value = withTiming(0, { duration: 150 });
     contentTranslateY.value = withTiming(10, { duration: 150 });
-    // After a tiny delay, enter with the new content
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       contentOpacity.value = withTiming(1, { duration: 400 });
       contentTranslateY.value = withTiming(0, { duration: 400, easing: Easing.out(Easing.cubic) });
     }, 160);
+    return () => clearTimeout(timer);
   }, [current]);
 
   const contentAnimatedStyle = useAnimatedStyle(() => ({
