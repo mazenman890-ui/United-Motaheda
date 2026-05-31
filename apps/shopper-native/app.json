@@ -28,7 +28,7 @@
       "package": "com.unitedpharmacy.app",
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.CAMERA"
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
