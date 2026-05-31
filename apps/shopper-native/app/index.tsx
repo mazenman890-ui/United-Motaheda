@@ -2,8 +2,9 @@ import React, { useEffect, useState } from "react";
 import { View } from "react-native";
 import { Redirect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { ONBOARDING_KEY } from "@/lib/onboardingKey";
 
-export const ONBOARDING_KEY = "um_onboarding_v1";
+export { ONBOARDING_KEY };
 
 export default function Entry() {
   const [target, setTarget] = useState<"/(tabs)" | "/onboarding" | null>(null);

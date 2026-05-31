@@ -36,7 +36,7 @@ import { useTranslation } from "react-i18next";
 import { AppLogo } from "@/shared/components/AppLogo";
 import { Text } from "@/shared/ui";
 import { theme } from "@/theme";
-import { ONBOARDING_KEY } from "./index";
+import { ONBOARDING_KEY } from "@/lib/onboardingKey";
 
 // ──────────────────────────────────────────
 // Dimensions & helpers
