@@ -95,14 +95,12 @@ function DefaultFallback({ error, onReset }: { error: Error; onReset: () => void
         {"أعد تشغيل التطبيق أو اضغط على إعادة المحاولة\nPlease restart the app or tap Retry."}
       </Text>
 
-      {__DEV__ && (
-        <View style={styles.devBox}>
-          <Text style={styles.devLabel}>Dev — error message:</Text>
-          <Text style={styles.devText} selectable>
-            {error.message}
-          </Text>
-        </View>
-      )}
+      <View style={styles.devBox}>
+        <Text style={styles.devLabel}>Error:</Text>
+        <Text style={styles.devText} selectable>
+          {error.message}
+        </Text>
+      </View>
 
       <Pressable onPress={onReset} style={styles.btn}>
         <Text style={styles.btnText}>{"↺  إعادة المحاولة / Retry"}</Text>
