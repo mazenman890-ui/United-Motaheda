@@ -78,12 +78,12 @@
         "origin": false
       },
       "eas": {
-        "projectId": "b8c62e74-8b8b-47a2-a31c-29555aa969ac"
+        "projectId": "1f6bee7a-6298-40a9-bf47-23e2254814ab"
       }
     },
     "runtimeVersion": {
       "policy": "appVersion"
     },
-    "owner": "mazenman"
+    "owner": "united-baqy"
   }
 }
