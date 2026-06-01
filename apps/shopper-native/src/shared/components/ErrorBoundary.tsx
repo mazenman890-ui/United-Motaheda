@@ -21,7 +21,6 @@
 
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { captureError } from "@/lib/crashReporter";
 
 interface Props {
@@ -86,12 +85,11 @@ export class ErrorBoundary extends React.Component<Props, State> {
 function DefaultFallback({ error, onReset }: { error: Error; onReset: () => void }) {
   return (
     <View style={styles.container}>
-      <View style={styles.iconWrap}>
-        <Ionicons name="warning-outline" size={36} color="#D97706" />
-      </View>
+      {/* Warning emoji — zero dependencies, always renders */}
+      <Text style={styles.icon}>{"⚠️"}</Text>
 
-      {/* Hardcoded bilingual strings — no useTranslation() dependency so this
-          renders even before i18n or LanguageProvider is mounted. */}
+      {/* Hardcoded bilingual strings — no external dependencies at all so this
+          renders even before any provider, font, or native module is ready. */}
       <Text style={styles.title}>{"حدث خطأ غير متوقع\nSomething went wrong"}</Text>
       <Text style={styles.body}>
         {"أعد تشغيل التطبيق أو اضغط على إعادة المحاولة\nPlease restart the app or tap Retry."}
@@ -107,8 +105,7 @@ function DefaultFallback({ error, onReset }: { error: Error; onReset: () => void
       )}
 
       <Pressable onPress={onReset} style={styles.btn}>
-        <Ionicons name="refresh" size={14} color="#fff" />
-        <Text style={styles.btnText}>{"إعادة المحاولة / Retry"}</Text>
+        <Text style={styles.btnText}>{"↺  إعادة المحاولة / Retry"}</Text>
       </Pressable>
     </View>
   );
@@ -123,16 +120,9 @@ const styles = StyleSheet.create({
     padding: 28,
     gap: 12,
   },
-  iconWrap: {
-    width: 84,
-    height: 84,
-    borderRadius: 26,
-    backgroundColor: "#FFFBEB",
-    alignItems: "center",
-    justifyContent: "center",
+  icon: {
+    fontSize: 48,
     marginBottom: 8,
-    borderWidth: 1,
-    borderColor: "#FEF3C7",
   },
   title: {
     // No fontFamily — always uses system font so text is visible even when
