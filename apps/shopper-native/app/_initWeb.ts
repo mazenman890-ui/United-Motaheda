@@ -23,9 +23,14 @@
  *    the console stays clean for real errors.
  */
 
+// React Native polyfills `global.window = global`, so `typeof window !== "undefined"`
+// is true on Android/iOS but `window.addEventListener` is not a function there.
+// We guard every browser-only branch with this stricter check.
+const IS_BROWSER = typeof window !== "undefined" && typeof window.addEventListener === "function";
+
 // ─── 1. Dark-mode strategy — must run first, synchronously ───────────────────
 
-if (typeof window !== "undefined") {
+if (IS_BROWSER) {
   // Use require() inside the web branch so the native bundler never touches
   // react-native during an Android/iOS build.
   try {
@@ -47,7 +52,7 @@ if (typeof window !== "undefined") {
 // confuse Sentry. We suppress the known non-fatal ones; everything else still
 // surfaces in the console for real debugging.
 
-if (typeof window !== "undefined") {
+if (IS_BROWSER) {
   window.addEventListener("unhandledrejection", (event: PromiseRejectionEvent) => {
     const msg = String((event.reason as { message?: string } | null)?.message ?? event.reason ?? "");
     const SUPPRESS = [
@@ -63,7 +68,7 @@ if (typeof window !== "undefined") {
 
 // ─── 3. Console noise suppressor ─────────────────────────────────────────────
 
-if (typeof window !== "undefined") {
+if (IS_BROWSER) {
   // Messages that come from library internals we cannot patch at source.
   // Suppressed only on web; native builds never reach this code.
   const SUPPRESSED_PATTERNS: string[] = [
@@ -93,7 +98,7 @@ if (typeof window !== "undefined") {
 
 // ─── 4. ReactDOM.render → createRoot bridge ───────────────────────────────────
 
-if (typeof window !== "undefined") {
+if (IS_BROWSER) {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const ReactDOMClient = require("react-dom/client") as {
