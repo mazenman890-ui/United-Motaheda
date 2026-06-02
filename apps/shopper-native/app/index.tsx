@@ -5,6 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ONBOARDING_KEY } from "@/lib/onboardingKey";
 
 export default function Entry() {
+  console.log("🟢 [DEBUG] index.tsx Entry rendered");
   const [target, setTarget] = useState<"/(tabs)" | "/onboarding" | null>(null);
 
   useEffect(() => {

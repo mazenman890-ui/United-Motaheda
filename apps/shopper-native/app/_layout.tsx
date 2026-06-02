@@ -105,6 +105,7 @@ function CartReservationNotifier() {
 // ─── Root layout ──────────────────────────────────────────────────────────────
 
 export default function RootLayout() {
+  console.log("🟢 [DEBUG] RootLayout rendered");
   // All user-data stores are auth-aware and hydrated inside PharmacyBootstrap
   // (fires on user.id change). Root mount only handles fonts + RTL + splash.
   const [fontsReady, setFontsReady] = React.useState(false);
