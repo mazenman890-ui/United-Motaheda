@@ -81,9 +81,7 @@
         "projectId": "1f6bee7a-6298-40a9-bf47-23e2254814ab"
       }
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.0.0",
     "owner": "united-baqy"
   }
 }
