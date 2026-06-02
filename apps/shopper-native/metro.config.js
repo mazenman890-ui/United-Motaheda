@@ -41,15 +41,20 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   // Each shim exports the value directly as module.exports = X (CJS) so
   // require() returns it directly, and also sets .default for import stmts.
   if (platform !== "web") {
-    if (moduleName === "react-native/Libraries/Core/Devtools/getDevServer") {
+    // Stub out @expo/metro-runtime's messageSocket.native — it's only needed
+    // for RSC dev reloading (which this project doesn't use) and crashes on
+    // RN 0.81 due to ESM/CJS interop issues with getDevServer + WebSocket.
+    //
+    // NOTE: effects.native.ts imports this as a RELATIVE path ("./messageSocket"),
+    // so we match on moduleName + originModulePath, not the full package path.
+    // Normalize to forward slashes so the check works on Windows (backslash paths).
+    const originNorm = (context.originModulePath || "").replace(/\\/g, "/");
+    if (
+      (moduleName === "./messageSocket" || moduleName === "./messageSocket.native") &&
+      originNorm.includes("@expo/metro-runtime")
+    ) {
       return {
-        filePath: path.resolve(__dirname, "src/shims/getDevServerShim.js"),
-        type: "sourceFile",
-      };
-    }
-    if (moduleName === "react-native/Libraries/WebSocket/WebSocket") {
-      return {
-        filePath: path.resolve(__dirname, "src/shims/WebSocketShim.js"),
+        filePath: path.resolve(__dirname, "src/shims/messageSocketStub.js"),
         type: "sourceFile",
       };
     }
