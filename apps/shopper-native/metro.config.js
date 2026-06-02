@@ -1,5 +1,6 @@
 const { getDefaultConfig } = require("expo/metro-config");
 const { withNativeWind } = require("nativewind/metro");
+const path = require("path");
 
 const config = getDefaultConfig(__dirname);
 
@@ -29,6 +30,31 @@ config.resolver.unstable_conditionsByPlatform = {
 
 const upstreamResolveRequest = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) => {
+  // ─── Fix: @expo/metro-runtime 4.0.1 + React Native 0.81 ESM/CJS mismatch ──
+  //
+  // messageSocket.native.ts uses require() to load RN modules that RN 0.81
+  // switched to ESM exports. A bare require() on an ESM module returns the
+  // namespace object { default: X } instead of X directly, crashing with:
+  //   TypeError: getDevServer is not a function (it is Object)
+  //   TypeError: constructor is not callable
+  //
+  // Each shim exports the value directly as module.exports = X (CJS) so
+  // require() returns it directly, and also sets .default for import stmts.
+  if (platform !== "web") {
+    if (moduleName === "react-native/Libraries/Core/Devtools/getDevServer") {
+      return {
+        filePath: path.resolve(__dirname, "src/shims/getDevServerShim.js"),
+        type: "sourceFile",
+      };
+    }
+    if (moduleName === "react-native/Libraries/WebSocket/WebSocket") {
+      return {
+        filePath: path.resolve(__dirname, "src/shims/WebSocketShim.js"),
+        type: "sourceFile",
+      };
+    }
+  }
+
   if (platform === "web") {
     // Force zustand to its CJS build on web regardless of condition matching.
     if (moduleName === "zustand")              moduleName = "zustand/index.js";
