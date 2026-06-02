@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Manual payment UI — Vodafone Cash / InstaPay transfer verification.
  */
 
@@ -17,7 +17,7 @@ import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/Input";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { MANUAL_PAYMENT_WALLET_NUMBER } from "../constants";
 
 export interface ManualPaymentPanelProps {

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+﻿import React, { useState, useCallback, useEffect } from "react";
 import {
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -34,7 +34,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { Text as UIText } from "@/shared/ui";
 import { useCartStore } from "@/stores/cart";
 import { useWishlistStore } from "@/stores/wishlist";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { formatPrice } from "@/utils/format";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ function Stars({ value, size = 14 }: { value: number; size?: number }) {
           key={s}
           name={value >= s ? "star" : value >= s - 0.5 ? "star-half" : "star-outline"}
           size={size}
-          color="#F59E0B"
+          color={theme.colors.amber[500]}
         />
       ))}
     </View>

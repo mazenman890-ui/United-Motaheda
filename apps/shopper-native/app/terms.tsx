@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import {
   Pressable,
   ScrollView,
@@ -11,7 +11,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 interface SectionProps {
   title:    string;

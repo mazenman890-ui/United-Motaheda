@@ -40,7 +40,28 @@ if (typeof window !== "undefined") {
   }
 }
 
-// ─── 2. Console noise suppressor ─────────────────────────────────────────────
+// ─── 2. Unhandled-rejection safety net ───────────────────────────────────────
+// Async throws that escape component trees (e.g. font-load timeouts, Supabase
+// channel drops) surface as PromiseRejectionEvents on web. Without a handler
+// the browser logs an "Uncaught (in promise)" error that can kill HMR and
+// confuse Sentry. We suppress the known non-fatal ones; everything else still
+// surfaces in the console for real debugging.
+
+if (typeof window !== "undefined") {
+  window.addEventListener("unhandledrejection", (event: PromiseRejectionEvent) => {
+    const msg = String((event.reason as { message?: string } | null)?.message ?? event.reason ?? "");
+    const SUPPRESS = [
+      "timeout",            // expo-font / Supabase channel reconnect timeouts
+      "Network request failed", // offline font fetch
+      "Cannot manually set color scheme", // belt-and-suspenders: fixed via tailwind darkMode:class
+    ];
+    if (SUPPRESS.some((s) => msg.includes(s))) {
+      event.preventDefault();
+    }
+  });
+}
+
+// ─── 3. Console noise suppressor ─────────────────────────────────────────────
 
 if (typeof window !== "undefined") {
   // Messages that come from library internals we cannot patch at source.
@@ -70,7 +91,7 @@ if (typeof window !== "undefined") {
   };
 }
 
-// ─── 3. ReactDOM.render → createRoot bridge ───────────────────────────────────
+// ─── 4. ReactDOM.render → createRoot bridge ───────────────────────────────────
 
 if (typeof window !== "undefined") {
   try {

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * GiftAddressSheet — full address capture for gift redemption.
  *
  * Two modes:
@@ -31,7 +31,7 @@ import { z } from "zod";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { useAuth } from "@/features/auth/context";
 import { useAddressStore } from "@/features/addresses";
 import type { Address, AddressFormData } from "@/features/addresses";

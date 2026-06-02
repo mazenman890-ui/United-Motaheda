@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+﻿import React, { useEffect } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
@@ -17,7 +17,7 @@ import Animated, {
 import { useTranslation } from "react-i18next";
 import { fetchCatalogStats } from "@/services/productsApi";
 import type { CatalogStats } from "@/services/productsApi";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 

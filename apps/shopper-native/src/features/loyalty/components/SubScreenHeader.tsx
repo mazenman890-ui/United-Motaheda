@@ -1,4 +1,4 @@
-/**
+﻿/**
  * SubScreenHeader — shared header used by every loyalty sub-screen.
  *
  * Layout (RTL):
@@ -20,7 +20,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 interface SubScreenHeaderProps {
   title:         string;

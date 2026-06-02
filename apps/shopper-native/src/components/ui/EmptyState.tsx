@@ -1,8 +1,8 @@
-import React from "react";
+﻿import React from "react";
 import { Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { Button } from "./Button";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];

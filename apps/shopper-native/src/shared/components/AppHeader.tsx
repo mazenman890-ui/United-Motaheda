@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AppHeader — reusable top bar for non-tab routes.
  *
  * Spec: HANDOFF.md §2.3. Used by future pharmacy routes (/prescriptions,
@@ -21,7 +21,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useCartStore } from "@/stores/cart";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 export type AppHeaderVariant = "default" | "hero";
 

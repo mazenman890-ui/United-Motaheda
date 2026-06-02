@@ -10,27 +10,18 @@
  */
 
 import { supabase } from "@/lib/supabase";
-import { railwayApi, RailwayApiError } from "@/lib/railwayApi";
+import { railwayApi, RailwayApiError, type RailwayCreateOrderRequest } from "@/lib/railwayApi";
 import { CheckoutRequestError } from "./errors";
 import type {
-  CheckoutConflict,
   CheckoutSubmitCommand,
   CreateOrderResult,
 } from "./types";
 
-const TIMEOUT_MS = 20_000;
-
-interface EdgeFunctionResponse {
-  order: {
-    id: string;
-    created_at: string;
-    status?: string;
-    payment_status?: string;
-    payment_reference?: string | null;
-    idempotent_replay?: boolean;
-  };
-  conflicts: CheckoutConflict[];
-}
+// Timeout applied to the two Supabase calls inside ensureUserProfile.
+// railwayApi.createOrder() carries its own 15 s AbortController timeout
+// internally (see src/lib/railwayApi.ts), so no separate timeout is needed
+// for the Railway leg of the checkout flow.
+const PROFILE_TIMEOUT_MS = 8_000;
 
 /**
  * Ensures a profiles row exists for the authenticated user before we call
@@ -48,6 +39,7 @@ interface EdgeFunctionResponse {
  * "sign out and sign back in" UI even when the real problem was a NOT NULL
  * constraint or RLS policy needing attention.
  */
+
 async function ensureUserProfile(command: CheckoutSubmitCommand): Promise<void> {
   const { userId, email, fullName, phone } = command.customer;
   if (!userId) return;
@@ -55,18 +47,30 @@ async function ensureUserProfile(command: CheckoutSubmitCommand): Promise<void> 
   // Step 1: probe for an existing row. We log selectError but DO NOT bail —
   // the upsert below would have worked even if the select failed (e.g.,
   // transient network blip, edge RLS denial on read-but-not-write).
+  // Timeout: 8 s so we never hang the checkout button indefinitely.
   let exists = false;
   try {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("id", userId)
-      .maybeSingle();
+    // Use Promise.race so TypeScript infers the return type from the Supabase
+    // query directly. withTimeout<T> hits a wall against Supabase's deeply
+    // nested conditional generics; race() is the cleaner alternative.
+    const { data, error } = await Promise.race([
+      supabase.from("profiles").select("id").eq("id", userId).maybeSingle(),
+      new Promise<never>((_, rej) =>
+        setTimeout(
+          () => rej(new CheckoutRequestError(
+            "انتهت مهلة الاتصال أثناء التحقق من الملف الشخصي. أعد المحاولة.",
+            [], false, "TIMEOUT", true,
+          )),
+          PROFILE_TIMEOUT_MS,
+        ),
+      ),
+    ]);
     if (error && __DEV__) {
       console.warn("[checkout] ensureUserProfile select failed:", error.message);
     }
     exists = !!data;
   } catch (err) {
+    if (err instanceof CheckoutRequestError) throw err;
     if (__DEV__) console.warn("[checkout] ensureUserProfile select threw:", err);
   }
 
@@ -79,15 +83,26 @@ async function ensureUserProfile(command: CheckoutSubmitCommand): Promise<void> 
   // 20260518_fix_signup_trigger migration, so we don't need to set them
   // here (and shouldn't, to avoid trampling values the trigger may have set
   // for older accounts).
-  const { error: upsertError } = await supabase.from("profiles").upsert(
-    {
-      id:        userId,
-      email:     email ?? "",
-      full_name: fullName,
-      phone:     phone ?? null,
-    },
-    { onConflict: "id", ignoreDuplicates: false },
-  );
+  const { error: upsertError } = await Promise.race([
+    supabase.from("profiles").upsert(
+      {
+        id:        userId,
+        email:     email ?? "",
+        full_name: fullName,
+        phone:     phone ?? null,
+      },
+      { onConflict: "id", ignoreDuplicates: false },
+    ),
+    new Promise<never>((_, rej) =>
+      setTimeout(
+        () => rej(new CheckoutRequestError(
+          "انتهت مهلة الاتصال أثناء تهيئة الملف الشخصي. أعد المحاولة.",
+          [], false, "TIMEOUT", true,
+        )),
+        PROFILE_TIMEOUT_MS,
+      ),
+    ),
+  ]);
 
   if (upsertError) {
     if (__DEV__) console.error("[checkout] ensureUserProfile upsert failed:", upsertError);
@@ -120,35 +135,42 @@ export async function createCheckoutOrder(
 ): Promise<CreateOrderResult> {
   await ensureUserProfile(command);
 
-  const { customer, cart, address, pricing, note, coordinates, branchId, paymentMethod } =
-    command as any;
-
-  // Build the Railway request payload
-  const railwayPayload = {
-    idempotencyKey: command.idempotencyKey ?? `app-${Date.now()}`,
-    customerName:   customer?.fullName  ?? command.customer?.fullName  ?? "",
-    customerPhone:  customer?.phone     ?? command.customer?.phone     ?? "",
-    address:        typeof address === "object" ? address : { formatted: String(address ?? "") },
-    note:           note ?? "",
-    coordinates:    coordinates ?? { lat: 30.0444, lng: 31.2357 },   // Cairo centre fallback
-    branchId:       branchId ?? undefined,
+  // Build the Railway request payload from the typed CheckoutSubmitCommand.
+  // Field names differ intentionally between the command (domain model) and
+  // the Railway HTTP contract:
+  //   command.cartLines      → cart.items
+  //   command.expectedPricing.shipping → expectedPricing.deliveryFee
+  //   command.payment.method → paymentMethod
+  //
+  // coordinates: not yet part of CheckoutSubmitCommand (the delivery-quote
+  // flow resolves coordinates via GPS/address but doesn't thread them into
+  // the command yet). Cairo centre is the safe fallback for the Railway
+  // branch-routing logic until this field is propagated end-to-end.
+  const railwayPayload: RailwayCreateOrderRequest = {
+    idempotencyKey: command.idempotencyKey,
+    customerName:   command.customer.fullName,
+    customerPhone:  command.customer.phone,
+    address:        command.address as Record<string, unknown>,
+    note:           command.note ?? "",
+    coordinates:    { lat: 30.0444, lng: 31.2357 },
+    branchId:       undefined,
     cart: {
-      items: (cart?.items ?? []).map((item: any) => ({
-        productId: item.productId ?? item.product_id,
-        name:      item.name ?? item.productId ?? "",
-        quantity:  item.quantity,
-        unitPrice: item.unitPrice ?? item.unit_price ?? 0,
+      items: command.cartLines.map((line) => ({
+        productId: line.productId,
+        name:      line.name,
+        quantity:  line.quantity,
+        unitPrice: line.unitPrice,
       })),
-      subtotal: pricing?.subtotal ?? 0,
+      subtotal: command.expectedPricing.subtotal,
     },
     expectedPricing: {
-      subtotal:    pricing?.subtotal    ?? 0,
-      discount:    pricing?.discount    ?? 0,
-      tax:         pricing?.tax         ?? 0,
-      deliveryFee: pricing?.deliveryFee ?? pricing?.shipping ?? 0,
-      total:       pricing?.total       ?? 0,
+      subtotal:    command.expectedPricing.subtotal,
+      discount:    command.expectedPricing.discount,
+      tax:         command.expectedPricing.tax,
+      deliveryFee: command.expectedPricing.shipping,
+      total:       command.expectedPricing.total,
     },
-    paymentMethod: paymentMethod ?? "cod",
+    paymentMethod: command.payment.method,
   };
 
   try {

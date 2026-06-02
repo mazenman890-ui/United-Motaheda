@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ProductCard — Premium Dark-Glass Edition
  *
  * A completely redesigned product card with:
@@ -30,7 +30,7 @@ import Animated, {
   FadeOut,
 } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { Text as UIText } from "@/shared/ui";
 import { useCartStore } from "@/stores/cart";
 import { useWishlistStore } from "@/stores/wishlist";
@@ -52,11 +52,11 @@ interface ProductCardProps {
 function Stars({ value, count, size = 11 }: { value: number; count?: number | null; size?: number }) {
   return (
     <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 3 }}>
-      <Ionicons name="star" size={size} color="#F59E0B" />
+      <Ionicons name="star" size={size} color={theme.colors.amber[500]} />
       <UIText
         style={{
           fontSize:   size - 0.5,
-          color:      "#F59E0B",
+          color:      theme.colors.amber[500],
           fontFamily: theme.fonts.bold,
           lineHeight: size + 2,
         }}>
@@ -74,31 +74,31 @@ const CATEGORY_PALETTE: Record<string, [string, string, string]> = {
   "Hair Care":                     ["#064e3b", "#065f46", "#10b981"],
   "العناية بالبشرة":               ["#3b0764", "#4c1d95", "#a855f7"],
   "Skincare":                      ["#3b0764", "#4c1d95", "#a855f7"],
-  "مستحضرات التجميل والمكياج":    ["#500724", "#881337", "#f43f5e"],
-  "Cosmetics & Makeup":            ["#500724", "#881337", "#f43f5e"],
+  "مستحضرات التجميل والمكياج":    ["#500724", "#881337", theme.colors.rose[500]],
+  "Cosmetics & Makeup":            ["#500724", "#881337", theme.colors.rose[500]],
   "العناية بالفم والأسنان":        ["#172554", "#1e3a8a", "#3b82f6"],
   "Dental & Oral":                  ["#172554", "#1e3a8a", "#3b82f6"],
-  "الفيتامينات والمكملات الغذائية": ["#451a03", "#78350f", "#f59e0b"],
-  "Vitamins & Supplements":        ["#451a03", "#78350f", "#f59e0b"],
-  "أدوية":                         ["#022c22", "#065c54", "#0db8a8"],
-  "Medications":                   ["#022c22", "#065c54", "#0db8a8"],
-  "المستلزمات الطبية":             ["#0c1a2e", "#0c2a48", "#0891b2"],
-  "Medical Supplies":              ["#0c1a2e", "#0c2a48", "#0891b2"],
-  "الرعاية الصحية العامة":         ["#0f172a", "#1e293b", "#64748b"],
-  "General Healthcare":            ["#0f172a", "#1e293b", "#64748b"],
+  "الفيتامينات والمكملات الغذائية": ["#451a03", theme.colors.amber[900], theme.colors.amber[500]],
+  "Vitamins & Supplements":        ["#451a03", theme.colors.amber[900], theme.colors.amber[500]],
+  "أدوية":                         ["#022c22", theme.colors.teal[800], theme.colors.teal[500]],
+  "Medications":                   ["#022c22", theme.colors.teal[800], theme.colors.teal[500]],
+  "المستلزمات الطبية":             ["#0c1a2e", "#0c2a48", theme.colors.brand[600]],
+  "Medical Supplies":              ["#0c1a2e", "#0c2a48", theme.colors.brand[600]],
+  "الرعاية الصحية العامة":         [theme.colors.slate[900], theme.colors.slate[800], theme.colors.slate[500]],
+  "General Healthcare":            [theme.colors.slate[900], theme.colors.slate[800], theme.colors.slate[500]],
   "العناية بالجسم":                ["#431407", "#7c2d12", "#f97316"],
   "Body Care":                     ["#431407", "#7c2d12", "#f97316"],
   "صحة المرأة":                    ["#500724", "#831843", "#ec4899"],
   "Women's Health":                ["#500724", "#831843", "#ec4899"],
   "الأطفال والرضع":                ["#3f3a00", "#713f12", "#eab308"],
   "Baby & Child":                  ["#3f3a00", "#713f12", "#eab308"],
-  "العناية بالرجل":                ["#0f172a", "#1e293b", "#475569"],
-  "Men's Care":                    ["#0f172a", "#1e293b", "#475569"],
-  "العناية بالعيون":               ["#0c1a2e", "#0e3a4a", "#06b6d4"],
-  "Eye Care":                      ["#0c1a2e", "#0e3a4a", "#06b6d4"],
+  "العناية بالرجل":                [theme.colors.slate[900], theme.colors.slate[800], theme.colors.slate[600]],
+  "Men's Care":                    [theme.colors.slate[900], theme.colors.slate[800], theme.colors.slate[600]],
+  "العناية بالعيون":               ["#0c1a2e", "#0e3a4a", theme.colors.brand[500]],
+  "Eye Care":                      ["#0c1a2e", "#0e3a4a", theme.colors.brand[500]],
 };
 
-const DEFAULT_PALETTE: [string, string, string] = ["#0c1a2e", "#0c2a48", "#0891b2"];
+const DEFAULT_PALETTE: [string, string, string] = ["#0c1a2e", "#0c2a48", theme.colors.brand[600]];
 
 function categoryIcon(cat: string): React.ComponentProps<typeof Ionicons>["name"] {
   const c = cat.toLowerCase();
@@ -260,8 +260,8 @@ export const ProductCard = memo(function ProductCard({
 
   const badgeMeta =
     resolvedBadge === "new"  ? { label: t("products.badgeNew"),                                               grad: ["#2563EB", "#1D4ED8"] as [string, string] } :
-    resolvedBadge === "hot"  ? { label: t("products.badgeBestSeller"),                                        grad: ["#EF4444", "#B91C1C"] as [string, string] } :
-    resolvedBadge === "sale" ? { label: t("products.badgeSale", { n: Math.round(resolvedDiscount ?? 0) }),    grad: ["#F59E0B", "#D97706"] as [string, string] } :
+    resolvedBadge === "hot"  ? { label: t("products.badgeBestSeller"),                                        grad: [theme.colors.red[500], theme.colors.red[700]] as [string, string] } :
+    resolvedBadge === "sale" ? { label: t("products.badgeSale", { n: Math.round(resolvedDiscount ?? 0) }),    grad: [theme.colors.amber[500], theme.colors.amber[600]] as [string, string] } :
     null;
 
   // ── GRID variant ───────────────────────────────────────────────────────────
@@ -295,7 +295,7 @@ export const ProductCard = memo(function ProductCard({
           {!product.inStock && (
             <View style={styles.oosOverlay}>
               <View style={styles.oosPill}>
-                <Ionicons name="alert-circle-outline" size={12} color="#94A3B8" />
+                <Ionicons name="alert-circle-outline" size={12} color={theme.colors.slate[400]} />
                 <UIText variant="eyebrow" style={styles.oosText}>{t("common.outOfStock")}</UIText>
               </View>
             </View>
@@ -334,7 +334,7 @@ export const ProductCard = memo(function ProductCard({
               <Ionicons
                 name={inWishlist ? "heart" : "heart-outline"}
                 size={14}
-                color={inWishlist ? "#F43F5E" : "#94A3B8"}
+                color={inWishlist ? theme.colors.rose[500] : theme.colors.slate[400]}
               />
             </Pressable>
           </Animated.View>
@@ -489,7 +489,7 @@ export const ProductCard = memo(function ProductCard({
             <Ionicons
               name={inWishlist ? "heart" : "heart-outline"}
               size={16}
-              color={inWishlist ? "#F43F5E" : "#64748B"}
+              color={inWishlist ? theme.colors.rose[500] : theme.colors.slate[500]}
             />
           </Pressable>
         </Animated.View>
@@ -604,23 +604,23 @@ const styles = StyleSheet.create({
     flexDirection:   "row",
     alignItems:      "center",
     gap:             5,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: theme.colors.slate[100],
     borderRadius:    10,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderWidth:     1,
-    borderColor:     "#E2E8F0",
+    borderColor:     theme.colors.slate[200],
   },
   oosPillSmall: {
-    backgroundColor: "#F1F5F9",
+    backgroundColor: theme.colors.slate[100],
     borderRadius:    6,
     paddingHorizontal: 7,
     paddingVertical:   3,
     borderWidth:     1,
-    borderColor:     "#E2E8F0",
+    borderColor:     theme.colors.slate[200],
   },
   oosText: {
-    color:      "#64748B",
+    color:      theme.colors.slate[500],
     fontSize:   10,
     fontFamily: theme.fonts.bold,
   },
@@ -649,7 +649,7 @@ const styles = StyleSheet.create({
     position:        "absolute",
     top:             10,
     left:            10,
-    backgroundColor: "#0891B2",
+    backgroundColor: theme.colors.brand[600],
     borderRadius:    999,
     minWidth:        24,
     height:          24,
@@ -658,7 +658,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     borderWidth:     2,
     borderColor:     "#fff",
-    shadowColor:     "#0891B2",
+    shadowColor:     theme.colors.brand[600],
     shadowOffset:    { width: 0, height: 2 },
     shadowOpacity:   0.55,
     shadowRadius:    6,
@@ -747,14 +747,14 @@ const styles = StyleSheet.create({
     backgroundColor: CARD_BG,
   },
   categoryLabel: {
-    color:      "#94A3B8",
+    color:      theme.colors.slate[400],
     fontSize:   9.5,
     letterSpacing: 0.4,
     textTransform: "uppercase",
     fontFamily: theme.fonts.bold,
   },
   productName: {
-    color:      "#0F172A",
+    color:      theme.colors.slate[900],
     lineHeight: 20,
     minHeight:  40,
     fontSize:   13.5,
@@ -766,7 +766,7 @@ const styles = StyleSheet.create({
     marginTop:     1,
   },
   ratingText: {
-    color:      "#94A3B8",
+    color:      theme.colors.slate[400],
     fontSize:   10,
     fontFamily: theme.fonts.regular,
   },
@@ -782,18 +782,18 @@ const styles = StyleSheet.create({
     gap:            3,
   },
   priceValue: {
-    color:         "#0A9A8C",
+    color:         theme.colors.teal[600],
     fontSize:      18,
     letterSpacing: -0.5,
     fontFamily:    theme.fonts.black,
   },
   priceCurrency: {
-    color:      "#0DB8A8",
+    color:      theme.colors.teal[500],
     fontSize:   11,
     fontFamily: theme.fonts.bold,
   },
   origPrice: {
-    color:              "#94A3B8",
+    color:              theme.colors.slate[400],
     textDecorationLine: "line-through",
     fontSize:           10,
     fontFamily:         theme.fonts.regular,
@@ -813,7 +813,7 @@ const styles = StyleSheet.create({
     // Default teal background — replaces the LinearGradient.
     // Using a flat colour is dramatically cheaper on both iOS (Metal) and
     // Android (canvas): no shader compilation, no per-frame gradient draw.
-    backgroundColor: "#0DB8A8",
+    backgroundColor: theme.colors.teal[500],
   },
   addBtnSuccess: {
     // Swap to green when "added" flash is showing
@@ -822,8 +822,8 @@ const styles = StyleSheet.create({
   // Base teal for ROW variant buttons (rowActionBtn has its own bg, so we
   // need to explicitly override it here)
   addBtnBase: {
-    backgroundColor: "#0DB8A8",
-    borderColor:     "#0891B2",
+    backgroundColor: theme.colors.teal[500],
+    borderColor:     theme.colors.brand[600],
   },
   // Applied to btnAnim wrapper when product is out-of-stock — keeps the
   // opacity computation out of the Reanimated worklet (pure JS, no UI thread)
@@ -879,7 +879,7 @@ const styles = StyleSheet.create({
     gap:  3,
   },
   rowProductName: {
-    color:      "#0F172A",
+    color:      theme.colors.slate[900],
     fontSize:   14,
     lineHeight: 20,
   },

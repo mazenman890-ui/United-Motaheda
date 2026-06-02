@@ -1,4 +1,4 @@
-/**
+﻿/**
  * RedemptionHistoryScreen — full history of all gift redemptions (all states).
  *
  * Groups by state: active (reserved/fulfilled) at top, then cancelled/expired.
@@ -19,7 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { useScreenTrace } from "@/features/observability";
 import { SubScreenHeader } from "../components/SubScreenHeader";
 import { useRedemptions } from "../hooks/useRedemptions";

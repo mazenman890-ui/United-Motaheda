@@ -34,6 +34,7 @@ import {
   type AppSheetAction,
   type AppSheetType,
 } from "@/shared/store/appSheetStore";
+import { theme } from "@/shared/theme";
 
 const { height: SCREEN_H } = Dimensions.get("window");
 const DISMISS_THRESHOLD     = 90;
@@ -52,14 +53,14 @@ type TypeCfg = {
 const TYPE_CFG: Record<AppSheetType, TypeCfg> = {
   error: {
     icon:    "close-circle",
-    grad:    ["#FF7676", "#EF4444"],
+    grad:    ["#FF7676", theme.colors.red[500]],
     glow:    "rgba(239,68,68,0.28)",
     badge:   "sheet.badge.error",
     badgeBg: "rgba(239,68,68,0.12)",
   },
   warning: {
     icon:    "warning",
-    grad:    ["#FCD34D", "#F59E0B"],
+    grad:    [theme.colors.amber[300], theme.colors.amber[500]],
     glow:    "rgba(245,158,11,0.28)",
     badge:   "sheet.badge.warning",
     badgeBg: "rgba(245,158,11,0.12)",
@@ -94,7 +95,7 @@ const TYPE_CFG: Record<AppSheetType, TypeCfg> = {
   },
   confirm: {
     icon:    "alert-circle",
-    grad:    ["#FBBF24", "#D97706"],
+    grad:    [theme.colors.amber[400], theme.colors.amber[600]],
     glow:    "rgba(217,119,6,0.28)",
     badge:   "sheet.badge.confirm",
     badgeBg: "rgba(217,119,6,0.12)",
@@ -131,7 +132,7 @@ function ActionBtn({ action, cfg }: { action: AppSheetAction; cfg: TypeCfg }) {
       <Animated.View style={anim}>
         {isP || isD ? (
           <LinearGradient
-            colors={isD ? ["#FF7676", "#EF4444"] : cfg.grad}
+            colors={isD ? ["#FF7676", theme.colors.red[500]] : cfg.grad}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={s.btnPrimary}>
@@ -403,9 +404,9 @@ const s = StyleSheet.create({
   btnSecTxt: {
     fontSize:   14,
     fontFamily: "Cairo_700Bold",
-    color:      "#334155",
+    color:      theme.colors.slate[700],
   },
   btnGhostTxt: {
-    color: "#94A3B8",
+    color: theme.colors.slate[400],
   },
 });

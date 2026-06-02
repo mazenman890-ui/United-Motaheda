@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useEffect } from "react";
+﻿import React, { memo, useCallback, useEffect } from "react";
 import {
   FlatList,
   Platform,
@@ -32,7 +32,7 @@ import { useAuth } from "@/features/auth";
 import { Badge } from "@/components/ui/Badge";
 import { AppHeader } from "@/shared/components";
 import { Text as UIText } from "@/shared/ui";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { formatPrice } from "@/utils/format";
 import type { Order, OrderStatus } from "@/stores/orders";
 import { useOrders } from "../hooks/useOrders";
@@ -48,12 +48,12 @@ const STATUS_META: Record<
     dot:      string;
   }
 > = {
-  pending:         { labelKey: "orders.pending",    variant: "warning", icon: "time-outline",             dot: "#F59E0B" },
-  pending_payment: { labelKey: "orders.pendingPayment", variant: "warning", icon: "card-outline",         dot: "#F59E0B" },
-  processing:      { labelKey: "orders.processing", variant: "brand",   icon: "refresh-outline",          dot: "#0DB8A8" },
+  pending:         { labelKey: "orders.pending",    variant: "warning", icon: "time-outline",             dot: theme.colors.amber[500] },
+  pending_payment: { labelKey: "orders.pendingPayment", variant: "warning", icon: "card-outline",         dot: theme.colors.amber[500] },
+  processing:      { labelKey: "orders.processing", variant: "brand",   icon: "refresh-outline",          dot: theme.colors.teal[500] },
   shipped:         { labelKey: "orders.shipped",    variant: "brand",   icon: "car-outline",              dot: "#6366F1" },
   delivered:       { labelKey: "orders.delivered",  variant: "success", icon: "checkmark-circle-outline", dot: "#10B981" },
-  cancelled:       { labelKey: "orders.cancelled",  variant: "error",   icon: "close-circle-outline",     dot: "#EF4444" },
+  cancelled:       { labelKey: "orders.cancelled",  variant: "error",   icon: "close-circle-outline",     dot: theme.colors.red[500] },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -72,10 +72,10 @@ function formatDate(iso: string, language: string): string {
 
 function paymentDot(status: string): string | null {
   switch (status) {
-    case "pending_verification": return "#F59E0B";
+    case "pending_verification": return theme.colors.amber[500];
     case "verified":
     case "paid":                 return "#10B981";
-    case "failed":               return "#EF4444";
+    case "failed":               return theme.colors.red[500];
     default:                     return null;
   }
 }
@@ -120,7 +120,7 @@ function UnauthenticatedState({ showBack }: { showBack: boolean }): React.ReactE
 
       {/* Hero */}
       <LinearGradient
-        colors={["#021D2E", "#032840", "#053C5A"]}
+        colors={[theme.colors.hero, "#032840", "#053C5A"]}
         start={{ x: 0.1, y: 0 }}
         end={{ x: 0.9, y: 1 }}
         style={[authS.hero, { paddingBottom: 48 }]}>
@@ -135,7 +135,7 @@ function UnauthenticatedState({ showBack }: { showBack: boolean }): React.ReactE
         <Animated.View entering={FadeInUp.duration(500).delay(80)}>
           {/* Icon tile */}
           <LinearGradient
-            colors={["#0DB8A8", "#0891B2"]}
+            colors={[theme.colors.teal[500], theme.colors.brand[600]]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={authS.iconTile}>
@@ -156,7 +156,7 @@ function UnauthenticatedState({ showBack }: { showBack: boolean }): React.ReactE
         {/* Sign in */}
         <Pressable onPress={handleSignIn} style={authS.signInBtn}>
           <LinearGradient
-            colors={["#0DB8A8", "#0891B2"]}
+            colors={[theme.colors.teal[500], theme.colors.brand[600]]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={authS.signInGrad}>
@@ -237,7 +237,7 @@ function EmptyOrdersState({ showBack }: { showBack: boolean }): React.ReactEleme
             {/* Outer ring */}
             <View style={emptyS.illusRing}>
               {/* Bag icon */}
-              <Ionicons name="bag-handle-outline" size={64} color="#0DB8A8" />
+              <Ionicons name="bag-handle-outline" size={64} color={theme.colors.teal[500]} />
             </View>
             {/* Floating pill badge */}
             <View style={emptyS.illusBadge}>
@@ -261,7 +261,7 @@ function EmptyOrdersState({ showBack }: { showBack: boolean }): React.ReactEleme
             onPress={() => { if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); router.push("/(tabs)/products"); }}
             style={emptyS.ctaWrap}>
             <LinearGradient
-              colors={["#0DB8A8", "#0891B2"]}
+              colors={[theme.colors.teal[500], theme.colors.brand[600]]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={emptyS.ctaGrad}>
@@ -280,7 +280,7 @@ function EmptyOrdersState({ showBack }: { showBack: boolean }): React.ReactEleme
             {[
               { icon: "leaf-outline"     as const, label: t("home.qaVitamins"), color: "#059669", bg: "#D1FAE5" },
               { icon: "sparkles-outline" as const, label: t("home.qaMomBaby"),  color: "#7C3AED", bg: "#EDE9FE" },
-              { icon: "medkit-outline"   as const, label: t("home.qaRx"),       color: "#0891B2", bg: "#E0F2FE" },
+              { icon: "medkit-outline"   as const, label: t("home.qaRx"),       color: theme.colors.brand[600], bg: "#E0F2FE" },
             ].map((cat) => (
               <Pressable
                 key={cat.label}
@@ -448,7 +448,7 @@ function OrdersList({
           <Animated.View entering={FadeInDown.duration(380)} style={listS.statsRow}>
             {/* Total orders */}
             <View style={listS.statCard}>
-              <LinearGradient colors={["#0DB8A8", "#0891B2"]} style={listS.statIcon}>
+              <LinearGradient colors={[theme.colors.teal[500], theme.colors.brand[600]]} style={listS.statIcon}>
                 <Ionicons name="bag-outline" size={16} color="#fff" />
               </LinearGradient>
               <View>
@@ -740,7 +740,7 @@ const emptyS = StyleSheet.create({
     width:           28,
     height:          28,
     borderRadius:    14,
-    backgroundColor: "#0DB8A8",
+    backgroundColor: theme.colors.teal[500],
     alignItems:      "center",
     justifyContent:  "center",
     borderWidth:     2,

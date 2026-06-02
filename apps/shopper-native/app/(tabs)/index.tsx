@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Home Screen — Redesigned Premium Edition
  *
  * A dramatic, editorial homepage with:
@@ -47,7 +47,7 @@ import { CategoryCard } from "@/components/CategoryCard";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductCardSkeleton, CategoryCardSkeleton } from "@/components/ui/Skeleton";
 import { Text as UIText } from "@/shared/ui";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { useCartStore } from "@/stores/cart";
 import { useAuth } from "@/features/auth";
 import { AppLogo } from "@/shared/components/AppLogo";
@@ -61,18 +61,18 @@ type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 const PROMO_SLIDES = [
   {
     id:       "1",
-    gradient: ["#021D2E", "#053348", "#0A4A65"] as [string, string, string],
+    gradient: [theme.colors.hero, "#053348", "#0A4A65"] as [string, string, string],
     tagKey:   "home.heroTag1",
     titleKey: "home.heroTitle1",
     subKey:   "home.heroSub1",
     icon:     "ticket"  as IoniconsName,
-    accent:   "#0DB8A8",
+    accent:   theme.colors.teal[500],
     glowColor:"rgba(13,184,168,0.18)",
     route:    "/deals",
   },
   {
     id:       "2",
-    gradient: ["#064E3B", "#065C54", "#0A9A8C"] as [string, string, string],
+    gradient: ["#064E3B", theme.colors.teal[800], theme.colors.teal[600]] as [string, string, string],
     tagKey:   "home.heroTag2",
     titleKey: "home.heroTitle2",
     subKey:   "home.heroSub2",
@@ -254,7 +254,7 @@ const QUICK_ACTIONS: {
   { icon: "scan-outline",         labelKey: "home.qaRx",       grad: ["#6D28D9", "#7C3AED"], route: "/(tabs)/search"   },
   { icon: "leaf-outline",         labelKey: "home.qaVitamins", grad: ["#065F46", "#059669"], route: "/(tabs)/products" },
   { icon: "heart-circle-outline", labelKey: "home.qaMomBaby",  grad: ["#9D174D", "#DB2777"], route: "/(tabs)/products" },
-  { icon: "pricetag-outline",     labelKey: "home.qaOffers",   grad: ["#B45309", "#D97706"], route: "/deals"            },
+  { icon: "pricetag-outline",     labelKey: "home.qaOffers",   grad: [theme.colors.amber[700], theme.colors.amber[600]], route: "/deals"            },
 ];
 
 const QuickAction = memo(function QuickAction({
@@ -356,15 +356,15 @@ const FlashSaleSection = memo(function FlashSaleSection({
         eyebrow={t("home.flashEnds")}
         title={t("home.flashTitle")}
         icon="flash"
-        accent="#EF4444"
+        accent={theme.colors.red[500]}
         onMore={onViewAll}
         rightSlot={
           <View style={cntStyles.timerRow}>
-            <CountdownUnit value={s} label={t("home.flashSec")} grad={["#DC2626", "#EF4444"]} />
+            <CountdownUnit value={s} label={t("home.flashSec")} grad={[theme.colors.red[600], theme.colors.red[500]]} />
             <Text style={cntStyles.colon}>:</Text>
-            <CountdownUnit value={m} label={t("home.flashMin")} grad={["#D97706", "#F59E0B"]} />
+            <CountdownUnit value={m} label={t("home.flashMin")} grad={[theme.colors.amber[600], theme.colors.amber[500]]} />
             <Text style={cntStyles.colon}>:</Text>
-            <CountdownUnit value={h} label={t("home.flashHrs")} grad={["#0891B2", "#0DB8A8"]} />
+            <CountdownUnit value={h} label={t("home.flashHrs")} grad={[theme.colors.brand[600], theme.colors.teal[500]]} />
           </View>
         }
       />
@@ -504,7 +504,7 @@ export default function HomeScreen() {
 
         {/* ── Hero ──────────────────────────────────────────────────────────── */}
         <LinearGradient
-          colors={["#021D2E", "#032840", "#053C5A"]}
+          colors={[theme.colors.hero, "#032840", "#053C5A"]}
           start={{ x: 0.1, y: 0 }}
           end={{ x: 0.9, y: 1 }}
           style={[hStyles.hero, { paddingTop: insets.top + 18 }]}>
@@ -577,9 +577,9 @@ export default function HomeScreen() {
           style={hStyles.trustWrap}>
           <View style={hStyles.trustCard}>
             {([
-              { icon: "flash-outline"           as IoniconsName, label: t("cart.fastDelivery"),    grad: ["#D97706", "#F59E0B"] as [string, string] },
+              { icon: "flash-outline"           as IoniconsName, label: t("cart.fastDelivery"),    grad: [theme.colors.amber[600], theme.colors.amber[500]] as [string, string] },
               { icon: "shield-checkmark-outline" as IoniconsName, label: t("home.origMedicines"),         grad: ["#059669", "#10B981"] as [string, string] },
-              { icon: "wallet-outline"           as IoniconsName, label: t("checkout.methodCodTitle"),     grad: ["#0891B2", "#0DB8A8"] as [string, string] },
+              { icon: "wallet-outline"           as IoniconsName, label: t("checkout.methodCodTitle"),     grad: [theme.colors.brand[600], theme.colors.teal[500]] as [string, string] },
               { icon: "refresh-outline"          as IoniconsName, label: t("cart.guaranteedReturns"), grad: ["#6D28D9", "#7C3AED"] as [string, string] },
             ]).map((b, i, arr) => (
               <View
@@ -723,7 +723,7 @@ export default function HomeScreen() {
           entering={FadeInDown.duration(420).delay(360)}
           style={hStyles.supportWrap}>
           <LinearGradient
-            colors={["#021D2E", "#032840", "#053C5A"]}
+            colors={[theme.colors.hero, "#032840", "#053C5A"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={hStyles.supportCard}>
@@ -734,7 +734,7 @@ export default function HomeScreen() {
 
             <View style={hStyles.supportRow}>
               <LinearGradient
-                colors={["#0DB8A8", "#0891B2"]}
+                colors={[theme.colors.teal[500], theme.colors.brand[600]]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={hStyles.supportIconTile}>
@@ -763,7 +763,7 @@ export default function HomeScreen() {
                 {t("home.chatWhatsapp")}
               </Text>
               <View style={hStyles.supportArrow}>
-                <Ionicons name="chevron-back" size={12} color="#64748B" />
+                <Ionicons name="chevron-back" size={12} color={theme.colors.slate[500]} />
               </View>
             </Pressable>
           </LinearGradient>
@@ -833,7 +833,7 @@ const hStyles = StyleSheet.create({
     position:          "absolute",
     top:               -5,
     left:              -5,
-    backgroundColor:   "#EF4444",
+    backgroundColor:   theme.colors.red[500],
     borderRadius:      9,
     minWidth:          18,
     height:            18,
@@ -841,7 +841,7 @@ const hStyles = StyleSheet.create({
     justifyContent:    "center",
     paddingHorizontal: 4,
     borderWidth:       1.5,
-    borderColor:       "#021D2E",
+    borderColor:       theme.colors.hero,
   },
   cartBadgeText: {
     color:      "#fff",
@@ -940,7 +940,7 @@ const hStyles = StyleSheet.create({
     overflow:       "hidden",
   },
   trustLabel: {
-    color:      "#475569",
+    color:      theme.colors.slate[600],
     fontSize:   9.5,
     fontFamily: theme.fonts.bold,
     lineHeight: 13,
@@ -970,7 +970,7 @@ const hStyles = StyleSheet.create({
     padding:      20,
     gap:          18,
     overflow:     "hidden",
-    shadowColor:  "#021D2E",
+    shadowColor:  theme.colors.hero,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
     shadowRadius:  20,
@@ -1040,7 +1040,7 @@ const hStyles = StyleSheet.create({
     elevation:         3,
   },
   supportCTAText: {
-    color:      "#0F172A",
+    color:      theme.colors.slate[900],
     fontSize:   14,
     fontFamily: theme.fonts.extrabold,
     textAlign:  "center",
@@ -1131,7 +1131,7 @@ const promoStyles = StyleSheet.create({
     width:           6,
     height:          6,
     borderRadius:    3,
-    backgroundColor: "#CBD5E1",
+    backgroundColor: theme.colors.slate[300],
   },
   dotActive: {
     width:        24,
@@ -1147,7 +1147,7 @@ const cntStyles = StyleSheet.create({
     gap:           4,
   },
   colon: {
-    color:         "#94A3B8",
+    color:         theme.colors.slate[400],
     fontSize:      16,
     fontFamily:    theme.fonts.black,
     marginBottom:  12,
@@ -1171,7 +1171,7 @@ const cntStyles = StyleSheet.create({
     letterSpacing: 0.4,
   },
   label: {
-    color:    "#94A3B8",
+    color:    theme.colors.slate[400],
     fontSize: 9.5,
   },
 });
@@ -1240,7 +1240,7 @@ const quickStyles = StyleSheet.create({
     borderTopRightRadius: 20,
   },
   label: {
-    color:      "#334155",
+    color:      theme.colors.slate[700],
     fontSize:   11,
     fontFamily: theme.fonts.bold,
     lineHeight: 14,

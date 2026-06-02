@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Skeleton — premium loading placeholder system.
  *
  * Design principles:
@@ -28,7 +28,7 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 

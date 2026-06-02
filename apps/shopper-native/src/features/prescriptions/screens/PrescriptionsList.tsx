@@ -1,4 +1,4 @@
-/**
+﻿/**
  * PrescriptionsList — the user's prescription roster.
  *
  * Header: AppHeader title="وصفاتي" (cart badge stays).
@@ -29,7 +29,7 @@ import { Text } from "@/shared/ui";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/features/auth";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { usePrescriptions } from "../hooks/usePrescriptions";
 import { usePrescriptionsQuery } from "../hooks/usePrescriptionsQuery";
 import { sortActiveByStatus } from "../lib/statusSort";

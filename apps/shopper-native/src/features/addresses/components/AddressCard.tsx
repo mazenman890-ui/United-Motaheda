@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 import { AddressMapPlaceholder } from "./AddressMapPlaceholder";
 import { ADDRESS_LABELS } from "../types";
 import type { Address } from "../types";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 

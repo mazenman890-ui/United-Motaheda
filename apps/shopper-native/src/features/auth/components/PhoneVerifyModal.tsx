@@ -1,4 +1,4 @@
-/**
+﻿/**
  * PhoneVerifyModal — SMS OTP verification with in-modal change-number flow.
  *
  * Two sub-modes, switched by user action:
@@ -35,7 +35,7 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { Text } from "@/shared/ui";
 import { Button } from "@/components/ui/Button";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import {
   OTP_RESEND_COOLDOWN_SECONDS,
   OTP_TTL_SECONDS,

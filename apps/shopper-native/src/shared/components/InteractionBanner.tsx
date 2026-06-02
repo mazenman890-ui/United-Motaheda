@@ -1,4 +1,4 @@
-/**
+﻿/**
  * InteractionBanner — drug-interaction safety surface.
  *
  * Spec: HANDOFF.md §3.3 + SPEC §9.2.
@@ -15,7 +15,7 @@ import React from "react";
 import { View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { Card, Text } from "@/shared/ui";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";

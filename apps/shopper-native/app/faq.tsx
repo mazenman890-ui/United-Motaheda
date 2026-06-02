@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+﻿import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
   Pressable,
@@ -16,7 +16,7 @@ import { useTranslation } from "react-i18next";
 import { FAQAccordion, FAQCategoryRail } from "@/features/faq";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FAQ_DATA, FAQ_CATEGORIES, type FAQCategory, type FAQItem } from "@/features/faq";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 export default function FAQScreen() {
   const router  = useRouter();

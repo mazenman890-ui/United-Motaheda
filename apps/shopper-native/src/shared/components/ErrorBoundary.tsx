@@ -11,12 +11,23 @@
  * RENDER-phase failure mode — not network errors, which features
  * handle locally with try/catch.
  *
- * IMPORTANT — font safety: DefaultFallback intentionally uses NO custom
- * fontFamily. Cairo fonts may not yet be registered when this boundary
- * fires during early boot (e.g. a provider crash on the very first
- * render). On Android, an unregistered fontFamily name makes Text render
- * as invisible blank space, not fall back gracefully. Omitting fontFamily
- * forces the OS system font, which is always available.
+ * IMPORTANT — zero-dependency rule for DefaultFallback:
+ *
+ *   This file intentionally imports NOTHING from the app's own modules
+ *   except crashReporter (which is itself zero-dependency). Specifically:
+ *
+ *   1. NO fontFamily — Cairo fonts may not be registered when this boundary
+ *      fires on early boot. An unregistered fontFamily makes Text invisible
+ *      on Android; the OS system font is always available.
+ *
+ *   2. NO theme import — @/shared/theme resolves through tokens.ts at module
+ *      load time. If the theme module itself throws (broken OTA asset, native
+ *      module mismatch), the ErrorBoundary must still render. Keeping styles
+ *      as hardcoded hex literals is the only way to guarantee this.
+ *
+ *   DO NOT add `import { theme } from "@/shared/theme"` here or replace
+ *   these hex values with token references. The styles below are intentionally
+ *   hardcoded and must remain so.
  */
 
 import React from "react";
@@ -133,7 +144,7 @@ const styles = StyleSheet.create({
   },
   body: {
     fontSize: 13,
-    color: "#64748B",
+    color: "#64748B",           // slate[500] — hardcoded per zero-dependency rule
     textAlign: "center",
     lineHeight: 20,
     maxWidth: 320,
@@ -142,26 +153,26 @@ const styles = StyleSheet.create({
     alignSelf: "stretch",
     padding: 12,
     borderRadius: 12,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "#F8FAFC", // slate[50]  — hardcoded per zero-dependency rule
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: "#E2E8F0",     // slate[200] — hardcoded per zero-dependency rule
     marginTop: 8,
   },
   devLabel: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#64748B",
+    color: "#64748B",           // slate[500] — hardcoded per zero-dependency rule
     marginBottom: 4,
   },
   devText: {
     fontSize: 11,
-    color: "#334155",
+    color: "#334155",           // slate[700] — hardcoded per zero-dependency rule
   },
   btn: {
     flexDirection: "row-reverse",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#0891B2",
+    backgroundColor: "#0891B2", // brand[600] — hardcoded per zero-dependency rule
     paddingHorizontal: 22,
     paddingVertical: 13,
     borderRadius: 14,

@@ -30,13 +30,29 @@ if (bootLang === "ar") {
   I18nManager.forceRTL(false);
 }
 
+// initImmediate: false  — forces synchronous initialisation so i18n.isInitialized
+// is TRUE by the time React renders for the first time. All resources are
+// bundled (no network backend) so sync init is safe and instantaneous.
+// Without this, i18next 23+ defers completion to a microtask, leaving
+// isInitialized=false on the first render. react-i18next 17 has useSuspense:true
+// by default, which throws a Promise when !ready. With no <Suspense> boundary
+// in the tree, React 18 converts that into a hard error that the root
+// ErrorBoundary catches — rendering the grey #F4F7FA DefaultFallback screen.
+//
+// react.useSuspense: false — belt-and-suspenders: even if init somehow ends up
+// async (e.g. a future i18next change), useTranslation() will degrade gracefully
+// by returning the key instead of throwing, rather than crashing the tree.
 void i18n.use(initReactI18next).init({
   resources,
-  lng:           bootLang,
-  fallbackLng:   "ar",
-  supportedLngs: ["ar", "en"],
-  interpolation: { escapeValue: false },
+  lng:            bootLang,
+  fallbackLng:    "ar",
+  supportedLngs:  ["ar", "en"],
+  interpolation:  { escapeValue: false },
   compatibilityJSON: "v4",
+  initImmediate:  false,
+  react: {
+    useSuspense: false,
+  },
 });
 
 export function initI18n(): void {

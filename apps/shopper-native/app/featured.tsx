@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Featured — Editor's Picks
  *
  * Infinite-scroll grid of featured products with category filter rail.
@@ -31,7 +31,7 @@ import { useTranslation } from "react-i18next";
 import { useInfiniteProducts, ProductGrid, type NativeProduct } from "@/features/products";
 import { fetchCategories } from "@/services/productsApi";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 // Badge is driven by real product fields (isBestseller/isNew/isSale) in ProductCard.
 
@@ -53,7 +53,7 @@ function CatChip({
   return (
     <Animated.View style={anim}>
       <Pressable onPress={handlePress} style={[fc.chip, active && fc.chipActive]}>
-        {active && <LinearGradient colors={["#B45309", "#D97706"]} style={fc.chipGrad} />}
+        {active && <LinearGradient colors={[theme.colors.amber[700], theme.colors.amber[600]]} style={fc.chipGrad} />}
         <Text style={[fc.chipText, active && fc.chipTextActive]} numberOfLines={1}>{label}</Text>
       </Pressable>
     </Animated.View>
@@ -124,7 +124,7 @@ export default function FeaturedScreen(): React.ReactElement {
   const Header = useMemo(() => (
     <>
       <LinearGradient
-        colors={["#3B1500", "#6B2800", "#B45309"]}
+        colors={["#3B1500", "#6B2800", theme.colors.amber[700]]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[fc.header, { paddingTop: insets.top + 12 }]}>
@@ -140,7 +140,7 @@ export default function FeaturedScreen(): React.ReactElement {
             <Text style={fc.headerTitle}>{t("home.featuredTitle")}</Text>
           </View>
           <View style={fc.starWrap}>
-            <Ionicons name="star" size={24} color="#FCD34D" />
+            <Ionicons name="star" size={24} color={theme.colors.amber[300]} />
           </View>
         </View>
 
@@ -151,7 +151,7 @@ export default function FeaturedScreen(): React.ReactElement {
             { icon: "checkmark-circle-outline"as const, label: t("product.trustOriginal") },
           ].map((pill) => (
             <View key={pill.label} style={fc.statPill}>
-              <Ionicons name={pill.icon} size={12} color="#FCD34D" />
+              <Ionicons name={pill.icon} size={12} color={theme.colors.amber[300]} />
               <Text style={fc.statText}>{pill.label}</Text>
             </View>
           ))}
@@ -251,7 +251,7 @@ const fc = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 5,
     borderWidth: 1, borderColor: "rgba(255,255,255,0.16)",
   },
-  statText: { fontFamily: theme.fonts.semibold, fontSize: 10, color: "#FCD34D", letterSpacing: 0.2 },
+  statText: { fontFamily: theme.fonts.semibold, fontSize: 10, color: theme.colors.amber[300], letterSpacing: 0.2 },
 
   // Category rail
   railWrap: {
@@ -264,7 +264,7 @@ const fc = StyleSheet.create({
   railContent: { paddingHorizontal: 14, paddingVertical: 11, gap: 8, flexDirection: "row-reverse" },
   chip: {
     paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
-    backgroundColor: "#F1F5F9", borderWidth: 1, borderColor: "rgba(15,23,42,0.08)",
+    backgroundColor: theme.colors.slate[100], borderWidth: 1, borderColor: "rgba(15,23,42,0.08)",
     overflow: "hidden",
   },
   chipActive:     { borderColor: "transparent" },

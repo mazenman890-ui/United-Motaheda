@@ -1,4 +1,4 @@
-/**
+﻿/**
  * GiftCatalogScreen — browse and redeem inventory-backed gifts.
  *
  * Each row shows: thumbnail (or placeholder), name, points cost, and a
@@ -27,7 +27,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { useScreenTrace } from "@/features/observability";
 import { SubScreenHeader } from "../components/SubScreenHeader";
 import { useGiftCatalog } from "../hooks/useGiftCatalog";

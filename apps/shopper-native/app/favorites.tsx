@@ -1,4 +1,4 @@
-import React, { memo, useCallback } from "react";
+﻿import React, { memo, useCallback } from "react";
 import {
   Platform,
   Pressable,
@@ -20,7 +20,7 @@ import type { NativeProduct } from "@/services/productsApi";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
 import { Text as UIText } from "@/shared/ui";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { formatPrice } from "@/utils/format";
 
 const FavoriteCard = memo(function FavoriteCard({ product, index }: { product: NativeProduct; index: number }) {

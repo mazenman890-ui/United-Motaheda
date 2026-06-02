@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+﻿import React, { useCallback, useState } from "react";
 import { ActivityIndicator, FlatList, Platform, Pressable, ScrollView, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Text as UIText } from "@/shared/ui";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import {
   ProductGrid,
   useInfiniteProducts,

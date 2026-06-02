@@ -1,4 +1,4 @@
-/**
+﻿/**
  * OcrReviewForm — editable confirmation of OCR-extracted Rx fields.
  *
  * Pure UI. No router, no native deps, no store writes. Parent screen owns
@@ -18,7 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Text } from "@/shared/ui";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import type { RxStatus } from "@/stores/prescriptionsStore";
 import type { ParsedRx } from "../lib/parseRxText";
 

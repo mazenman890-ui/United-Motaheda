@@ -1,4 +1,4 @@
-/**
+﻿/**
  * /(auth)/verify-phone — full-screen phone-OTP step after email confirmation.
  *
  * When email-confirmation is enabled in Supabase, signUp doesn't return a
@@ -25,7 +25,7 @@ import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { PhoneVerifyModal, sendPhoneOtp } from "@/features/auth";
 import { Text } from "@/shared/ui";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 export default function VerifyPhoneScreen() {
   const { t } = useTranslation();

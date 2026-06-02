@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AddRxManual — manual Rx-number entry + mock lookup + create.
  *
  * State machine (derived from rxNumber.length + lookup result):
@@ -31,7 +31,7 @@ import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/features/auth";
 import { usePrescriptionsStore, type Prescription } from "@/stores/prescriptionsStore";
 import { mockLookup, type RxLookupResult } from "../lib/manualLookup";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 const MIN_BOXES   = 7;
 const MAX_DIGITS  = 10;

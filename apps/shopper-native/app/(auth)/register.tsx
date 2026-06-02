@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -27,7 +27,7 @@ import { requestAndStoreLocation } from "@/lib/requestLocation";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Text } from "@/shared/ui";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 export default function RegisterScreen() {
   const { t, i18n } = useTranslation();

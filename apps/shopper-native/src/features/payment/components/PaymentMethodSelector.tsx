@@ -1,11 +1,11 @@
-import React from "react";
+﻿import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { PaymentMethodCard } from "./PaymentMethodCard";
 import { usePaymentStore } from "../store";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 interface Props {
   compact?: boolean;

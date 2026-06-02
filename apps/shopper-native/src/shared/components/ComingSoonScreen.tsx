@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ComingSoonScreen — minimal placeholder for route stubs.
  *
  * Used while a real screen is still on the roadmap (e.g., prescription
@@ -13,7 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { AppHeader } from "./AppHeader";
 import { Text } from "@/shared/ui";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 export interface ComingSoonScreenProps {
   title:     string;

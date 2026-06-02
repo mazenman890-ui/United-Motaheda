@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+﻿import React, { useCallback, useMemo, useState } from "react";
 import {
   Linking,
   Platform,
@@ -21,7 +21,7 @@ import { useOrderStore } from "@/stores/orders";
 import { useLoyaltyBalance } from "@/features/loyalty";
 import { Button } from "@/components/ui/Button";
 import { Text as UIText } from "@/shared/ui";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { useTranslation } from "react-i18next";
 import { useAppLanguage } from "@/i18n/LanguageProvider";
 
@@ -370,10 +370,10 @@ export default function ProfileScreen() {
         {user && (
           <Animated.View entering={FadeInDown.delay(280).duration(280)} style={styles.quickGrid}>
             {([
-              { icon: "bag-handle-outline" as IoniconsName, labelKey: "profile.myOrders",   grad: ["#0891B2", "#0DB8A8"] as [string,string], route: "/orders"    },
-              { icon: "heart-outline"      as IoniconsName, labelKey: "profile.wishlist",   grad: ["#E11D48", "#F43F5E"] as [string,string], route: "/favorites" },
+              { icon: "bag-handle-outline" as IoniconsName, labelKey: "profile.myOrders",   grad: [theme.colors.brand[600], theme.colors.teal[500]] as [string,string], route: "/orders"    },
+              { icon: "heart-outline"      as IoniconsName, labelKey: "profile.wishlist",   grad: ["#E11D48", theme.colors.rose[500]] as [string,string], route: "/favorites" },
               { icon: "diamond-outline"    as IoniconsName, labelKey: "profile.loyaltyCard",grad: ["#7C3AED", "#9333EA"] as [string,string], route: "/loyalty"   },
-              { icon: "location-outline"   as IoniconsName, labelKey: "profile.addresses",  grad: ["#D97706", "#F59E0B"] as [string,string], route: "/addresses" },
+              { icon: "location-outline"   as IoniconsName, labelKey: "profile.addresses",  grad: [theme.colors.amber[600], theme.colors.amber[500]] as [string,string], route: "/addresses" },
             ]).map((a) => (
               <Pressable
                 key={a.labelKey}

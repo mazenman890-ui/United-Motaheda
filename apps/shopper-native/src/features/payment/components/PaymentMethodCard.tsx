@@ -1,10 +1,10 @@
-import React from "react";
+﻿import React from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import type { PaymentMethod } from "../types";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];

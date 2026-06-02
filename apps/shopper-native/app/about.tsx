@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import {
   Linking,
   Platform,
@@ -15,7 +15,7 @@ import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "react-i18next";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { AppLogo } from "@/shared/components/AppLogo";
 import { BranchAddressList } from "@/components/BranchAddressCard";
 import { useAppLanguage } from "@/i18n/LanguageProvider";

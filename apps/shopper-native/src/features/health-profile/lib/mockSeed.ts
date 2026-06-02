@@ -4,6 +4,7 @@
  * Drug names + condition labels mirror the prototype's data.jsx but in Arabic.
  */
 
+import { theme } from "@/shared/theme";
 import type {
   Allergy,
   Condition,
@@ -56,7 +57,7 @@ export function seedDependents(): Dependent[] {
       relationship: "Spouse",
       dob:          "1988-04-12",
       rxIds:        [],
-      colorHex:     "#0A9A8C",
+      colorHex:     theme.colors.teal[600],
     },
     {
       id:           "seed-dp-2",
@@ -72,7 +73,7 @@ export function seedDependents(): Dependent[] {
       relationship: "Parent",
       dob:          "1954-01-20",
       rxIds:        [],
-      colorHex:     "#D97706",
+      colorHex:     theme.colors.amber[600],
     },
   ];
 }

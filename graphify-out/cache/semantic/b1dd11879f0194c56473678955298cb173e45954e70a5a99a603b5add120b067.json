@@ -1,0 +1,1 @@
+{"nodes": [{"id": "migration_signuptrigger", "label": "Migration: Fix Signup Trigger", "file_type": "code", "source_file": "apps/shopper-native/supabase/migrations/20260518_fix_signup_trigger.sql", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null}], "edges": [], "hyperedges": []}

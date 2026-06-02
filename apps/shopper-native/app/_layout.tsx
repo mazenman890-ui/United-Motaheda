@@ -9,13 +9,13 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import {
-  useFonts,
   Cairo_400Regular,
   Cairo_600SemiBold,
   Cairo_700Bold,
   Cairo_800ExtraBold,
   Cairo_900Black,
 } from "@expo-google-fonts/cairo";
+import * as Font from "expo-font";
 import { useRouter } from "expo-router";
 import { AuthProvider, useAuth } from "@/features/auth";
 import {
@@ -40,16 +40,30 @@ import "@/features/loyalty/offlineHandlers";
 
 SplashScreen.preventAutoHideAsync();
 
-// Wire observability before any provider renders: this captures the first
-// queries fired during boot (auth, push registration, catalog) and ensures
-// any captureError landing during early boot has breadcrumbs attached.
-installCrashEnrichment();
-attachQueryClientTelemetry(queryClient);
+// ─── Module-scope boot sequence — each call wrapped so one failure never
+//     silences the next, and never propagates to the root ErrorBoundary. ──────
+
+// Observability must run first so breadcrumbs are attached from the very
+// first render. Both calls are pure side-effects on existing singletons.
+try { installCrashEnrichment(); }      catch (e) { if (__DEV__) console.error("[boot] crashEnrichment:", e); }
+try { attachQueryClientTelemetry(queryClient); } catch (e) { if (__DEV__) console.error("[boot] queryTelemetry:", e); }
 
 // Drain the offline queue whenever the device is online. Bound to
 // onlineManager from slice 1, so this respects the same NetInfo signal
 // that powers query pause/resume.
-startOfflineQueueRunner();
+try { startOfflineQueueRunner(); } catch (e) { if (__DEV__) console.error("[boot] queueRunner:", e); }
+
+// Global unhandled-rejection safety net — prevents silent white/grey screens
+// from unhandled async throws outside component trees.
+if (typeof ErrorUtils !== "undefined") {
+  const prev = ErrorUtils.getGlobalHandler();
+  ErrorUtils.setGlobalHandler((error, isFatal) => {
+    if (__DEV__) console.error("[GlobalHandler] isFatal:", isFatal, error);
+    // Re-invoke the existing handler (Expo / React Native default) so it can
+    // still show the LogBox red screen in dev and report in prod.
+    prev?.(error, isFatal);
+  });
+}
 
 // ─── Notification sync — single realtime channel + banner toast bridge ──────
 
@@ -93,33 +107,35 @@ function CartReservationNotifier() {
 export default function RootLayout() {
   // All user-data stores are auth-aware and hydrated inside PharmacyBootstrap
   // (fires on user.id change). Root mount only handles fonts + RTL + splash.
-  const [fontsLoaded, fontError] = useFonts({
-    Cairo_400Regular,
-    Cairo_600SemiBold,
-    Cairo_700Bold,
-    Cairo_800ExtraBold,
-    Cairo_900Black,
-  });
+  const [fontsReady, setFontsReady] = React.useState(false);
 
   useEffect(() => {
-    // Hide the native splash as soon as fonts are ready OR if loading failed.
-    // Without the fontError branch, a font-load failure (network error, corrupt
-    // OTA asset) leaves SplashScreen.preventAutoHideAsync() in effect forever,
-    // freezing the app on the native splash screen.
-    if (fontsLoaded || fontError) {
+    let active = true;
+    // Called on load, error, or timeout — never propagates a rejection upward.
+    const proceed = () => { if (active) setFontsReady(true); };
+    // Hard cap slightly below Expo's internal 6 000 ms limit so we gracefully
+    // fall back to the system font instead of letting useFonts throw an
+    // Uncaught Promise Rejection that surfaces as a grey screen.
+    const timer = setTimeout(proceed, 5_500);
+
+    Font.loadAsync({
+      Cairo_400Regular,
+      Cairo_600SemiBold,
+      Cairo_700Bold,
+      Cairo_800ExtraBold,
+      Cairo_900Black,
+    })
+      .then(proceed)
+      .catch(proceed);
+
+    return () => { active = false; clearTimeout(timer); };
+  }, []);
+
+  useEffect(() => {
+    if (fontsReady) {
       SplashScreen.hideAsync().catch(() => {});
     }
-  }, [fontsLoaded, fontError]);
-
-  // Safety net: if fonts neither load nor error within 8 s (e.g. the hook
-  // stalls on a broken OTA update), force-hide the splash so the app is at
-  // least usable (with system font fallback).
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      SplashScreen.hideAsync().catch(() => {});
-    }, 8000);
-    return () => clearTimeout(timer);
-  }, []);
+  }, [fontsReady]);
 
   return (
     <ErrorBoundary surface="root">

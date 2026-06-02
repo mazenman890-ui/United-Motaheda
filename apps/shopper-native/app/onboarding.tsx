@@ -1,4 +1,4 @@
-import React, {
+﻿import React, {
   useCallback,
   useEffect,
   useMemo,
@@ -35,7 +35,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTranslation } from "react-i18next";
 import { AppLogo } from "@/shared/components/AppLogo";
 import { Text } from "@/shared/ui";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { ONBOARDING_KEY } from "@/lib/onboardingKey";
 
 // ──────────────────────────────────────────
@@ -73,9 +73,9 @@ const SLIDES: Slide[] = [
     eyebrowKey: "onboarding.slide1Eyebrow",
     titleKey:   "onboarding.slide1Title",
     bodyKey:    "onboarding.slide1Body",
-    gradient:   ["#044039", "#087A6F", "#0DB8A8"],
+    gradient:   [theme.colors.teal[900], theme.colors.teal[700], theme.colors.teal[500]],
     ringColor:  "rgba(92, 224, 210, 0.28)",
-    accent:     "#5CE0D2",
+    accent:     theme.colors.teal[300],
     logoSlide:  true,
   },
   {
@@ -86,7 +86,7 @@ const SLIDES: Slide[] = [
     bodyKey:    "onboarding.slide2Body",
     gradient:   ["#07152A", "#0C2240", "#1A4570"],
     ringColor:  "rgba(8, 145, 178, 0.30)",
-    accent:     "#2CCCBD",
+    accent:     theme.colors.teal[400],
     logoSlide:  false,
   },
   {
@@ -95,9 +95,9 @@ const SLIDES: Slide[] = [
     eyebrowKey: "onboarding.slide3Eyebrow",
     titleKey:   "onboarding.slide3Title",
     bodyKey:    "onboarding.slide3Body",
-    gradient:   ["#022C27", "#044039", "#065C54"],
+    gradient:   [theme.colors.teal[950], theme.colors.teal[900], theme.colors.teal[800]],
     ringColor:  "rgba(153, 240, 230, 0.25)",
-    accent:     "#99F0E6",
+    accent:     theme.colors.teal[200],
     logoSlide:  false,
   },
 ];

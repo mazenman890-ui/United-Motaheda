@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ReminderRow — single medication-reminder line.
  *
  * Spec: HANDOFF.md §3.2 + SPEC §9.2.
@@ -11,7 +11,7 @@ import React from "react";
 import { Pressable, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { Text } from "@/shared/ui";
 import { Button } from "@/components/ui/Button";
 

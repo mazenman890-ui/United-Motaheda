@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Forgot Password — sends a password-reset email via Supabase.
  *
  * Flow:
@@ -29,7 +29,7 @@ import { captureError } from "@/lib/crashReporter";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Text } from "@/shared/ui";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 export default function ForgotPasswordScreen() {
   const { t, i18n } = useTranslation();

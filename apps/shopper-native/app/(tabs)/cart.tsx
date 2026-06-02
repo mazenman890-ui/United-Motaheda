@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Cart Screen — Premium RTL-Ready Edition
  *
  * Entire screen uses `row-reverse` layouts so it behaves perfectly
@@ -41,7 +41,7 @@ import {
 } from "@/features/delivery";
 import { showConfirmSheet } from "@/shared/store/appSheetStore";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 // ─── Animated stepper button ─────────────────────────────────────────────────
 const StepBtn = memo(function StepBtn({
@@ -173,7 +173,7 @@ const CartItemCard = memo(function CartItemCard({
             />
           ) : (
             <View style={s.imgFallback}>
-              <Ionicons name="medkit-outline" size={26} color="#CBD5E1" />
+              <Ionicons name="medkit-outline" size={26} color={theme.colors.slate[300]} />
             </View>
           )}
         </View>
@@ -232,14 +232,14 @@ const CartHeader = memo(function CartHeader({
 }) {
   return (
     <LinearGradient
-      colors={["#021D2E", "#032840", "#053C5A"]}
+      colors={[theme.colors.hero, "#032840", "#053C5A"]}
       style={[s.header, { paddingTop: insetsTop + 14 }]}
     >
       <View style={s.headerGlowOrb} />
       <View style={s.headerRow}>
         <View style={s.headerLeft}>
           <View style={s.headerIcon}>
-            <Ionicons name="bag-outline" size={18} color="#0DB8A8" />
+            <Ionicons name="bag-outline" size={18} color={theme.colors.teal[500]} />
           </View>
           <View>
             <Text style={s.headerEyebrow}>{t("cart.eyebrow")}</Text>
@@ -325,7 +325,7 @@ export default function CartScreen() {
         <View style={[s.header, { paddingTop: 16 }]}>
           <View style={s.headerLeft}>
             <View style={s.headerIcon}>
-              <Ionicons name="bag-outline" size={18} color="#0DB8A8" />
+              <Ionicons name="bag-outline" size={18} color={theme.colors.teal[500]} />
             </View>
             <View>
               <Text style={s.headerEyebrow}>{t("cart.eyebrow")}</Text>
@@ -420,8 +420,8 @@ export default function CartScreen() {
           <LinearGradient
             colors={
               delivery.isDeliverable
-                ? ["#0DB8A8", "#0891B2"]
-                : ["#94A3B8", "#94A3B8"]
+                ? [theme.colors.teal[500], theme.colors.brand[600]]
+                : [theme.colors.slate[400], theme.colors.slate[400]]
             }
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
@@ -472,7 +472,7 @@ const CartListHeader = memo(function CartListHeader({
       {delivery.branch && delivery.isDeliverable && (
         <Animated.View entering={FadeInDown.duration(240)} style={s.branchPill}>
           <View style={s.branchIconBox}>
-            <Ionicons name="storefront-outline" size={14} color="#0DB8A8" />
+            <Ionicons name="storefront-outline" size={14} color={theme.colors.teal[500]} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={s.branchEyebrow}>{t("cart.deliveringFrom")}</Text>
@@ -482,7 +482,7 @@ const CartListHeader = memo(function CartListHeader({
                 ` · ${delivery.distanceKm.toFixed(1)} ${t("home.kmUnit")}`}
             </Text>
           </View>
-          <Ionicons name="checkmark-circle" size={18} color="#0DB8A8" />
+          <Ionicons name="checkmark-circle" size={18} color={theme.colors.teal[500]} />
         </Animated.View>
       )}
 
@@ -545,7 +545,7 @@ const CartListHeader = memo(function CartListHeader({
             {
               icon: "flash-outline" as const,
               label: t("cart.fastDelivery"),
-              g: ["#D97706", "#F59E0B"] as [string, string],
+              g: [theme.colors.amber[600], theme.colors.amber[500]] as [string, string],
             },
             {
               icon: "shield-checkmark-outline" as const,
@@ -584,7 +584,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 18,
     overflow: "hidden",
-    backgroundColor: "#021D2E",
+    backgroundColor: theme.colors.hero,
   },
   headerGlowOrb: {
     position: "absolute",
@@ -795,7 +795,7 @@ const s = StyleSheet.create({
   },
   fill: {
     height: "100%",
-    backgroundColor: "#0DB8A8",
+    backgroundColor: theme.colors.teal[500],
     borderRadius: 4,
   },
   trustRow: {
@@ -891,7 +891,7 @@ const s = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F8FAFC",
+    backgroundColor: theme.colors.slate[50],
   },
   productName: {
     flex: 1,
@@ -916,13 +916,13 @@ const s = StyleSheet.create({
   lineTotal: {
     fontFamily: theme.fonts.black,
     fontSize: 18,
-    color: "#0A9A8C",
+    color: theme.colors.teal[600],
     letterSpacing: -0.4,
   },
   currency: {
     fontFamily: theme.fonts.bold,
     fontSize: 11,
-    color: "#0DB8A8",
+    color: theme.colors.teal[500],
   },
   unitHint: {
     fontFamily: theme.fonts.regular,
@@ -950,7 +950,7 @@ const s = StyleSheet.create({
     borderColor: "rgba(13,184,168,0.30)",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#0891B2",
+    shadowColor: theme.colors.brand[600],
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.12,
     shadowRadius: 3,
@@ -1056,13 +1056,13 @@ const s = StyleSheet.create({
   grandValue: {
     fontFamily: theme.fonts.black,
     fontSize: 26,
-    color: "#0A9A8C",
+    color: theme.colors.teal[600],
     letterSpacing: -0.8,
   },
   grandCurrency: {
     fontFamily: theme.fonts.bold,
     fontSize: 13,
-    color: "#0DB8A8",
+    color: theme.colors.teal[500],
   },
   checkoutOuter: {
     borderRadius: 18,

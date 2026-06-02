@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AddressMapPlaceholder — real Geoapify static-map tile.
  *
  * Behaviour:
@@ -30,7 +30,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { geocodeAddress } from "@/lib/geocoding";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 const GEOAPIFY_KEY = "c6beba954a794cb49263d1679e4bc8bf";
 

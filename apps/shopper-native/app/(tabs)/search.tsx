@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Search — light-mode-first premium discovery experience.
  *
  * Architectural decisions:
@@ -58,7 +58,7 @@ import { supabase } from "@/lib/supabase";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { Text as UIText } from "@/shared/ui";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { formatPrice } from "@/utils/format";
 import type { NativeProduct, NativeCategory } from "@/services/productsApi";
 

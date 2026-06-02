@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CampaignsScreen — displays active reward campaigns with live countdown,
  * multiplier badges, and minimum-purchase info.
  */
@@ -17,7 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { useScreenTrace } from "@/features/observability";
 import { SubScreenHeader } from "../components/SubScreenHeader";
 import { useActiveCampaigns } from "../hooks/useActiveCampaigns";

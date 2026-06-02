@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Text — typography atom.
  *
  * Spec: SPEC §2.4 hierarchy.
@@ -19,7 +19,7 @@ import {
   type TextProps as RNTextProps,
   type TextStyle,
 } from "react-native";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 export type TextVariant =
   | "display"       // 36 / black / very tight  — premium splash headlines

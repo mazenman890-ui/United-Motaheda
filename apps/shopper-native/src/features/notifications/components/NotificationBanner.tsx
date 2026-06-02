@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+﻿import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -14,7 +14,7 @@ import Animated, {
 import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "react-i18next";
 import { useBannerStore } from "../banner-store";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

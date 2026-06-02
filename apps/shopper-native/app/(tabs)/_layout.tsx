@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Tab Layout — Dark Bar with Top Indicator
  *
  * Pattern used by Linear, Stripe, Revolut, and other premium apps:
@@ -27,7 +27,7 @@ import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useTranslation } from "react-i18next";
 import { useUnreadCount } from "@/features/notifications";
 import { useAuth } from "@/features/auth";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -44,8 +44,8 @@ const TAB_CONFIG: Record<string, TabConfig> = {
   index: {
     active:   "home",
     inactive: "home-outline",
-    color:    "#0DB8A8",
-    grad:     ["#0DB8A8", "#0891B2"],
+    color:    theme.colors.teal[500],
+    grad:     [theme.colors.teal[500], theme.colors.brand[600]],
   },
   products: {
     active:   "grid",
@@ -56,8 +56,8 @@ const TAB_CONFIG: Record<string, TabConfig> = {
   orders: {
     active:   "cube",
     inactive: "cube-outline",
-    color:    "#FCD34D",
-    grad:     ["#FCD34D", "#F59E0B"],
+    color:    theme.colors.amber[300],
+    grad:     [theme.colors.amber[300], theme.colors.amber[500]],
   },
   profile: {
     active:   "person-circle",

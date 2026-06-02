@@ -1,4 +1,4 @@
-/**
+﻿/**
  * /auth-callback — the landing route for Supabase Auth email-confirmation
  * links.
  *
@@ -37,7 +37,7 @@ import { supabase } from "@/lib/supabase";
 import { PHONE_VERIFICATION_ENABLED } from "@/features/auth";
 import { Text } from "@/shared/ui";
 import { Button } from "@/components/ui/Button";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 export default function AuthCallbackScreen() {
   const { t } = useTranslation();

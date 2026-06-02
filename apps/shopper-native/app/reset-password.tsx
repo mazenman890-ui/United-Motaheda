@@ -1,4 +1,4 @@
-/**
+﻿/**
  * /reset-password — handles the PKCE recovery link from Supabase.
  *
  * Flow:
@@ -38,7 +38,7 @@ import { captureError } from "@/lib/crashReporter";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Text } from "@/shared/ui";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 type Phase = "exchanging" | "form" | "success" | "expired";
 

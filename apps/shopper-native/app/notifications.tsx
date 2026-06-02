@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+﻿import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -19,7 +19,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/features/auth";
 import { useNotifications, type AppNotification, type NotifType } from "@/features/notifications";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 

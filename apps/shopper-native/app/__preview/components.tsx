@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Component preview harness — dev-only.
  *
  * Renders every new shared molecule in each of its variants and key states.
@@ -12,7 +12,7 @@ import React, { useState } from "react";
 import { Alert, ScrollView, View } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import {
   AppHeader,
   RxCard,

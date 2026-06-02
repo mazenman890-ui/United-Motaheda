@@ -1,6 +1,6 @@
-import React from "react";
+﻿import React from "react";
 import { Text, View } from "react-native";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 type Variant = "brand" | "success" | "warning" | "error" | "neutral" | "purple" | "info";
 type Size    = "sm" | "md";

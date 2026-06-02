@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ProductGrid — 2-column product grid with platform-specific rendering.
  *
  * Native (iOS / Android):
@@ -27,7 +27,7 @@ import {
 } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { ProductCard } from "@/components/ProductCard";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import type { NativeProduct } from "../types";
 
 const ITEM_TYPE_PRODUCT = "p" as const;

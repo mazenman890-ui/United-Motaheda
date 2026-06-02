@@ -1,4 +1,4 @@
-import React, {
+﻿import React, {
   useCallback,
   useEffect,
   useMemo,
@@ -35,7 +35,7 @@ import { AddressMapPlaceholder } from "./AddressMapPlaceholder";
 import { ADDRESS_LABELS } from "../types";
 import type { Address, AddressFormData } from "../types";
 import { SUPPORTED_GOVERNORATE } from "@/features/delivery/constants";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { showConfirmSheet } from "@/shared/store/appSheetStore";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];

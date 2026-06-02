@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AddRxEntry — entry-point screen for adding a new prescription.
  *
  * Spec: HANDOFF.md §9.3 (organisms) → screens-rx.jsx > AddRxEntry.
@@ -23,7 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 // shared/components/index → PharmacyBootstrap → features/prescriptions → here.
 import { AppHeader } from "@/shared/components/AppHeader";
 import { Text } from "@/shared/ui";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 

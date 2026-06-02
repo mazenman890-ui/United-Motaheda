@@ -1,7 +1,7 @@
-import React, { useCallback, useMemo, useState } from "react";
+﻿import React, { useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
 import { WebView, WebViewMessageEvent } from "react-native-webview";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 export interface DeliveryMapCoordinates {
   latitude: number;

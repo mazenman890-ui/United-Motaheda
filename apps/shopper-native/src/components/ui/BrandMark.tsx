@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { Text, View } from "react-native";
 import Svg, {
   Defs,
@@ -8,7 +8,7 @@ import Svg, {
   Circle,
   Path,
 } from "react-native-svg";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 type BrandMarkSize    = "sm" | "md" | "lg" | "xl";
 type BrandMarkVariant = "onHero" | "onLight";
@@ -41,14 +41,14 @@ function PharmacyLogoMark({ size }: { size: number }) {
       <Defs>
         {/* Deep navy background */}
         <LinearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
-          <Stop offset="0%"   stopColor="#021D2E" />
+          <Stop offset="0%"   stopColor={theme.colors.hero} />
           <Stop offset="100%" stopColor="#053348" />
         </LinearGradient>
         {/* Teal cross gradient */}
         <LinearGradient id="crossGrad" x1="0" y1="0" x2="0.3" y2="1">
-          <Stop offset="0%"   stopColor="#22d3ee" />
-          <Stop offset="50%"  stopColor="#06b6d4" />
-          <Stop offset="100%" stopColor="#0891b2" />
+          <Stop offset="0%"   stopColor={theme.colors.brand[400]} />
+          <Stop offset="50%"  stopColor={theme.colors.brand[500]} />
+          <Stop offset="100%" stopColor={theme.colors.brand[600]} />
         </LinearGradient>
         {/* Shimmer gradient (top-left light catch) */}
         <LinearGradient id="shimmer" x1="0" y1="0" x2="1" y2="1">
@@ -73,7 +73,7 @@ function PharmacyLogoMark({ size }: { size: number }) {
       <Rect x={cy} y={cx} width={cl} height={cw} rx={rx} fill="url(#crossGrad)" />
 
       {/* Center square fill (blends the intersection cleanly) */}
-      <Rect x={cx} y={cx} width={cw} height={cw} fill="#06b6d4" />
+      <Rect x={cx} y={cx} width={cw} height={cw} fill={theme.colors.brand[500]} />
 
       {/* Tiny center dot highlight */}
       <Circle cx={s / 2} cy={s / 2} r={s * 0.045} fill="rgba(255,255,255,0.55)" />

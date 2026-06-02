@@ -1,4 +1,4 @@
-/**
+﻿/**
  * BranchCard — premium branch display row.
  * Selectable / non-selectable. Shows name, area, hours, distance.
  */
@@ -8,7 +8,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn } from "react-native-reanimated";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import type { Branch } from "../branches/types";
 
 interface BranchCardProps {

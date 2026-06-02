@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Checkout screen — built on the canonical checkout architecture.
  *
  * Source of truth:
@@ -37,7 +37,7 @@ import Animated, {
   useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming, withSpring,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, type Control, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { useCartStore, selectItemCount } from "@/stores/cart";
@@ -91,7 +91,8 @@ import {
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Text as UIText } from "@/shared/ui";
-import { theme } from "@/theme";
+import { ErrorBoundary } from "@/shared/components";
+import { theme } from "@/shared/theme";
 import { formatPrice } from "@/utils/format";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
@@ -113,11 +114,13 @@ const PAYMENT_METHOD_CONFIGS: ReadonlyArray<{
   { id: "vodafone", titleKey: "checkout.methodVodafoneTitle",  descKey: "checkout.methodVodafoneDesc",  icon: "wallet-outline", color: theme.colors.red[500],    bg: theme.colors.red[50]    },
 ];
 
-/** Arabic label used in order notes / Edge Function (locale-independent). */
+/** Arabic label used in order notes (locale-independent — always Arabic in order DB records). */
 const PAYMENT_LABEL_AR: Record<CheckoutPaymentMethod, string> = {
-  cod:       "الدفع عند الاستلام",
-  instapay:  "إنستاباي",
-  vodafone:  "فودافون كاش",
+  cod:        "الدفع عند الاستلام",
+  instapay:   "إنستاباي",
+  vodafone:   "فودافون كاش",
+  online:     "الدفع الإلكتروني",
+  banquemisr: "بنك مصر",
 };
 
 function paymentLabel(id: CheckoutPaymentMethod): string {
@@ -140,8 +143,21 @@ function buildDefaults(name?: string): CheckoutFormSchema {
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
-export default function CheckoutScreen() {
-  const { t }  = useTranslation();
+// ─── Screen export — wrapped so render errors in any sub-component
+//     (CartDrawer, ManualPaymentPanel, BranchCard, etc.) recover at the
+//     screen level and don't propagate to the root boundary.
+export default function CheckoutScreenBoundary() {
+  return (
+    <ErrorBoundary surface="checkout">
+      <CheckoutScreen />
+    </ErrorBoundary>
+  );
+}
+
+function CheckoutScreen() {
+  const { t, i18n }  = useTranslation();
+  // Derive once so all locale-gated calls below stay in sync with the UI lang.
+  const lang = i18n.language.startsWith("en") ? "en" as const : "ar" as const;
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
@@ -224,7 +240,11 @@ export default function CheckoutScreen() {
     formState: { errors },
     trigger,
   } = useForm<CheckoutFormSchema>({
-    resolver: zodResolver(checkoutFormSchema("ar")),
+    // checkoutFormSchema takes the UI language so validation messages match
+    // the language the user is actually reading. The schema is recreated on
+    // each CheckoutScreen mount (each navigation visit), so language changes
+    // between sessions are always picked up.
+    resolver: zodResolver(checkoutFormSchema(lang)),
     defaultValues: buildDefaults(user?.name),
     mode: "onChange",
   });
@@ -365,7 +385,7 @@ export default function CheckoutScreen() {
         paymentLabel: paymentLabel(paymentMethod),
         paymentMethod,
         requestPosMachine: requestPos,
-        lang: "ar",
+        lang,
       });
 
       const manual = isManualWalletPayment(paymentMethod);
@@ -434,7 +454,7 @@ export default function CheckoutScreen() {
       } catch (err) {
         if (__DEV__) console.warn("[checkout] createCheckoutOrder failed:", err);
         if (err instanceof CheckoutRequestError) {
-          setSubmitError(formatCheckoutError(err, "ar"));
+          setSubmitError(formatCheckoutError(err, lang));
         } else {
           setSubmitError(t("checkout.submitError"));
         }
@@ -824,13 +844,13 @@ function DetailsStep({
   subtotal,
   onSignIn,
 }: {
-  control: any;
-  errors: any;
+  control: Control<CheckoutFormSchema>;
+  errors: FieldErrors<CheckoutFormSchema>;
   selectedBranchId: string | null;
   onSelectBranch: (b: Branch) => void;
   deliveryBranch: Branch | null;
   outOfServiceMessage: string | null;
-  user: { name?: string | null } | null;
+  user: { id?: string; name?: string | null } | null;
   savedProfilePhone: string | null;
   useAccountProfile: boolean;
   onToggleAccountProfile: (value: boolean) => void;
@@ -1213,7 +1233,7 @@ function ReviewStep({
   onPaymentChange: (m: CheckoutPaymentMethod) => void;
   onTogglePos: () => void;
   onApplyPromo: () => void;
-  control: any;
+  control: Control<CheckoutFormSchema>;
 }) {
   const { t, i18n } = useTranslation();
   const sep = i18n.language.startsWith("en") ? ", " : "، ";
@@ -1753,7 +1773,7 @@ function AuthGateModal({
             <Animated.View style={[agStyles.ring, agStyles.ring1, ring2Style]} />
             <Animated.View style={[agStyles.ring, agStyles.ring2, ring1Style]} />
             <LinearGradient
-              colors={["#1e3a5f", "#0d5c8e", "#0891b2"]}
+              colors={["#1e3a5f", "#0d5c8e", theme.colors.brand[600]]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={agStyles.orb}>
@@ -1774,7 +1794,7 @@ function AuthGateModal({
           <Animated.View entering={FadeInDown.delay(200).duration(280)} style={agStyles.pillsRow}>
             {(["flash-outline", "shield-checkmark-outline", "location-outline"] as const).map((icon, i) => (
               <View key={i} style={agStyles.pill}>
-                <Ionicons name={icon} size={11} color="#0891b2" />
+                <Ionicons name={icon} size={11} color={theme.colors.brand[600]} />
               </View>
             ))}
           </Animated.View>
@@ -1785,7 +1805,7 @@ function AuthGateModal({
               onPress={onSignIn}
               style={({ pressed }) => [agStyles.signInBtn, pressed && { opacity: 0.9 }]}>
               <LinearGradient
-                colors={["#0891b2", "#0db8a8"]}
+                colors={[theme.colors.brand[600], theme.colors.teal[500]]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={agStyles.signInGrad}>
@@ -1822,7 +1842,7 @@ const agStyles = StyleSheet.create({
     paddingHorizontal: 24,
     alignItems:      "center",
     overflow:        "hidden",
-    shadowColor:     "#021D2E",
+    shadowColor:     theme.colors.hero,
     shadowOffset:    { width: 0, height: 20 },
     shadowOpacity:   0.40,
     shadowRadius:    40,
@@ -1846,12 +1866,12 @@ const agStyles = StyleSheet.create({
   ring1: {
     width:        110,
     height:       110,
-    borderColor:  "#0891b2",
+    borderColor:  theme.colors.brand[600],
   },
   ring2: {
     width:        88,
     height:       88,
-    borderColor:  "#0db8a8",
+    borderColor:  theme.colors.teal[500],
   },
   orb: {
     width:          76,
@@ -1878,7 +1898,7 @@ const agStyles = StyleSheet.create({
   title: {
     fontFamily:    theme.fonts.black,
     fontSize:      20,
-    color:         "#0F172A",
+    color:         theme.colors.slate[900],
     textAlign:     "center",
     letterSpacing: -0.5,
     lineHeight:    26,
@@ -1886,7 +1906,7 @@ const agStyles = StyleSheet.create({
   body: {
     fontFamily: theme.fonts.regular,
     fontSize:   13.5,
-    color:      "#64748B",
+    color:      theme.colors.slate[500],
     textAlign:  "center",
     lineHeight: 20,
     maxWidth:   280,
@@ -1939,7 +1959,7 @@ const agStyles = StyleSheet.create({
   dismissText: {
     fontFamily: theme.fonts.semibold,
     fontSize:   13,
-    color:      "#94A3B8",
+    color:      theme.colors.slate[400],
   },
 });
 

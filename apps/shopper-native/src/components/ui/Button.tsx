@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -16,7 +16,7 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 type Variant =
   | "primary"

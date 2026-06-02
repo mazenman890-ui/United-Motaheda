@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+﻿import React, { useCallback, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -22,7 +22,7 @@ import { useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { useAuth } from "@/features/auth/context";
 import { SubScreenHeader } from "@/features/loyalty/components/SubScreenHeader";
 import { useReferralCode, useReferralRewards } from "@/features/loyalty/hooks/useReferralCode";
@@ -99,7 +99,7 @@ export default function InviteScreen() {
           <Animated.View entering={FadeInDown.duration(380).delay(100)} style={styles.statsRow}>
             <StatCell icon="people-outline"   label={t("invite.statReferrals")} value={totalReferrals} color="#7C3AED" />
             <View style={styles.statsDivider} />
-            <StatCell icon="star-outline"     label={t("invite.statPoints")}    value={totalPoints}    color="#F59E0B" />
+            <StatCell icon="star-outline"     label={t("invite.statPoints")}    value={totalPoints}    color={theme.colors.amber[500]} />
           </Animated.View>
         )}
 
@@ -130,7 +130,7 @@ export default function InviteScreen() {
             />
             <HowStep
               num="2"
-              color="#0891B2"
+              color={theme.colors.brand[600]}
               title={t("invite.howStep2Title")}
               body={t("invite.howStep2Body")}
             />

@@ -1,5 +1,10 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  // 'class' tells react-native-css-interop to emit --css-interop-darkMode: class dark
+  // as a CSS variable instead of 'media'. Without this, NativeWind injects 'media'
+  // into the <head> on web, which causes color-scheme.js to throw an uncaught Error
+  // that kills the entire React tree.
+  darkMode: "class",
   content: ["./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   presets: [require("nativewind/preset")],
   theme: {

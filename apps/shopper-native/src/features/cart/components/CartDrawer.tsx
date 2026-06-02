@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CartDrawer — premium animated bottom sheet for cart preview.
  *
  * Usage:
@@ -22,7 +22,7 @@ import { useTranslation } from "react-i18next";
 import { useCartStore, selectPricing, selectItemCount } from "@/stores/cart";
 import { useDeliveryContext } from "@/features/delivery";
 import { Text as UIText } from "@/shared/ui";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { formatPrice } from "@/utils/format";
 import type { CartItem } from "@/stores/cart";
 

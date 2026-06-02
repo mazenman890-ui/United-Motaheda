@@ -1,4 +1,4 @@
-/**
+﻿/**
  * LoyaltyHubScreen — برنامج المكافآت (main hub).
  *
  * Sections:
@@ -28,7 +28,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/shared/ui";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { useScreenTrace } from "@/features/observability";
 import { useAuth } from "@/features/auth/context";
 import { useLoyaltyBalance }  from "../hooks/useLoyaltyBalance";
@@ -580,7 +580,7 @@ function CampaignCard({ campaign }: { campaign: RewardCampaign }) {
   const gradColors: [string, string] = campaign.multiplier >= 3
     ? ["#7C3AED", "#9333EA"]
     : campaign.multiplier >= 2
-    ? ["#0891B2", "#0DB8A8"]
+    ? [theme.colors.brand[600], theme.colors.teal[500]]
     : ["#1A5276", "#2471A3"];
 
   return (
@@ -607,7 +607,7 @@ function CampaignCard({ campaign }: { campaign: RewardCampaign }) {
 
       {daysLeft !== null && (
         <View style={[styles.campaignExpiry, isUrgent && styles.campaignExpiryUrgent]}>
-          <Ionicons name="time-outline" size={10} color={isUrgent ? "#FEF3C7" : "rgba(255,255,255,0.60)"} />
+          <Ionicons name="time-outline" size={10} color={isUrgent ? theme.colors.amber[100] : "rgba(255,255,255,0.60)"} />
           <Text style={[styles.campaignExpiryText, isUrgent && styles.campaignExpiryTextUrgent]}>
             {daysLeft === 0 ? t("loyalty.campaignLastDay") : t("loyalty.campaignDaysLeft", { n: daysLeft })}
           </Text>
@@ -636,8 +636,8 @@ function QuickDestinations({ onWallet, onCoupons, onGifts, onHistory }: QuickDes
           icon="wallet-outline"
           label={t("loyalty.destWallet")}
           sub={t("loyalty.destWalletSub")}
-          color="#0891B2"
-          gradient={["#0891B2", "#0DB8A8"]}
+          color={theme.colors.brand[600]}
+          gradient={[theme.colors.brand[600], theme.colors.teal[500]]}
           onPress={onWallet}
         />
         <DestCard
@@ -801,7 +801,7 @@ function WaysToEarn({ onInvite, onShop, onCampaigns }: WaysToEarnProps) {
   const tips = [
     {
       icon:    "bag-handle-outline" as IoniconsName,
-      color:   "#0891B2",
+      color:   theme.colors.brand[600],
       title:   t("loyalty.earnShopTitle"),
       body:    t("loyalty.earnShopBody"),
       onPress: onShop,
@@ -817,7 +817,7 @@ function WaysToEarn({ onInvite, onShop, onCampaigns }: WaysToEarnProps) {
     },
     {
       icon:    "flame-outline" as IoniconsName,
-      color:   "#F59E0B",
+      color:   theme.colors.amber[500],
       title:   t("loyalty.earnCampaignsTitle"),
       body:    t("loyalty.earnCampaignsBody"),
       onPress: onCampaigns,
@@ -936,7 +936,7 @@ function FullErrorPanel({ onRetry }: { onRetry: () => void }) {
       <Text style={styles.fullPanelBody}>{t("loyalty.hubErrorBody")}</Text>
       <Pressable onPress={onRetry} style={styles.retryBtnFull}
         accessibilityRole="button" accessibilityLabel={t("common.retry")}>
-        <LinearGradient colors={["#0891B2", "#0DB8A8"]} style={styles.retryBtnFullGrad}>
+        <LinearGradient colors={[theme.colors.brand[600], theme.colors.teal[500]]} style={styles.retryBtnFullGrad}>
           <Ionicons name="refresh" size={14} color="#fff" />
           <Text style={styles.retryBtnFullText}>{t("common.retry")}</Text>
         </LinearGradient>
@@ -966,8 +966,8 @@ function HubSkeleton() {
 function getTierColor(name: string): string {
   const n = name.toLowerCase();
   if (n.includes("بلاتين") || n.includes("plat")) return "#E5E4E2";
-  if (n.includes("ذهب")   || n.includes("gold")) return "#F59E0B";
-  if (n.includes("فضي")   || n.includes("silv")) return "#94A3B8";
+  if (n.includes("ذهب")   || n.includes("gold")) return theme.colors.amber[500];
+  if (n.includes("فضي")   || n.includes("silv")) return theme.colors.slate[400];
   return "#CD7F32";
 }
 
@@ -1230,7 +1230,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height:          6,
-    backgroundColor: "#F59E0B",
+    backgroundColor: theme.colors.amber[500],
     borderRadius:    3,
   },
 
@@ -1430,7 +1430,7 @@ const styles = StyleSheet.create({
     color:      "rgba(255,255,255,0.55)",
   },
   campaignExpiryTextUrgent: {
-    color: "#FEF3C7",
+    color: theme.colors.amber[100],
   },
 
   // ── Quick destinations ─────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Notification Preferences screen — Profile → الإشعارات → ⚙
  *
  * Edit:
@@ -23,7 +23,7 @@ import {
   type NotificationCategoryPrefs,
   type NotificationChannelPrefs,
 } from "@/features/notifications";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 

@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+﻿import React, { useCallback } from "react";
 import { FlatList, Platform, Pressable, StyleSheet, View, type DimensionValue } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -15,7 +15,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Text as UIText } from "@/shared/ui";
 import { useCartStore } from "@/stores/cart";
 import { useMountTiming } from "@/lib/devTiming";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { useTranslation } from "react-i18next";
 
 export default function ProductsScreen() {

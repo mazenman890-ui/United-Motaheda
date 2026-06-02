@@ -1,0 +1,53 @@
+# ─── Claude Code session cache (990 MB — never needed for builds) ─────────────
+.claude/
+
+# ─── Node modules (all levels) — EAS reinstalls from lock files ───────────────
+node_modules/
+apps/*/node_modules/
+packages/*/node_modules/
+
+# ─── Android build artifacts ──────────────────────────────────────────────────
+apps/shopper-native/android/app/build/
+apps/shopper-native/android/build/
+apps/shopper-native/android/.gradle/
+apps/shopper-native/android/.cxx/
+apps/shopper-native/android/.kotlin/
+
+# ─── iOS build artifacts ──────────────────────────────────────────────────────
+apps/shopper-native/ios/build/
+apps/shopper-native/ios/Pods/
+apps/shopper-native/ios/DerivedData/
+
+# ─── Web / Expo build output ──────────────────────────────────────────────────
+apps/shopper-native/dist/
+apps/shopper-native/web-build/
+apps/shopper-native/.expo/
+
+# ─── Dev / local tooling ──────────────────────────────────────────────────────
+graphify-out/
+.uploads/
+.cursor/
+.windsurf/
+.kiro/
+.trae/
+coverage/
+*.log
+*.heapsnapshot
+
+# ─── Other apps' node_modules & build caches ─────────────────────────────────
+apps/api/node_modules/
+apps/shopper-web/node_modules/
+apps/shopper-web/.vite/
+apps/shopper-web/dist/
+apps/shopper-web/build/
+
+# ─── Archive / zip files at repo root (backups, not source) ──────────────────
+*.7z
+*.zip
+*.tar.gz
+*.tar
+*.rar
+
+# ─── OS noise ─────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

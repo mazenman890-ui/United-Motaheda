@@ -23,6 +23,7 @@ import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { registerPushToken } from "../api";
+import { theme } from "@/shared/theme";
 
 // Foreground handler: show alert + play sound + show in tray even when active.
 // Guard: expo-notifications is a no-op on web and emits a warning if we register
@@ -53,7 +54,7 @@ async function configureAndroidChannel(): Promise<void> {
     name: "Notifications",
     importance: Notifications.AndroidImportance.DEFAULT,
     vibrationPattern: [0, 250, 250, 250],
-    lightColor: "#0DB8A8",
+    lightColor: theme.colors.teal[500],
     sound: "default",
   });
 }

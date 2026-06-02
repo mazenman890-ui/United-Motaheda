@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import {
   Text,
   TextInput,
@@ -13,7 +13,7 @@ import Animated, {
   withTiming,
   interpolateColor,
 } from "react-native-reanimated";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 interface InputProps extends TextInputProps {
   label?:       string;

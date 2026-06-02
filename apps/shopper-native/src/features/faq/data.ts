@@ -1,3 +1,5 @@
+import { theme } from "@/shared/theme";
+
 export interface FAQItem {
   id: string;
   question: string;
@@ -16,11 +18,11 @@ export interface FAQCategoryConfig {
 }
 
 export const FAQ_CATEGORIES: FAQCategoryConfig[] = [
-  { key: "orders",   label: "الطلبات",    icon: "bag-handle-outline",   color: "#0891B2", bg: "#ECFEFF" },
+  { key: "orders",   label: "الطلبات",    icon: "bag-handle-outline",   color: theme.colors.brand[600], bg: "#ECFEFF" },
   { key: "delivery", label: "التوصيل",    icon: "bicycle-outline",      color: "#7C3AED", bg: "#FAF5FF" },
-  { key: "payment",  label: "الدفع",      icon: "card-outline",         color: "#D97706", bg: "#FFFBEB" },
-  { key: "returns",  label: "ا��استرجاع",  icon: "refresh-outline",      color: "#DC2626", bg: "#FFF1F2" },
-  { key: "account",  label: "الحساب",     icon: "person-outline",       color: "#0DB8A8", bg: "#E6FAF8" },
+  { key: "payment",  label: "الدفع",      icon: "card-outline",         color: theme.colors.amber[600], bg: "#FFFBEB" },
+  { key: "returns",  label: "ا��استرجاع",  icon: "refresh-outline",      color: theme.colors.red[600], bg: "#FFF1F2" },
+  { key: "account",  label: "الحساب",     icon: "person-outline",       color: theme.colors.teal[500], bg: theme.colors.teal[50] },
   { key: "products", label: "المنتجات",   icon: "medkit-outline",       color: "#16A34A", bg: "#F0FDF4" },
 ];
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Login screen — clinical/trust evolution.
  *
  * Visual recipe:
@@ -33,7 +33,7 @@ import { requestAndStoreLocation } from "@/lib/requestLocation";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Text } from "@/shared/ui";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 export default function LoginScreen() {
   const { t, i18n } = useTranslation();

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Deals — Today's Best Prices
  *
  * Curated selection of the most affordable in-stock products.
@@ -36,7 +36,7 @@ import Animated, {
 import { useTranslation } from "react-i18next";
 import { useInfiniteProducts, ProductGrid, type NativeProduct } from "@/features/products";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 
 // ─── Countdown ────────────────────────────────────────────────────────────────
 
@@ -110,7 +110,7 @@ const HeroDeal = React.memo(function HeroDeal({
               </View>
               <View style={s.heroInfo}>
                 {discount != null && (
-                  <LinearGradient colors={["#EF4444", "#DC2626"]} style={s.heroBadge}>
+                  <LinearGradient colors={[theme.colors.red[500], theme.colors.red[600]]} style={s.heroBadge}>
                     <Ionicons name="flash" size={11} color="#fff" />
                     <Text style={s.heroBadgeText}>{t("products.badgeSale", { n: Math.round(discount) })}</Text>
                   </LinearGradient>
@@ -180,7 +180,7 @@ export default function DealsScreen(): React.ReactElement {
   const Header = useMemo(() => (
     <>
       <LinearGradient
-        colors={["#4A0000", "#800000", "#B91C1C"]}
+        colors={["#4A0000", "#800000", theme.colors.red[700]]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[s.header, { paddingTop: insets.top + 12 }]}>
@@ -225,7 +225,7 @@ export default function DealsScreen(): React.ReactElement {
       {/* Grid label */}
       {gridProds.length > 0 && (
         <View style={s.sectionHeader}>
-          <Ionicons name="grid-outline" size={14} color="#EF4444" />
+          <Ionicons name="grid-outline" size={14} color={theme.colors.red[500]} />
           <Text style={s.sectionTitle}>{t("home.flashSale")}</Text>
         </View>
       )}
@@ -368,6 +368,6 @@ const s = StyleSheet.create({
   // Error state
   center:     { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 32 },
   errorTitle: { fontFamily: theme.fonts.black, fontSize: 16, color: theme.colors.text.primary, textAlign: "center" },
-  retryBtn:   { paddingHorizontal: 24, paddingVertical: 11, borderRadius: 14, backgroundColor: "#EF4444", marginTop: 4 },
+  retryBtn:   { paddingHorizontal: 24, paddingVertical: 11, borderRadius: 14, backgroundColor: theme.colors.red[500], marginTop: 4 },
   retryText:  { fontFamily: theme.fonts.black, fontSize: 13, color: "#fff" },
 });

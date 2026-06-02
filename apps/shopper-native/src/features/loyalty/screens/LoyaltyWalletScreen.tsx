@@ -1,4 +1,4 @@
-/**
+﻿/**
  * LoyaltyWalletScreen — محفظة المكافآت (redesigned).
  *
  * Features:
@@ -32,7 +32,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { useScreenTrace } from "@/features/observability";
 import { useAuth } from "@/features/auth/context";
 import { useLoyaltyBalance } from "../hooks/useLoyaltyBalance";
@@ -398,8 +398,8 @@ function QuickActions({ onEarn, onCoupons, onGifts, onHistory, onRedemptions }: 
       </View>
       <View style={styles.quickActionsRow}>
         <QuickActionTile icon="receipt-outline"     label={t("loyalty.quickPointsHistory")}  onPress={onHistory}     color="#10B981" />
-        <QuickActionTile icon="cube-outline"        label={t("loyalty.quickGiftOrders")}     onPress={onRedemptions} color="#F59E0B" />
-        <QuickActionTile icon="storefront-outline"  label={t("loyalty.quickShopNow")}        onPress={onEarn}    color="#06B6D4" />
+        <QuickActionTile icon="cube-outline"        label={t("loyalty.quickGiftOrders")}     onPress={onRedemptions} color={theme.colors.amber[500]} />
+        <QuickActionTile icon="storefront-outline"  label={t("loyalty.quickShopNow")}        onPress={onEarn}    color={theme.colors.brand[500]} />
       </View>
     </View>
   );
@@ -846,8 +846,8 @@ function getTierIcon(tierName: string): IoniconsName {
 function getTierColor(tierName: string): string {
   const n = tierName.toLowerCase();
   if (n.includes("بلاتين") || n.includes("plat")) return "#E5E4E2";
-  if (n.includes("ذهب")   || n.includes("gold")) return "#F59E0B";
-  if (n.includes("فضي")   || n.includes("silv")) return "#94A3B8";
+  if (n.includes("ذهب")   || n.includes("gold")) return theme.colors.amber[500];
+  if (n.includes("فضي")   || n.includes("silv")) return theme.colors.slate[400];
   return "#CD7F32"; // bronze
 }
 
@@ -1019,7 +1019,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height:          6,
-    backgroundColor: "#F59E0B",
+    backgroundColor: theme.colors.amber[500],
     borderRadius:    3,
   },
 

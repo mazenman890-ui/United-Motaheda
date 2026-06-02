@@ -1,4 +1,4 @@
-/**
+﻿/**
  * SplashOverlay — premium animated splash.
  *
  * Sits above the route tree, fades out as the JS bundle settles. Every
@@ -44,7 +44,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { onlineManager } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { Text } from "@/shared/ui";
 import { recordDuration, addBreadcrumb } from "@/features/observability";
 
@@ -200,7 +200,7 @@ export function SplashOverlay(): React.ReactElement | null {
     >
       <Animated.View style={[StyleSheet.absoluteFillObject, ambientAnim]}>
         <LinearGradient
-          colors={["#FFFFFF", "#F0FDFB", "#E6FAF8", "#D8F2EE"]}
+          colors={["#FFFFFF", theme.colors.teal[25], theme.colors.teal[50], "#D8F2EE"]}
           locations={[0, 0.45, 0.78, 1]}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.5, y: 1 }}

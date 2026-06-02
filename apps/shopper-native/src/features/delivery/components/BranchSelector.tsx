@@ -1,4 +1,4 @@
-/**
+﻿/**
  * BranchSelector — list of branches with selection state.
  *
  * Sorts by distance when customer coordinates are provided; otherwise
@@ -12,7 +12,7 @@ import Animated, { FadeIn, FadeInDown, useAnimatedStyle, useSharedValue, withRep
 import { BranchCard } from "./BranchCard";
 import { useBranches } from "../branches/useBranches";
 import { sortBranchesByDistance, type Coordinates } from "../geofencing";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import type { Branch } from "../branches/types";
 
 interface BranchSelectorProps {

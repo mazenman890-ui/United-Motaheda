@@ -133,13 +133,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setLoading(false));
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const u = session?.user;
-      const next = applyAuthUser(u);
-      await reconcile(next?.id ?? null);
-      setUser(next);
-      if (next) { identify(next.id); setCrashUser(next.id); }
-      else      { resetAnalytics(); setCrashUser(null); }
-      setLoading(false);
+      // Wrapped in try/finally so setLoading(false) is guaranteed even if
+      // reconcile() or wipeUserData() throws (e.g. AsyncStorage failure on
+      // a device with full storage). Without this, an async throw here would
+      // leave loading=true and freeze the app on the auth-gate forever.
+      try {
+        const u = session?.user;
+        const next = applyAuthUser(u);
+        await reconcile(next?.id ?? null);
+        setUser(next);
+        if (next) { identify(next.id); setCrashUser(next.id); }
+        else      { resetAnalytics(); setCrashUser(null); }
+      } catch (e) {
+        if (__DEV__) console.error("[auth] onAuthStateChange handler threw:", e);
+      } finally {
+        setLoading(false);
+      }
     });
 
     // Deep-link handler: catches the URL when the user taps the email

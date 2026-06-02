@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Order Details — /order/[id]
  *
  * Full order view with:
@@ -49,7 +49,7 @@ import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { useOrderDetail } from "@/features/orders/hooks/useOrders";
 import { Text as UIText } from "@/shared/ui";
 import { Badge } from "@/components/ui/Badge";
-import { theme } from "@/theme";
+import { theme } from "@/shared/theme";
 import { formatPrice } from "@/utils/format";
 import { useAppLanguage } from "@/i18n/LanguageProvider";
 import type { Order, OrderStatus } from "@/stores/orders";
