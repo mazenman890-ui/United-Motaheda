@@ -1,0 +1,12 @@
+I:\Pharmacy Motahheda (2)\United-Motaheda\United-Motaheda\apps\shopper-native\src\shared\components\AppSheet.tsx
+I:\Pharmacy Motahheda (2)\United-Motaheda\United-Motaheda\apps\shopper-native\src\shared\components\ComingSoonScreen.tsx
+I:\Pharmacy Motahheda (2)\United-Motaheda\United-Motaheda\apps\shopper-native\src\shared\components\ErrorBoundary.tsx
+I:\Pharmacy Motahheda (2)\United-Motaheda\United-Motaheda\apps\shopper-native\src\shared\components\InteractionBanner.tsx
+I:\Pharmacy Motahheda (2)\United-Motaheda\United-Motaheda\apps\shopper-native\src\shared\components\ReminderRow.tsx
+I:\Pharmacy Motahheda (2)\United-Motaheda\United-Motaheda\apps\shopper-native\src\shared\components\RxCard.tsx
+I:\Pharmacy Motahheda (2)\United-Motaheda\United-Motaheda\apps\shopper-native\src\shared\components\SplashOverlay.tsx
+I:\Pharmacy Motahheda (2)\United-Motaheda\United-Motaheda\apps\shopper-native\src\shared\ui\Text.tsx
+I:\Pharmacy Motahheda (2)\United-Motaheda\United-Motaheda\apps\shopper-native\src\shims\WebSocketShim.js
+I:\Pharmacy Motahheda (2)\United-Motaheda\United-Motaheda\apps\shopper-native\src\shims\getDevServerShim.js
+I:\Pharmacy Motahheda (2)\United-Motaheda\United-Motaheda\apps\shopper-native\src\shims\messageSocketStub.js
+I:\Pharmacy Motahheda (2)\United-Motaheda\United-Motaheda\apps\shopper-native\tailwind.config.js
