@@ -86,15 +86,15 @@ export const useLocationStore = create<LocationState>()(
 );
 
 /**
- * Selector-based subscription helper.
+ * Granular selector-based subscription helper.
  *
  *   const branchId = useLocationState((s) => s.selectedBranchId);
  *
- * Component only re-renders when `selectedBranchId` changes — no
- * whole-store invalidation cascade when, say, only `coordinates` updates.
+ * The selector is REQUIRED — passing none would subscribe to the whole store
+ * and cause re-renders on every field change, defeating the point of this
+ * helper.  All call sites already use a selector (confirmed: no bare
+ * `useLocationState()` callers exist in the codebase).
  */
-export function useLocationState(): LocationState;
-export function useLocationState<T>(selector: (state: LocationState) => T): T;
-export function useLocationState<T>(selector?: (state: LocationState) => T) {
-  return selector ? useLocationStore(selector) : useLocationStore();
+export function useLocationState<T>(selector: (state: LocationState) => T): T {
+  return useLocationStore(selector);
 }

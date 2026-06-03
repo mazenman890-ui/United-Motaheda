@@ -10,9 +10,9 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -56,7 +56,7 @@ export function CampaignsScreen() {
         <SubScreenHeader title={t("loyalty.campaignsTitle")} subtitle={t("loyalty.campaignsSubtitle")} />
         <View style={styles.centerPanel}>
           <Ionicons name="cloud-offline-outline" size={36} color={theme.colors.slate[400]} />
-          <Text style={styles.errorTitle} maxFontSizeMultiplier={1.4}>{t("loyalty.campaignsErrorTitle")}</Text>
+          <UIText style={styles.errorTitle} maxFontSizeMultiplier={1.4}>{t("loyalty.campaignsErrorTitle")}</UIText>
           <Pressable
             onPress={() => void campaigns.refetch()}
             accessibilityRole="button"
@@ -64,7 +64,7 @@ export function CampaignsScreen() {
             style={({ pressed }) => [styles.primaryBtn, pressed && { opacity: 0.9 }]}
           >
             <Ionicons name="refresh" size={14} color="#fff" />
-            <Text style={styles.primaryBtnText}>{t("common.retry")}</Text>
+            <UIText style={styles.primaryBtnText}>{t("common.retry")}</UIText>
           </Pressable>
         </View>
       </View>
@@ -91,12 +91,12 @@ export function CampaignsScreen() {
         {list.length === 0 ? (
           <View style={styles.centerPanel}>
             <Ionicons name="megaphone-outline" size={36} color={theme.colors.slate[300]} />
-            <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
+            <UIText style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
               {t("loyalty.campaignsEmpty")}
-            </Text>
-            <Text style={styles.emptyBody} maxFontSizeMultiplier={1.5}>
+            </UIText>
+            <UIText style={styles.emptyBody} maxFontSizeMultiplier={1.5}>
               {t("loyalty.campaignsEmptyBody")}
-            </Text>
+            </UIText>
           </View>
         ) : (
           <View style={{ gap: 10, marginTop: 4 }}>
@@ -123,18 +123,18 @@ function CampaignCard({ campaign }: { campaign: RewardCampaign }) {
       <View style={styles.cardHead}>
         <View style={styles.multiplierBadge}>
           <Ionicons name="star" size={14} color="#fff" />
-          <Text style={styles.multiplierBadgeText} maxFontSizeMultiplier={1.2}>
+          <UIText style={styles.multiplierBadgeText} maxFontSizeMultiplier={1.2}>
             {campaign.multiplier}×
-          </Text>
+          </UIText>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.campaignName} numberOfLines={2} maxFontSizeMultiplier={1.3}>
+          <UIText style={styles.campaignName} numberOfLines={2} maxFontSizeMultiplier={1.3}>
             {campaign.name}
-          </Text>
+          </UIText>
           {campaign.description ? (
-            <Text style={styles.campaignDesc} numberOfLines={3} maxFontSizeMultiplier={1.4}>
+            <UIText style={styles.campaignDesc} numberOfLines={3} maxFontSizeMultiplier={1.4}>
               {campaign.description}
-            </Text>
+            </UIText>
           ) : null}
         </View>
       </View>
@@ -143,25 +143,25 @@ function CampaignCard({ campaign }: { campaign: RewardCampaign }) {
         {campaign.min_purchase_cents != null && campaign.min_purchase_cents > 0 && (
           <View style={styles.metaChip}>
             <Ionicons name="cart-outline" size={12} color={theme.colors.text.tertiary} />
-            <Text style={styles.metaText} maxFontSizeMultiplier={1.3}>
+            <UIText style={styles.metaText} maxFontSizeMultiplier={1.3}>
               {t("loyalty.minSpend", { amount: (campaign.min_purchase_cents / 100).toLocaleString("ar-EG") })}
-            </Text>
+            </UIText>
           </View>
         )}
         {countdown && (
           <View style={[styles.metaChip, { backgroundColor: theme.colors.rose[50], borderColor: theme.colors.rose[100] }]}>
             <Ionicons name="timer-outline" size={12} color={theme.colors.rose[600]} />
-            <Text style={[styles.metaText, { color: theme.colors.rose[700] }]} maxFontSizeMultiplier={1.3}>
+            <UIText style={[styles.metaText, { color: theme.colors.rose[700] }]} maxFontSizeMultiplier={1.3}>
               {countdown}
-            </Text>
+            </UIText>
           </View>
         )}
         {campaign.category_restrictions && campaign.category_restrictions.length > 0 && (
           <View style={styles.metaChip}>
             <Ionicons name="pricetag-outline" size={12} color={theme.colors.text.tertiary} />
-            <Text style={styles.metaText} maxFontSizeMultiplier={1.3} numberOfLines={1}>
+            <UIText style={styles.metaText} maxFontSizeMultiplier={1.3} numberOfLines={1}>
               {campaign.category_restrictions.join(" · ")}
-            </Text>
+            </UIText>
           </View>
         )}
       </View>

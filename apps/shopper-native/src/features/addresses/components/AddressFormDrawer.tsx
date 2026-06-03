@@ -13,10 +13,10 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -384,12 +384,12 @@ export function AddressFormDrawer({
               <Ionicons name="close" size={18} color={theme.colors.slate[600]} />
             </Pressable>
             <View style={styles.headerCenter}>
-              <Text style={styles.headerTitle}>
+              <UIText style={styles.headerTitle}>
                 {isEdit ? t("addressForm.editTitle") : t("addressForm.addTitle")}
-              </Text>
-              <Text style={styles.headerStepSubtitle}>
+              </UIText>
+              <UIText style={styles.headerStepSubtitle}>
                 {t(STEPS[currentStepIdx].subtitleKey)}
-              </Text>
+              </UIText>
             </View>
             <View style={{ width: 36 }} />
           </Animated.View>
@@ -422,7 +422,7 @@ export function AddressFormDrawer({
                         : theme.colors.slate[400]
                     }
                   />
-                  <Text
+                  <UIText
                     style={[
                       styles.stepPillText,
                       isActive && styles.stepPillTextActive,
@@ -431,7 +431,7 @@ export function AddressFormDrawer({
                     numberOfLines={1}
                   >
                     {t(step.titleKey)}
-                  </Text>
+                  </UIText>
                 </Pressable>
               );
             })}
@@ -442,7 +442,7 @@ export function AddressFormDrawer({
             <View style={styles.progressBar}>
               <Animated.View style={[styles.progressFill, progressBarStyle]} />
             </View>
-            <Text style={styles.progressText}>{t("addressForm.percentComplete", { percent: completionPercent })}</Text>
+            <UIText style={styles.progressText}>{t("addressForm.percentComplete", { percent: completionPercent })}</UIText>
           </View>
 
           {/* ── Scrollable Content ── */}
@@ -478,7 +478,7 @@ export function AddressFormDrawer({
                 }}
               >
                 <Ionicons name="arrow-forward" size={16} color={theme.colors.slate[600]} />
-                <Text style={styles.navBtnText}>{t("common.previous")}</Text>
+                <UIText style={styles.navBtnText}>{t("common.previous")}</UIText>
               </Pressable>
             )}
             <View style={{ flex: 1 }} />
@@ -492,7 +492,7 @@ export function AddressFormDrawer({
                   radius: 14,
                 }}
               >
-                <Text style={styles.navBtnPrimaryText}>{t("common.next")}</Text>
+                <UIText style={styles.navBtnPrimaryText}>{t("common.next")}</UIText>
                 <Ionicons name="arrow-back" size={16} color="#fff" />
               </Pressable>
             ) : (
@@ -523,13 +523,13 @@ export function AddressFormDrawer({
                     color="#fff"
                   />
                 )}
-                <Text style={styles.submitText}>
+                <UIText style={styles.submitText}>
                   {loading
                     ? t("addressForm.saving")
                     : isEdit
                     ? t("addressForm.saveEdit")
                     : t("addressForm.addAddress")}
-                </Text>
+                </UIText>
               </Pressable>
             )}
           </View>
@@ -564,7 +564,7 @@ function StepContent({
         <Animated.View entering={FadeIn.duration(300)} style={styles.stepContainer}>
           {/* Label selector card */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>{t("addressForm.labelType")}</Text>
+            <UIText style={styles.cardTitle}>{t("addressForm.labelType")}</UIText>
             <View style={styles.labelGrid}>
               {ADDRESS_LABELS.map((l) => {
                 const active = form.label === l.key;
@@ -589,14 +589,14 @@ function StepContent({
                         active ? theme.colors.brand[700] : theme.colors.slate[400]
                       }
                     />
-                    <Text
+                    <UIText
                       style={[
                         styles.labelChipText,
                         active && styles.labelChipTextActive,
                       ]}
                     >
                       {t(l.labelKey)}
-                    </Text>
+                    </UIText>
                     {active && (
                       <View style={styles.activeIndicator}>
                         <Ionicons
@@ -611,13 +611,13 @@ function StepContent({
               })}
             </View>
             {errors.label && (
-              <Text style={fieldStyles.errorText}>{errors.label}</Text>
+              <UIText style={fieldStyles.errorText}>{errors.label}</UIText>
             )}
           </View>
 
           {/* Recipient info card */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>{t("addressForm.recipientInfo")}</Text>
+            <UIText style={styles.cardTitle}>{t("addressForm.recipientInfo")}</UIText>
             <View style={styles.fieldGroup}>
               <FloatingLabelInput
                 label={t("addressForm.recipientName")}
@@ -647,21 +647,21 @@ function StepContent({
       return (
         <Animated.View entering={FadeIn.duration(300)} style={styles.stepContainer}>
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>{t("addressForm.detailsTitle")}</Text>
+            <UIText style={styles.cardTitle}>{t("addressForm.detailsTitle")}</UIText>
             <View style={styles.fieldGroup}>
               <View style={styles.row}>
                 {/* City – read only */}
                 <View style={styles.fieldColumn}>
-                  <Text style={fieldStyles.label}>{t("addressForm.city")}</Text>
+                  <UIText style={fieldStyles.label}>{t("addressForm.city")}</UIText>
                   <View style={[fieldStyles.inputWrap, styles.readonlyField]}>
                     <Ionicons
                       name="lock-closed"
                       size={14}
                       color={theme.colors.slate[400]}
                     />
-                    <Text style={[fieldStyles.input, styles.readonlyText]}>
+                    <UIText style={[fieldStyles.input, styles.readonlyText]}>
                       {cityDisplay}
-                    </Text>
+                    </UIText>
                   </View>
                 </View>
                 <View style={styles.fieldColumn}>
@@ -752,15 +752,15 @@ function StepContent({
                 size={12}
                 color={theme.colors.brand[600]}
               />
-              <Text style={styles.mapHintText}>
+              <UIText style={styles.mapHintText}>
                 {t("addressForm.locationNote")}
-              </Text>
+              </UIText>
             </View>
           </View>
 
           {/* Summary card */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>{t("addressForm.summaryTitle")}</Text>
+            <UIText style={styles.cardTitle}>{t("addressForm.summaryTitle")}</UIText>
             <View style={styles.summaryRows}>
               <SummaryRow
                 label={t("addressForm.summaryLabelType")}
@@ -804,8 +804,8 @@ function StepContent({
               }
             />
             <View>
-              <Text style={styles.toggleTitle}>{t("addressForm.setDefault")}</Text>
-              <Text style={styles.toggleDesc}>{t("addressForm.setDefaultDesc")}</Text>
+              <UIText style={styles.toggleTitle}>{t("addressForm.setDefault")}</UIText>
+              <UIText style={styles.toggleDesc}>{t("addressForm.setDefaultDesc")}</UIText>
             </View>
           </Pressable>
         </Animated.View>
@@ -820,8 +820,8 @@ function StepContent({
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.summaryRow}>
-      <Text style={styles.summaryLabel}>{label}</Text>
-      <Text style={styles.summaryValue}>{value}</Text>
+      <UIText style={styles.summaryLabel}>{label}</UIText>
+      <UIText style={styles.summaryValue}>{value}</UIText>
     </View>
   );
 }
@@ -916,7 +916,7 @@ function FloatingLabelInput({
       </View>
       {error && (
         <Animated.View entering={FadeInDown.duration(150)} exiting={FadeOut.duration(100)}>
-          <Text style={fieldStyles.errorText}>{error}</Text>
+          <UIText style={fieldStyles.errorText}>{error}</UIText>
         </Animated.View>
       )}
     </Animated.View>
@@ -933,8 +933,8 @@ const styles = StyleSheet.create({
     flexDirection: "row-reverse",
     alignItems: "flex-start",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingBottom: 12,
+    paddingHorizontal: theme.spacing[2.5],
+    paddingBottom: theme.spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: theme.colors.slate[100],
   },
@@ -969,9 +969,9 @@ const styles = StyleSheet.create({
   // Step pills
   stepIndicatorRow: {
     flexDirection: "row-reverse",
-    paddingHorizontal: 16,
+    paddingHorizontal: theme.spacing.lg,
     paddingVertical: 10,
-    gap: 8,
+    gap: theme.spacing.sm,
     justifyContent: "center",
   },
   stepPill: {
@@ -983,7 +983,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.slate[50],
     borderWidth: 1,
     borderColor: theme.colors.border.default,
-    gap: 4,
+    gap: theme.spacing.xs,
   },
   stepPillActive: {
     backgroundColor: theme.colors.brand[600],
@@ -1014,8 +1014,8 @@ const styles = StyleSheet.create({
   progressWrapper: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 20,
+    gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing[2.5],
     paddingBottom: 6,
   },
   progressBar: {
@@ -1037,22 +1037,22 @@ const styles = StyleSheet.create({
   },
 
   scrollContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: theme.spacing[2.5],
     paddingTop: 10,
-    gap: 16,
+    gap: theme.spacing.lg,
   },
   stepContainer: {
-    gap: 16,
+    gap: theme.spacing.lg,
   },
 
   card: {
     backgroundColor: theme.colors.surface,
     borderRadius: 20,
-    padding: 16,
-    gap: 12,
+    padding: theme.spacing.lg,
+    gap: theme.spacing.md,
     borderWidth: 1,
     borderColor: theme.colors.border.default,
-    shadowColor: "#000",
+    shadowColor: theme.colors.slate[900],
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 8,
@@ -1070,8 +1070,8 @@ const styles = StyleSheet.create({
     flexDirection: "row-reverse",
     alignItems: "center",
     gap: 6,
-    marginTop: 8,
-    paddingHorizontal: 4,
+    marginTop: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.xs,
   },
   mapHintText: {
     fontSize: 11,
@@ -1137,8 +1137,8 @@ const styles = StyleSheet.create({
   toggleCard: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    gap: 12,
-    padding: 16,
+    gap: theme.spacing.md,
+    padding: theme.spacing.lg,
     borderRadius: 20,
     backgroundColor: theme.colors.slate[50],
     borderWidth: 1.5,
@@ -1185,24 +1185,24 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
     textAlign: "right",
     flex: 1,
-    marginLeft: 12,
+    marginLeft: theme.spacing.md,
   },
 
   bottomNav: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: theme.spacing[2.5],
     paddingTop: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: theme.colors.slate[100],
-    gap: 12,
+    gap: theme.spacing.md,
   },
   navBtn: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    gap: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
     borderRadius: 14,
     backgroundColor: theme.colors.slate[50],
     borderWidth: 1,
@@ -1216,9 +1216,9 @@ const styles = StyleSheet.create({
   navBtnPrimary: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+    gap: theme.spacing.xs,
+    paddingHorizontal: theme.spacing[3],
+    paddingVertical: theme.spacing.md,
     borderRadius: 14,
     backgroundColor: theme.colors.brand[600],
     overflow: "hidden",
@@ -1237,10 +1237,10 @@ const styles = StyleSheet.create({
     flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: theme.spacing.sm,
     backgroundColor: theme.colors.brand[600],
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingVertical: theme.spacing.lg,
+    paddingHorizontal: theme.spacing[3],
     borderRadius: 18,
     overflow: "hidden",
     shadowColor: theme.colors.brand[600],
@@ -1272,7 +1272,7 @@ const fieldStyles = StyleSheet.create({
     fontFamily: theme.fonts.bold,
     color: theme.colors.slate[500],
     textAlign: "right",
-    paddingRight: 4,
+    paddingRight: theme.spacing.xs,
     opacity: 0,
     transform: [{ translateY: 18 }, { scale: 0.9 }],
   },
@@ -1292,13 +1292,13 @@ const fieldStyles = StyleSheet.create({
   inputContainer: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     borderWidth: 1.5,
     borderColor: theme.colors.border.default,
     paddingHorizontal: 14,
     minHeight: 52,
-    gap: 8,
+    gap: theme.spacing.sm,
   },
   icon: {
     marginLeft: -2,
@@ -1310,20 +1310,20 @@ const fieldStyles = StyleSheet.create({
   inputWrap: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     borderWidth: 1.5,
     borderColor: theme.colors.border.default,
     paddingHorizontal: 14,
     minHeight: 52,
-    gap: 8,
+    gap: theme.spacing.sm,
   },
   input: {
     flex: 1,
     fontSize: 14,
     fontFamily: theme.fonts.medium,
     color: theme.colors.text.primary,
-    paddingVertical: 12,
+    paddingVertical: theme.spacing.md,
   },
   clearBtn: {
     padding: 2,
@@ -1333,7 +1333,7 @@ const fieldStyles = StyleSheet.create({
     fontFamily: theme.fonts.bold,
     color: theme.colors.red[500],
     textAlign: "right",
-    paddingRight: 4,
+    paddingRight: theme.spacing.xs,
     marginTop: 2,
   },
 });

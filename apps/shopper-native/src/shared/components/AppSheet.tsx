@@ -10,7 +10,6 @@
 import React, { useEffect } from "react";
 import {
   View,
-  Text,
   Pressable,
   StyleSheet,
   Dimensions,
@@ -136,11 +135,11 @@ function ActionBtn({ action, cfg }: { action: AppSheetAction; cfg: TypeCfg }) {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={s.btnPrimary}>
-            <Text style={s.btnPrimaryTxt}>{action.label}</Text>
+            <UIText style={s.btnPrimaryTxt}>{action.label}</UIText>
           </LinearGradient>
         ) : (
           <View style={[s.btnSecondary, isG && s.btnGhost]}>
-            <Text style={[s.btnSecTxt, isG && s.btnGhostTxt]}>{action.label}</Text>
+            <UIText style={[s.btnSecTxt, isG && s.btnGhostTxt]}>{action.label}</UIText>
           </View>
         )}
       </Animated.View>
@@ -235,9 +234,9 @@ export function AppSheet() {
           {/* Type badge */}
           <View style={s.badgeRow}>
             <View style={[s.typeBadge, { backgroundColor: cfg.badgeBg }]}>
-              <Text style={[s.typeBadgeTxt, { color: cfg.grad[1] }]}>
+              <UIText style={[s.typeBadgeTxt, { color: cfg.grad[1] }]}>
                 {t(cfg.badge)}
-              </Text>
+              </UIText>
             </View>
           </View>
 
@@ -256,8 +255,8 @@ export function AppSheet() {
 
           {/* Text */}
           <View style={s.textBlock}>
-            <Text style={s.title}>{config.title}</Text>
-            <Text style={s.message}>{config.message}</Text>
+            <UIText style={s.title}>{config.title}</UIText>
+            <UIText style={s.message}>{config.message}</UIText>
           </View>
 
           {/* Divider */}

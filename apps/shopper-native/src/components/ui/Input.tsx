@@ -1,12 +1,12 @@
 ﻿import React, { useState } from "react";
 import {
-  Text,
   TextInput,
   View,
   type StyleProp,
   type TextInputProps,
   type ViewStyle,
 } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -84,16 +84,16 @@ export function Input({
       {/* Label row */}
       {label && (
         <View style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" }}>
-          <Text style={{
+          <UIText style={{
             fontSize:   theme.fontSize.sm,
             fontFamily: theme.fonts.semibold,
             color:      error ? theme.colors.error.text : theme.colors.text.primary,
             textAlign:  "right",
           }}>
             {label}
-          </Text>
+          </UIText>
           {optional && (
-            <Text style={{ fontSize: theme.fontSize.xs, color: theme.colors.text.tertiary }}>اختياري</Text>
+            <UIText style={{ fontSize: theme.fontSize.xs, color: theme.colors.text.tertiary }}>اختياري</UIText>
           )}
         </View>
       )}
@@ -156,7 +156,7 @@ export function Input({
 
       {/* Error / Hint */}
       {(error || hint) && (
-        <Text style={{
+        <UIText style={{
           fontSize:  theme.fontSize.xs,
           fontFamily: theme.fonts.regular,
           color:     error ? theme.colors.error.base : theme.colors.text.tertiary,
@@ -164,7 +164,7 @@ export function Input({
           marginTop: 2,
         }}>
           {error ?? hint}
-        </Text>
+        </UIText>
       )}
     </View>
   );

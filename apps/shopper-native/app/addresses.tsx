@@ -50,6 +50,38 @@ function ShimmerCard() {
   );
 }
 
+// ─── AddressCardRow — hoisted at module scope so React never sees a new
+//     component type on re-renders of AddressesScreen, preventing unmount/remount
+//     of every row.  Internal useCallbacks stabilise the item-bound handlers.
+const AddressCardRow = React.memo(function AddressCardRow({
+  item,
+  index,
+  onEdit,
+  onDelete,
+  onSetDefault,
+}: {
+  item:         Address;
+  index:        number;
+  onEdit:       (a: Address) => void;
+  onDelete:     (a: Address) => void;
+  onSetDefault: (a: Address) => void;
+}) {
+  const handleEdit       = useCallback(() => onEdit(item),       [onEdit, item]);
+  const handleDelete     = useCallback(() => onDelete(item),     [onDelete, item]);
+  const handleSetDefault = useCallback(() => onSetDefault(item), [onSetDefault, item]);
+
+  return (
+    <Animated.View entering={FadeInDown.duration(280).delay(index * 60)}>
+      <AddressCard
+        address={item}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onSetDefault={handleSetDefault}
+      />
+    </Animated.View>
+  );
+});
+
 // ─── Addresses Screen ───────────────────────────────────────────────────────
 export default function AddressesScreen() {
   const router  = useRouter();
@@ -146,35 +178,9 @@ export default function AddressesScreen() {
     [user?.id, editingAddress, updateAddress, addAddress, t]
   );
 
-  // ── Memoized address card to prevent re‑renders ──
-  const MemoizedAddressCard = React.memo(
-    ({
-      item,
-      index,
-      onEdit,
-      onDelete,
-      onSetDefault,
-    }: {
-      item: Address;
-      index: number;
-      onEdit: (a: Address) => void;
-      onDelete: (a: Address) => void;
-      onSetDefault: (a: Address) => void;
-    }) => (
-      <Animated.View entering={FadeInDown.duration(280).delay(index * 60)}>
-        <AddressCard
-          address={item}
-          onEdit={() => onEdit(item)}
-          onDelete={() => onDelete(item)}
-          onSetDefault={() => onSetDefault(item)}
-        />
-      </Animated.View>
-    )
-  );
-
   const renderAddress = useCallback(
     ({ item, index }: { item: Address; index: number }) => (
-      <MemoizedAddressCard
+      <AddressCardRow
         item={item}
         index={index}
         onEdit={handleEdit}
@@ -182,7 +188,7 @@ export default function AddressesScreen() {
         onSetDefault={handleSetDefault}
       />
     ),
-    [handleEdit, handleDelete, handleSetDefault]
+    [handleEdit, handleDelete, handleSetDefault],
   );
 
   // ── Content states ──

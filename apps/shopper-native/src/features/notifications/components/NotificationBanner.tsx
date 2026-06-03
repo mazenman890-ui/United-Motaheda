@@ -1,5 +1,6 @@
 ﻿import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -140,9 +141,9 @@ export function NotificationBanner() {
 
         {/* Text content */}
         <View style={styles.textCol}>
-          <Text style={[styles.bannerLabel, { color: meta.color }]}>{t(meta.labelKey)}</Text>
-          <Text style={styles.bannerTitle} numberOfLines={1}>{banner.title}</Text>
-          <Text style={styles.bannerBody}  numberOfLines={1}>{banner.body}</Text>
+          <UIText style={[styles.bannerLabel, { color: meta.color }]}>{t(meta.labelKey)}</UIText>
+          <UIText style={styles.bannerTitle} numberOfLines={1}>{banner.title}</UIText>
+          <UIText style={styles.bannerBody}  numberOfLines={1}>{banner.body}</UIText>
         </View>
 
         {/* Dismiss button */}

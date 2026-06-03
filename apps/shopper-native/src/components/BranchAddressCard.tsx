@@ -3,7 +3,8 @@
  */
 
 import React, { memo } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { BRANCH_ADDRESSES, type BranchAddress } from "@/data/branchAddresses";
 
 interface BranchAddressCardProps {
@@ -15,12 +16,12 @@ export const BranchAddressCard = memo(function BranchAddressCard({
 }: BranchAddressCardProps) {
   return (
     <View className="mb-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5">
-      <Text className="text-right text-base font-bold text-teal-700">
+      <UIText className="text-right text-base font-bold text-teal-700">
         {branch.title}
-      </Text>
-      <Text className="mt-1.5 text-right text-sm text-slate-500">
+      </UIText>
+      <UIText className="mt-1.5 text-right text-sm text-slate-500">
         {branch.address}
-      </Text>
+      </UIText>
     </View>
   );
 });

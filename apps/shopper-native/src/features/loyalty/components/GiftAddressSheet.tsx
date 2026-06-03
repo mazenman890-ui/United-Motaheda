@@ -19,10 +19,10 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useForm, Controller, type SubmitHandler } from "react-hook-form";
@@ -170,15 +170,15 @@ export function GiftAddressSheet({
               <Ionicons name="close" size={18} color={theme.colors.slate[600]} />
             </Pressable>
             <View style={{ flex: 1 }}>
-              <Text style={styles.headerTitle} numberOfLines={1} maxFontSizeMultiplier={1.3}>
+              <UIText style={styles.headerTitle} numberOfLines={1} maxFontSizeMultiplier={1.3}>
                 {t("loyalty.addressSheetTitle")}
-              </Text>
-              <Text style={styles.headerSub} numberOfLines={1} maxFontSizeMultiplier={1.4}>
+              </UIText>
+              <UIText style={styles.headerSub} numberOfLines={1} maxFontSizeMultiplier={1.4}>
                 {t("loyalty.addressSheetSub", {
                   gift:   giftName,
                   points: pointsCost.toLocaleString("ar-EG"),
                 })}
-              </Text>
+              </UIText>
             </View>
           </View>
 
@@ -236,9 +236,9 @@ function ModeTab({ label, active, onPress }: { label: string; active: boolean; o
       accessibilityState={{ selected: active }}
       style={[styles.modeTab, active && styles.modeTabActive]}
     >
-      <Text style={[styles.modeTabText, active && styles.modeTabTextActive]} maxFontSizeMultiplier={1.3}>
+      <UIText style={[styles.modeTabText, active && styles.modeTabTextActive]} maxFontSizeMultiplier={1.3}>
         {label}
-      </Text>
+      </UIText>
     </Pressable>
   );
 }
@@ -288,7 +288,7 @@ function SavedAddressPicker({
   if (loading) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.loadingText}>{t("loyalty.loadingAddresses")}</Text>
+        <UIText style={styles.loadingText}>{t("loyalty.loadingAddresses")}</UIText>
       </View>
     );
   }
@@ -325,19 +325,19 @@ function SavedAddressPicker({
             </View>
             <View style={{ flex: 1 }}>
               <View style={styles.addrCardHead}>
-                <Text style={styles.addrName} maxFontSizeMultiplier={1.3}>{addr.recipient_name}</Text>
+                <UIText style={styles.addrName} maxFontSizeMultiplier={1.3}>{addr.recipient_name}</UIText>
                 <View style={styles.addrLabelPill}>
-                  <Text style={styles.addrLabelText} maxFontSizeMultiplier={1.2}>
+                  <UIText style={styles.addrLabelText} maxFontSizeMultiplier={1.2}>
                     {getAddrLabel(addr.label, t)}
-                  </Text>
+                  </UIText>
                 </View>
               </View>
-              <Text style={styles.addrLine} maxFontSizeMultiplier={1.4} numberOfLines={2}>
+              <UIText style={styles.addrLine} maxFontSizeMultiplier={1.4} numberOfLines={2}>
                 {addr.city}، {addr.district}، {addr.street}
                 {addr.building ? `، مبنى ${addr.building}` : ""}
                 {addr.floor ? `، طابق ${addr.floor}` : ""}
-              </Text>
-              <Text style={styles.addrPhone} maxFontSizeMultiplier={1.3}>{addr.phone}</Text>
+              </UIText>
+              <UIText style={styles.addrPhone} maxFontSizeMultiplier={1.3}>{addr.phone}</UIText>
             </View>
           </Pressable>
         ))}
@@ -349,7 +349,7 @@ function SavedAddressPicker({
           style={({ pressed }) => [styles.addNewBtn, pressed && { opacity: 0.85 }]}
         >
           <Ionicons name="add-circle-outline" size={16} color={theme.colors.brand[700]} />
-          <Text style={styles.addNewText}>{t("loyalty.addNewAddress")}</Text>
+          <UIText style={styles.addNewText}>{t("loyalty.addNewAddress")}</UIText>
         </Pressable>
       </ScrollView>
 
@@ -367,9 +367,9 @@ function SavedAddressPicker({
           ]}
         >
           <Ionicons name="gift-outline" size={16} color="#fff" />
-          <Text style={styles.confirmBtnText} maxFontSizeMultiplier={1.2}>
+          <UIText style={styles.confirmBtnText} maxFontSizeMultiplier={1.2}>
             {submitting ? t("loyalty.confirmAddressSending") : t("loyalty.confirmOrderLabel")}
-          </Text>
+          </UIText>
         </Pressable>
       </View>
     </View>
@@ -522,7 +522,7 @@ function AddressForm({
 
         {/* Governorate picker */}
         <Animated.View entering={FadeInDown.delay(100).duration(200)}>
-          <Text style={styles.fieldLabel}>{t("loyalty.governorateField")}</Text>
+          <UIText style={styles.fieldLabel}>{t("loyalty.governorateField")}</UIText>
           <Pressable
             onPress={() => setGovDropdown(!govDropdown)}
             accessibilityRole="combobox"
@@ -538,7 +538,7 @@ function AddressForm({
               size={14}
               color={theme.colors.slate[400]}
             />
-            <Text
+            <UIText
               style={[
                 styles.fieldInput,
                 !watchedGov && { color: theme.colors.slate[300] },
@@ -546,10 +546,10 @@ function AddressForm({
               maxFontSizeMultiplier={1.3}
             >
               {watchedGov || t("loyalty.selectGovernorate")}
-            </Text>
+            </UIText>
           </Pressable>
           {errors.governorate && (
-            <Text style={styles.fieldError}>{errors.governorate.message}</Text>
+            <UIText style={styles.fieldError}>{errors.governorate.message}</UIText>
           )}
           {govDropdown && (
             <View style={styles.dropdown}>
@@ -565,12 +565,12 @@ function AddressForm({
                     accessibilityState={{ selected: watchedGov === gov }}
                     style={[styles.dropdownItem, watchedGov === gov && styles.dropdownItemActive]}
                   >
-                    <Text
+                    <UIText
                       style={[styles.dropdownItemText, watchedGov === gov && styles.dropdownItemTextActive]}
                       maxFontSizeMultiplier={1.3}
                     >
                       {gov}
-                    </Text>
+                    </UIText>
                   </Pressable>
                 ))}
               </ScrollView>
@@ -686,14 +686,14 @@ function AddressForm({
               size={18}
               color={saveToProfile ? theme.colors.brand[600] : theme.colors.slate[400]}
             />
-            <Text style={styles.saveRowText} maxFontSizeMultiplier={1.3}>
+            <UIText style={styles.saveRowText} maxFontSizeMultiplier={1.3}>
               {t("loyalty.saveToProfile")}
-            </Text>
+            </UIText>
           </Pressable>
           {saveError && (
-            <Text style={styles.saveWarn} accessibilityRole="alert" maxFontSizeMultiplier={1.4}>
+            <UIText style={styles.saveWarn} accessibilityRole="alert" maxFontSizeMultiplier={1.4}>
               {saveError}
-            </Text>
+            </UIText>
           )}
         </Animated.View>
       </ScrollView>
@@ -712,9 +712,9 @@ function AddressForm({
           ]}
         >
           <Ionicons name="gift-outline" size={16} color="#fff" />
-          <Text style={styles.confirmBtnText} maxFontSizeMultiplier={1.2}>
+          <UIText style={styles.confirmBtnText} maxFontSizeMultiplier={1.2}>
             {submitting ? t("loyalty.confirmAddressSending") : t("loyalty.confirmOrderLabel")}
-          </Text>
+          </UIText>
         </Pressable>
       </View>
     </View>
@@ -740,7 +740,7 @@ function FormField({
 }: FormFieldProps) {
   return (
     <View style={styles.fieldWrap}>
-      <Text style={styles.fieldLabel}>{label}</Text>
+      <UIText style={styles.fieldLabel}>{label}</UIText>
       <View style={[styles.fieldBox, error && styles.fieldBoxError, multiline && { minHeight: 72, alignItems: "flex-start" }]}>
         {icon && (
           <Ionicons
@@ -764,7 +764,7 @@ function FormField({
           accessibilityLabel={label}
         />
       </View>
-      {error && <Text style={styles.fieldError} accessibilityRole="alert">{error}</Text>}
+      {error && <UIText style={styles.fieldError} accessibilityRole="alert">{error}</UIText>}
     </View>
   );
 }

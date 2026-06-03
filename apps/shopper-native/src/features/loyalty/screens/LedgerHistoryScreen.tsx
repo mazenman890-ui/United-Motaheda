@@ -1,4 +1,4 @@
-﻿/**
+/**
  * LedgerHistoryScreen — paginated point transaction history.
  *
  * Shows all ledger entries (earn, redeem, cashback, bonus, referral, etc.)
@@ -14,9 +14,9 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -49,11 +49,17 @@ export function LedgerHistoryScreen() {
     if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
+  // Stable renderItem — no inline arrow so FlatList memo is effective
+  const renderEntry = useCallback(
+    ({ item }: { item: LedgerEntry }) => <EntryRow entry={item} />,
+    [],
+  );
+
   if (isLoading) {
     return (
       <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
         <SubScreenHeader title={t("loyalty.ledgerTitle")} subtitle={t("loyalty.ledgerSubtitle")} />
-        <View style={{ padding: 16 }}>
+        <View style={{ padding: theme.spacing.lg }}>
           <ListSkeleton rows={5} />
         </View>
       </View>
@@ -66,18 +72,18 @@ export function LedgerHistoryScreen() {
         <SubScreenHeader title={t("loyalty.ledgerTitle")} subtitle={t("loyalty.ledgerSubtitle")} />
         <View style={styles.centerPanel}>
           <Ionicons name="cloud-offline-outline" size={36} color={theme.colors.slate[400]} />
-          <Text style={styles.errorTitle} maxFontSizeMultiplier={1.4}>{t("loyalty.ledgerErrorTitle")}</Text>
-          <Text style={styles.errorBody} maxFontSizeMultiplier={1.5}>
+          <UIText style={styles.errorTitle} maxFontSizeMultiplier={1.4}>{t("loyalty.ledgerErrorTitle")}</UIText>
+          <UIText style={styles.errorBody} maxFontSizeMultiplier={1.5}>
             {t("loyalty.ledgerErrorBody")}
-          </Text>
+          </UIText>
           <Pressable
             onPress={() => void refetch()}
             accessibilityRole="button"
             accessibilityLabel={t("common.retry")}
             style={({ pressed }) => [styles.primaryBtn, pressed && { opacity: 0.9 }]}
           >
-            <Ionicons name="refresh" size={14} color="#fff" />
-            <Text style={styles.primaryBtnText}>{t("common.retry")}</Text>
+            <Ionicons name="refresh" size={14} color={theme.colors.surface} />
+            <UIText style={styles.primaryBtnText}>{t("common.retry")}</UIText>
           </Pressable>
         </View>
       </View>
@@ -90,9 +96,9 @@ export function LedgerHistoryScreen() {
       <FlatList
         data={allEntries}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <EntryRow entry={item} />}
+        renderItem={renderEntry}
         contentContainerStyle={{
-          paddingHorizontal: 16,
+          paddingHorizontal: theme.spacing.lg,
           paddingBottom: insets.bottom + 32,
           flexGrow: 1,
         }}
@@ -110,12 +116,12 @@ export function LedgerHistoryScreen() {
         ListEmptyComponent={
           <View style={styles.centerPanel}>
             <Ionicons name="time-outline" size={36} color={theme.colors.slate[300]} />
-            <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
+            <UIText style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>
               {t("loyalty.ledgerEmpty")}
-            </Text>
-            <Text style={styles.emptyBody} maxFontSizeMultiplier={1.5}>
+            </UIText>
+            <UIText style={styles.emptyBody} maxFontSizeMultiplier={1.5}>
               {t("loyalty.ledgerEmptyBody")}
-            </Text>
+            </UIText>
           </View>
         }
         ListFooterComponent={
@@ -167,29 +173,29 @@ function EntryRow({ entry }: { entry: LedgerEntry }) {
       </View>
 
       <View style={styles.rowBody}>
-        <Text style={styles.rowKind} maxFontSizeMultiplier={1.3} numberOfLines={1}>
+        <UIText style={styles.rowKind} maxFontSizeMultiplier={1.3} numberOfLines={1}>
           {kindStr}
-        </Text>
+        </UIText>
         {entry.source_ref && (
-          <Text style={styles.rowRef} maxFontSizeMultiplier={1.4} numberOfLines={1}>
+          <UIText style={styles.rowRef} maxFontSizeMultiplier={1.4} numberOfLines={1}>
             {entry.source_ref}
-          </Text>
+          </UIText>
         )}
-        <Text style={styles.rowDate} maxFontSizeMultiplier={1.4}>
+        <UIText style={styles.rowDate} maxFontSizeMultiplier={1.4}>
           {date} · {time}
-        </Text>
+        </UIText>
       </View>
 
       <View style={styles.rowRight}>
-        <Text
+        <UIText
           style={[styles.rowDelta, { color: isCredit ? theme.colors.green[700] : theme.colors.rose[600] }]}
           maxFontSizeMultiplier={1.3}
         >
           {isCredit ? "+" : ""}{entry.delta.toLocaleString("ar-EG")}
-        </Text>
-        <Text style={styles.rowBalance} maxFontSizeMultiplier={1.4}>
+        </UIText>
+        <UIText style={styles.rowBalance} maxFontSizeMultiplier={1.4}>
           {entry.balance_after.toLocaleString("ar-EG")} {t("loyalty.pointsUnit")}
-        </Text>
+        </UIText>
       </View>
     </View>
   );
@@ -251,11 +257,11 @@ const styles = StyleSheet.create({
   row: {
     flexDirection:   "row-reverse",
     alignItems:      "center",
-    gap:             12,
+    gap:             theme.spacing.md,
     backgroundColor: theme.colors.surface,
     borderRadius:    14,
     padding:         14,
-    marginBottom:    8,
+    marginBottom:    theme.spacing.sm,
     ...theme.shadow.card,
   },
   iconWrap: {
@@ -266,8 +272,8 @@ const styles = StyleSheet.create({
     justifyContent:  "center",
   },
   rowBody: {
-    flex:      1,
-    gap:       2,
+    flex: 1,
+    gap:  2,
   },
   rowKind: {
     fontFamily: theme.fonts.bold,
@@ -312,7 +318,7 @@ const styles = StyleSheet.create({
     flex:              1,
     alignItems:        "center",
     justifyContent:    "center",
-    paddingHorizontal: 32,
+    paddingHorizontal: theme.spacing[4],
     gap:               10,
     paddingTop:        60,
   },
@@ -320,7 +326,7 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.black,
     fontSize:   16,
     color:      theme.colors.text.primary,
-    marginTop:  8,
+    marginTop:  theme.spacing.sm,
   },
   errorBody: {
     fontFamily: theme.fonts.regular,
@@ -332,25 +338,25 @@ const styles = StyleSheet.create({
   primaryBtn: {
     flexDirection:     "row-reverse",
     alignItems:        "center",
-    gap:               8,
+    gap:               theme.spacing.sm,
     backgroundColor:   theme.colors.brand[600],
     borderRadius:      12,
     paddingHorizontal: 18,
     paddingVertical:   11,
-    marginTop:         8,
+    marginTop:         theme.spacing.sm,
     ...theme.shadow.brand,
   },
   primaryBtnText: {
     fontFamily: theme.fonts.black,
     fontSize:   13,
-    color:      "#fff",
+    color:      theme.colors.surface,
   },
 
   emptyTitle: {
     fontFamily: theme.fonts.black,
     fontSize:   15,
     color:      theme.colors.text.primary,
-    marginTop:  8,
+    marginTop:  theme.spacing.sm,
   },
   emptyBody: {
     fontFamily: theme.fonts.regular,
@@ -361,7 +367,7 @@ const styles = StyleSheet.create({
   },
 
   footerLoader: {
-    paddingVertical: 16,
+    paddingVertical: theme.spacing.lg,
     alignItems:      "center",
   },
 });

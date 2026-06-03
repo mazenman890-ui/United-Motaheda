@@ -1,0 +1,448 @@
+import React from "react";
+import { Pressable, StyleSheet, View } from "react-native";
+import { Text as UIText } from "@/shared/ui";
+import Animated, { FadeIn } from "react-native-reanimated";
+import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
+import { Controller, type Control } from "react-hook-form";
+
+import { Input } from "@/components/ui/Input";
+import { theme } from "@/shared/theme";
+import { ManualPaymentPanel } from "@/features/payment";
+import { BranchCard, type useDeliveryContext } from "@/features/delivery";
+import { isManualWalletPayment } from "@/features/checkout";
+import { formatPrice } from "@/utils/format";
+
+import { type CheckoutFormSchema } from "../schema";
+import { type CheckoutPaymentMethod, PAYMENT_METHOD_CONFIGS } from "../constants";
+import { type CheckoutPricing } from "../types";
+import { SectionCard } from "./SectionCard";
+import { SummaryRow } from "./SummaryRow";
+import { summaryStyles, errorStyles } from "./checkout.styles";
+
+interface ReviewStepProps {
+  values:               CheckoutFormSchema;
+  paymentMethod:        CheckoutPaymentMethod;
+  requestPos:           boolean;
+  promoApplied:         boolean;
+  promoError:           string | null;
+  pricing:              CheckoutPricing;
+  deliveryQuote:        ReturnType<typeof useDeliveryContext>;
+  submitError:          string | null;
+  transferNumber:       string;
+  onTransferNumberChange:(v: string) => void;
+  receiptUri:           string | null;
+  onPickReceipt:        () => void;
+  manualPaymentError:   string | null;
+  uploadingReceipt:     boolean;
+  onEditAddress:        () => void;
+  onEditPayment:        () => void;
+  onPaymentChange:      (m: CheckoutPaymentMethod) => void;
+  onTogglePos:          () => void;
+  onApplyPromo:         () => void;
+  control:              Control<CheckoutFormSchema>;
+}
+
+export const ReviewStep = React.memo(function ReviewStep({
+  values,
+  paymentMethod,
+  requestPos,
+  promoApplied,
+  promoError,
+  pricing,
+  deliveryQuote,
+  submitError,
+  transferNumber,
+  onTransferNumberChange,
+  receiptUri,
+  onPickReceipt,
+  manualPaymentError,
+  uploadingReceipt,
+  onEditAddress,
+  onEditPayment,
+  onPaymentChange,
+  onTogglePos,
+  onApplyPromo,
+  control,
+}: ReviewStepProps) {
+  const { t, i18n } = useTranslation();
+  const sep = i18n.language.startsWith("en") ? ", " : "، ";
+
+  const methods = PAYMENT_METHOD_CONFIGS.map((cfg) => ({
+    ...cfg,
+    title:       t(cfg.titleKey),
+    description: t(cfg.descKey),
+  }));
+
+  return (
+    <Animated.View entering={FadeIn.duration(220)}>
+      {/* Branch card */}
+      {deliveryQuote.branch && (
+        <SectionCard
+          title={t("checkout.branchSection")}
+          icon="storefront-outline"
+          delay={20}
+          action={{ label: t("checkout.changeBranch"), onPress: onEditAddress }}>
+          <BranchCard
+            branch={deliveryQuote.branch}
+            distanceKm={deliveryQuote.distanceKm ?? undefined}
+            compact
+          />
+          <View style={s.etaPillInline}>
+            <Ionicons name="time-outline" size={12} color={theme.colors.brand[600]} />
+            <UIText style={s.etaPillText}>
+              {t("checkout.etaText", {
+                min: deliveryQuote.eta.min,
+                max: deliveryQuote.eta.max,
+              })}
+            </UIText>
+          </View>
+        </SectionCard>
+      )}
+
+      {/* Address review */}
+      <SectionCard
+        title={t("checkout.addressSection")}
+        icon="location-outline"
+        delay={50}
+        action={{ label: t("checkout.editAddress"), onPress: onEditAddress }}>
+        <UIText style={s.reviewLine}>{values.fullName}</UIText>
+        <UIText style={s.reviewSub}>{values.phone}</UIText>
+        <View style={s.reviewDivider} />
+        <UIText style={s.reviewLine}>
+          {[
+            values.streetName,
+            values.buildingNumber && t("orders.building", { n: values.buildingNumber }),
+            values.floor && t("orders.floor", { n: values.floor }),
+            values.apartmentNumber && t("orders.apt", { n: values.apartmentNumber }),
+            values.city,
+          ]
+            .filter(Boolean)
+            .join(sep)}
+        </UIText>
+        {values.note ? <UIText style={s.reviewSub}>{values.note}</UIText> : null}
+      </SectionCard>
+
+      {/* Payment review */}
+      <SectionCard
+        title={t("checkout.paymentSection")}
+        icon="card-outline"
+        delay={110}
+        action={{ label: t("checkout.editPayment"), onPress: onEditPayment }}>
+        {methods.map((m) => (
+          <Pressable
+            key={m.id}
+            onPress={() => onPaymentChange(m.id)}
+            style={[
+              s.payOption,
+              paymentMethod === m.id && {
+                borderColor:     m.color,
+                borderWidth:     2,
+                backgroundColor: m.bg + "30",
+              },
+            ]}>
+            <View
+              style={[
+                s.payRadio,
+                paymentMethod === m.id && { borderColor: m.color },
+              ]}>
+              {paymentMethod === m.id && (
+                <View style={[s.payRadioDot, { backgroundColor: m.color }]} />
+              )}
+            </View>
+            <View style={[s.payIcon, { backgroundColor: m.bg }]}>
+              <Ionicons name={m.icon} size={18} color={m.color} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <UIText style={s.payTitle}>{m.title}</UIText>
+              <UIText style={s.paySub}>{m.description}</UIText>
+            </View>
+          </Pressable>
+        ))}
+
+        {paymentMethod === "cod" && (
+          <Pressable
+            onPress={onTogglePos}
+            style={[s.posToggle, requestPos && s.posToggleActive]}>
+            <View style={[s.posCheck, requestPos && s.posCheckActive]}>
+              {requestPos && <Ionicons name="checkmark" size={11} color="#fff" />}
+            </View>
+            <UIText style={s.posLabel}>{t("checkout.posRequest")}</UIText>
+          </Pressable>
+        )}
+
+        {isManualWalletPayment(paymentMethod) && (
+          <View style={{ marginTop: 12 }}>
+            <ManualPaymentPanel
+              transferNumber={transferNumber}
+              onTransferNumberChange={onTransferNumberChange}
+              receiptUri={receiptUri}
+              onPickReceipt={onPickReceipt}
+              uploading={uploadingReceipt}
+              error={manualPaymentError}
+            />
+          </View>
+        )}
+
+        {/* Coming-soon placeholder */}
+        <View style={s.comingSoon}>
+          <View style={[s.payIcon, { backgroundColor: theme.colors.slate[100] }]}>
+            <Ionicons name="link-outline" size={16} color={theme.colors.slate[400]} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <UIText style={[s.payTitle, { color: theme.colors.slate[400] }]}>
+              {t("checkout.paymentLink")}
+            </UIText>
+            <UIText style={s.paySub}>{t("checkout.methodComingSoon")}</UIText>
+          </View>
+        </View>
+      </SectionCard>
+
+      {/* Promo */}
+      <SectionCard title={t("checkout.promoSection")} icon="pricetag-outline" delay={170}>
+        <Controller
+          control={control}
+          name="promoCode"
+          render={({ field }) => (
+            <View style={s.promoRow}>
+              <View style={{ flex: 1 }}>
+                <Input
+                  value={field.value ?? ""}
+                  onChangeText={field.onChange}
+                  placeholder={t("checkout.promoPlaceholder")}
+                  editable={!promoApplied}
+                  error={promoError ?? undefined}
+                />
+              </View>
+              <Pressable
+                onPress={onApplyPromo}
+                disabled={promoApplied}
+                style={[s.promoBtn, promoApplied && s.promoBtnApplied]}>
+                <UIText style={[s.promoBtnText, promoApplied && s.promoBtnTextApplied]}>
+                  {promoApplied
+                    ? t("checkout.promoApplied")
+                    : t("checkout.promoApply")}
+                </UIText>
+              </Pressable>
+            </View>
+          )}
+        />
+        {promoApplied && (
+          <View style={s.promoSuccess}>
+            <Ionicons name="gift" size={13} color={theme.colors.green[600]} />
+            <UIText style={s.promoSuccessText}>{t("checkout.promoSuccess")}</UIText>
+          </View>
+        )}
+      </SectionCard>
+
+      {/* Pricing summary */}
+      <SectionCard title={t("checkout.summarySection")} icon="receipt-outline" delay={230}>
+        <SummaryRow
+          label={t("checkout.subtotalRow", { count: pricing.itemCount })}
+          value={formatPrice(pricing.subtotal)}
+        />
+        <SummaryRow
+          label={t("checkout.deliveryRow")}
+          value={
+            deliveryQuote.isFree
+              ? t("common.free")
+              : formatPrice(deliveryQuote.cost)
+          }
+          valueColor={deliveryQuote.isFree ? theme.colors.green[600] : undefined}
+        />
+        {pricing.discount > 0 && (
+          <SummaryRow
+            label={t("checkout.discountRow")}
+            value={`−${formatPrice(pricing.discount)}`}
+            valueColor={theme.colors.green[600]}
+          />
+        )}
+        <View style={summaryStyles.divider} />
+        <View style={summaryStyles.totalRow}>
+          <UIText style={summaryStyles.totalLabel}>{t("checkout.totalRow")}</UIText>
+          <UIText style={summaryStyles.totalValue}>{formatPrice(pricing.total)}</UIText>
+        </View>
+        <View style={summaryStyles.etaPill}>
+          <Ionicons name="time-outline" size={12} color={theme.colors.brand[600]} />
+          <UIText style={summaryStyles.etaText}>
+            {t("checkout.etaText", {
+              min: deliveryQuote.eta.min,
+              max: deliveryQuote.eta.max,
+            })}
+          </UIText>
+        </View>
+      </SectionCard>
+
+      {submitError && (
+        <Animated.View entering={FadeIn.duration(200)} style={errorStyles.box}>
+          <Ionicons name="alert-circle" size={16} color={theme.colors.red[600]} />
+          <UIText style={errorStyles.text}>{submitError}</UIText>
+        </Animated.View>
+      )}
+    </Animated.View>
+  );
+});
+
+const s = StyleSheet.create({
+  // Address review
+  reviewLine: {
+    fontSize:   13,
+    fontFamily: theme.fonts.bold,
+    color:      theme.colors.slate[800],
+    textAlign:  "right",
+    lineHeight: 20,
+  },
+  reviewSub: {
+    fontSize:   11,
+    fontFamily: theme.fonts.regular,
+    color:      theme.colors.slate[500],
+    textAlign:  "right",
+  },
+  reviewDivider: {
+    height:          StyleSheet.hairlineWidth,
+    backgroundColor: theme.colors.slate[100],
+    marginVertical:  6,
+  },
+
+  // ETA pill inline (branch card)
+  etaPillInline: {
+    flexDirection:     "row-reverse",
+    alignItems:        "center",
+    alignSelf:         "flex-end",
+    gap:               5,
+    backgroundColor:   theme.colors.brand[50],
+    paddingHorizontal: 10,
+    paddingVertical:   5,
+    borderRadius:      999,
+    marginTop:         8,
+  },
+  etaPillText: {
+    fontSize:   10,
+    fontFamily: theme.fonts.bold,
+    color:      theme.colors.brand[700],
+  },
+
+  // Payment options (compact radio list)
+  payOption: {
+    flexDirection:  "row-reverse",
+    alignItems:     "center",
+    gap:            10,
+    padding:        12,
+    borderRadius:   14,
+    backgroundColor: "#fff",
+    borderWidth:    1.5,
+    borderColor:    theme.colors.border.default,
+  },
+  payRadio: {
+    width:          18,
+    height:         18,
+    borderRadius:   9,
+    borderWidth:    2,
+    borderColor:    theme.colors.slate[300],
+    alignItems:     "center",
+    justifyContent: "center",
+  },
+  payRadioDot: { width: 8, height: 8, borderRadius: 4 },
+  payIcon: {
+    width:          36,
+    height:         36,
+    borderRadius:   10,
+    alignItems:     "center",
+    justifyContent: "center",
+  },
+  payTitle: {
+    fontSize:   12,
+    fontFamily: theme.fonts.bold,
+    color:      theme.colors.text.primary,
+    textAlign:  "right",
+  },
+  paySub: {
+    fontSize:   10,
+    fontFamily: theme.fonts.regular,
+    color:      theme.colors.slate[400],
+    textAlign:  "right",
+  },
+
+  // POS toggle
+  posToggle: {
+    flexDirection:  "row-reverse",
+    alignItems:     "center",
+    gap:            10,
+    padding:        12,
+    marginTop:      4,
+    borderRadius:   12,
+    backgroundColor: theme.colors.slate[50],
+    borderWidth:    1,
+    borderColor:    theme.colors.border.default,
+  },
+  posToggleActive: {
+    backgroundColor: theme.colors.brand[50],
+    borderColor:     theme.colors.brand[200],
+  },
+  posCheck: {
+    width:          18,
+    height:         18,
+    borderRadius:   5,
+    borderWidth:    1.5,
+    borderColor:    theme.colors.slate[300],
+    alignItems:     "center",
+    justifyContent: "center",
+  },
+  posCheckActive: {
+    backgroundColor: theme.colors.brand[600],
+    borderColor:     theme.colors.brand[600],
+  },
+  posLabel: {
+    flex:       1,
+    fontSize:   12,
+    fontFamily: theme.fonts.bold,
+    color:      theme.colors.slate[700],
+    textAlign:  "right",
+  },
+
+  // Coming-soon payment placeholder
+  comingSoon: {
+    flexDirection:  "row-reverse",
+    alignItems:     "center",
+    gap:            10,
+    padding:        12,
+    borderRadius:   14,
+    borderWidth:    1.5,
+    borderStyle:    "dashed",
+    borderColor:    theme.colors.slate[200],
+    opacity:        0.5,
+  },
+
+  // Promo
+  promoRow: {
+    flexDirection: "row-reverse",
+    alignItems:    "flex-end",
+    gap:           8,
+  },
+  promoBtn: {
+    paddingHorizontal: 14,
+    paddingVertical:   11,
+    borderRadius:      12,
+    backgroundColor:   theme.colors.brand[600],
+    minWidth:          80,
+    alignItems:        "center",
+    justifyContent:    "center",
+  },
+  promoBtnApplied: { backgroundColor: theme.colors.slate[200] },
+  promoBtnText:    { fontSize: 12, fontFamily: theme.fonts.black, color: "#fff" },
+  promoBtnTextApplied: { color: theme.colors.slate[500] },
+  promoSuccess: {
+    flexDirection:     "row-reverse",
+    alignItems:        "center",
+    gap:               6,
+    backgroundColor:   theme.colors.green[50],
+    paddingHorizontal: 10,
+    paddingVertical:   7,
+    borderRadius:      8,
+  },
+  promoSuccessText: {
+    fontSize:   11,
+    fontFamily: theme.fonts.bold,
+    color:      theme.colors.green[700],
+  },
+});

@@ -1,5 +1,6 @@
 ﻿import React from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 
 type Variant = "brand" | "success" | "warning" | "error" | "neutral" | "purple" | "info";
@@ -46,9 +47,9 @@ export function Badge({ children, variant = "neutral", size = "sm", dot = false 
       {dot && (
         <View style={{ width: sz.dotSize, height: sz.dotSize, borderRadius: sz.dotSize / 2, backgroundColor: cfg.dot }} />
       )}
-      <Text style={{ fontSize: sz.fontSize, fontFamily: theme.fonts.bold, color: cfg.text }}>
+      <UIText style={{ fontSize: sz.fontSize, fontFamily: theme.fonts.bold, color: cfg.text }}>
         {children}
-      </Text>
+      </UIText>
     </View>
   );
 }

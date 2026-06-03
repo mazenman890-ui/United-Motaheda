@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -27,6 +27,28 @@ import { useAuth } from "@/features/auth/context";
 import { SubScreenHeader } from "@/features/loyalty/components/SubScreenHeader";
 import { useReferralCode, useReferralRewards } from "@/features/loyalty/hooks/useReferralCode";
 
+// ─── Palette constants ────────────────────────────────────────────────────────
+// Intentional loyalty/invite purple palette — no theme token for these values.
+const INVITE = {
+  violet:        "#4F46E5",  // indigo-600
+  purple:        "#7C3AED",  // violet-600 — primary loyalty accent
+  purpleLight:   "#9333EA",  // purple-600
+  emerald:       "#10B981",  // emerald-500
+  whatsappGreen: "#25D366",  // WhatsApp brand green
+  whatsappDark:  "#128C7E",  // WhatsApp dark green (text)
+} as const;
+
+// White glass overlays on the dark hero gradient
+const IG = {
+  w06:  "rgba(255,255,255,0.06)",
+  w20:  "rgba(255,255,255,0.20)",
+  w75:  "rgba(255,255,255,0.75)",
+} as const;
+
+const HERO_GRAD: [string, string, string] = [INVITE.violet, INVITE.purple, INVITE.purpleLight];
+const SHARE_GRAD: [string, string]        = [INVITE.purple, INVITE.purpleLight];
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function blurActiveElementOnWeb() {
   if (Platform.OS !== "web" || typeof globalThis === "undefined") return;
@@ -49,62 +71,54 @@ export default function InviteScreen() {
   const { data: referral, isLoading } = useReferralCode(isAuthed);
   const { data: rewards = [] }        = useReferralRewards(isAuthed);
 
-  const code          = referral?.code ?? null;
+  const code           = referral?.code ?? null;
   const totalReferrals = rewards.length;
   const totalPoints    = rewards.reduce((s, r) => s + r.points_granted, 0);
 
   useFocusEffect(
     useCallback(() => {
-      return () => {
-        blurActiveElementOnWeb();
-      };
+      return () => { blurActiveElementOnWeb(); };
     }, []),
   );
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
-      <SubScreenHeader
-        title={t("invite.title")}
-        subtitle={t("invite.subtitle")}
-      />
+      <SubScreenHeader title={t("invite.title")} subtitle={t("invite.subtitle")} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}>
 
-        {/* ── Hero gradient banner ────────────────────────── */}
+        {/* ── Hero gradient banner ── */}
         <LinearGradient
-          colors={["#4F46E5", "#7C3AED", "#9333EA"]}
+          colors={HERO_GRAD}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.hero}>
 
           <Animated.View entering={FadeIn.duration(400)} style={styles.heroInner}>
             <View style={styles.heroBadge}>
-              <Ionicons name="people" size={28} color="#fff" />
+              <Ionicons name="people" size={28} color={theme.colors.surface} />
             </View>
             <UIText style={styles.heroTitle}>{t("invite.heroTitle", { appName: t("common.appName") })}</UIText>
-            <UIText style={styles.heroSub}>
-              {t("invite.heroSub")}
-            </UIText>
+            <UIText style={styles.heroSub}>{t("invite.heroSub")}</UIText>
           </Animated.View>
 
-          {/* Decorative circles */}
           <View style={[styles.deco, { top: -40, right: -40, width: 160, height: 160 }]} />
           <View style={[styles.deco, { bottom: -30, left: -30, width: 100, height: 100 }]} />
         </LinearGradient>
 
-        {/* ── Stats row ──────────────────────────────────── */}
+        {/* ── Stats row ── */}
         {isAuthed && (
           <Animated.View entering={FadeInDown.duration(380).delay(100)} style={styles.statsRow}>
-            <StatCell icon="people-outline"   label={t("invite.statReferrals")} value={totalReferrals} color="#7C3AED" />
+            <StatCell icon="people-outline" label={t("invite.statReferrals")} value={totalReferrals} color={INVITE.purple} />
             <View style={styles.statsDivider} />
-            <StatCell icon="star-outline"     label={t("invite.statPoints")}    value={totalPoints}    color={theme.colors.amber[500]} />
+            <StatCell icon="star-outline"   label={t("invite.statPoints")}    value={totalPoints}    color={theme.colors.amber[500]} />
           </Animated.View>
         )}
 
-        {/* ── Code card ──────────────────────────────────── */}
-        <Animated.View entering={FadeInDown.duration(380).delay(180)} style={{ paddingHorizontal: 16 }}>
+        {/* ── Code card ── */}
+        <Animated.View entering={FadeInDown.duration(380).delay(180)} style={{ paddingHorizontal: theme.spacing.lg }}>
           {isAuthed ? (
             isLoading ? (
               <View style={styles.codeCardSkeleton} />
@@ -118,32 +132,17 @@ export default function InviteScreen() {
           )}
         </Animated.View>
 
-        {/* ── How it works ────────────────────────────────── */}
+        {/* ── How it works ── */}
         <Animated.View entering={FadeInDown.duration(380).delay(260)} style={styles.howWrap}>
           <UIText style={styles.howTitle}>{t("invite.howTitle")}</UIText>
           <View style={styles.howList}>
-            <HowStep
-              num="1"
-              color="#7C3AED"
-              title={t("invite.howStep1Title")}
-              body={t("invite.howStep1Body")}
-            />
-            <HowStep
-              num="2"
-              color={theme.colors.brand[600]}
-              title={t("invite.howStep2Title")}
-              body={t("invite.howStep2Body")}
-            />
-            <HowStep
-              num="3"
-              color="#10B981"
-              title={t("invite.howStep3Title")}
-              body={t("invite.howStep3Body")}
-            />
+            <HowStep num="1" color={INVITE.purple}         title={t("invite.howStep1Title")} body={t("invite.howStep1Body")} />
+            <HowStep num="2" color={theme.colors.brand[600]} title={t("invite.howStep2Title")} body={t("invite.howStep2Body")} />
+            <HowStep num="3" color={INVITE.emerald}          title={t("invite.howStep3Title")} body={t("invite.howStep3Body")} />
           </View>
         </Animated.View>
 
-        {/* ── Past referrals ───────────────────────────────── */}
+        {/* ── Past referrals ── */}
         {rewards.length > 0 && (
           <Animated.View entering={FadeInDown.duration(380).delay(320)} style={styles.histWrap}>
             <UIText style={styles.histTitle}>{t("invite.histTitle")}</UIText>
@@ -151,7 +150,7 @@ export default function InviteScreen() {
               {rewards.map((r) => (
                 <View key={r.id} style={styles.histRow}>
                   <View style={styles.histIcon}>
-                    <Ionicons name="person-add-outline" size={15} color="#7C3AED" />
+                    <Ionicons name="person-add-outline" size={15} color={INVITE.purple} />
                   </View>
                   <UIText style={styles.histDate}>
                     {new Date(r.created_at).toLocaleDateString(locale, { day: "numeric", month: "short" })}
@@ -167,7 +166,7 @@ export default function InviteScreen() {
   );
 }
 
-// ─── Code card (authenticated + code exists) ────────────────────────────────────
+// ─── CodeCard ─────────────────────────────────────────────────────────────────
 
 function CodeCard({ code }: { code: string }) {
   const { t } = useTranslation();
@@ -182,13 +181,9 @@ function CodeCard({ code }: { code: string }) {
       withSpring(0.94, { damping: 14 }),
       withSpring(1.00, { damping: 14 }),
     );
-    // Share just the raw code so the user can select "Copy" from the system sheet.
-    // This is the standard clipboard workaround when expo-clipboard is not installed.
     try {
       await Share.share({ message: code, title: t("invite.shareTitle") });
-    } catch {
-      // dismissed — no-op
-    }
+    } catch { /* dismissed */ }
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   }, [code, scale, t]);
@@ -198,22 +193,14 @@ function CodeCard({ code }: { code: string }) {
     setSharing(true);
     try {
       if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-      await Share.share({
-        message: t("invite.shareMessage", { code }),
-        title:   t("invite.shareDialogTitle"),
-      });
-    } catch {
-      // User dismissed the share sheet — not an error
-    } finally {
-      setSharing(false);
-    }
+      await Share.share({ message: t("invite.shareMessage", { code }), title: t("invite.shareDialogTitle") });
+    } catch { /* dismissed */ } finally { setSharing(false); }
   }, [code, sharing, t]);
 
   return (
     <Animated.View style={[styles.codeCard, anim]}>
       <UIText style={styles.codeLabel}>{t("invite.yourCode")}</UIText>
 
-      {/* Code display */}
       <View style={styles.codeBox}>
         <UIText style={styles.codeText}>{code}</UIText>
         <Pressable onPress={handleCopy} hitSlop={8} style={styles.copyBtn} accessibilityRole="button" accessibilityLabel={t("invite.copyCode")}>
@@ -235,42 +222,32 @@ function CodeCard({ code }: { code: string }) {
         </Animated.View>
       )}
 
-      {/* Share button */}
       <Pressable
         onPress={handleShare}
         disabled={sharing}
         accessibilityRole="button"
         accessibilityLabel={t("invite.shareCode")}
         style={({ pressed }) => [styles.shareBtn, pressed && { opacity: 0.88 }]}>
-        <LinearGradient
-          colors={["#7C3AED", "#9333EA"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.shareBtnGrad}>
-          <Ionicons name="share-social-outline" size={18} color="#fff" />
+        <LinearGradient colors={SHARE_GRAD} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.shareBtnGrad}>
+          <Ionicons name="share-social-outline" size={18} color={theme.colors.surface} />
           <UIText style={styles.shareBtnText}>{t("invite.shareCode")}</UIText>
         </LinearGradient>
       </Pressable>
 
-      {/* WhatsApp quick share */}
-      <Pressable
-        onPress={handleShare}
-        accessibilityRole="button"
-        accessibilityLabel={t("invite.whatsappShare")}
-        style={styles.waBtn}>
-        <Ionicons name="logo-whatsapp" size={16} color="#25D366" />
+      <Pressable onPress={handleShare} accessibilityRole="button" accessibilityLabel={t("invite.whatsappShare")} style={styles.waBtn}>
+        <Ionicons name="logo-whatsapp" size={16} color={INVITE.whatsappGreen} />
         <UIText style={styles.waBtnText}>{t("invite.whatsappShare")}</UIText>
       </Pressable>
     </Animated.View>
   );
 }
 
-// ─── No referral code yet ────────────────────────────────────────────────────────
+// ─── NoCodeCard / UnauthCard ──────────────────────────────────────────────────
 
 function NoCodeCard() {
   const { t } = useTranslation();
   return (
-    <View style={[styles.codeCard, { alignItems: "center", paddingVertical: 28, gap: 10 }]}>
+    <View style={[styles.codeCard, { alignItems: "center", paddingVertical: theme.spacing[3.5], gap: 10 }]}>
       <View style={styles.noCodeIcon}>
         <Ionicons name="hourglass-outline" size={28} color={theme.colors.slate[400]} />
       </View>
@@ -282,12 +259,10 @@ function NoCodeCard() {
   );
 }
 
-// ─── Unauthenticated card ────────────────────────────────────────────────────────
-
 function UnauthCard() {
   const { t } = useTranslation();
   return (
-    <View style={[styles.codeCard, { alignItems: "center", paddingVertical: 28, gap: 10 }]}>
+    <View style={[styles.codeCard, { alignItems: "center", paddingVertical: theme.spacing[3.5], gap: 10 }]}>
       <View style={styles.noCodeIcon}>
         <Ionicons name="lock-closed-outline" size={28} color={theme.colors.slate[400]} />
       </View>
@@ -299,9 +274,14 @@ function UnauthCard() {
   );
 }
 
-// ─── Stat cell ────────────────────────────────────────────────────────────────────
+// ─── StatCell ─────────────────────────────────────────────────────────────────
 
-function StatCell({ icon, label, value, color }: { icon: React.ComponentProps<typeof Ionicons>["name"]; label: string; value: number; color: string }) {
+function StatCell({ icon, label, value, color }: {
+  icon:  React.ComponentProps<typeof Ionicons>["name"];
+  label: string;
+  value: number;
+  color: string;
+}) {
   const { i18n } = useTranslation();
   const locale   = i18n.language.startsWith("en") ? "en-US" : "ar-EG";
   return (
@@ -315,7 +295,7 @@ function StatCell({ icon, label, value, color }: { icon: React.ComponentProps<ty
   );
 }
 
-// ─── How-it-works step ────────────────────────────────────────────────────────────
+// ─── HowStep ──────────────────────────────────────────────────────────────────
 
 function HowStep({ num, color, title, body }: { num: string; color: string; title: string; body: string }) {
   return (
@@ -331,26 +311,23 @@ function HowStep({ num, color, title, body }: { num: string; color: string; titl
   );
 }
 
-// ─── Styles ────────────────────────────────────────────────────────────────────
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   hero: {
-    marginHorizontal: 16,
-    marginTop:        16,
+    marginHorizontal: theme.spacing.lg,
+    marginTop:        theme.spacing.lg,
     borderRadius:     24,
-    padding:          24,
+    padding:          theme.spacing[3],
     overflow:         "hidden",
     ...theme.shadow.lg,
   },
-  heroInner: {
-    gap: 10,
-    zIndex: 1,
-  },
+  heroInner: { gap: 10, zIndex: 1 },
   heroBadge: {
     width:           56,
     height:          56,
     borderRadius:    18,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    backgroundColor: IG.w20,
     alignItems:      "center",
     justifyContent:  "center",
     alignSelf:       "flex-end",
@@ -358,31 +335,31 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontFamily:    theme.fonts.black,
     fontSize:      20,
-    color:         "#fff",
+    color:         theme.colors.surface,
     textAlign:     "right",
     letterSpacing: -0.3,
   },
   heroSub: {
     fontFamily: theme.fonts.regular,
     fontSize:   13,
-    color:      "rgba(255,255,255,0.75)",
+    color:      IG.w75,
     textAlign:  "right",
     lineHeight: 20,
   },
   deco: {
     position:        "absolute",
     borderRadius:    999,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: IG.w06,
   },
 
   statsRow: {
     flexDirection:     "row-reverse",
-    marginHorizontal:  16,
-    marginTop:         12,
+    marginHorizontal:  theme.spacing.lg,
+    marginTop:         theme.spacing.md,
     backgroundColor:   theme.colors.surface,
     borderRadius:      20,
-    paddingVertical:   16,
-    paddingHorizontal: 8,
+    paddingVertical:   theme.spacing.lg,
+    paddingHorizontal: theme.spacing.sm,
     ...theme.shadow.card,
     borderWidth: 1,
     borderColor: theme.colors.border.hairline,
@@ -421,7 +398,7 @@ const styles = StyleSheet.create({
     marginTop:       14,
     backgroundColor: theme.colors.surface,
     borderRadius:    22,
-    padding:         20,
+    padding:         theme.spacing[2.5],
     gap:             14,
     borderWidth:     1,
     borderColor:     theme.colors.border.hairline,
@@ -434,23 +411,23 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surfaceSunken,
   },
   codeLabel: {
-    fontFamily: theme.fonts.bold,
-    fontSize:   12,
-    color:      theme.colors.text.tertiary,
-    textAlign:  "right",
+    fontFamily:    theme.fonts.bold,
+    fontSize:      12,
+    color:         theme.colors.text.tertiary,
+    textAlign:     "right",
     textTransform: "none",
   },
   codeBox: {
-    flexDirection:    "row-reverse",
-    alignItems:       "center",
-    justifyContent:   "space-between",
-    backgroundColor:  theme.colors.surfaceSunken,
-    borderRadius:     14,
-    paddingHorizontal: 16,
+    flexDirection:     "row-reverse",
+    alignItems:        "center",
+    justifyContent:    "space-between",
+    backgroundColor:   theme.colors.surfaceSunken,
+    borderRadius:      14,
+    paddingHorizontal: theme.spacing.lg,
     paddingVertical:   14,
-    borderWidth:      1,
-    borderColor:      theme.colors.border.hairline,
-    borderStyle:      "dashed",
+    borderWidth:       1,
+    borderColor:       theme.colors.border.hairline,
+    borderStyle:       "dashed",
   },
   codeText: {
     fontFamily:    theme.fonts.black,
@@ -464,8 +441,8 @@ const styles = StyleSheet.create({
     alignItems:        "center",
     gap:               5,
     backgroundColor:   theme.colors.surface,
-    paddingHorizontal: 12,
-    paddingVertical:   8,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical:   theme.spacing.sm,
     borderRadius:      10,
     borderWidth:       1,
     borderColor:       theme.colors.border.hairline,
@@ -481,8 +458,8 @@ const styles = StyleSheet.create({
     gap:               6,
     backgroundColor:   theme.colors.brand.lighter,
     borderRadius:      10,
-    paddingHorizontal: 12,
-    paddingVertical:   8,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical:   theme.spacing.sm,
     borderWidth:       1,
     borderColor:       theme.colors.border.brandSoft,
   },
@@ -492,38 +469,35 @@ const styles = StyleSheet.create({
     color:      theme.colors.brand[700],
     textAlign:  "right",
   },
-  shareBtn: {
-    borderRadius: 14,
-    overflow:     "hidden",
-  },
+  shareBtn: { borderRadius: 14, overflow: "hidden" },
   shareBtnGrad: {
     flexDirection:     "row-reverse",
     alignItems:        "center",
     justifyContent:    "center",
     gap:               10,
     paddingVertical:   15,
-    paddingHorizontal: 24,
+    paddingHorizontal: theme.spacing[3],
   },
   shareBtnText: {
     fontFamily: theme.fonts.black,
     fontSize:   15,
-    color:      "#fff",
+    color:      theme.colors.surface,
   },
   waBtn: {
     flexDirection:     "row-reverse",
     alignItems:        "center",
     justifyContent:    "center",
-    gap:               8,
-    paddingVertical:   12,
+    gap:               theme.spacing.sm,
+    paddingVertical:   theme.spacing.md,
     borderRadius:      12,
-    backgroundColor:   "#25D36614",
+    backgroundColor:   INVITE.whatsappGreen + "14",
     borderWidth:       1,
-    borderColor:       "#25D36630",
+    borderColor:       INVITE.whatsappGreen + "30",
   },
   waBtnText: {
     fontFamily: theme.fonts.bold,
     fontSize:   13,
-    color:      "#128C7E",
+    color:      INVITE.whatsappDark,
   },
 
   noCodeIcon: {
@@ -536,9 +510,9 @@ const styles = StyleSheet.create({
   },
 
   howWrap: {
-    marginHorizontal: 16,
-    marginTop:        20,
-    gap:              12,
+    marginHorizontal: theme.spacing.lg,
+    marginTop:        theme.spacing[2.5],
+    gap:              theme.spacing.md,
   },
   howTitle: {
     fontFamily:    theme.fonts.black,
@@ -550,8 +524,8 @@ const styles = StyleSheet.create({
   howList: {
     backgroundColor: theme.colors.surface,
     borderRadius:    18,
-    padding:         16,
-    gap:             16,
+    padding:         theme.spacing.lg,
+    gap:             theme.spacing.lg,
     borderWidth:     1,
     borderColor:     theme.colors.border.hairline,
     ...theme.shadow.hairline,
@@ -570,10 +544,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     flexShrink:   0,
   },
-  howNumText: {
-    fontFamily: theme.fonts.black,
-    fontSize:   15,
-  },
+  howNumText: { fontFamily: theme.fonts.black, fontSize: 15 },
   howStepTitle: {
     fontFamily:    theme.fonts.black,
     fontSize:      13,
@@ -590,9 +561,9 @@ const styles = StyleSheet.create({
   },
 
   histWrap: {
-    marginHorizontal: 16,
-    marginTop:        20,
-    gap:              12,
+    marginHorizontal: theme.spacing.lg,
+    marginTop:        theme.spacing[2.5],
+    gap:              theme.spacing.md,
   },
   histTitle: {
     fontFamily:    theme.fonts.black,
@@ -604,7 +575,7 @@ const styles = StyleSheet.create({
   histList: {
     backgroundColor: theme.colors.surface,
     borderRadius:    18,
-    padding:         4,
+    padding:         theme.spacing.xs,
     borderWidth:     1,
     borderColor:     theme.colors.border.hairline,
     ...theme.shadow.hairline,
@@ -619,12 +590,12 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.colors.border.hairline,
   },
   histIcon: {
-    width:          32,
-    height:         32,
-    borderRadius:   10,
-    backgroundColor: "#7C3AED18",
-    alignItems:     "center",
-    justifyContent: "center",
+    width:           32,
+    height:          32,
+    borderRadius:    10,
+    backgroundColor: INVITE.purple + "18",
+    alignItems:      "center",
+    justifyContent:  "center",
   },
   histDate: {
     flex:       1,
@@ -634,9 +605,9 @@ const styles = StyleSheet.create({
     textAlign:  "right",
   },
   histPts: {
-    fontFamily: theme.fonts.black,
-    fontSize:   14,
-    color:      "#7C3AED",
+    fontFamily:    theme.fonts.black,
+    fontSize:      14,
+    color:         INVITE.purple,
     letterSpacing: -0.3,
   },
 });

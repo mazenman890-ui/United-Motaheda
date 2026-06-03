@@ -8,9 +8,9 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { showSuccessSheet, showErrorSheet } from "@/shared/store/appSheetStore";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
@@ -53,17 +53,17 @@ export const ManualPaymentPanel = memo(function ManualPaymentPanel({
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.hint}>{t("payment.walletHint")}</Text>
+      <UIText style={styles.hint}>{t("payment.walletHint")}</UIText>
 
       <View style={styles.numberBlock}>
-        <Text style={styles.walletNumber}>{MANUAL_PAYMENT_WALLET_NUMBER}</Text>
+        <UIText style={styles.walletNumber}>{MANUAL_PAYMENT_WALLET_NUMBER}</UIText>
         <Pressable
           onPress={copyNumber}
           accessibilityRole="button"
           accessibilityLabel={t("payment.copyWalletA11y")}
           style={({ pressed }) => [styles.copyBtn, pressed && { opacity: 0.85 }]}>
           <Ionicons name="copy-outline" size={18} color="#fff" />
-          <Text style={styles.copyBtnText}>{t("payment.copyNumber")}</Text>
+          <UIText style={styles.copyBtnText}>{t("payment.copyNumber")}</UIText>
         </Pressable>
       </View>
 
@@ -77,7 +77,7 @@ export const ManualPaymentPanel = memo(function ManualPaymentPanel({
         error={error && !transferNumber.trim() ? error : undefined}
       />
 
-      <Text style={styles.uploadLabel}>{t("payment.uploadReceipt")}</Text>
+      <UIText style={styles.uploadLabel}>{t("payment.uploadReceipt")}</UIText>
       <Pressable
         onPress={onPickReceipt}
         disabled={uploading}
@@ -92,12 +92,12 @@ export const ManualPaymentPanel = memo(function ManualPaymentPanel({
         ) : (
           <View style={styles.uploadPlaceholder}>
             <Ionicons name="image-outline" size={32} color={theme.colors.slate[400]} />
-            <Text style={styles.uploadPlaceholderText}>{t("payment.pickReceipt")}</Text>
+            <UIText style={styles.uploadPlaceholderText}>{t("payment.pickReceipt")}</UIText>
           </View>
         )}
       </Pressable>
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? <UIText style={styles.errorText}>{error}</UIText> : null}
     </View>
   );
 });

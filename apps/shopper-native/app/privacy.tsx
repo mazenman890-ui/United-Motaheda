@@ -3,9 +3,9 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -24,9 +24,9 @@ function Section({ title, children, delay = 0 }: SectionProps) {
     <Animated.View entering={FadeInDown.duration(350).delay(delay)} style={styles.section}>
       <View style={styles.sectionHeader}>
         <View style={styles.sectionDot} />
-        <Text style={styles.sectionTitle}>{title}</Text>
+        <UIText style={styles.sectionTitle}>{title}</UIText>
       </View>
-      <Text style={styles.sectionBody}>{children}</Text>
+      <UIText style={styles.sectionBody}>{children}</UIText>
     </Animated.View>
   );
 }
@@ -43,7 +43,7 @@ export default function PrivacyScreen() {
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={10}>
           <Ionicons name="arrow-forward" size={18} color={theme.colors.text.primary} />
         </Pressable>
-        <Text style={styles.title}>{t("privacy.title")}</Text>
+        <UIText style={styles.title}>{t("privacy.title")}</UIText>
         <View style={{ width: 38 }} />
       </View>
 
@@ -54,15 +54,15 @@ export default function PrivacyScreen() {
         {/* Last updated */}
         <Animated.View entering={FadeInDown.duration(300)} style={styles.updatedBanner}>
           <Ionicons name="calendar-outline" size={15} color={theme.colors.brand[700]} />
-          <Text style={styles.updatedText}>{t("privacy.lastUpdated")}</Text>
+          <UIText style={styles.updatedText}>{t("privacy.lastUpdated")}</UIText>
         </Animated.View>
 
         {/* Intro */}
         <Animated.View entering={FadeInDown.duration(350).delay(40)} style={styles.introBanner}>
           <Ionicons name="shield-checkmark" size={20} color={theme.colors.brand[600]} />
-          <Text style={styles.introText}>
+          <UIText style={styles.introText}>
             {t("privacy.introBanner")}
-          </Text>
+          </UIText>
         </Animated.View>
 
         <Section title="١. المعلومات التي نجمعها" delay={80}>
@@ -132,9 +132,9 @@ export default function PrivacyScreen() {
           {`نحتفظ بحق تعديل هذه السياسة في أي وقت. سنُعلمك بأي تغييرات جوهرية عبر إشعار داخل التطبيق أو البريد الإلكتروني قبل نفاذ التعديل بـ ٧ أيام على الأقل. استمرار استخدامك للتطبيق بعد التعديل يُعدّ قبولاً منك للسياسة المحدّثة.`}
         </Section>
 
-        <Text style={styles.footer}>
+        <UIText style={styles.footer}>
           الصيدلية المتحدة • مصر • info@unitedpharmacy.com
-        </Text>
+        </UIText>
       </ScrollView>
     </View>
   );

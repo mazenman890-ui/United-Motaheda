@@ -26,6 +26,7 @@ import { useTranslation } from "react-i18next";
 import { PhoneVerifyModal, sendPhoneOtp } from "@/features/auth";
 import { Text } from "@/shared/ui";
 import { theme } from "@/shared/theme";
+import { authStyles } from "@/features/auth/styles/auth.styles";
 
 export default function VerifyPhoneScreen() {
   const { t } = useTranslation();
@@ -60,7 +61,7 @@ export default function VerifyPhoneScreen() {
   if (stage === "sending" || stage === "error") {
     const isError = stage === "error";
     return (
-      <View style={styles.screen}>
+      <View style={authStyles.screen}>
         <Animated.View
           entering={FadeIn.duration(360)}
           style={styles.centerStack}>
@@ -107,7 +108,7 @@ export default function VerifyPhoneScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+    <View style={authStyles.screen}>
       <PhoneVerifyModal
         visible
         initialPhone={phoneStr}
@@ -119,15 +120,11 @@ export default function VerifyPhoneScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: theme.colors.bg,
-  },
   centerStack: {
-    flex:           1,
-    alignItems:     "center",
-    justifyContent: "center",
-    paddingHorizontal: 32,
+    flex:              1,
+    alignItems:        "center",
+    justifyContent:    "center",
+    paddingHorizontal: theme.spacing['3xl'],  // 32
   },
   iconTile: {
     width:           76,

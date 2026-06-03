@@ -4,11 +4,11 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   View,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import * as Haptics from "expo-haptics";
 import Animated, {
   useAnimatedStyle,
@@ -118,9 +118,9 @@ export function Button({
       ) : (
         <>
           {leftIcon}
-          <Text style={{ fontSize: sz.fontSize, fontFamily: theme.fonts.bold, color: textColor }} numberOfLines={1}>
+          <UIText style={{ fontSize: sz.fontSize, fontFamily: theme.fonts.bold, color: textColor }} numberOfLines={1}>
             {children}
-          </Text>
+          </UIText>
           {rightIcon}
         </>
       )}

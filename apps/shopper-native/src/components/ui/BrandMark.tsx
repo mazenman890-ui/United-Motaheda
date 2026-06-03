@@ -1,5 +1,5 @@
 ﻿import React from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import Svg, {
   Defs,
   LinearGradient,
@@ -9,6 +9,7 @@ import Svg, {
   Path,
 } from "react-native-svg";
 import { theme } from "@/shared/theme";
+import { Text as UIText } from "@/shared/ui";
 
 type BrandMarkSize    = "sm" | "md" | "lg" | "xl";
 type BrandMarkVariant = "onHero" | "onLight";
@@ -108,7 +109,7 @@ export function BrandMark({
 
       {showText && (
         <View style={{ alignItems: "center", gap: 3 }}>
-          <Text
+          <UIText
             style={{
               color:         textColor,
               fontSize:      s.titleSize,
@@ -116,9 +117,9 @@ export function BrandMark({
               letterSpacing: 0.2,
             }}>
             صيدليات المتحدة
-          </Text>
+          </UIText>
           {showSlogan && (
-            <Text
+            <UIText
               style={{
                 color:         subtleColor,
                 fontSize:      s.sloganSize,
@@ -126,7 +127,7 @@ export function BrandMark({
                 letterSpacing: 1.6,
               }}>
               لكل داء دواء
-            </Text>
+            </UIText>
           )}
         </View>
       )}

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ProductCard — Premium Dark-Glass Edition
  *
  * A completely redesigned product card with:
@@ -9,7 +9,7 @@
  *   • Elastic spring animations on every interaction
  */
 
-import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
   Platform,
   Pressable,
@@ -100,6 +100,36 @@ const CATEGORY_PALETTE: Record<string, [string, string, string]> = {
 
 const DEFAULT_PALETTE: [string, string, string] = ["#0c1a2e", "#0c2a48", theme.colors.brand[600]];
 
+// ─── Card-specific palette (glass/overlay values without theme tokens) ────────
+// These intentional design values appear on image/dark backgrounds where theme
+// surface tokens don't apply — they are approved glass-surface constants.
+const CARD = {
+  // Dark slate overlay borders
+  border05:       "rgba(15,23,42,0.05)",
+  border07:       "rgba(15,23,42,0.07)",
+  border08:       "rgba(15,23,42,0.08)",
+  // Image overlays
+  imgFade:        "rgba(5,12,24,0.42)",   // dark bottom-fade on image
+  oosScrim:       "rgba(248,250,252,0.90)", // OOS scrim over image
+  // Low-stock badge (dark red tint on image)
+  lowStockBg:     "rgba(30,10,10,0.82)",
+  lowStockBorder: "rgba(252,165,165,0.25)",
+  // Heart button glass surface
+  heartBg:        "rgba(255,255,255,0.95)",
+  // Flash feedback chips
+  flashBg:        "rgba(6,30,48,0.88)",
+  flashErrBg:     "rgba(60,10,10,0.88)",
+  flashTeal:      "rgba(14,184,168,0.30)",
+  flashRose:      "rgba(252,165,165,0.30)",
+  // Accent colours without palette tokens
+  rose300:        "#FCA5A5",   // rose-300 — error/max state on dark bg
+  teal200:        "#6EE7B7",   // teal-200  — add-to-cart flash text
+  successGreen:   "#059669",   // emerald-600 — add-to-cart success bg
+} as const;
+
+// NEW badge gradient — bright blue, no theme palette token
+const NEW_BADGE_GRADIENT: [string, string] = ["#2563EB", "#1D4ED8"];
+
 function categoryIcon(cat: string): React.ComponentProps<typeof Ionicons>["name"] {
   const c = cat.toLowerCase();
   if (c.includes("hair") || c.includes("شعر"))                              return "sparkles-outline";
@@ -128,9 +158,7 @@ function ProductImagePlaceholder({ category }: { category: string }) {
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={StyleSheet.absoluteFill}>
-      {/* Corner glow arc */}
       <View style={[styles.placeholderArc, { backgroundColor: iconColor + "18" }]} />
-      {/* Centre icon */}
       <View style={styles.placeholderCenter}>
         <View style={[styles.placeholderRing, { borderColor: iconColor + "30" }]}>
           <View style={[styles.placeholderDisc, { backgroundColor: iconColor + "20" }]}>
@@ -182,8 +210,6 @@ export const ProductCard = memo(function ProductCard({
     transform: [{ scale: cardScale.value }],
   }));
 
-  // Opacity is static per product — kept outside the worklet so the worklet
-  // only reads shared values and never touches the JS closure on the UI thread.
   const btnAnim = useAnimatedStyle(() => ({
     transform: [{ scale: btnScale.value }],
   }));
@@ -195,7 +221,7 @@ export const ProductCard = memo(function ProductCard({
   const handlePressIn  = () => { cardScale.value = withSpring(0.975, { damping: 20, stiffness: 420 }); };
   const handlePressOut = () => { cardScale.value = withSpring(1.0,   { damping: 18, stiffness: 380 }); };
 
-  const maxQty = product.inStock && product.stock > 0 ? Math.floor(product.stock) : 0;
+  const maxQty  = product.inStock && product.stock > 0 ? Math.floor(product.stock) : 0;
   const isAtMax = maxQty > 0 && cartQty >= maxQty;
 
   const handleAddToCart = useCallback(() => {
@@ -228,9 +254,6 @@ export const ProductCard = memo(function ProductCard({
         : Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       ).catch(() => {});
     }
-    // Crisp single-pop: fast dip → near-critically-damped spring that lands
-    // precisely at 1.0 with no lingering oscillation.
-    // damping ratio ≈ 0.87 (22 / 2√(450×0.4)) → minimal overshoot, snappy.
     hrtScale.value = withSequence(
       withTiming(0.80, { duration: 75 }),
       withSpring(1.0,  { damping: 22, stiffness: 450, mass: 0.4 }),
@@ -242,26 +265,22 @@ export const ProductCard = memo(function ProductCard({
     ? (product.nameAr ?? product.name)
     : (product.nameEn ?? product.name);
 
-  // Only show ratings when real data exists — never fake a value
-  const hasRating = product.ratingAvg != null && product.ratingAvg > 0;
-  const isLowStock = product.stock > 0 && product.stock <= 3;
+  const hasRating   = product.ratingAvg != null && product.ratingAvg > 0;
+  const isLowStock  = product.stock > 0 && product.stock <= 3;
 
-  // Discount — prefer real field, fall back to caller prop
   const resolvedDiscount = product.discountPercent ?? discountPercent ?? null;
+  const origPrice        = resolvedDiscount ? product.price / (1 - resolvedDiscount / 100) : null;
 
-  const origPrice  = resolvedDiscount ? product.price / (1 - resolvedDiscount / 100) : null;
-
-  // Badge — prefer real product flags, fall back to explicit prop, never fake
   const resolvedBadge =
     product.isBestseller ? "hot" :
     product.isNew        ? "new" :
     product.isSale       ? "sale" :
-    badge; // explicit override from caller (e.g. deals screen passing "sale")
+    badge;
 
   const badgeMeta =
-    resolvedBadge === "new"  ? { label: t("products.badgeNew"),                                               grad: ["#2563EB", "#1D4ED8"] as [string, string] } :
-    resolvedBadge === "hot"  ? { label: t("products.badgeBestSeller"),                                        grad: [theme.colors.red[500], theme.colors.red[700]] as [string, string] } :
-    resolvedBadge === "sale" ? { label: t("products.badgeSale", { n: Math.round(resolvedDiscount ?? 0) }),    grad: [theme.colors.amber[500], theme.colors.amber[600]] as [string, string] } :
+    resolvedBadge === "new"  ? { label: t("products.badgeNew"),                                              grad: NEW_BADGE_GRADIENT } :
+    resolvedBadge === "hot"  ? { label: t("products.badgeBestSeller"),                                       grad: [theme.colors.red[500], theme.colors.red[700]] as [string, string] } :
+    resolvedBadge === "sale" ? { label: t("products.badgeSale", { n: Math.round(resolvedDiscount ?? 0) }),   grad: [theme.colors.amber[500], theme.colors.amber[600]] as [string, string] } :
     null;
 
   // ── GRID variant ───────────────────────────────────────────────────────────
@@ -274,7 +293,6 @@ export const ProductCard = memo(function ProductCard({
         onPress={onPress}
         style={[cardAnim, styles.gridCard]}>
 
-        {/* ── Image area ── */}
         <View style={styles.imgBox}>
           {product.imageUrl ? (
             <Image
@@ -287,11 +305,8 @@ export const ProductCard = memo(function ProductCard({
             <ProductImagePlaceholder category={product.categoryName} />
           )}
 
-          {/* Dark-fade at bottom — View is cheaper than LinearGradient for
-              a decorative overlay that never changes colours */}
           <View style={[styles.imgFade, { pointerEvents: "none" }]} />
 
-          {/* OOS overlay */}
           {!product.inStock && (
             <View style={styles.oosOverlay}>
               <View style={styles.oosPill}>
@@ -301,22 +316,21 @@ export const ProductCard = memo(function ProductCard({
             </View>
           )}
 
-          {/* Low-stock banner */}
           {isLowStock && product.inStock && (
             <View style={styles.lowStockBadge}>
-              <Ionicons name="warning" size={10} color="#FCA5A5" />
-              <UIText variant="eyebrow" style={styles.lowStockText}>{t("products.lowStockCount", { n: product.stock })}</UIText>
+              <Ionicons name="warning" size={10} color={CARD.rose300} />
+              <UIText variant="eyebrow" style={styles.lowStockText}>
+                {t("products.lowStockCount", { n: product.stock })}
+              </UIText>
             </View>
           )}
 
-          {/* Cart qty chip */}
           {inCart && (
             <View style={styles.cartChip}>
               <UIText variant="eyebrow" style={styles.cartChipText}>{cartQty}</UIText>
             </View>
           )}
 
-          {/* Feature badge */}
           {badgeMeta && !inCart && (
             <LinearGradient
               colors={badgeMeta.grad}
@@ -327,7 +341,6 @@ export const ProductCard = memo(function ProductCard({
             </LinearGradient>
           )}
 
-          {/* Wishlist button */}
           <Animated.View style={[styles.heartWrap, hrtAnim]}>
             <Pressable onPress={handleWishlist} hitSlop={8}
               style={[styles.heartBtn, inWishlist && styles.heartBtnActive]}>
@@ -339,7 +352,6 @@ export const ProductCard = memo(function ProductCard({
             </Pressable>
           </Animated.View>
 
-          {/* Added / Maxed flash */}
           {(showAdded || showMaxed) && (
             <Animated.View
               entering={FadeIn.duration(120)}
@@ -348,7 +360,7 @@ export const ProductCard = memo(function ProductCard({
               <Ionicons
                 name={showMaxed ? "alert-circle" : "checkmark-circle"}
                 size={12}
-                color={showMaxed ? "#FCA5A5" : "#6EE7B7"}
+                color={showMaxed ? CARD.rose300 : CARD.teal200}
               />
               <UIText variant="eyebrow" style={[styles.flashText, showMaxed && styles.flashTextMax]}>
                 {showMaxed ? t("common.maxQty") : t("products.addedToCart")}
@@ -357,7 +369,6 @@ export const ProductCard = memo(function ProductCard({
           )}
         </View>
 
-        {/* ── Info ── */}
         <View style={styles.gridInfo}>
           <UIText variant="eyebrow" align="right" numberOfLines={1} style={styles.categoryLabel}>
             {product.categoryName}
@@ -366,14 +377,12 @@ export const ProductCard = memo(function ProductCard({
             {displayName}
           </UIText>
 
-          {/* Stars row — only shown when product has real ratings */}
           {hasRating && (
             <View style={styles.starsRow}>
               <Stars value={product.ratingAvg!} count={product.ratingCount} size={10} />
             </View>
           )}
 
-          {/* Price + Add button */}
           <View style={styles.priceRow}>
             <View style={{ alignItems: "flex-end", gap: 1 }}>
               <View style={styles.priceInner}>
@@ -389,7 +398,6 @@ export const ProductCard = memo(function ProductCard({
               )}
             </View>
 
-            {/* Add to Cart CTA */}
             <Animated.View style={[btnAnim, !product.inStock && styles.btnDisabled]}>
               <Pressable
                 onPress={handleAddToCart}
@@ -398,18 +406,18 @@ export const ProductCard = memo(function ProductCard({
                 style={styles.addBtnWrap}>
                 {isAtMax ? (
                   <View style={[styles.addBtn, styles.addBtnLocked]}>
-                    <Ionicons name="lock-closed" size={14} color="#FCA5A5" />
+                    <Ionicons name="lock-closed" size={14} color={CARD.rose300} />
                   </View>
                 ) : (
                   <View style={[styles.addBtn, showAdded && styles.addBtnSuccess]}>
                     {showAdded ? (
-                      <Ionicons name="checkmark" size={18} color="#fff" />
+                      <Ionicons name="checkmark" size={18} color={theme.colors.surface} />
                     ) : inCart ? (
                       <UIText variant="caption" weight="black" style={styles.addBtnQty}>
                         {cartQty}
                       </UIText>
                     ) : (
-                      <Ionicons name="add" size={20} color="#fff" />
+                      <Ionicons name="add" size={20} color={theme.colors.surface} />
                     )}
                   </View>
                 )}
@@ -430,7 +438,6 @@ export const ProductCard = memo(function ProductCard({
       onPress={onPress}
       style={[cardAnim, styles.rowCard]}>
 
-      {/* Thumbnail */}
       <View style={styles.rowThumb}>
         {product.imageUrl ? (
           <Image
@@ -453,7 +460,6 @@ export const ProductCard = memo(function ProductCard({
         )}
       </View>
 
-      {/* Info */}
       <View style={styles.rowInfo}>
         <UIText variant="eyebrow" align="right" numberOfLines={1} style={styles.categoryLabel}>
           {product.categoryName}
@@ -462,7 +468,7 @@ export const ProductCard = memo(function ProductCard({
           {displayName}
         </UIText>
         {hasRating && (
-          <View style={[styles.starsRow, { marginTop: 4 }]}>
+          <View style={[styles.starsRow, { marginTop: theme.spacing.xs }]}>
             <Stars value={product.ratingAvg!} count={product.ratingCount} size={9} />
           </View>
         )}
@@ -481,7 +487,6 @@ export const ProductCard = memo(function ProductCard({
         </View>
       </View>
 
-      {/* Row actions */}
       <View style={styles.rowActions}>
         <Animated.View style={hrtAnim}>
           <Pressable onPress={handleWishlist} hitSlop={8}
@@ -498,16 +503,16 @@ export const ProductCard = memo(function ProductCard({
           <Pressable onPress={handleAddToCart} disabled={!product.inStock} hitSlop={8} style={styles.rowAddWrap}>
             {isAtMax ? (
               <View style={[styles.rowActionBtn, styles.addBtnLocked]}>
-                <Ionicons name="lock-closed" size={14} color="#FCA5A5" />
+                <Ionicons name="lock-closed" size={14} color={CARD.rose300} />
               </View>
             ) : (
               <View style={[styles.rowActionBtn, styles.addBtnBase, showAdded && styles.addBtnSuccess]}>
                 {showAdded ? (
-                  <Ionicons name="checkmark" size={18} color="#fff" />
+                  <Ionicons name="checkmark" size={18} color={theme.colors.surface} />
                 ) : inCart ? (
                   <UIText variant="caption" weight="black" style={styles.addBtnQty}>{cartQty}</UIText>
                 ) : (
-                  <Ionicons name="add" size={20} color="#fff" />
+                  <Ionicons name="add" size={20} color={theme.colors.surface} />
                 )}
               </View>
             )}
@@ -517,8 +522,8 @@ export const ProductCard = memo(function ProductCard({
     </AnimatedPressable>
   );
 // Custom comparator — skip re-render when only `onPress` changes.
-// ProductGrid creates a new inline arrow per renderItem call; comparing it
-// would always return false and defeat memo entirely.  The actual navigation
+// FlashList creates a new inline arrow per renderItem call; comparing it
+// would always return false and defeat memo entirely. The actual navigation
 // target (product.id) is stable because it is embedded in `product`, which
 // we DO compare by reference.
 }, (prev, next) =>
@@ -531,17 +536,15 @@ export const ProductCard = memo(function ProductCard({
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const CARD_BG = "#FFFFFF";
-
 const styles = StyleSheet.create({
   // ── Grid card ──────────────────────────────────────────────────────────────
   gridCard: {
-    backgroundColor: CARD_BG,
+    backgroundColor: theme.colors.surface,
     borderRadius:    20,
     overflow:        "hidden",
     borderWidth:     1,
-    borderColor:     "rgba(15,23,42,0.07)",
-    shadowColor:     "#0C2240",
+    borderColor:     CARD.border07,
+    shadowColor:     theme.colors.hero,
     shadowOffset:    { width: 0, height: 4 },
     shadowOpacity:   0.10,
     shadowRadius:    14,
@@ -550,7 +553,7 @@ const styles = StyleSheet.create({
 
   imgBox: {
     height:          172,
-    backgroundColor: "#F0F4F8",
+    backgroundColor: theme.colors.subtle,
     position:        "relative",
   },
 
@@ -560,9 +563,7 @@ const styles = StyleSheet.create({
     left:            0,
     right:           0,
     height:          64,
-    // Solid semi-transparent overlay — cheaper than LinearGradient (no GPU
-    // gradient shader), provides enough contrast for the info that overlaps.
-    backgroundColor: "rgba(5,12,24,0.42)",
+    backgroundColor: CARD.imgFade,
   },
 
   placeholderArc: {
@@ -579,45 +580,45 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   placeholderRing: {
-    width:        84,
-    height:       84,
-    borderRadius: 42,
-    borderWidth:  1.5,
-    alignItems:   "center",
+    width:          84,
+    height:         84,
+    borderRadius:   42,
+    borderWidth:    1.5,
+    alignItems:     "center",
     justifyContent: "center",
   },
   placeholderDisc: {
-    width:        72,
-    height:       72,
-    borderRadius: 36,
-    alignItems:   "center",
+    width:          72,
+    height:         72,
+    borderRadius:   36,
+    alignItems:     "center",
     justifyContent: "center",
   },
 
   oosOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(248,250,252,0.90)",
+    backgroundColor: CARD.oosScrim,
     alignItems:      "center",
     justifyContent:  "center",
   },
   oosPill: {
-    flexDirection:   "row",
-    alignItems:      "center",
-    gap:             5,
-    backgroundColor: theme.colors.slate[100],
-    borderRadius:    10,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderWidth:     1,
-    borderColor:     theme.colors.slate[200],
+    flexDirection:     "row",
+    alignItems:        "center",
+    gap:               5,
+    backgroundColor:   theme.colors.slate[100],
+    borderRadius:      10,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical:   7,
+    borderWidth:       1,
+    borderColor:       theme.colors.slate[200],
   },
   oosPillSmall: {
-    backgroundColor: theme.colors.slate[100],
-    borderRadius:    6,
+    backgroundColor:   theme.colors.slate[100],
+    borderRadius:      6,
     paddingHorizontal: 7,
     paddingVertical:   3,
-    borderWidth:     1,
-    borderColor:     theme.colors.slate[200],
+    borderWidth:       1,
+    borderColor:       theme.colors.slate[200],
   },
   oosText: {
     color:      theme.colors.slate[500],
@@ -626,63 +627,63 @@ const styles = StyleSheet.create({
   },
 
   lowStockBadge: {
-    position:        "absolute",
-    bottom:          10,
-    left:            10,
-    flexDirection:   "row",
-    alignItems:      "center",
-    gap:             4,
-    backgroundColor: "rgba(30,10,10,0.82)",
-    borderRadius:    8,
-    paddingHorizontal: 8,
+    position:          "absolute",
+    bottom:            10,
+    left:              10,
+    flexDirection:     "row",
+    alignItems:        "center",
+    gap:               theme.spacing.xs,
+    backgroundColor:   CARD.lowStockBg,
+    borderRadius:      8,
+    paddingHorizontal: theme.spacing.sm,
     paddingVertical:   5,
-    borderWidth:     1,
-    borderColor:     "rgba(252,165,165,0.25)",
+    borderWidth:       1,
+    borderColor:       CARD.lowStockBorder,
   },
   lowStockText: {
-    color:      "#FCA5A5",
+    color:      CARD.rose300,
     fontSize:   10,
     fontFamily: theme.fonts.bold,
   },
 
   cartChip: {
-    position:        "absolute",
-    top:             10,
-    left:            10,
-    backgroundColor: theme.colors.brand[600],
-    borderRadius:    999,
-    minWidth:        24,
-    height:          24,
-    alignItems:      "center",
-    justifyContent:  "center",
+    position:          "absolute",
+    top:               10,
+    left:              10,
+    backgroundColor:   theme.colors.brand[600],
+    borderRadius:      999,
+    minWidth:          24,
+    height:            24,
+    alignItems:        "center",
+    justifyContent:    "center",
     paddingHorizontal: 7,
-    borderWidth:     2,
-    borderColor:     "#fff",
-    shadowColor:     theme.colors.brand[600],
-    shadowOffset:    { width: 0, height: 2 },
-    shadowOpacity:   0.55,
-    shadowRadius:    6,
-    elevation:       4,
+    borderWidth:       2,
+    borderColor:       theme.colors.surface,
+    shadowColor:       theme.colors.brand[600],
+    shadowOffset:      { width: 0, height: 2 },
+    shadowOpacity:     0.55,
+    shadowRadius:      6,
+    elevation:         4,
   },
   cartChipText: {
-    color:      "#fff",
+    color:      theme.colors.surface,
     fontSize:   10,
     fontFamily: theme.fonts.black,
   },
 
   featureBadge: {
-    position:         "absolute",
-    top:              10,
-    left:             10,
-    borderRadius:     8,
+    position:          "absolute",
+    top:               10,
+    left:              10,
+    borderRadius:      8,
     paddingHorizontal: 9,
-    paddingVertical:   4,
-    overflow:         "hidden",
+    paddingVertical:   theme.spacing.xs,
+    overflow:          "hidden",
   },
   featureBadgeText: {
-    color:      "#fff",
-    fontSize:   9.5,
-    fontFamily: theme.fonts.black,
+    color:         theme.colors.surface,
+    fontSize:      9.5,
+    fontFamily:    theme.fonts.black,
     letterSpacing: 0.3,
   },
 
@@ -695,22 +696,21 @@ const styles = StyleSheet.create({
     width:           32,
     height:          32,
     borderRadius:    10,
-    backgroundColor: "rgba(255,255,255,0.95)",
+    backgroundColor: CARD.heartBg,
     alignItems:      "center",
     justifyContent:  "center",
     borderWidth:     1,
-    borderColor:     "rgba(15,23,42,0.08)",
+    borderColor:     CARD.border08,
     overflow:        "hidden",
-    shadowColor:     "#0C2240",
+    shadowColor:     theme.colors.hero,
     shadowOffset:    { width: 0, height: 2 },
     shadowOpacity:   0.06,
     shadowRadius:    4,
     elevation:       2,
   },
-  // Soft rose tint when favourited — elegant, not aggressively red
   heartBtnActive: {
-    backgroundColor: "#FFF0F3",
-    borderColor:     "#FECDD3",
+    backgroundColor: theme.colors.rose[50],
+    borderColor:     theme.colors.rose[100],
   },
 
   flashChip: {
@@ -720,38 +720,37 @@ const styles = StyleSheet.create({
     flexDirection:     "row",
     alignItems:        "center",
     gap:               5,
-    backgroundColor:   "rgba(6,30,48,0.88)",
+    backgroundColor:   CARD.flashBg,
     borderRadius:      9,
     paddingHorizontal: 10,
     paddingVertical:   6,
     borderWidth:       1,
-    borderColor:       "rgba(14,184,168,0.30)",
+    borderColor:       CARD.flashTeal,
   },
   flashChipMax: {
-    borderColor:     "rgba(252,165,165,0.30)",
-    backgroundColor: "rgba(60,10,10,0.88)",
+    borderColor:     CARD.flashRose,
+    backgroundColor: CARD.flashErrBg,
   },
   flashText: {
-    color:      "#6EE7B7",
+    color:      CARD.teal200,
     fontSize:   10,
     fontFamily: theme.fonts.bold,
   },
   flashTextMax: {
-    color: "#FCA5A5",
+    color: CARD.rose300,
   },
 
-  // Info section
   gridInfo: {
-    padding: 14,
-    gap:     5,
-    backgroundColor: CARD_BG,
+    padding:          14,
+    gap:              5,
+    backgroundColor:  theme.colors.surface,
   },
   categoryLabel: {
-    color:      theme.colors.slate[400],
-    fontSize:   9.5,
+    color:         theme.colors.slate[400],
+    fontSize:      9.5,
     letterSpacing: 0.4,
     textTransform: "uppercase",
-    fontFamily: theme.fonts.bold,
+    fontFamily:    theme.fonts.bold,
   },
   productName: {
     color:      theme.colors.slate[900],
@@ -774,12 +773,12 @@ const styles = StyleSheet.create({
     flexDirection:  "row-reverse",
     alignItems:     "flex-end",
     justifyContent: "space-between",
-    marginTop:      8,
+    marginTop:      theme.spacing.sm,
   },
   priceInner: {
-    flexDirection:  "row-reverse",
-    alignItems:     "baseline",
-    gap:            3,
+    flexDirection: "row-reverse",
+    alignItems:    "baseline",
+    gap:           3,
   },
   priceValue: {
     color:         theme.colors.teal[600],
@@ -810,69 +809,61 @@ const styles = StyleSheet.create({
     alignItems:      "center",
     justifyContent:  "center",
     overflow:        "hidden",
-    // Default teal background — replaces the LinearGradient.
-    // Using a flat colour is dramatically cheaper on both iOS (Metal) and
-    // Android (canvas): no shader compilation, no per-frame gradient draw.
     backgroundColor: theme.colors.teal[500],
   },
   addBtnSuccess: {
-    // Swap to green when "added" flash is showing
-    backgroundColor: "#059669",
+    backgroundColor: CARD.successGreen,
   },
-  // Base teal for ROW variant buttons (rowActionBtn has its own bg, so we
-  // need to explicitly override it here)
   addBtnBase: {
     backgroundColor: theme.colors.teal[500],
     borderColor:     theme.colors.brand[600],
   },
-  // Applied to btnAnim wrapper when product is out-of-stock — keeps the
-  // opacity computation out of the Reanimated worklet (pure JS, no UI thread)
   btnDisabled: {
     opacity: 0.4,
   },
   addBtnLocked: {
-    backgroundColor: "#FEF2F2",
+    backgroundColor: theme.colors.error.bg,
     borderWidth:     1,
-    borderColor:     "#FECACA",
+    borderColor:     theme.colors.rose[100],
   },
   addBtnQty: {
-    color:      "#fff",
+    color:      theme.colors.surface,
     fontSize:   13,
     fontFamily: theme.fonts.black,
   },
 
   // ── Row variant ────────────────────────────────────────────────────────────
   rowCard: {
-    flexDirection:   "row-reverse",
-    alignItems:      "center",
-    gap:             14,
-    backgroundColor: CARD_BG,
-    borderRadius:    18,
-    padding:         14,
-    borderWidth:     1,
-    borderColor:     "rgba(15,23,42,0.07)",
-    shadowColor:     "#0C2240",
-    shadowOffset:    { width: 0, height: 3 },
-    shadowOpacity:   0.08,
-    shadowRadius:    10,
-    elevation:       4,
+    flexDirection:    "row-reverse",
+    alignItems:       "center",
+    gap:              14,
+    backgroundColor:  theme.colors.surface,
+    borderRadius:     18,
+    padding:          14,
+    borderWidth:      1,
+    borderColor:      CARD.border07,
+    shadowColor:      theme.colors.hero,
+    shadowOffset:     { width: 0, height: 3 },
+    shadowOpacity:    0.08,
+    shadowRadius:     10,
+    elevation:        4,
   },
   rowThumb: {
-    width:        86,
-    height:       86,
-    borderRadius: 16,
-    overflow:     "hidden",
-    backgroundColor: "#F0F4F8",
-    position:     "relative",
+    width:           86,
+    height:          86,
+    borderRadius:    16,
+    overflow:        "hidden",
+    backgroundColor: theme.colors.subtle,
+    position:        "relative",
   },
   thumbBadge: {
-    position:         "absolute",
-    top:              4,
-    right:            4,
-    borderRadius:     6,
+    position:          "absolute",
+    top:               theme.spacing.xs,
+    right:             theme.spacing.xs,
+    borderRadius:      6,
     paddingHorizontal: 5,
     paddingVertical:   2,
-    overflow:         "hidden",
+    overflow:          "hidden",
   },
   rowInfo: {
     flex: 1,
@@ -898,14 +889,14 @@ const styles = StyleSheet.create({
     overflow:     "hidden",
   },
   rowActionBtn: {
-    width:          38,
-    height:         38,
-    borderRadius:   12,
-    alignItems:     "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(15,23,42,0.05)",
-    borderWidth:    1,
-    borderColor:    "rgba(15,23,42,0.07)",
-    overflow:       "hidden",
+    width:           38,
+    height:          38,
+    borderRadius:    12,
+    alignItems:      "center",
+    justifyContent:  "center",
+    backgroundColor: CARD.border05,
+    borderWidth:     1,
+    borderColor:     CARD.border07,
+    overflow:        "hidden",
   },
 });

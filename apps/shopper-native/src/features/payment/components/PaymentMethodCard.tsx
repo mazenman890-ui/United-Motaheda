@@ -1,5 +1,6 @@
 ﻿import React from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
@@ -59,14 +60,14 @@ export function PaymentMethodCard({ method, selected, onSelect }: Props) {
 
         {/* Text */}
         <View style={styles.textWrap}>
-          <Text style={[styles.label, selected && { color: theme.colors.text.primary, fontFamily: theme.fonts.black }]}>
+          <UIText style={[styles.label, selected && { color: theme.colors.text.primary, fontFamily: theme.fonts.black }]}>
             {t(method.labelKey)}
-          </Text>
-          <Text style={styles.desc}>{t(method.descKey)}</Text>
+          </UIText>
+          <UIText style={styles.desc}>{t(method.descKey)}</UIText>
           {method.phone && (
             <View style={styles.phoneRow}>
               <Ionicons name="call-outline" size={12} color={colors.accent} />
-              <Text style={styles.phoneText}>{method.phone}</Text>
+              <UIText style={styles.phoneText}>{method.phone}</UIText>
             </View>
           )}
 
@@ -74,7 +75,7 @@ export function PaymentMethodCard({ method, selected, onSelect }: Props) {
           {selected && (
             <Animated.View entering={FadeIn.duration(200)} style={styles.secureBadge}>
               <Ionicons name="shield-checkmark" size={10} color={theme.colors.green[600]} />
-              <Text style={styles.secureText}>{t("payment.secure")}</Text>
+              <UIText style={styles.secureText}>{t("payment.secure")}</UIText>
             </Animated.View>
           )}
         </View>
@@ -85,14 +86,14 @@ export function PaymentMethodCard({ method, selected, onSelect }: Props) {
         <Animated.View entering={FadeIn.duration(250)} style={styles.detailsCard}>
           <View style={styles.detailRow}>
             <Ionicons name="information-circle-outline" size={14} color={theme.colors.slate[400]} />
-            <Text style={styles.detailText}>{t(method.detailsKey)}</Text>
+            <UIText style={styles.detailText}>{t(method.detailsKey)}</UIText>
           </View>
           {method.phone && (
             <View style={styles.detailRow}>
               <Ionicons name="call-outline" size={14} color={colors.accent} />
-              <Text style={[styles.detailText, { color: colors.accent, fontFamily: theme.fonts.bold }]}>
+              <UIText style={[styles.detailText, { color: colors.accent, fontFamily: theme.fonts.bold }]}>
                 {method.phone}
-              </Text>
+              </UIText>
             </View>
           )}
         </Animated.View>

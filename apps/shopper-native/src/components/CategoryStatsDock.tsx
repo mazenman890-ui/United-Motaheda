@@ -1,5 +1,6 @@
 ﻿import React, { useEffect } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import Animated, {
@@ -82,7 +83,7 @@ function StatsError({ onRetry }: { onRetry: () => void }) {
   return (
     <Pressable onPress={onRetry} style={styles.errorDock}>
       <Ionicons name="refresh-outline" size={16} color={theme.colors.amber[600]} />
-      <Text style={styles.errorText}>{t("products.statsError")}</Text>
+      <UIText style={styles.errorText}>{t("products.statsError")}</UIText>
     </Pressable>
   );
 }
@@ -126,9 +127,9 @@ function StatCell({ icon, value, label, accent, bg, isNumeric, index, isLast }: 
       {isNumeric && typeof value === "number" ? (
         <AnimatedNumber value={value} />
       ) : (
-        <Text style={styles.statValue}>{value}</Text>
+        <UIText style={styles.statValue}>{value}</UIText>
       )}
-      <Text style={styles.statLabel}>{label}</Text>
+      <UIText style={styles.statLabel}>{label}</UIText>
     </Animated.View>
   );
 }

@@ -97,6 +97,10 @@ if (IS_BROWSER) {
 }
 
 // ─── 4. ReactDOM.render → createRoot bridge ───────────────────────────────────
+// Note: on web, Metro already aliases 'react-dom' to reactDomR19Web.js which
+// injects render() backed by createRoot. This block is a belt-and-suspenders
+// safety net for any edge-case that escapes the Metro alias (e.g. pre-bundled
+// third-party chunks that embed their own react-dom copy).
 
 if (IS_BROWSER) {
   try {
@@ -109,32 +113,24 @@ if (IS_BROWSER) {
       const createRoot = ReactDOMClient.createRoot;
 
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const ReactDOM = require("react-dom") as {
-        render?: (...args: unknown[]) => unknown;
+      const ReactDOM = require("react-dom") as Record<string, unknown>;
+
+      // React 19 removed render() — inject unconditionally regardless of
+      // whether it existed previously (unlike React 18 where it was defined).
+      (ReactDOM as any).render = function (
+        element: unknown,
+        container: Element & { __reactRoot?: ReturnType<typeof createRoot> },
+        callback?: () => void,
+      ) {
+        if (!container.__reactRoot) {
+          container.__reactRoot = createRoot(container);
+        }
+        container.__reactRoot.render(element);
+        callback?.();
       };
-
-      if (ReactDOM && typeof ReactDOM.render === "function") {
-        const origRender = ReactDOM.render.bind(ReactDOM);
-
-        (ReactDOM as any).render = function (
-          element: unknown,
-          container: Element & { __reactRoot?: ReturnType<typeof createRoot> },
-          callback?: () => void,
-        ) {
-          try {
-            if (!container.__reactRoot) {
-              container.__reactRoot = createRoot(container);
-            }
-            container.__reactRoot.render(element);
-            callback?.();
-          } catch {
-            return origRender(element, container, callback);
-          }
-        };
-      }
     }
   } catch {
-    // react-dom/client unavailable — fall back to whatever ReactDOM already has.
+    // react-dom/client unavailable — nothing to do.
   }
 }
 

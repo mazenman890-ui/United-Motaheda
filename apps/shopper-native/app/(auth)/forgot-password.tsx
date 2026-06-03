@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Forgot Password — sends a password-reset email via Supabase.
  *
  * Flow:
@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Text } from "@/shared/ui";
 import { theme } from "@/shared/theme";
+import { authStyles } from "@/features/auth/styles/auth.styles";
 
 export default function ForgotPasswordScreen() {
   const { t, i18n } = useTranslation();
@@ -70,7 +71,7 @@ export default function ForgotPasswordScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <ScrollView
-        style={styles.screen}
+        style={authStyles.screen}
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
@@ -78,23 +79,23 @@ export default function ForgotPasswordScreen() {
         {/* ── Hero ─────────────────────────────────────────────────────── */}
         <LinearGradient
           colors={theme.gradients.heroPrimary as [string, string, string]}
-          style={[styles.hero, { paddingTop: insets.top + 20 }]}>
+          style={[authStyles.hero, { paddingTop: insets.top + 20 }]}>
 
-          <Pressable onPress={() => router.back()} style={styles.closeBtn} hitSlop={10}
+          <Pressable onPress={() => router.back()} style={authStyles.closeBtn} hitSlop={10}
             accessibilityRole="button" accessibilityLabel={t("forgotPassword.backLabel")}>
             <Ionicons name="arrow-back" size={20} color="rgba(255,255,255,0.85)" />
           </Pressable>
 
           <Animated.View
             entering={FadeInDown.duration(420).delay(60).springify().damping(18)}
-            style={styles.iconWrap}>
+            style={authStyles.iconWrap}>
             <View style={styles.iconTile}>
               <Ionicons name="key-outline" size={40} color={theme.colors.brand.base} />
             </View>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.duration(420).delay(140)} style={styles.heroTextWrap}>
-            <Text variant="screen-title" color="inverse" align="center" style={styles.heroTitle}>
+          <Animated.View entering={FadeInDown.duration(420).delay(140)} style={authStyles.heroTextWrap}>
+            <Text variant="screen-title" color="inverse" align="center" style={authStyles.heroTitle}>
               {sent ? t("forgotPassword.titleSent") : t("forgotPassword.title")}
             </Text>
             <Text variant="body" color="inverse-muted" align="center" style={{ marginTop: 6 }}>
@@ -104,16 +105,16 @@ export default function ForgotPasswordScreen() {
         </LinearGradient>
 
         {/* ── Form / Success card ──────────────────────────────────────── */}
-        <Animated.View entering={FadeInUp.duration(460).delay(180)} style={styles.formCard}>
+        <Animated.View entering={FadeInUp.duration(460).delay(180)} style={[authStyles.formCard, { gap: 16 }]}>
 
           {!sent ? (
             <>
               {error && (
-                <Animated.View entering={FadeInDown.duration(200)} style={styles.errorBox}>
-                  <View style={styles.errorIcon}>
+                <Animated.View entering={FadeInDown.duration(200)} style={authStyles.errorBox}>
+                  <View style={authStyles.errorIcon}>
                     <Ionicons name="alert-circle" size={16} color={theme.colors.error.base} />
                   </View>
-                  <Text variant="body-sm" align="right" style={styles.errorText}>{error}</Text>
+                  <Text variant="body-sm" align="right" style={authStyles.errorText}>{error}</Text>
                 </Animated.View>
               )}
 
@@ -174,7 +175,7 @@ export default function ForgotPasswordScreen() {
           )}
 
           {/* Back to login */}
-          <View style={styles.footer}>
+          <View style={[authStyles.footer, { paddingTop: theme.spacing.sm }]}>
             <Text variant="body-sm" color="secondary">{t("forgotPassword.rememberPassword")}</Text>
             <Pressable hitSlop={6} onPress={() => router.replace("/(auth)/login")}>
               <Text variant="body-sm" weight="extrabold" color="brand">{t("forgotPassword.signIn")}</Text>
@@ -188,78 +189,15 @@ export default function ForgotPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: theme.colors.bg,
-  },
-  hero: {
-    paddingHorizontal: theme.layout.pagePaddingH,
-    paddingBottom:     40,
-    overflow:          "hidden",
-  },
-  closeBtn: {
-    position:        "absolute",
-    top:             16,
-    left:            theme.layout.pagePaddingH,
-    width:           38,
-    height:          38,
-    borderRadius:    12,
-    backgroundColor: theme.colors.glass,
-    alignItems:      "center",
-    justifyContent:  "center",
-    borderWidth:     1,
-    borderColor:     theme.colors.glassBorder,
-  },
-  iconWrap: {
-    alignItems: "center",
-    marginTop:  20,
-  },
+  // Icon tile — key icon, smaller than logoTile (96×96 vs 116×116)
   iconTile: {
     width:           96,
     height:          96,
     borderRadius:    24,
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.surface,  // was: "#fff"
     alignItems:      "center",
     justifyContent:  "center",
     ...theme.shadow.lg,
-  },
-  heroTextWrap: {
-    alignItems: "center",
-    marginTop:  22,
-  },
-  heroTitle: {
-    letterSpacing: -0.5,
-  },
-  formCard: {
-    backgroundColor:      theme.colors.surface,
-    borderTopLeftRadius:  28,
-    borderTopRightRadius: 28,
-    marginTop:            -22,
-    flex:                 1,
-    padding:              theme.layout.pagePaddingH,
-    paddingTop:           28,
-    gap:                  16,
-    ...theme.shadow.lg,
-  },
-  errorBox: {
-    flexDirection:   "row-reverse",
-    alignItems:      "center",
-    gap:             10,
-    backgroundColor: theme.colors.error.bg,
-    borderRadius:    theme.radius.lg,
-    padding:         12,
-    borderWidth:     1,
-    borderColor:     theme.colors.error.light,
-  },
-  errorIcon: {
-    width: 24, height: 24, borderRadius: 12,
-    backgroundColor: "rgba(239,68,68,0.10)",
-    alignItems: "center", justifyContent: "center",
-  },
-  errorText: {
-    flex: 1,
-    color: theme.colors.error.text,
-    fontFamily: theme.fonts.semibold,
   },
   hint: {
     lineHeight: 22,
@@ -289,21 +227,14 @@ const styles = StyleSheet.create({
     maxWidth:   300,
   },
   tipBox: {
-    flexDirection:     "row-reverse",
-    alignItems:        "flex-start",
-    gap:               8,
-    backgroundColor:   theme.colors.brand.lighter,
-    borderRadius:      theme.radius.lg,
-    borderWidth:       1,
-    borderColor:       theme.colors.brand.light,
-    padding:           12,
-    marginTop:         4,
-  },
-  footer: {
-    flexDirection:  "row-reverse",
-    alignItems:     "center",
-    justifyContent: "center",
-    gap:            6,
-    paddingTop:     8,
+    flexDirection:   "row-reverse",
+    alignItems:      "flex-start",
+    gap:             8,
+    backgroundColor: theme.colors.brand.lighter,
+    borderRadius:    theme.radius.lg,
+    borderWidth:     1,
+    borderColor:     theme.colors.brand.light,
+    padding:         12,
+    marginTop:       4,
   },
 });

@@ -6,7 +6,8 @@
  */
 
 import React, { memo, useCallback, useMemo } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeIn, FadeInDown, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from "react-native-reanimated";
 import { BranchCard } from "./BranchCard";
@@ -57,7 +58,7 @@ export function BranchSelector({
     return (
       <Animated.View entering={FadeIn.duration(200)} style={styles.emptyCard}>
         <Ionicons name="storefront-outline" size={20} color={theme.colors.slate[400]} />
-        <Text style={styles.emptyText}>لا توجد فروع متاحة للتوصيل حالياً</Text>
+        <UIText style={styles.emptyText}>لا توجد فروع متاحة للتوصيل حالياً</UIText>
       </Animated.View>
     );
   }

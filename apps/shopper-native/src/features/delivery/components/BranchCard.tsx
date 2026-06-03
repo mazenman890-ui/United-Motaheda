@@ -4,7 +4,8 @@
  */
 
 import React, { memo, useCallback } from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn } from "react-native-reanimated";
@@ -55,23 +56,23 @@ export const BranchCard = memo(function BranchCard({
 
       <View style={styles.body}>
         <View style={styles.titleRow}>
-          <Text style={styles.title} numberOfLines={1}>
+          <UIText style={styles.title} numberOfLines={1}>
             {branch.nameAr}
-          </Text>
+          </UIText>
           {branch.isPrimary && (
             <View style={styles.primaryBadge}>
-              <Text style={styles.primaryBadgeText}>الرئيسي</Text>
+              <UIText style={styles.primaryBadgeText}>الرئيسي</UIText>
             </View>
           )}
         </View>
-        <Text style={styles.area} numberOfLines={1}>{branch.area}</Text>
+        <UIText style={styles.area} numberOfLines={1}>{branch.area}</UIText>
         {!compact && (
           <>
-            <Text style={styles.address} numberOfLines={2}>{branch.addressAr}</Text>
+            <UIText style={styles.address} numberOfLines={2}>{branch.addressAr}</UIText>
             <View style={styles.metaRow}>
               <View style={styles.metaPill}>
                 <Ionicons name="time-outline" size={10} color={theme.colors.slate[500]} />
-                <Text style={styles.metaText}>{branch.hoursAr}</Text>
+                <UIText style={styles.metaText}>{branch.hoursAr}</UIText>
               </View>
             </View>
           </>
@@ -82,7 +83,7 @@ export const BranchCard = memo(function BranchCard({
         {typeof distanceKm === "number" && (
           <Animated.View entering={FadeIn.duration(200)} style={styles.distPill}>
             <Ionicons name="navigate-outline" size={10} color={theme.colors.brand[600]} />
-            <Text style={styles.distText}>{distanceKm.toFixed(1)} كم</Text>
+            <UIText style={styles.distText}>{distanceKm.toFixed(1)} كم</UIText>
           </Animated.View>
         )}
         {interactive && (

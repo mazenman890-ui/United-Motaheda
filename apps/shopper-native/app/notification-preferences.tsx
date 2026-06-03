@@ -9,7 +9,8 @@
  */
 
 import React, { useCallback } from "react";
-import { Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { Platform, Pressable, ScrollView, StyleSheet, Switch, View } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -156,8 +157,8 @@ export default function NotificationPreferencesScreen() {
             <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.8)" />
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>{t("notifications.prefTitle")}</Text>
-            <Text style={styles.headerSub}>{t("notifications.prefSubtitle")}</Text>
+            <UIText style={styles.headerTitle}>{t("notifications.prefTitle")}</UIText>
+            <UIText style={styles.headerSub}>{t("notifications.prefSubtitle")}</UIText>
           </View>
           <View style={styles.shieldIcon}>
             <Ionicons name="options-outline" size={18} color="rgba(255,255,255,0.7)" />
@@ -171,9 +172,9 @@ export default function NotificationPreferencesScreen() {
         {!user && (
           <Animated.View entering={FadeIn.duration(200)} style={styles.signedOutBanner}>
             <Ionicons name="lock-closed-outline" size={14} color={theme.colors.amber[700]} />
-            <Text style={styles.signedOutText}>
+            <UIText style={styles.signedOutText}>
               {t("notifications.signInToSave")}
-            </Text>
+            </UIText>
           </Animated.View>
         )}
 
@@ -187,8 +188,8 @@ export default function NotificationPreferencesScreen() {
                   <Ionicons name={ch.icon} size={17} color={ch.color} />
                 </View>
                 <View style={styles.rowText}>
-                  <Text style={styles.rowLabel}>{t(ch.labelKey)}</Text>
-                  <Text style={styles.rowDesc}>{t(ch.descKey)}</Text>
+                  <UIText style={styles.rowLabel}>{t(ch.labelKey)}</UIText>
+                  <UIText style={styles.rowDesc}>{t(ch.descKey)}</UIText>
                 </View>
                 <Switch
                   value={preferences.channels[ch.key]}
@@ -212,8 +213,8 @@ export default function NotificationPreferencesScreen() {
                   <Ionicons name={cat.icon} size={16} color={cat.color} />
                 </View>
                 <View style={styles.rowText}>
-                  <Text style={styles.rowLabel}>{t(cat.labelKey)}</Text>
-                  <Text style={styles.rowDesc}>{t(cat.descKey)}</Text>
+                  <UIText style={styles.rowLabel}>{t(cat.labelKey)}</UIText>
+                  <UIText style={styles.rowDesc}>{t(cat.descKey)}</UIText>
                 </View>
                 <Switch
                   value={preferences.categories[cat.key]}
@@ -229,9 +230,9 @@ export default function NotificationPreferencesScreen() {
 
         <Animated.View entering={FadeInDown.delay(160).duration(280)} style={styles.footerNote}>
           <Ionicons name="information-circle-outline" size={14} color={theme.colors.brand[600]} />
-          <Text style={styles.footerText}>
+          <UIText style={styles.footerText}>
             {t("notifications.securityNote")}
-          </Text>
+          </UIText>
         </Animated.View>
       </ScrollView>
     </View>
@@ -244,7 +245,7 @@ function SectionHeader({ icon, title }: { icon: IoniconsName; title: string }) {
       <View style={styles.sectionIcon}>
         <Ionicons name={icon} size={13} color={theme.colors.brand[600]} />
       </View>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <UIText style={styles.sectionTitle}>{title}</UIText>
     </View>
   );
 }

@@ -5,9 +5,9 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -54,8 +54,8 @@ function ContactRow({ icon, label, value, color, onPress }: ContactRowProps) {
           <Ionicons name={icon} size={20} color={color} />
         </View>
         <View style={{ gap: 2 }}>
-          <Text style={styles.contactLabel}>{label}</Text>
-          <Text style={styles.contactValue}>{value}</Text>
+          <UIText style={styles.contactLabel}>{label}</UIText>
+          <UIText style={styles.contactValue}>{value}</UIText>
         </View>
       </View>
       <Ionicons name="chevron-back" size={16} color={theme.colors.text.tertiary} />
@@ -70,8 +70,8 @@ interface InfoRowProps {
 function InfoRow({ label, value }: InfoRowProps) {
   return (
     <View style={styles.infoRow}>
-      <Text style={styles.infoValue}>{value}</Text>
-      <Text style={styles.infoLabel}>{label}</Text>
+      <UIText style={styles.infoValue}>{value}</UIText>
+      <UIText style={styles.infoLabel}>{label}</UIText>
     </View>
   );
 }
@@ -94,7 +94,7 @@ export default function AboutScreen() {
           accessibilityLabel={t("common.back")}>
           <Ionicons name="arrow-forward" size={18} color={theme.colors.text.primary} />
         </Pressable>
-        <Text style={styles.title}>{t("about.title")}</Text>
+        <UIText style={styles.title}>{t("about.title")}</UIText>
         <View style={{ width: 38 }} />
       </View>
 
@@ -112,31 +112,31 @@ export default function AboutScreen() {
             <View style={styles.logoTile}>
               <AppLogo size="lg" />
             </View>
-            <Text style={styles.heroTagline}>{t("about.tagline")}</Text>
+            <UIText style={styles.heroTagline}>{t("about.tagline")}</UIText>
             <View style={styles.versionBadge}>
-              <Text style={styles.versionText}>{t("profile.version", { ver: APP_VERSION })}</Text>
+              <UIText style={styles.versionText}>{t("profile.version", { ver: APP_VERSION })}</UIText>
             </View>
           </LinearGradient>
         </Animated.View>
 
         {/* Description */}
         <Animated.View entering={FadeInDown.duration(350).delay(80)} style={styles.section}>
-          <Text style={styles.sectionTitle}>{t("about.whoWeAreTitle")}</Text>
+          <UIText style={styles.sectionTitle}>{t("about.whoWeAreTitle")}</UIText>
           <View style={styles.card}>
-            <Text style={styles.description}>
+            <UIText style={styles.description}>
               {t("about.whoWeArePara1")}{"\n\n"}{t("about.whoWeArePara2")}
-            </Text>
+            </UIText>
           </View>
         </Animated.View>
 
         {/* App stats */}
         <Animated.View entering={FadeInDown.duration(350).delay(140)} style={styles.section}>
-          <Text style={styles.sectionTitle}>{t("about.statsTitle")}</Text>
+          <UIText style={styles.sectionTitle}>{t("about.statsTitle")}</UIText>
           <View style={styles.statsRow}>
             {STATS.map((stat) => (
               <View key={stat.labelKey} style={styles.statCard}>
-                <Text style={styles.statValue}>{t(stat.valueKey)}</Text>
-                <Text style={styles.statLabel}>{t(stat.labelKey)}</Text>
+                <UIText style={styles.statValue}>{t(stat.valueKey)}</UIText>
+                <UIText style={styles.statLabel}>{t(stat.labelKey)}</UIText>
               </View>
             ))}
           </View>
@@ -144,13 +144,13 @@ export default function AboutScreen() {
 
         {/* Branch locations */}
         <Animated.View entering={FadeInDown.duration(350).delay(170)} style={styles.section}>
-          <Text style={styles.sectionTitle}>{t("about.branchesTitle")}</Text>
+          <UIText style={styles.sectionTitle}>{t("about.branchesTitle")}</UIText>
           <BranchAddressList />
         </Animated.View>
 
         {/* Contact */}
         <Animated.View entering={FadeInDown.duration(350).delay(200)} style={styles.section}>
-          <Text style={styles.sectionTitle}>{t("about.contact")}</Text>
+          <UIText style={styles.sectionTitle}>{t("about.contact")}</UIText>
           <View style={styles.card}>
             <ContactRow
               icon="logo-whatsapp"
@@ -180,7 +180,7 @@ export default function AboutScreen() {
 
         {/* App info */}
         <Animated.View entering={FadeInDown.duration(350).delay(260)} style={styles.section}>
-          <Text style={styles.sectionTitle}>{t("about.appInfoTitle")}</Text>
+          <UIText style={styles.sectionTitle}>{t("about.appInfoTitle")}</UIText>
           <View style={styles.card}>
             <InfoRow label={t("about.versionLabel")} value={APP_VERSION} />
             <View style={styles.rowDivider} />
@@ -198,7 +198,7 @@ export default function AboutScreen() {
           </View>
         </Animated.View>
 
-        <Text style={styles.copyright}>{t("about.copyright")}</Text>
+        <UIText style={styles.copyright}>{t("about.copyright")}</UIText>
       </ScrollView>
     </View>
   );

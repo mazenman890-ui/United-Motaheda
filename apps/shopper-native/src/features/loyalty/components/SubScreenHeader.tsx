@@ -15,8 +15,8 @@ import {
   Pressable,
   StyleSheet,
   View,
-  Text,
 } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -41,11 +41,11 @@ export function SubScreenHeader({
     <View style={styles.container}>
       {/* ── Title block — grows, text pinned right (RTL start) ── */}
       <View style={styles.titleBlock}>
-        <Text style={styles.title} numberOfLines={1} accessibilityRole="header">
+        <UIText style={styles.title} numberOfLines={1} accessibilityRole="header">
           {title}
-        </Text>
+        </UIText>
         {subtitle ? (
-          <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>
+          <UIText style={styles.subtitle} numberOfLines={1}>{subtitle}</UIText>
         ) : null}
       </View>
 

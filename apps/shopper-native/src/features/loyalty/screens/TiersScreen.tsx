@@ -10,9 +10,9 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -77,7 +77,7 @@ export function TiersScreen() {
         <SubScreenHeader title={t("loyalty.tiersTitle")} subtitle={t("loyalty.tiersSubtitle")} />
         <View style={styles.errorPanel}>
           <Ionicons name="cloud-offline-outline" size={36} color={theme.colors.slate[400]} />
-          <Text style={styles.errorTitle} maxFontSizeMultiplier={1.4}>{t("loyalty.tiersErrorTitle")}</Text>
+          <UIText style={styles.errorTitle} maxFontSizeMultiplier={1.4}>{t("loyalty.tiersErrorTitle")}</UIText>
           <Pressable
             onPress={() => void tiers.refetch()}
             accessibilityRole="button"
@@ -85,7 +85,7 @@ export function TiersScreen() {
             style={({ pressed }) => [styles.primaryBtn, pressed && { opacity: 0.9 }]}
           >
             <Ionicons name="refresh" size={14} color="#fff" />
-            <Text style={styles.primaryBtnText}>{t("common.retry")}</Text>
+            <UIText style={styles.primaryBtnText}>{t("common.retry")}</UIText>
           </Pressable>
         </View>
       </View>
@@ -125,14 +125,14 @@ export function TiersScreen() {
             accessibilityLabel={t("loyalty.currentTierA11y", { name: currentTier.name })}
           >
             <View style={styles.statusLeft}>
-              <Text style={styles.statusLabel}>{t("loyalty.currentTierLabel")}</Text>
-              <Text style={styles.statusTier}>{currentTier.name}</Text>
+              <UIText style={styles.statusLabel}>{t("loyalty.currentTierLabel")}</UIText>
+              <UIText style={styles.statusTier}>{currentTier.name}</UIText>
             </View>
             {nextTier && (
               <View style={styles.statusProgress}>
-                <Text style={styles.statusProgressLabel} maxFontSizeMultiplier={1.3}>
+                <UIText style={styles.statusProgressLabel} maxFontSizeMultiplier={1.3}>
                   {t("loyalty.pointsToNextTier", { n: Math.max(0, nextTier.min_lifetime_points - lifetimeEarned).toLocaleString("ar-EG") })}
-                </Text>
+                </UIText>
                 <View style={styles.progressTrack}>
                   <View
                     style={[styles.progressFill, { width: `${progress * 100}%` }]}
@@ -206,17 +206,17 @@ function TierCard({ tier, isCurrent, isUnlocked, gradient, icon }: TierCardProps
 
       <View style={{ flex: 1 }}>
         <View style={styles.tierHead}>
-          <Text
+          <UIText
             style={[styles.tierName, !isUnlocked && { color: theme.colors.slate[400] }]}
             maxFontSizeMultiplier={1.3}
           >
             {tier.name}
-          </Text>
+          </UIText>
           {isCurrent && (
             <View style={[styles.currentPill, { backgroundColor: gradient[0] + "18" }]}>
-              <Text style={[styles.currentPillText, { color: gradient[0] }]}>
+              <UIText style={[styles.currentPillText, { color: gradient[0] }]}>
                 {t("loyalty.tierCurrentChip")}
-              </Text>
+              </UIText>
             </View>
           )}
           {!isUnlocked && !isCurrent && (
@@ -224,9 +224,9 @@ function TierCard({ tier, isCurrent, isUnlocked, gradient, icon }: TierCardProps
           )}
         </View>
 
-        <Text style={[styles.tierPoints, !isUnlocked && { color: theme.colors.slate[400] }]} maxFontSizeMultiplier={1.4}>
+        <UIText style={[styles.tierPoints, !isUnlocked && { color: theme.colors.slate[400] }]} maxFontSizeMultiplier={1.4}>
           {t("loyalty.tierPointsEarned", { n: tier.min_lifetime_points.toLocaleString("ar-EG") })}
-        </Text>
+        </UIText>
 
         <View style={styles.multiplierRow}>
           <Ionicons
@@ -234,12 +234,12 @@ function TierCard({ tier, isCurrent, isUnlocked, gradient, icon }: TierCardProps
             size={12}
             color={isUnlocked ? theme.colors.amber[600] : theme.colors.slate[400]}
           />
-          <Text
+          <UIText
             style={[styles.multiplierText, !isUnlocked && { color: theme.colors.slate[400] }]}
             maxFontSizeMultiplier={1.3}
           >
             {t("loyalty.tierEarnMultiplier", { n: tier.earn_multiplier })}
-          </Text>
+          </UIText>
         </View>
       </View>
     </View>

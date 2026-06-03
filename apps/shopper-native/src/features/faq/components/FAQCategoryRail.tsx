@@ -1,5 +1,6 @@
 ﻿import React from "react";
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn } from "react-native-reanimated";
@@ -67,12 +68,12 @@ function CategoryChip({
       <View style={[styles.chipIcon, { backgroundColor: active ? color + "18" : theme.colors.slate[50] }]}>
         <Ionicons name={icon as IoniconsName} size={13} color={active ? color : theme.colors.slate[400]} />
       </View>
-      <Text style={[styles.chipLabel, active && { color, fontFamily: theme.fonts.black }]}>
+      <UIText style={[styles.chipLabel, active && { color, fontFamily: theme.fonts.black }]}>
         {label}
-      </Text>
+      </UIText>
       {active && (
         <Animated.View entering={FadeIn.duration(150)} style={[styles.chipCount, { backgroundColor: color + "18" }]}>
-          <Text style={[styles.chipCountText, { color }]}>{count}</Text>
+          <UIText style={[styles.chipCountText, { color }]}>{count}</UIText>
         </Animated.View>
       )}
     </Pressable>

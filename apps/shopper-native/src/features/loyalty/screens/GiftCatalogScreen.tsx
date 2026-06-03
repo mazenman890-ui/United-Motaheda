@@ -19,9 +19,9 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -167,9 +167,9 @@ export function GiftCatalogScreen() {
           <View style={styles.balanceChip} accessibilityRole="text"
                 accessibilityLabel={t("loyalty.balanceA11y", { n: balance.data.balance })}>
             <Ionicons name="star" size={14} color={theme.colors.brand[700]} />
-            <Text style={styles.balanceText} maxFontSizeMultiplier={1.3}>
+            <UIText style={styles.balanceText} maxFontSizeMultiplier={1.3}>
               {t("loyalty.balanceChipText", { n: balance.data.balance.toLocaleString("ar-EG") })}
-            </Text>
+            </UIText>
           </View>
         )}
 
@@ -241,33 +241,33 @@ function GiftRow({ gift, currentBalance, isRedeeming, onRedeem }: GiftRowProps) 
         )}
         {lowStock && (
           <View style={styles.stockPill}>
-            <Text style={styles.stockPillText} maxFontSizeMultiplier={1.2}>
+            <UIText style={styles.stockPillText} maxFontSizeMultiplier={1.2}>
               {t("loyalty.giftStockRemaining", { n: available })}
-            </Text>
+            </UIText>
           </View>
         )}
         {soldOut && (
           <View style={styles.oosOverlay}>
-            <Text style={styles.oosText} maxFontSizeMultiplier={1.2}>{t("loyalty.giftSoldOutPill")}</Text>
+            <UIText style={styles.oosText} maxFontSizeMultiplier={1.2}>{t("loyalty.giftSoldOutPill")}</UIText>
           </View>
         )}
       </View>
 
       <View style={styles.giftBody}>
-        <Text style={styles.giftName} numberOfLines={2} maxFontSizeMultiplier={1.3}>
+        <UIText style={styles.giftName} numberOfLines={2} maxFontSizeMultiplier={1.3}>
           {gift.name}
-        </Text>
+        </UIText>
         {gift.description && (
-          <Text style={styles.giftDesc} numberOfLines={2} maxFontSizeMultiplier={1.4}>
+          <UIText style={styles.giftDesc} numberOfLines={2} maxFontSizeMultiplier={1.4}>
             {gift.description}
-          </Text>
+          </UIText>
         )}
         <View style={styles.giftFoot}>
           <View style={styles.costWrap}>
             <Ionicons name="star" size={14} color={theme.colors.amber[600]} />
-            <Text style={styles.costText} maxFontSizeMultiplier={1.3}>
+            <UIText style={styles.costText} maxFontSizeMultiplier={1.3}>
               {gift.points_cost.toLocaleString("ar-EG")}
-            </Text>
+            </UIText>
           </View>
           <Pressable
             onPress={onRedeem}
@@ -282,7 +282,7 @@ function GiftRow({ gift, currentBalance, isRedeeming, onRedeem }: GiftRowProps) 
               pressed && !disabled && { opacity: 0.85 },
             ]}
           >
-            <Text
+            <UIText
               style={[
                 styles.redeemBtnText,
                 !canAfford && !disabled && styles.redeemBtnTextInsufficient,
@@ -297,7 +297,7 @@ function GiftRow({ gift, currentBalance, isRedeeming, onRedeem }: GiftRowProps) 
                 : !canAfford
                 ? t("loyalty.giftRedeemInsufficient")
                 : t("loyalty.giftRedeem")}
-            </Text>
+            </UIText>
           </Pressable>
         </View>
       </View>
@@ -322,7 +322,7 @@ function EmptyRow({ icon, message }: { icon: React.ComponentProps<typeof Ionicon
   return (
     <View style={styles.emptyRow} accessibilityRole="text" accessibilityLabel={message}>
       <Ionicons name={icon} size={20} color={theme.colors.slate[400]} />
-      <Text style={styles.emptyText} maxFontSizeMultiplier={1.5}>{message}</Text>
+      <UIText style={styles.emptyText} maxFontSizeMultiplier={1.5}>{message}</UIText>
     </View>
   );
 }
@@ -332,10 +332,10 @@ function ErrorPanel({ onRetry }: { onRetry: () => void }) {
   return (
     <View style={styles.errorPanel}>
       <Ionicons name="cloud-offline-outline" size={36} color={theme.colors.slate[400]} />
-      <Text style={styles.errorTitle} maxFontSizeMultiplier={1.4}>{t("loyalty.giftCatalogErrorTitle")}</Text>
-      <Text style={styles.errorBody} maxFontSizeMultiplier={1.5}>
+      <UIText style={styles.errorTitle} maxFontSizeMultiplier={1.4}>{t("loyalty.giftCatalogErrorTitle")}</UIText>
+      <UIText style={styles.errorBody} maxFontSizeMultiplier={1.5}>
         {t("loyalty.giftCatalogErrorBody")}
-      </Text>
+      </UIText>
       <Pressable
         onPress={onRetry}
         accessibilityRole="button"
@@ -343,7 +343,7 @@ function ErrorPanel({ onRetry }: { onRetry: () => void }) {
         style={({ pressed }) => [styles.primaryBtn, pressed && { opacity: 0.9 }]}
       >
         <Ionicons name="refresh" size={14} color="#fff" />
-        <Text style={styles.primaryBtnText}>{t("common.retry")}</Text>
+        <UIText style={styles.primaryBtnText}>{t("common.retry")}</UIText>
       </Pressable>
     </View>
   );

@@ -3,10 +3,10 @@ import {
   FlatList,
   Pressable,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -81,8 +81,8 @@ export default function FAQScreen() {
             <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.8)" />
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>{t("faq.title")}</Text>
-            <Text style={styles.headerSub}>{t("faq.subtitle", { q: FAQ_DATA.length, c: FAQ_CATEGORIES.length })}</Text>
+            <UIText style={styles.headerTitle}>{t("faq.title")}</UIText>
+            <UIText style={styles.headerSub}>{t("faq.subtitle", { q: FAQ_DATA.length, c: FAQ_CATEGORIES.length })}</UIText>
           </View>
           <View style={styles.helpIcon}>
             <Ionicons name="help-circle-outline" size={20} color="rgba(255,255,255,0.7)" />
@@ -128,10 +128,10 @@ export default function FAQScreen() {
         ListHeaderComponent={
           filtered.length > 0 ? (
             <Animated.View entering={FadeIn.duration(200)} style={styles.resultCount}>
-              <Text style={styles.resultCountText}>
+              <UIText style={styles.resultCountText}>
                 {t("faq.resultCount", { count: filtered.length })}
                 {query ? ` ${t("faq.forQuery", { q: query })}` : ""}
-              </Text>
+              </UIText>
             </Animated.View>
           ) : null
         }
@@ -150,9 +150,9 @@ export default function FAQScreen() {
       <Animated.View entering={FadeInDown.duration(300)} style={[styles.contactBar, { paddingBottom: insets.bottom + 12 }]}>
         <View style={styles.contactContent}>
           <Ionicons name="chatbubbles-outline" size={16} color={theme.colors.brand[600]} />
-          <Text style={styles.contactText}>{t("faq.notFound")}</Text>
+          <UIText style={styles.contactText}>{t("faq.notFound")}</UIText>
           <Pressable style={styles.contactBtn}>
-            <Text style={styles.contactBtnText}>{t("faq.contactUs")}</Text>
+            <UIText style={styles.contactBtnText}>{t("faq.contactUs")}</UIText>
             <Ionicons name="arrow-back" size={12} color={theme.colors.brand[600]} />
           </Pressable>
         </View>

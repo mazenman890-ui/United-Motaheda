@@ -18,9 +18,9 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
@@ -112,9 +112,9 @@ function MapPlaceholder({ height }: { height: number }) {
       {/* Label */}
       <View style={styles.placeholderLabel}>
         <Ionicons name="navigate-circle-outline" size={14} color={theme.colors.brand[600]} />
-        <Text style={styles.placeholderText}>
+        <UIText style={styles.placeholderText}>
           {t("addressForm.mapPlaceholderHint")}
-        </Text>
+        </UIText>
       </View>
     </View>
   );
@@ -164,7 +164,7 @@ export function AddressMapPlaceholder({
     return loading ? (
       <View style={[styles.loadingBox, { height }]}>
         <ActivityIndicator color={theme.colors.brand[600]} />
-        <Text style={styles.loadingText}>{t("addressForm.locating")}</Text>
+        <UIText style={styles.loadingText}>{t("addressForm.locating")}</UIText>
       </View>
     ) : (
       <MapPlaceholder height={height} />
@@ -190,9 +190,9 @@ export function AddressMapPlaceholder({
       {!compact && (
         <View style={styles.coordBadge}>
           <Ionicons name="navigate" size={10} color={theme.colors.brand[600]} />
-          <Text style={styles.coordText}>
+          <UIText style={styles.coordText}>
             {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
-          </Text>
+          </UIText>
         </View>
       )}
 
@@ -203,14 +203,14 @@ export function AddressMapPlaceholder({
         hitSlop={8}
       >
         <Ionicons name="map-outline" size={13} color={theme.colors.brand[700]} />
-        <Text style={styles.openMapsText}>{t("addressForm.openInMaps")}</Text>
+        <UIText style={styles.openMapsText}>{t("addressForm.openInMaps")}</UIText>
       </Pressable>
 
       {/* Verified badge */}
       {!compact && (
         <View style={styles.verifiedBadge}>
           <Ionicons name="checkmark-circle" size={12} color="#059669" />
-          <Text style={styles.verifiedText}>{t("addressForm.locationVerified")}</Text>
+          <UIText style={styles.verifiedText}>{t("addressForm.locationVerified")}</UIText>
         </View>
       )}
     </View>

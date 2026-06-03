@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Text — typography atom.
  *
  * Spec: SPEC §2.4 hierarchy.
@@ -14,6 +14,7 @@
 
 import React from "react";
 import {
+  StyleSheet,
   Text as RNText,
   type StyleProp,
   type TextProps as RNTextProps,
@@ -89,20 +90,89 @@ const VARIANTS: Record<TextVariant, VariantSpec> = {
   "metric":       { ...theme.typography.size["5xl"], weight: "black",     letterSpacing: -0.5                                    },
 };
 
-const COLORS: Record<TextColor, string> = {
-  primary:         theme.colors.text.primary,
-  secondary:       theme.colors.text.secondary,
-  muted:           theme.colors.text.muted,
-  tertiary:        theme.colors.text.tertiary,
-  disabled:        theme.colors.text.disabled,
-  inverse:         theme.colors.text.inverse,
-  "inverse-muted": theme.colors.text.inverseSoft,
-  brand:           theme.colors.brand.base,
-  danger:          theme.colors.error.base,
-  warn:            theme.colors.warning.base,
-  success:         theme.colors.success.base,
-  info:            theme.colors.info.base,
+// ─── Pre-computed StyleSheet entries — allocated once at module load, never per render ─
+//
+// Strategy:
+//   Common case (no weight override) → VARIANT_STYLES[variant] + COLOR_STYLES[color]
+//   Weight override               → VARIANT_LAYOUT_STYLES[variant] + FONT_STYLES[weight] + COLOR_STYLES[color]
+//   Align override                → + ALIGN_STYLES[align]  (pre-built for all 5 RN values)
+// Each entry is a stable StyleSheet ID, not a new object, so referential equality holds
+// across renders and the consumer's React.memo comparators are not broken.
+
+// Variant base: size + spacing + the variant's default font weight.
+// This covers the common render path where the `weight` prop is not overridden.
+const _variantInput: Record<TextVariant, TextStyle> = {
+  "display":      { fontSize: VARIANTS["display"].fontSize,       lineHeight: VARIANTS["display"].lineHeight,       letterSpacing: VARIANTS["display"].letterSpacing,       fontFamily: theme.fonts[VARIANTS["display"].weight]      },
+  "hero":         { fontSize: VARIANTS["hero"].fontSize,          lineHeight: VARIANTS["hero"].lineHeight,          letterSpacing: VARIANTS["hero"].letterSpacing,          fontFamily: theme.fonts[VARIANTS["hero"].weight]         },
+  "screen-title": { fontSize: VARIANTS["screen-title"].fontSize,  lineHeight: VARIANTS["screen-title"].lineHeight,  letterSpacing: VARIANTS["screen-title"].letterSpacing,  fontFamily: theme.fonts[VARIANTS["screen-title"].weight] },
+  "sheet-title":  { fontSize: VARIANTS["sheet-title"].fontSize,   lineHeight: VARIANTS["sheet-title"].lineHeight,   letterSpacing: VARIANTS["sheet-title"].letterSpacing,   fontFamily: theme.fonts[VARIANTS["sheet-title"].weight]  },
+  "section-head": { fontSize: VARIANTS["section-head"].fontSize,  lineHeight: VARIANTS["section-head"].lineHeight,  letterSpacing: VARIANTS["section-head"].letterSpacing,  fontFamily: theme.fonts[VARIANTS["section-head"].weight] },
+  "card-title":   { fontSize: VARIANTS["card-title"].fontSize,    lineHeight: VARIANTS["card-title"].lineHeight,    letterSpacing: VARIANTS["card-title"].letterSpacing,    fontFamily: theme.fonts[VARIANTS["card-title"].weight]   },
+  "body":         { fontSize: VARIANTS["body"].fontSize,          lineHeight: VARIANTS["body"].lineHeight,          letterSpacing: VARIANTS["body"].letterSpacing,          fontFamily: theme.fonts[VARIANTS["body"].weight]         },
+  "body-sm":      { fontSize: VARIANTS["body-sm"].fontSize,       lineHeight: VARIANTS["body-sm"].lineHeight,       letterSpacing: VARIANTS["body-sm"].letterSpacing,       fontFamily: theme.fonts[VARIANTS["body-sm"].weight]      },
+  "caption":      { fontSize: VARIANTS["caption"].fontSize,       lineHeight: VARIANTS["caption"].lineHeight,       letterSpacing: VARIANTS["caption"].letterSpacing,       fontFamily: theme.fonts[VARIANTS["caption"].weight]      },
+  "eyebrow":      { fontSize: VARIANTS["eyebrow"].fontSize,       lineHeight: VARIANTS["eyebrow"].lineHeight,       letterSpacing: VARIANTS["eyebrow"].letterSpacing,       fontFamily: theme.fonts[VARIANTS["eyebrow"].weight]      },
+  "badge":        { fontSize: VARIANTS["badge"].fontSize,         lineHeight: VARIANTS["badge"].lineHeight,         letterSpacing: VARIANTS["badge"].letterSpacing,         fontFamily: theme.fonts[VARIANTS["badge"].weight]        },
+  "metric":       { fontSize: VARIANTS["metric"].fontSize,        lineHeight: VARIANTS["metric"].lineHeight,        letterSpacing: VARIANTS["metric"].letterSpacing,        fontFamily: theme.fonts[VARIANTS["metric"].weight]       },
 };
+const VARIANT_STYLES = StyleSheet.create(_variantInput);
+
+// Layout-only styles: size + spacing, no fontFamily.
+// Used together with FONT_STYLES when the caller overrides the weight prop.
+const _layoutInput: Record<TextVariant, TextStyle> = {
+  "display":      { fontSize: VARIANTS["display"].fontSize,       lineHeight: VARIANTS["display"].lineHeight,       letterSpacing: VARIANTS["display"].letterSpacing       },
+  "hero":         { fontSize: VARIANTS["hero"].fontSize,          lineHeight: VARIANTS["hero"].lineHeight,          letterSpacing: VARIANTS["hero"].letterSpacing          },
+  "screen-title": { fontSize: VARIANTS["screen-title"].fontSize,  lineHeight: VARIANTS["screen-title"].lineHeight,  letterSpacing: VARIANTS["screen-title"].letterSpacing  },
+  "sheet-title":  { fontSize: VARIANTS["sheet-title"].fontSize,   lineHeight: VARIANTS["sheet-title"].lineHeight,   letterSpacing: VARIANTS["sheet-title"].letterSpacing   },
+  "section-head": { fontSize: VARIANTS["section-head"].fontSize,  lineHeight: VARIANTS["section-head"].lineHeight,  letterSpacing: VARIANTS["section-head"].letterSpacing  },
+  "card-title":   { fontSize: VARIANTS["card-title"].fontSize,    lineHeight: VARIANTS["card-title"].lineHeight,    letterSpacing: VARIANTS["card-title"].letterSpacing    },
+  "body":         { fontSize: VARIANTS["body"].fontSize,          lineHeight: VARIANTS["body"].lineHeight,          letterSpacing: VARIANTS["body"].letterSpacing          },
+  "body-sm":      { fontSize: VARIANTS["body-sm"].fontSize,       lineHeight: VARIANTS["body-sm"].lineHeight,       letterSpacing: VARIANTS["body-sm"].letterSpacing       },
+  "caption":      { fontSize: VARIANTS["caption"].fontSize,       lineHeight: VARIANTS["caption"].lineHeight,       letterSpacing: VARIANTS["caption"].letterSpacing       },
+  "eyebrow":      { fontSize: VARIANTS["eyebrow"].fontSize,       lineHeight: VARIANTS["eyebrow"].lineHeight,       letterSpacing: VARIANTS["eyebrow"].letterSpacing       },
+  "badge":        { fontSize: VARIANTS["badge"].fontSize,         lineHeight: VARIANTS["badge"].lineHeight,         letterSpacing: VARIANTS["badge"].letterSpacing         },
+  "metric":       { fontSize: VARIANTS["metric"].fontSize,        lineHeight: VARIANTS["metric"].lineHeight,        letterSpacing: VARIANTS["metric"].letterSpacing        },
+};
+const VARIANT_LAYOUT_STYLES = StyleSheet.create(_layoutInput);
+
+// One fontFamily entry per weight — applied as a separate layer only when weight prop overrides.
+const _fontInput: Record<TextWeight, TextStyle> = {
+  regular:   { fontFamily: theme.fonts.regular   },
+  medium:    { fontFamily: theme.fonts.medium    },
+  semibold:  { fontFamily: theme.fonts.semibold  },
+  bold:      { fontFamily: theme.fonts.bold      },
+  extrabold: { fontFamily: theme.fonts.extrabold },
+  black:     { fontFamily: theme.fonts.black     },
+};
+const FONT_STYLES = StyleSheet.create(_fontInput);
+
+// One color entry per text color token.
+const _colorInput: Record<TextColor, TextStyle> = {
+  primary:         { color: theme.colors.text.primary      },
+  secondary:       { color: theme.colors.text.secondary    },
+  muted:           { color: theme.colors.text.muted        },
+  tertiary:        { color: theme.colors.text.tertiary     },
+  disabled:        { color: theme.colors.text.disabled     },
+  inverse:         { color: theme.colors.text.inverse      },
+  "inverse-muted": { color: theme.colors.text.inverseSoft  },
+  brand:           { color: theme.colors.brand.base        },
+  danger:          { color: theme.colors.error.base        },
+  warn:            { color: theme.colors.warning.base      },
+  success:         { color: theme.colors.success.base      },
+  info:            { color: theme.colors.info.base         },
+};
+const COLOR_STYLES = StyleSheet.create(_colorInput);
+
+// Pre-computed textAlign styles — covers every valid React Native textAlign value.
+// The Record<string, TextStyle> intermediate type lets us index with the textAlign union.
+const _alignInput: Record<string, TextStyle> = {
+  auto:    { textAlign: "auto"    },
+  left:    { textAlign: "left"    },
+  right:   { textAlign: "right"   },
+  center:  { textAlign: "center"  },
+  justify: { textAlign: "justify" },
+};
+const ALIGN_STYLES: Record<string, TextStyle> = StyleSheet.create(_alignInput);
 
 export function Text({
   variant = "body",
@@ -113,23 +183,16 @@ export function Text({
   children,
   ...rest
 }: TextProps): React.ReactElement {
-  const spec       = VARIANTS[variant];
-  const finalWeight = weight ?? spec.weight;
+  // Common path (no weight override): two stable StyleSheet IDs, zero per-render allocation.
+  // Weight override: three stable IDs. Align override: one additional stable ID.
+  const baseStyle  = weight != null ? VARIANT_LAYOUT_STYLES[variant] : VARIANT_STYLES[variant];
+  const fontStyle  = weight != null ? FONT_STYLES[weight]             : null;
+  const alignStyle = align  != null ? ALIGN_STYLES[align] ?? null     : null;
 
   return (
     <RNText
       {...rest}
-      style={[
-        {
-          fontFamily:    theme.fonts[finalWeight],
-          fontSize:      spec.fontSize,
-          lineHeight:    spec.lineHeight,
-          letterSpacing: spec.letterSpacing,
-          color:         COLORS[color],
-          textAlign:     align,
-        },
-        style,
-      ]}>
+      style={[baseStyle, fontStyle, COLOR_STYLES[color], alignStyle, style]}>
       {children}
     </RNText>
   );

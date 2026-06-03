@@ -10,12 +10,13 @@
  *
  * // HANDOFF: deviated from §2.3 snippet which imports Text/Button from
  * // @/shared/ui — that atom doesn't exist yet (see SPEC §9.1). Using RN
- * // <Text> styled via theme.fonts/fontSize tokens until the Text atom
+ * // <UIText> styled via theme.fonts/fontSize tokens until the Text atom
  * // lands on Day 2.
  */
 
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -77,14 +78,14 @@ export function AppHeader({
         )}
 
         {title ? (
-          <Text
+          <UIText
             numberOfLines={1}
             style={[
               styles.title,
               { color: fg, fontFamily: theme.fonts.extrabold },
             ]}>
             {title}
-          </Text>
+          </UIText>
         ) : (
           <View style={{ flex: 1 }} />
         )}
@@ -109,9 +110,9 @@ export function AppHeader({
                         : theme.colors.surface,
                     },
                   ]}>
-                  <Text style={styles.badgeText}>
+                  <UIText style={styles.badgeText}>
                     {cartCount > 9 ? "9+" : cartCount}
-                  </Text>
+                  </UIText>
                 </View>
               )}
             </Pressable>

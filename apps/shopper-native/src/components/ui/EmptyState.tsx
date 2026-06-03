@@ -1,5 +1,6 @@
 ﻿import React from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { theme } from "@/shared/theme";
@@ -56,16 +57,16 @@ export function EmptyState({
 
       {/* Text */}
       <View style={{ alignItems: "center", gap: 6 }}>
-        <Text style={{
+        <UIText style={{
           fontSize:   compact ? theme.fontSize.lg : theme.fontSize['2xl'],
           fontFamily: theme.fonts.bold,
           color:      theme.colors.text.primary,
           textAlign:  "center",
         }}>
           {title}
-        </Text>
+        </UIText>
         {description && (
-          <Text style={{
+          <UIText style={{
             fontSize:   theme.fontSize.sm,
             fontFamily: theme.fonts.regular,
             color:      theme.colors.text.tertiary,
@@ -73,7 +74,7 @@ export function EmptyState({
             lineHeight: 20,
           }}>
             {description}
-          </Text>
+          </UIText>
         )}
       </View>
 

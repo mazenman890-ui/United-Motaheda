@@ -9,7 +9,7 @@
  */
 
 import React, { useCallback, useEffect } from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -28,6 +28,7 @@ import { useTranslation } from "react-i18next";
 import { useUnreadCount } from "@/features/notifications";
 import { useAuth } from "@/features/auth";
 import { theme } from "@/shared/theme";
+import { Text as UIText } from "@/shared/ui";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -162,15 +163,15 @@ function TabItem({ name, focused, badge, onPress }: TabItemProps) {
 
       {/* ── Label — always visible ── */}
       <Animated.View style={labelStyle}>
-        <Text numberOfLines={1} style={[styles.label, { color: labelColor, fontFamily: labelFont }]}>
+        <UIText numberOfLines={1} style={[styles.label, { color: labelColor, fontFamily: labelFont }]}>
           {label}
-        </Text>
+        </UIText>
       </Animated.View>
 
       {/* ── Notification badge ── */}
       {badge != null && badge > 0 && (
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>{badge > 9 ? "9+" : badge}</Text>
+          <UIText style={styles.badgeText}>{badge > 9 ? "9+" : badge}</UIText>
         </View>
       )}
     </Pressable>

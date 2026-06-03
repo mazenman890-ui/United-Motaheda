@@ -12,9 +12,9 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -89,7 +89,7 @@ export function RedemptionHistoryScreen() {
         <SubScreenHeader title={t("loyalty.redemptionsTitle")} subtitle={t("loyalty.redemptionsSubtitle")} />
         <View style={styles.centerPanel}>
           <Ionicons name="cloud-offline-outline" size={36} color={theme.colors.slate[400]} />
-          <Text style={styles.errorTitle} maxFontSizeMultiplier={1.4}>{t("loyalty.redemptionsErrorTitle")}</Text>
+          <UIText style={styles.errorTitle} maxFontSizeMultiplier={1.4}>{t("loyalty.redemptionsErrorTitle")}</UIText>
           <Pressable
             onPress={() => void redemptions.refetch()}
             accessibilityRole="button"
@@ -97,7 +97,7 @@ export function RedemptionHistoryScreen() {
             style={({ pressed }) => [styles.primaryBtn, pressed && { opacity: 0.9 }]}
           >
             <Ionicons name="refresh" size={14} color="#fff" />
-            <Text style={styles.primaryBtnText}>{t("common.retry")}</Text>
+            <UIText style={styles.primaryBtnText}>{t("common.retry")}</UIText>
           </Pressable>
         </View>
       </View>
@@ -124,10 +124,10 @@ export function RedemptionHistoryScreen() {
         {isEmpty ? (
           <View style={styles.centerPanel}>
             <Ionicons name="gift-outline" size={36} color={theme.colors.slate[300]} />
-            <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>{t("loyalty.redemptionsEmpty")}</Text>
-            <Text style={styles.emptyBody} maxFontSizeMultiplier={1.5}>
+            <UIText style={styles.emptyTitle} maxFontSizeMultiplier={1.4}>{t("loyalty.redemptionsEmpty")}</UIText>
+            <UIText style={styles.emptyBody} maxFontSizeMultiplier={1.5}>
               {t("loyalty.redemptionsEmptyBody")}
-            </Text>
+            </UIText>
           </View>
         ) : (
           <>
@@ -192,41 +192,41 @@ function RedemptionCard({ redemption: r, onCancel, cancelling }: RedemptionCardP
 
         <View style={{ flex: 1, gap: 3 }}>
           <View style={styles.cardTitleRow}>
-            <Text style={styles.pointsText} maxFontSizeMultiplier={1.3}>
+            <UIText style={styles.pointsText} maxFontSizeMultiplier={1.3}>
               {r.points_spent.toLocaleString("ar-EG")} {t("loyalty.pointsUnit")}
-            </Text>
+            </UIText>
             <View style={[styles.statePill, { backgroundColor: stateColor(r.state) + "18" }]}>
-              <Text style={[styles.statePillText, { color: stateColor(r.state) }]}>
+              <UIText style={[styles.statePillText, { color: stateColor(r.state) }]}>
                 {getStateLabel(r.state, t)}
-              </Text>
+              </UIText>
             </View>
           </View>
 
-          <Text style={styles.metaText} maxFontSizeMultiplier={1.4}>
+          <UIText style={styles.metaText} maxFontSizeMultiplier={1.4}>
             {t("loyalty.orderedOn", { date: reservedDate })}
-          </Text>
+          </UIText>
           {fulfilledDate && (
-            <Text style={styles.metaText} maxFontSizeMultiplier={1.4}>
+            <UIText style={styles.metaText} maxFontSizeMultiplier={1.4}>
               {t("loyalty.deliveredOn", { date: fulfilledDate })}
-            </Text>
+            </UIText>
           )}
           {r.state === "reserved" && (
-            <Text style={styles.expiryText} maxFontSizeMultiplier={1.4}>
+            <UIText style={styles.expiryText} maxFontSizeMultiplier={1.4}>
               {t("loyalty.reservationEnds", { date: expiryDate })}
-            </Text>
+            </UIText>
           )}
           {r.tracking_number && (
             <View style={styles.trackingRow}>
               <Ionicons name="cube-outline" size={12} color={theme.colors.brand[700]} />
-              <Text style={styles.trackingText} maxFontSizeMultiplier={1.3} selectable>
+              <UIText style={styles.trackingText} maxFontSizeMultiplier={1.3} selectable>
                 {r.tracking_number}
-              </Text>
+              </UIText>
             </View>
           )}
           {r.cancellation_reason && (
-            <Text style={styles.cancelReason} maxFontSizeMultiplier={1.4}>
+            <UIText style={styles.cancelReason} maxFontSizeMultiplier={1.4}>
               {r.cancellation_reason}
-            </Text>
+            </UIText>
           )}
         </View>
       </View>
@@ -245,7 +245,7 @@ function RedemptionCard({ redemption: r, onCancel, cancelling }: RedemptionCardP
           ]}
         >
           <Ionicons name="close-circle-outline" size={14} color={theme.colors.rose[600]} />
-          <Text style={styles.cancelBtnText}>{t("loyalty.cancelOrder")}</Text>
+          <UIText style={styles.cancelBtnText}>{t("loyalty.cancelOrder")}</UIText>
         </Pressable>
       )}
     </View>
@@ -289,9 +289,9 @@ function stateIcon(state: GiftRedemptionState): IoniconsName {
 function SectionHeader({ title }: { title: string }) {
   return (
     <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle} accessibilityRole="header" maxFontSizeMultiplier={1.4}>
+      <UIText style={styles.sectionTitle} accessibilityRole="header" maxFontSizeMultiplier={1.4}>
         {title}
-      </Text>
+      </UIText>
     </View>
   );
 }

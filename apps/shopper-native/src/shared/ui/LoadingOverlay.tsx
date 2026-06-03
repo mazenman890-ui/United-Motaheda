@@ -4,7 +4,8 @@
  */
 
 import React from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 
 interface LoadingOverlayProps {
@@ -18,7 +19,7 @@ export function LoadingOverlay({ message, scrim = "rgba(2,29,46,0.55)" }: Loadin
     <View style={[StyleSheet.absoluteFill, styles.overlay, { backgroundColor: scrim }]}>
       <View style={styles.card}>
         <ActivityIndicator size="large" color={theme.colors.brand[500]} />
-        {message && <Text style={styles.text}>{message}</Text>}
+        {message && <UIText style={styles.text}>{message}</UIText>}
       </View>
     </View>
   );

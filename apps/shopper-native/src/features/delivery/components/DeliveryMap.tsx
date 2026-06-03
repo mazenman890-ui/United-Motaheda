@@ -1,5 +1,6 @@
 ﻿import React, { useCallback, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
+import { Pressable, StyleSheet, View, ViewStyle } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { WebView, WebViewMessageEvent } from "react-native-webview";
 import { theme } from "@/shared/theme";
 
@@ -81,10 +82,10 @@ export function DeliveryMap({
 
       <View style={styles.overlay}>
         <View style={styles.infoRow}>
-          <Text style={styles.label}>الموقع المختار</Text>
-          <Text style={styles.coordinates}>
+          <UIText style={styles.label}>الموقع المختار</UIText>
+          <UIText style={styles.coordinates}>
             {selectedLocation.latitude.toFixed(5)}, {selectedLocation.longitude.toFixed(5)}
-          </Text>
+          </UIText>
         </View>
 
         <Pressable
@@ -92,7 +93,7 @@ export function DeliveryMap({
           accessibilityRole="button"
           accessibilityLabel="تأكيد العنوان المختار"
           style={({ pressed }) => [styles.confirmButton, pressed && { opacity: 0.85 }]}>
-          <Text style={styles.confirmText}>تأكيد العنوان</Text>
+          <UIText style={styles.confirmText}>تأكيد العنوان</UIText>
         </Pressable>
       </View>
     </View>

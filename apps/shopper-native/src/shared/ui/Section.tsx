@@ -6,7 +6,7 @@
  *   <View>
  *     <View style={sectionHead}>
  *       <View style={sectionIcon}><Ionicons name={icon} /></View>
- *       <Text style={sectionTitle}>{title}</Text>
+ *       <UIText style={sectionTitle}>{title}</UIText>
  *       <Pressable onPress={action}>...</Pressable>
  *     </View>
  *     <View style={sectionBody}>{children}</View>
@@ -16,7 +16,8 @@
  */
 
 import React from "react";
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "@/shared/theme";
 
@@ -54,11 +55,11 @@ export function Section({
               <Ionicons name={icon} size={13} color={iconColor} />
             </View>
           )}
-          <Text style={styles.title}>{title}</Text>
+          <UIText style={styles.title}>{title}</UIText>
         </View>
         {action && (
           <Pressable onPress={action.onPress} hitSlop={6}>
-            <Text style={styles.action}>{action.label}</Text>
+            <UIText style={styles.action}>{action.label}</UIText>
           </Pressable>
         )}
       </View>

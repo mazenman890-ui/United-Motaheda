@@ -3,9 +3,9 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -24,9 +24,9 @@ function Section({ title, children, delay = 0 }: SectionProps) {
     <Animated.View entering={FadeInDown.duration(350).delay(delay)} style={styles.section}>
       <View style={styles.sectionHeader}>
         <View style={styles.sectionDot} />
-        <Text style={styles.sectionTitle}>{title}</Text>
+        <UIText style={styles.sectionTitle}>{title}</UIText>
       </View>
-      <Text style={styles.sectionBody}>{children}</Text>
+      <UIText style={styles.sectionBody}>{children}</UIText>
     </Animated.View>
   );
 }
@@ -43,7 +43,7 @@ export default function TermsScreen() {
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={10}>
           <Ionicons name="arrow-forward" size={18} color={theme.colors.text.primary} />
         </Pressable>
-        <Text style={styles.title}>{t("terms.title")}</Text>
+        <UIText style={styles.title}>{t("terms.title")}</UIText>
         <View style={{ width: 38 }} />
       </View>
 
@@ -54,15 +54,15 @@ export default function TermsScreen() {
         {/* Last updated */}
         <Animated.View entering={FadeInDown.duration(300)} style={styles.updatedBanner}>
           <Ionicons name="calendar-outline" size={15} color={theme.colors.brand[700]} />
-          <Text style={styles.updatedText}>{t("terms.lastUpdated")}</Text>
+          <UIText style={styles.updatedText}>{t("terms.lastUpdated")}</UIText>
         </Animated.View>
 
         {/* Warning banner */}
         <Animated.View entering={FadeInDown.duration(350).delay(40)} style={styles.warningBanner}>
           <Ionicons name="document-text" size={20} color={theme.colors.warning.strong} />
-          <Text style={styles.warningText}>
+          <UIText style={styles.warningText}>
             {t("terms.agreeBanner")}
-          </Text>
+          </UIText>
         </Animated.View>
 
         <Section title="١. قبول الشروط" delay={80}>
@@ -123,9 +123,9 @@ export default function TermsScreen() {
           {`تخضع هذه الشروط وتُفسَّر وفقاً لأحكام القانون المصري. أي نزاع ينشأ عن هذه الشروط يُحال للمحاكم المختصة في جمهورية مصر العربية.`}
         </Section>
 
-        <Text style={styles.footer}>
+        <UIText style={styles.footer}>
           الصيدلية المتحدة • مصر • info@unitedpharmacy.com
-        </Text>
+        </UIText>
       </ScrollView>
     </View>
   );

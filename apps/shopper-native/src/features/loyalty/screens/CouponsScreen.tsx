@@ -16,9 +16,9 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -110,7 +110,7 @@ export function CouponsScreen() {
     return (
       <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
         <SubScreenHeader title={t("loyalty.couponsTitle")} subtitle={t("loyalty.couponsSubtitle")} />
-        <ScrollView contentContainerStyle={{ padding: 16 }}>
+        <ScrollView contentContainerStyle={{ padding: theme.spacing.lg }}>
           <ListSkeleton rows={3} />
         </ScrollView>
       </View>
@@ -121,7 +121,7 @@ export function CouponsScreen() {
     <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
       <SubScreenHeader title={t("loyalty.couponsTitle")} subtitle={t("loyalty.couponsSubtitle")} />
       <ScrollView
-        contentContainerStyle={{ paddingBottom: insets.bottom + 32, paddingHorizontal: 16 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 32, paddingHorizontal: theme.spacing.lg }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -137,9 +137,9 @@ export function CouponsScreen() {
           <View style={styles.balanceChip} accessibilityRole="text"
                 accessibilityLabel={t("loyalty.balanceA11y", { n: balance.data.balance })}>
             <Ionicons name="star" size={14} color={theme.colors.brand[700]} />
-            <Text style={styles.balanceText} maxFontSizeMultiplier={1.3}>
+            <UIText style={styles.balanceText} maxFontSizeMultiplier={1.3}>
               {t("loyalty.balanceChipText", { n: balance.data.balance.toLocaleString("ar-EG") })}
-            </Text>
+            </UIText>
           </View>
         )}
 
@@ -184,9 +184,9 @@ export function CouponsScreen() {
 function SectionHeader({ title }: { title: string }) {
   return (
     <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle} accessibilityRole="header" maxFontSizeMultiplier={1.4}>
+      <UIText style={styles.sectionTitle} accessibilityRole="header" maxFontSizeMultiplier={1.4}>
         {title}
-      </Text>
+      </UIText>
     </View>
   );
 }
@@ -206,20 +206,20 @@ function IssuedCouponRow({ coupon }: { coupon: Coupon }) {
       })}
     >
       <View style={styles.codeBox}>
-        <Text style={styles.codeText} selectable maxFontSizeMultiplier={1.2}>
+        <UIText style={styles.codeText} selectable maxFontSizeMultiplier={1.2}>
           {coupon.code}
-        </Text>
+        </UIText>
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={styles.couponLabel} maxFontSizeMultiplier={1.4}>{t("loyalty.couponLabel")}</Text>
+        <UIText style={styles.couponLabel} maxFontSizeMultiplier={1.4}>{t("loyalty.couponLabel")}</UIText>
         {expiry && (
-          <Text style={styles.couponMeta} maxFontSizeMultiplier={1.4}>
+          <UIText style={styles.couponMeta} maxFontSizeMultiplier={1.4}>
             {t("loyalty.validUntil", { date: expiry })}
-          </Text>
+          </UIText>
         )}
       </View>
       <View style={styles.statusPill}>
-        <Text style={styles.statusPillText}>{t("loyalty.couponAvailable")}</Text>
+        <UIText style={styles.statusPillText}>{t("loyalty.couponAvailable")}</UIText>
       </View>
     </View>
   );
@@ -247,28 +247,28 @@ function BatchRow({ batch, currentBalance, isRedeeming, onRedeem }: BatchRowProp
           accessibilityLabel={t("loyalty.batchA11y", { name: batch.name, cost: batch.points_cost.toLocaleString("ar-EG") })}>
       <View style={styles.batchHead}>
         <View style={styles.discountBadge}>
-          <Text style={styles.discountText} maxFontSizeMultiplier={1.2}>
+          <UIText style={styles.discountText} maxFontSizeMultiplier={1.2}>
             {formatDiscount(batch.discount_kind, batch.discount_value, t)}
-          </Text>
+          </UIText>
         </View>
-        <View style={{ flex: 1, marginEnd: 12 }}>
-          <Text style={styles.batchTitle} numberOfLines={2} maxFontSizeMultiplier={1.3}>
+        <View style={{ flex: 1, marginEnd: theme.spacing.md }}>
+          <UIText style={styles.batchTitle} numberOfLines={2} maxFontSizeMultiplier={1.3}>
             {batch.name}
-          </Text>
+          </UIText>
           {batch.min_spend_cents != null && batch.min_spend_cents > 0 && (
-            <Text style={styles.batchMeta} maxFontSizeMultiplier={1.4}>
+            <UIText style={styles.batchMeta} maxFontSizeMultiplier={1.4}>
               {t("loyalty.minSpendBatch", { amount: (batch.min_spend_cents / 100).toLocaleString("ar-EG") })}
-            </Text>
+            </UIText>
           )}
           {lowStock && (
-            <Text style={styles.lowStockText} maxFontSizeMultiplier={1.4}>
+            <UIText style={styles.lowStockText} maxFontSizeMultiplier={1.4}>
               {t("loyalty.lowStock", { n: remaining })}
-            </Text>
+            </UIText>
           )}
           {soldOut && (
-            <Text style={styles.soldOutText} maxFontSizeMultiplier={1.4}>
+            <UIText style={styles.soldOutText} maxFontSizeMultiplier={1.4}>
               {t("loyalty.soldOut")}
-            </Text>
+            </UIText>
           )}
         </View>
       </View>
@@ -276,9 +276,9 @@ function BatchRow({ batch, currentBalance, isRedeeming, onRedeem }: BatchRowProp
       <View style={styles.batchFoot}>
         <View style={styles.costWrap}>
           <Ionicons name="star" size={14} color={theme.colors.amber[600]} />
-          <Text style={styles.costText} maxFontSizeMultiplier={1.3}>
+          <UIText style={styles.costText} maxFontSizeMultiplier={1.3}>
             {t("loyalty.costLabel", { n: batch.points_cost.toLocaleString("ar-EG") })}
-          </Text>
+          </UIText>
         </View>
         <Pressable
           onPress={onRedeem}
@@ -293,7 +293,7 @@ function BatchRow({ batch, currentBalance, isRedeeming, onRedeem }: BatchRowProp
             pressed && !disabled && { opacity: 0.85 },
           ]}
         >
-          <Text
+          <UIText
             style={[
               styles.redeemBtnText,
               !canAfford && !disabled && styles.redeemBtnTextInsufficient,
@@ -308,7 +308,7 @@ function BatchRow({ batch, currentBalance, isRedeeming, onRedeem }: BatchRowProp
               : !canAfford
               ? t("loyalty.redeemInsufficientLabel")
               : t("loyalty.redeemLabel")}
-          </Text>
+          </UIText>
         </Pressable>
       </View>
     </View>
@@ -330,7 +330,7 @@ function EmptyRow({ icon, message }: { icon: React.ComponentProps<typeof Ionicon
   return (
     <View style={styles.emptyRow} accessibilityRole="text" accessibilityLabel={message}>
       <Ionicons name={icon} size={20} color={theme.colors.slate[400]} />
-      <Text style={styles.emptyText} maxFontSizeMultiplier={1.5}>{message}</Text>
+      <UIText style={styles.emptyText} maxFontSizeMultiplier={1.5}>{message}</UIText>
     </View>
   );
 }
@@ -339,7 +339,7 @@ function ErrorRow({ onRetry }: { onRetry: () => void }) {
   const { t } = useTranslation();
   return (
     <View style={styles.errorRow}>
-      <Text style={styles.errorText} maxFontSizeMultiplier={1.4}>{t("loyalty.recentLoadError")}</Text>
+      <UIText style={styles.errorText} maxFontSizeMultiplier={1.4}>{t("loyalty.recentLoadError")}</UIText>
       <Pressable
         onPress={onRetry}
         accessibilityRole="button"
@@ -347,7 +347,7 @@ function ErrorRow({ onRetry }: { onRetry: () => void }) {
         style={({ pressed }) => [styles.errorBtn, pressed && { opacity: 0.85 }]}
       >
         <Ionicons name="refresh" size={13} color={theme.colors.brand[700]} />
-        <Text style={styles.errorBtnText}>{t("common.retry")}</Text>
+        <UIText style={styles.errorBtnText}>{t("common.retry")}</UIText>
       </Pressable>
     </View>
   );
@@ -383,17 +383,17 @@ const styles = StyleSheet.create({
   },
 
   balanceChip: {
-    flexDirection:    "row-reverse",
-    alignItems:       "center",
-    gap:              6,
-    alignSelf:        "flex-end",
-    backgroundColor:  theme.colors.brand.lighter,
-    borderWidth:      1,
-    borderColor:      theme.colors.border.brandSoft,
-    borderRadius:     999,
-    paddingHorizontal: 12,
+    flexDirection:     "row-reverse",
+    alignItems:        "center",
+    gap:               6,
+    alignSelf:         "flex-end",
+    backgroundColor:   theme.colors.brand.lighter,
+    borderWidth:       1,
+    borderColor:       theme.colors.border.brandSoft,
+    borderRadius:      999,
+    paddingHorizontal: theme.spacing.md,
     paddingVertical:   6,
-    marginBottom:     12,
+    marginBottom:      theme.spacing.md,
   },
   balanceText: {
     fontFamily: theme.fonts.bold,
@@ -417,16 +417,16 @@ const styles = StyleSheet.create({
   couponRow: {
     flexDirection:   "row-reverse",
     alignItems:      "center",
-    gap:             12,
+    gap:             theme.spacing.md,
     backgroundColor: theme.colors.surface,
     borderRadius:    14,
-    padding:         12,
-    marginBottom:    8,
+    padding:         theme.spacing.md,
+    marginBottom:    theme.spacing.sm,
     ...theme.shadow.card,
   },
   codeBox: {
-    paddingHorizontal: 12,
-    paddingVertical:   8,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical:   theme.spacing.sm,
     borderRadius:      10,
     backgroundColor:   theme.colors.brand.lighter,
     borderStyle:       "dashed",
@@ -454,7 +454,7 @@ const styles = StyleSheet.create({
   },
   statusPill: {
     paddingHorizontal: 10,
-    paddingVertical:   4,
+    paddingVertical:   theme.spacing.xs,
     borderRadius:      8,
     backgroundColor:   theme.colors.surfaceSunken,
     borderWidth:       1,
@@ -472,7 +472,7 @@ const styles = StyleSheet.create({
     borderRadius:    16,
     padding:         14,
     marginBottom:    10,
-    gap:             12,
+    gap:             theme.spacing.md,
     ...theme.shadow.card,
   },
   batchHead: {
@@ -480,18 +480,18 @@ const styles = StyleSheet.create({
     alignItems:    "flex-start",
   },
   discountBadge: {
-    minWidth:           56,
-    paddingHorizontal:  10,
-    paddingVertical:    8,
-    borderRadius:       12,
-    backgroundColor:    theme.colors.brand[700],
-    alignItems:         "center",
-    justifyContent:     "center",
+    minWidth:          56,
+    paddingHorizontal: 10,
+    paddingVertical:   theme.spacing.sm,
+    borderRadius:      12,
+    backgroundColor:   theme.colors.brand[700],
+    alignItems:        "center",
+    justifyContent:    "center",
   },
   discountText: {
     fontFamily: theme.fonts.black,
     fontSize:   14,
-    color:      "#fff",
+    color:      theme.colors.surface,
   },
   batchTitle: {
     fontFamily: theme.fonts.black,
@@ -525,7 +525,7 @@ const styles = StyleSheet.create({
     flexDirection:  "row-reverse",
     alignItems:     "center",
     justifyContent: "space-between",
-    paddingTop:     12,
+    paddingTop:     theme.spacing.md,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border.hairline,
   },
@@ -557,7 +557,7 @@ const styles = StyleSheet.create({
   redeemBtnText: {
     fontFamily: theme.fonts.black,
     fontSize:   13,
-    color:      "#fff",
+    color:      theme.colors.surface,
   },
   redeemBtnTextInsufficient: {
     color: theme.colors.text.secondary,
@@ -579,7 +579,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     backgroundColor:   theme.colors.surfaceSunken,
     borderRadius:      14,
-    marginBottom:      8,
+    marginBottom:      theme.spacing.sm,
   },
   emptyText: {
     fontFamily: theme.fonts.regular,
@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     backgroundColor:   theme.colors.surfaceSunken,
     borderRadius:      14,
-    marginBottom:      8,
+    marginBottom:      theme.spacing.sm,
   },
   errorText: {
     fontFamily: theme.fonts.bold,
@@ -608,7 +608,7 @@ const styles = StyleSheet.create({
     flexDirection:     "row-reverse",
     alignItems:        "center",
     gap:               5,
-    paddingHorizontal: 12,
+    paddingHorizontal: theme.spacing.md,
     paddingVertical:   6,
     borderRadius:      10,
     borderWidth:       1,

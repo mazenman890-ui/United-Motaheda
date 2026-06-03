@@ -1,5 +1,6 @@
 ﻿import React, { memo, useCallback } from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, {
@@ -60,11 +61,11 @@ export const FAQAccordion = memo(function FAQAccordion({
         {/* Question row */}
         <View style={styles.questionRow}>
           <View style={[styles.catDot, { backgroundColor: cat.color }]} />
-          <Text
+          <UIText
             style={[styles.question, expanded && styles.questionExpanded]}
             numberOfLines={expanded ? undefined : 2}>
             {item.question}
-          </Text>
+          </UIText>
           <Animated.View style={[styles.chevronWrap, expanded && styles.chevronWrapExpanded, chevronStyle]}>
             <Ionicons
               name="chevron-down"
@@ -78,9 +79,9 @@ export const FAQAccordion = memo(function FAQAccordion({
         {expanded && (
           <Animated.View entering={FadeIn.duration(180)} style={styles.answerWrap}>
             <View style={styles.answerDivider} />
-            <Text style={styles.answer}>{item.answer}</Text>
+            <UIText style={styles.answer}>{item.answer}</UIText>
             <View style={styles.catPill}>
-              <Text style={[styles.catPillText, { color: cat.color }]}>{cat.label}</Text>
+              <UIText style={[styles.catPillText, { color: cat.color }]}>{cat.label}</UIText>
             </View>
           </Animated.View>
         )}

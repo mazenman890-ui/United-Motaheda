@@ -6,9 +6,9 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
+import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -93,18 +93,18 @@ const NotificationRow = React.memo(function NotificationRow({
       {/* Content */}
       <View style={styles.notifContent}>
         <View style={styles.notifTitleRow}>
-          <Text
+          <UIText
             style={[styles.notifTitle, !item.isRead && styles.notifTitleUnread]}
             numberOfLines={1}>
             {item.title}
-          </Text>
-          <Text style={styles.notifTime}>{timeAgo(item.createdAt, t)}</Text>
+          </UIText>
+          <UIText style={styles.notifTime}>{timeAgo(item.createdAt, t)}</UIText>
         </View>
-        <Text style={styles.notifBody} numberOfLines={2}>
+        <UIText style={styles.notifBody} numberOfLines={2}>
           {item.body}
-        </Text>
+        </UIText>
         <View style={styles.notifTypePill}>
-          <Text style={[styles.notifTypeText, { color: cfg.color }]}>{t(cfg.labelKey)}</Text>
+          <UIText style={[styles.notifTypeText, { color: cfg.color }]}>{t(cfg.labelKey)}</UIText>
         </View>
       </View>
     </Pressable>
@@ -181,10 +181,10 @@ export default function NotificationsScreen() {
             accessibilityLabel={t("common.back")}>
             <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.8)" />
           </Pressable>
-          <Text style={styles.headerTitle}>{t("notifications.title")}</Text>
+          <UIText style={styles.headerTitle}>{t("notifications.title")}</UIText>
           {unreadCount > 0 && (
             <Animated.View entering={FadeIn.duration(200)} style={styles.headerBadge}>
-              <Text style={styles.headerBadgeText}>{t("notifications.newBadge", { count: unreadCount })}</Text>
+              <UIText style={styles.headerBadgeText}>{t("notifications.newBadge", { count: unreadCount })}</UIText>
             </Animated.View>
           )}
           <Pressable
@@ -207,9 +207,9 @@ export default function NotificationsScreen() {
                   accessibilityRole="button"
                   accessibilityState={{ selected: active }}
                   style={[styles.filterChip, active && styles.filterChipActive]}>
-                  <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+                  <UIText style={[styles.filterChipText, active && styles.filterChipTextActive]}>
                     {t(f.labelKey)}
-                  </Text>
+                  </UIText>
                 </Pressable>
               );
             })}
@@ -219,7 +219,7 @@ export default function NotificationsScreen() {
               onPress={handleMarkAllRead}
               hitSlop={8}
               accessibilityRole="button">
-              <Text style={styles.markAllText}>{t("notifications.markAll")}</Text>
+              <UIText style={styles.markAllText}>{t("notifications.markAll")}</UIText>
             </Pressable>
           )}
         </View>
@@ -229,7 +229,7 @@ export default function NotificationsScreen() {
       {loading && notifications.length === 0 ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={theme.colors.brand[500]} />
-          <Text style={styles.loadingText}>{t("common.loading")}</Text>
+          <UIText style={styles.loadingText}>{t("common.loading")}</UIText>
         </View>
       ) : (
         <FlatList

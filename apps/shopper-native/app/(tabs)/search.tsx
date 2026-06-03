@@ -8,7 +8,7 @@
  *   - Editorial information rhythm: eyebrow → card-title → body-sm →
  *     caption tiers cascade across discovery sections, suggestions, and
  *     filter panel.
- *   - One typography primitive (`UIText`) across the file. Zero raw <Text>
+ *   - One typography primitive (`UIText`) across the file. Zero raw <UIText>
  *     for content; only `<TextInput>` and highlight slices remain.
  *   - Suggestions overlay rebuilt as elevated white Card with hairline
  *     dividers — reads as predictive helper, not a dropdown menu.
@@ -27,7 +27,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from "react-native";
@@ -85,17 +84,17 @@ const TRENDING_META: { termKey: string; icon: IoniconsName; color: string; bg: s
 // ─── Highlight match — premium subtle background ───────────────────────────
 
 function Hl({ text, q, style, lines }: { text: string; q: string; style?: any; lines?: number }) {
-  if (!q || q.length < 2) return <Text style={style} numberOfLines={lines}>{text}</Text>;
+  if (!q || q.length < 2) return <UIText style={style} numberOfLines={lines}>{text}</UIText>;
   const lower = text.toLowerCase();
   const ql    = q.toLowerCase().trim();
   const idx   = lower.indexOf(ql);
-  if (idx < 0) return <Text style={style} numberOfLines={lines}>{text}</Text>;
+  if (idx < 0) return <UIText style={style} numberOfLines={lines}>{text}</UIText>;
   return (
-    <Text style={style} numberOfLines={lines}>
+    <UIText style={style} numberOfLines={lines}>
       {text.slice(0, idx)}
-      <Text style={s.hlMatch}>{text.slice(idx, idx + ql.length)}</Text>
+      <UIText style={s.hlMatch}>{text.slice(idx, idx + ql.length)}</UIText>
       {text.slice(idx + ql.length)}
-    </Text>
+    </UIText>
   );
 }
 
@@ -103,13 +102,14 @@ function Hl({ text, q, style, lines }: { text: string; q: string; style?: any; l
 
 const SuggRow = React.memo(function SuggRow({
   product, query, onPress, index, selected,
-}: { product: NativeProduct; query: string; onPress: () => void; index: number; selected: boolean }) {
+}: { product: NativeProduct; query: string; onPress: (p: NativeProduct) => void; index: number; selected: boolean }) {
   const { t } = useTranslation();
   const name = product.nameAr ?? product.name;
+  const handlePress = useCallback(() => onPress(product), [onPress, product]);
   return (
     <Animated.View entering={FadeInRight.delay(index * 25).duration(220)}>
       <Pressable
-        onPress={onPress}
+        onPress={handlePress}
         style={({ pressed }) => [
           s.suggRow,
           (pressed || selected) && { backgroundColor: theme.colors.surfaceSunken },
@@ -445,7 +445,7 @@ export default function SearchScreen() {
               <Ionicons
                 name="options-outline"
                 size={15}
-                color={(showFilters || filterCount > 0) ? "#fff" : theme.colors.slate[500]}
+                color={(showFilters || filterCount > 0) ? theme.colors.surface : theme.colors.slate[500]}
               />
               {filterCount > 0 && !showFilters && (
                 <View style={s.filterBadge}>
@@ -460,7 +460,7 @@ export default function SearchScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={t("search.searchBtn")}
                 style={({ pressed }) => [s.barSubmit, pressed && { opacity: 0.85 }]}>
-                <Ionicons name="return-down-back" size={14} color="#fff" />
+                <Ionicons name="return-down-back" size={14} color={theme.colors.surface} />
               </Pressable>
             )}
           </Animated.View>
@@ -513,7 +513,7 @@ export default function SearchScreen() {
                     <UIText
                       variant="caption"
                       weight={on ? "black" : "bold"}
-                      style={{ color: on ? "#fff" : theme.colors.text.secondary }}>
+                      style={{ color: on ? theme.colors.surface : theme.colors.text.secondary }}>
                       {t(SORT_KEYS[key])}
                     </UIText>
                   </Pressable>
@@ -542,7 +542,7 @@ export default function SearchScreen() {
                   <UIText
                     variant="caption"
                     weight={!catFilter ? "black" : "bold"}
-                    style={{ color: !catFilter ? "#fff" : theme.colors.text.secondary }}>
+                    style={{ color: !catFilter ? theme.colors.surface : theme.colors.text.secondary }}>
                     {t("search.all")}
                   </UIText>
                 </Pressable>
@@ -554,7 +554,7 @@ export default function SearchScreen() {
                         variant="caption"
                         weight={on ? "black" : "bold"}
                         numberOfLines={1}
-                        style={{ color: on ? "#fff" : theme.colors.text.secondary }}>
+                        style={{ color: on ? theme.colors.surface : theme.colors.text.secondary }}>
                         {cat.name}
                       </UIText>
                     </Pressable>
@@ -721,11 +721,11 @@ export default function SearchScreen() {
                           <UIText
                             variant="caption"
                             weight={active ? "black" : "bold"}
-                            style={{ color: active ? "#fff" : theme.colors.text.secondary }}>
+                            style={{ color: active ? theme.colors.surface : theme.colors.text.secondary }}>
                             {g.cat}
                           </UIText>
                           <View style={[s.groupChipCount, active && s.groupChipCountActive]}>
-                            <UIText variant="eyebrow" style={{ color: active ? "#fff" : theme.colors.text.tertiary }}>
+                            <UIText variant="eyebrow" style={{ color: active ? theme.colors.surface : theme.colors.text.tertiary }}>
                               {g.items.length}
                             </UIText>
                           </View>
@@ -747,7 +747,7 @@ export default function SearchScreen() {
                   ))}
                 </View>
               ) : (
-                <View style={{ paddingTop: 60, paddingHorizontal: 20, gap: 20 }}>
+                <View style={{ paddingTop: 60, paddingHorizontal: theme.spacing[2.5], gap: theme.spacing[2.5] }}>
                   <EmptyState
                     icon="search-outline"
                     title={t("search.noResults")}
@@ -831,7 +831,7 @@ export default function SearchScreen() {
                     key={p.id}
                     product={p}
                     query={debouncedQ}
-                    onPress={() => tapSugg(p)}
+                    onPress={tapSugg}
                     index={i}
                     selected={selectedIdx === i}
                   />
@@ -861,6 +861,12 @@ export default function SearchScreen() {
 // ═══  STYLES — light-mode-first  ═══════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Glass/overlay constants — no theme token for these intentional design values
+const SEARCH_OVERLAY = {
+  teal10:  "rgba(13,184,168,0.10)", // barGlow aura behind search bar
+  white20: "rgba(255,255,255,0.20)", // active chip count badge on brand bg
+} as const;
+
 const s = StyleSheet.create({
   screen:  { flex: 1, backgroundColor: theme.colors.bg },
   content: { flex: 1, position: "relative" },
@@ -883,7 +889,7 @@ const s = StyleSheet.create({
   topLeft: {
     flexDirection: "row-reverse",
     alignItems:    "center",
-    gap:           12,
+    gap:           theme.spacing.md,
   },
   headerIcon: {
     width:           34,
@@ -917,7 +923,7 @@ const s = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     borderRadius:    18,
     opacity:         0,
-    backgroundColor: "rgba(13,184,168,0.10)",
+    backgroundColor: SEARCH_OVERLAY.teal10,
     transform:       [{ scale: 1.04 }],
   },
   bar: {
@@ -963,7 +969,7 @@ const s = StyleSheet.create({
     width:           StyleSheet.hairlineWidth,
     height:          24,
     backgroundColor: theme.colors.border.default,
-    marginHorizontal: 4,
+    marginHorizontal: theme.spacing.xs,
   },
   barFilterBtn: {
     width:           38,
@@ -1019,9 +1025,9 @@ const s = StyleSheet.create({
   // bottom: tabBarHeight ensures the card never extends behind the floating nav
   suggOverlay: {
     position: "absolute",
-    top:      8,
-    left:     12,
-    right:    12,
+    top:      theme.spacing.sm,
+    left:     theme.spacing.md,
+    right:    theme.spacing.md,
     bottom:   theme.layout.tabBarHeight,
     zIndex:   100,
     overflow: "hidden",
@@ -1035,11 +1041,11 @@ const s = StyleSheet.create({
     shadowOpacity:   0.10,
   },
   suggHeader: {
-    flexDirection:    "row-reverse",
-    alignItems:       "center",
-    justifyContent:   "space-between",
-    paddingHorizontal: 16,
-    paddingVertical:   12,
+    flexDirection:     "row-reverse",
+    alignItems:        "center",
+    justifyContent:    "space-between",
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical:   theme.spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: theme.colors.border.hairline,
   },
@@ -1049,11 +1055,11 @@ const s = StyleSheet.create({
     gap:           6,
   },
   suggRow: {
-    flexDirection:    "row-reverse",
-    alignItems:       "center",
-    gap:              12,
-    paddingHorizontal: 16,
-    paddingVertical:   12,
+    flexDirection:     "row-reverse",
+    alignItems:        "center",
+    gap:               theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical:   theme.spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: theme.colors.border.hairline,
   },
@@ -1088,26 +1094,26 @@ const s = StyleSheet.create({
     borderColor:     theme.colors.error.light,
   },
   suggEmpty: {
-    alignItems:    "center",
-    paddingVertical: 28,
-    gap:           8,
+    alignItems:      "center",
+    paddingVertical: theme.spacing[3.5],
+    gap:             theme.spacing.sm,
   },
   suggShowAll: {
-    flexDirection:    "row-reverse",
-    alignItems:       "center",
-    justifyContent:   "center",
-    gap:              8,
-    paddingVertical:  14,
+    flexDirection:   "row-reverse",
+    alignItems:      "center",
+    justifyContent:  "center",
+    gap:             theme.spacing.sm,
+    paddingVertical: 14,
     backgroundColor:  theme.colors.brand.lighter,
   },
 
   // ── Filter panel — light, refined
   filterPanel: {
     backgroundColor:   theme.colors.surface,
-    paddingHorizontal: 16,
+    paddingHorizontal: theme.spacing.lg,
     paddingTop:        14,
     paddingBottom:     14,
-    gap:               12,
+    gap:               theme.spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: theme.colors.border.hairline,
   },
@@ -1123,7 +1129,7 @@ const s = StyleSheet.create({
   },
   chip: {
     paddingHorizontal: 14,
-    paddingVertical:   8,
+    paddingVertical:   theme.spacing.sm,
     borderRadius:      999,
     backgroundColor:   theme.colors.surfaceSunken,
     borderWidth:       1,
@@ -1143,7 +1149,7 @@ const s = StyleSheet.create({
   toggleLeft: {
     flexDirection: "row-reverse",
     alignItems:    "center",
-    gap:           8,
+    gap:           theme.spacing.sm,
   },
   sw: {
     width:           38,
@@ -1158,7 +1164,7 @@ const s = StyleSheet.create({
     width:           18,
     height:          18,
     borderRadius:    9,
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.surface,
     alignSelf:       "flex-end",
     ...theme.shadow.hairline,
   },
@@ -1166,9 +1172,9 @@ const s = StyleSheet.create({
 
   // ── Discovery sections — editorial light rhythm
   discovery: {
-    paddingHorizontal: 16,
-    paddingTop:        20,
-    gap:               28,
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop:        theme.spacing[2.5],
+    gap:               theme.spacing[3.5],
   },
   section: { gap: 14 },
   sectionHeader: {
@@ -1179,7 +1185,7 @@ const s = StyleSheet.create({
   sectionTitleWrap: {
     flexDirection: "row-reverse",
     alignItems:    "center",
-    gap:           12,
+    gap:           theme.spacing.md,
   },
   sectionIcon: {
     width:           34,
@@ -1199,7 +1205,7 @@ const s = StyleSheet.create({
   recentWrap: {
     flexDirection: "row-reverse",
     flexWrap:      "wrap",
-    gap:           8,
+    gap:           theme.spacing.sm,
   },
   recentChip: {
     flexDirection:    "row-reverse",
@@ -1215,15 +1221,15 @@ const s = StyleSheet.create({
   },
 
   // Trending — premium tile rows
-  trendGrid: { gap: 8 },
+  trendGrid: { gap: theme.spacing.sm },
   trendItem: {
-    flexDirection:    "row-reverse",
-    alignItems:       "center",
-    gap:              12,
-    backgroundColor:  theme.colors.surface,
-    borderRadius:     14,
+    flexDirection:     "row-reverse",
+    alignItems:        "center",
+    gap:               theme.spacing.md,
+    backgroundColor:   theme.colors.surface,
+    borderRadius:      14,
     paddingHorizontal: 14,
-    paddingVertical:   12,
+    paddingVertical:   theme.spacing.md,
     ...theme.shadow.card,
   },
   trendIcon: {
@@ -1254,10 +1260,10 @@ const s = StyleSheet.create({
     ...theme.shadow.card,
   },
   catRow: {
-    flexDirection:    "row-reverse",
-    alignItems:       "center",
-    gap:              12,
-    paddingHorizontal: 16,
+    flexDirection:     "row-reverse",
+    alignItems:        "center",
+    gap:               theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
     paddingVertical:   14,
   },
   catRowDivider: {
@@ -1285,12 +1291,12 @@ const s = StyleSheet.create({
   },
 
   // ── Results grid
-  grid:    { paddingHorizontal: 16, paddingTop: 14 },
-  gridRow: { gap: 12, marginBottom: 12 },
+  grid:    { paddingHorizontal: theme.spacing.lg, paddingTop: 14 },
+  gridRow: { gap: theme.spacing.md, marginBottom: theme.spacing.md },
 
   groupHeader: {
     marginBottom: 14,
-    gap:          8,
+    gap:          theme.spacing.sm,
   },
   groupEyebrow: {
     paddingHorizontal: 2,
@@ -1305,7 +1311,7 @@ const s = StyleSheet.create({
     gap:              7,
     backgroundColor:  theme.colors.surface,
     borderRadius:     999,
-    paddingHorizontal: 12,
+    paddingHorizontal: theme.spacing.md,
     paddingVertical:   7,
     borderWidth:      1,
     borderColor:      theme.colors.border.hairline,
@@ -1323,16 +1329,16 @@ const s = StyleSheet.create({
     alignItems:      "center",
   },
   groupChipCountActive: {
-    backgroundColor: "rgba(255,255,255,0.20)",
+    backgroundColor: SEARCH_OVERLAY.white20,
   },
 
   searchingWrap: {
     paddingTop: 60,
     alignItems: "center",
-    gap:        12,
+    gap:        theme.spacing.md,
   },
   footerLoader: {
-    paddingVertical: 24,
+    paddingVertical: theme.spacing[3],
     alignItems:      "center",
   },
 
@@ -1340,7 +1346,7 @@ const s = StyleSheet.create({
   skeletonGrid: {
     flexDirection:   "row-reverse",
     flexWrap:        "wrap",
-    padding:         12,
+    padding:         theme.spacing.md,
     gap:             10,
   },
   skeletonCell: {
@@ -1376,7 +1382,7 @@ const s = StyleSheet.create({
     alignItems:       "center",
     gap:              6,
     paddingHorizontal: 6,
-    paddingVertical:   4,
+    paddingVertical:   theme.spacing.xs,
   },
   translationHintText: {
     color:    theme.colors.brand[700],
@@ -1384,19 +1390,17 @@ const s = StyleSheet.create({
   },
 
   // ── Empty-state quick suggestions ────────────────────────────────────────
-  emptyTrendWrap: {
-    paddingHorizontal: 4,
-  },
+  emptyTrendWrap:  { paddingHorizontal: theme.spacing.xs },
   emptyTrendChips: {
     flexDirection: "row-reverse",
     flexWrap:      "wrap",
-    gap:           8,
+    gap:           theme.spacing.sm,
   },
   emptyTrendChip: {
-    flexDirection:    "row-reverse",
-    alignItems:       "center",
-    gap:              7,
-    paddingHorizontal: 12,
+    flexDirection:     "row-reverse",
+    alignItems:        "center",
+    gap:               7,
+    paddingHorizontal: theme.spacing.md,
     paddingVertical:   9,
     borderRadius:     999,
     backgroundColor:  theme.colors.surface,
