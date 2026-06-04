@@ -55,10 +55,10 @@
         {
           "android": {
             "kotlinVersion": "2.1.21",
-            "jsEngine": "hermes"
+            "newArchEnabled": true
           },
           "ios": {
-            "useHermes": true
+            "newArchEnabled": true
           }
         }
       ],
