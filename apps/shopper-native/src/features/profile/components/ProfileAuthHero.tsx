@@ -1,8 +1,14 @@
+/**
+ * ProfileAuthHero — static premium hero for authenticated users.
+ *
+ * Removed: FadeIn on top bar, and 4 × FadeInDown entering wrappers
+ * (delays 60 ms → 280 ms) that caused the hero to stagger-flicker on
+ * every profile mount. All sections now render instantly.
+ */
 import React, { memo } from "react";
 import { Platform, Pressable, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
@@ -135,7 +141,7 @@ export const ProfileAuthHero = memo(function ProfileAuthHero({
         <View style={styles.heroDecor3} />
 
         {/* Top bar */}
-        <Animated.View entering={FadeIn.duration(200)} style={styles.heroTopBar}>
+        <View style={styles.heroTopBar}>
           <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>
             <UIText variant="eyebrow" style={styles.heroPageLabelNew}>{t("profile.title")}</UIText>
           </View>
@@ -162,10 +168,10 @@ export const ProfileAuthHero = memo(function ProfileAuthHero({
               <Ionicons name="settings-outline" size={16} color={HERO_GLASS.w80} />
             </Pressable>
           </View>
-        </Animated.View>
+        </View>
 
         {/* Avatar + identity */}
-        <Animated.View entering={FadeInDown.delay(60).duration(320)} style={styles.heroIdentity}>
+        <View style={styles.heroIdentity}>
           <View style={styles.avatarContainer}>
             <LinearGradient
               colors={tier.ring}
@@ -206,11 +212,11 @@ export const ProfileAuthHero = memo(function ProfileAuthHero({
               </UIText>
             </View>
           </Pressable>
-        </Animated.View>
+        </View>
       </LinearGradient>
 
       {/* Stats card (overlaps hero) */}
-      <Animated.View entering={FadeInDown.delay(140).duration(320)} style={styles.statsCard}>
+      <View style={styles.statsCard}>
         <StatPill
           value={orderCount}
           label={t("profile.statOrders")}
@@ -242,11 +248,11 @@ export const ProfileAuthHero = memo(function ProfileAuthHero({
           accent={theme.colors.amber[600]}
           onPress={() => router.push("/(tabs)/cart")}
         />
-      </Animated.View>
+      </View>
 
       {/* Last order */}
       {lastOrder && (
-        <Animated.View entering={FadeInDown.delay(200).duration(320)} style={styles.quickCardWrap}>
+        <View style={styles.quickCardWrap}>
           <Pressable
             onPress={() => router.push("/orders")}
             style={({ pressed }) => [styles.quickCard, pressed && { opacity: 0.88 }]}>
@@ -268,11 +274,11 @@ export const ProfileAuthHero = memo(function ProfileAuthHero({
             </View>
             <Ionicons name="chevron-back" size={14} color={theme.colors.slate[300]} />
           </Pressable>
-        </Animated.View>
+        </View>
       )}
 
       {/* Quick action grid */}
-      <Animated.View entering={FadeInDown.delay(280).duration(280)} style={styles.quickGrid}>
+      <View style={styles.quickGrid}>
         {QUICK_ACTIONS.map((a) => (
           <Pressable
             key={a.labelKey}
@@ -299,7 +305,7 @@ export const ProfileAuthHero = memo(function ProfileAuthHero({
             </UIText>
           </Pressable>
         ))}
-      </Animated.View>
+      </View>
     </View>
   );
 });

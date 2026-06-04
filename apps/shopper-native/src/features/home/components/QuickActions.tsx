@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
@@ -76,8 +76,9 @@ const QuickActionTile = memo(function QuickActionTile({
   const scale = useSharedValue(1);
   const anim  = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
-  const handleIn  = useCallback(() => { scale.value = withTiming(0.93, { duration: 90 }); }, [scale]);
-  const handleOut = useCallback(() => { scale.value = withTiming(1.0,  { duration: 160 }); }, [scale]);
+  // 0.97 — matches the canonical design-system press value (Button, ProductCard, CategoryCard).
+  const handleIn  = useCallback(() => { scale.value = withSpring(0.97, theme.animation.spring.press); }, [scale]);
+  const handleOut = useCallback(() => { scale.value = withSpring(1,    theme.animation.spring.press); }, [scale]);
   const handlePress = useCallback(() => {
     if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
     onNavigate(route);

@@ -56,7 +56,6 @@ export default function CategoryScreen() {
     categoryId: id,
     sortBy,
     inStock:    inStockOnly || undefined,
-    pageSize:   20,
     enabled:    Boolean(id),
   });
 

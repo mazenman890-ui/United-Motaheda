@@ -63,8 +63,8 @@ export const CategoryCard = memo(function CategoryCard({
   const scale = useSharedValue(1);
   const anim  = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
-  // Refined hardware-switch press — restrained, never bouncy
-  const onPressIn  = () => { scale.value = withSpring(0.96, theme.animation.spring.press); };
+  // 0.97 — canonical design-system press value, matches Button + ProductCard.
+  const onPressIn  = () => { scale.value = withSpring(0.97, theme.animation.spring.press); };
   const onPressOut = () => { scale.value = withSpring(1,    theme.animation.spring.press); };
 
   const isPill = variant === "pill";

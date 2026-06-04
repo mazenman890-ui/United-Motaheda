@@ -105,7 +105,6 @@ function CartReservationNotifier() {
 // ─── Root layout ──────────────────────────────────────────────────────────────
 
 export default function RootLayout() {
-  console.log("🟢 [DEBUG] RootLayout rendered");
   // All user-data stores are auth-aware and hydrated inside PharmacyBootstrap
   // (fires on user.id change). Root mount only handles fonts + RTL + splash.
   const [fontsReady, setFontsReady] = React.useState(false);
@@ -181,6 +180,8 @@ export default function RootLayout() {
               <Stack.Screen name="privacy"                options={{ headerShown: false, animation: "slide_from_right" }} />
               <Stack.Screen name="terms"                  options={{ headerShown: false, animation: "slide_from_right" }} />
               <Stack.Screen name="prescriptions"          options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="order/[id]"            options={{ headerShown: false, animation: "slide_from_right" }} />
+              <Stack.Screen name="invite"                options={{ headerShown: false, animation: "slide_from_right" }} />
               {__DEV__ && (
                 <Stack.Screen name="__preview/components" options={{ headerShown: false, animation: "slide_from_right" }} />
               )}

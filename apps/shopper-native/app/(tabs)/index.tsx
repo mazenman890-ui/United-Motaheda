@@ -5,6 +5,11 @@
  * Nav:   stable useCallback refs — memo'd children never re-render on nav.
  * UI:    all major sections live in src/features/home/components/.
  *
+ * Removed: Animated.ScrollView → ScrollView (no scroll-event JS bridge overhead).
+ * Removed: 5 × Animated.View entering={FadeInDown} section wrappers — these were
+ *          staggering 5 simultaneous entrance animations on every home mount,
+ *          choking the JS thread at the worst possible moment (cold start).
+ *
  * Protected performance wins (NOT modified):
  *   FlashSaleSection  → FlashList + CountdownDisplay isolation
  *   FeaturedProductItem → stable per-item onPress
@@ -15,6 +20,7 @@ import {
   FlatList,
   Platform,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   View,
 } from "react-native";
@@ -22,7 +28,6 @@ import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -146,12 +151,12 @@ export default function HomeScreen() {
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <View style={s.root}>
-      <Animated.ScrollView
+      <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={s.scrollContent}
         showsVerticalScrollIndicator={false}
         removeClippedSubviews
-        scrollEventThrottle={16}
+        scrollEventThrottle={32}
         refreshControl={
           <RefreshControl
             refreshing={isRefetching}
@@ -174,12 +179,12 @@ export default function HomeScreen() {
         <PromoBanner onSlidePress={handleSlidePress} />
 
         {/* 3 — Quick action chips */}
-        <Animated.View entering={FadeInDown.duration(420).delay(190)}>
+        <View>
           <QuickActions onNavigate={handleNavigate} />
-        </Animated.View>
+        </View>
 
         {/* 4 — Category pill rail */}
-        <Animated.View entering={FadeInDown.duration(420).delay(230)}>
+        <View>
           <CategoryStrip
             categories={visibleCategories}
             isLoading={catsLoading}
@@ -187,24 +192,24 @@ export default function HomeScreen() {
             onCategoryPress={handleCategoryPress}
             onViewAll={() => router.push("/(tabs)/products")}
           />
-        </Animated.View>
+        </View>
 
         {/* 5 — Recently viewed (null when empty — zero render cost) */}
         <RecentlyViewedCarousel lang={lang} onProductPress={handleProductPress} />
 
         {/* 6 — Flash sale  ⚠️ protected: FlashList + isolated CountdownDisplay */}
         {!flashLoading && flashProducts.length > 0 && (
-          <Animated.View entering={FadeInDown.duration(420).delay(270)} style={sectionStyles.wrapTall}>
+          <View style={sectionStyles.wrapTall}>
             <FlashSaleSection
               products={flashProducts}
               onProductPress={handleProductPress}
               onViewAll={handleDealsPress}
             />
-          </Animated.View>
+          </View>
         )}
 
         {/* 7 — Featured products — 2-column RTL grid */}
-        <Animated.View entering={FadeInDown.duration(420).delay(310)} style={sectionStyles.wrap}>
+        <View style={sectionStyles.wrap}>
           <HomeSectionHeader
             eyebrow={t("home.featuredEyebrow")}
             title={t("home.featuredTitle")}
@@ -235,14 +240,14 @@ export default function HomeScreen() {
               renderItem={renderFeatured}
             />
           )}
-        </Animated.View>
+        </View>
 
         {/* 8 — Pharmacist support card */}
-        <Animated.View entering={FadeInDown.duration(420).delay(360)}>
+        <View>
           <PharmacistCard />
-        </Animated.View>
+        </View>
 
-      </Animated.ScrollView>
+      </ScrollView>
     </View>
   );
 }
@@ -255,10 +260,9 @@ const renderFeaturedSkeleton = () => (
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  // Background matches system light surface — replaces hardcoded "#F4F7FA"
   root:          { flex: 1, backgroundColor: theme.colors.bg },
-  scrollContent: { paddingBottom: 100 },
-  // RTL 2-column grid gap — token-driven
-  colWrap:       { gap: theme.spacing[3],   flexDirection: "row-reverse" },
-  gridContent:   { paddingHorizontal: theme.layout.pagePaddingH, gap: theme.spacing[3] },
+  scrollContent: { paddingBottom: theme.layout.tabBarHeight + 24 },
+  // RTL 2-column grid — consistent horizontal padding
+  colWrap:       { gap: theme.spacing['2xl'], flexDirection: "row-reverse" },
+  gridContent:   { paddingHorizontal: theme.layout.pagePaddingH, gap: theme.spacing['2xl'] },
 });

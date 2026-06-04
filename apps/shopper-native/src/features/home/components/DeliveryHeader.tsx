@@ -1,14 +1,12 @@
 /**
- * DeliveryHeader — the full navy-gradient hero at the top of the home screen.
+ * DeliveryHeader — navy-gradient hero at the top of the home screen.
  *
- * Contains:
- *   • Reanimated beacon-pulse decorations (UI-thread via withRepeat)
- *   • Top bar: logo + cart icon with badge
- *   • Greeting headline + hero tagline
- *   • Tappable search bar (navigates to search tab)
+ * Static, no animations. Previously held two infinite withRepeat beacon-pulse
+ * loops (beaconScale + beaconOp) and two FadeInUp entering wrappers; all
+ * removed as they were choking the UI thread on every home-screen mount.
  */
 
-import React, { memo, useEffect } from "react";
+import React, { memo } from "react";
 import {
   Platform,
   Pressable,
@@ -18,14 +16,6 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import Animated, {
-  FadeInUp,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming,
-} from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
@@ -52,49 +42,12 @@ export const DeliveryHeader = memo(function DeliveryHeader({
     ? t("home.greeting",      { name: user.name.split(" ")[0] })
     : t("home.greetingGuest");
 
-  // ── Reanimated beacon pulse — 100 % UI thread ─────────────────────────────
-  const beaconScale = useSharedValue(1);
-  const beaconOp    = useSharedValue(0.6);
-
-  useEffect(() => {
-    beaconScale.value = withRepeat(
-      withSequence(
-        withTiming(1.6, { duration: 1400 }),
-        withTiming(1.0, { duration: 1000 }),
-      ),
-      -1,
-      false,
-    );
-    beaconOp.value = withRepeat(
-      withSequence(
-        withTiming(0,   { duration: 1400 }),
-        withTiming(0.6, { duration: 1000 }),
-      ),
-      -1,
-      false,
-    );
-  }, [beaconScale, beaconOp]);
-
-  const beaconAnim = useAnimatedStyle(() => ({
-    transform: [{ scale: beaconScale.value }],
-    opacity:   beaconOp.value,
-  }));
-
   return (
     <LinearGradient
       colors={[theme.colors.hero, "#032840", "#053C5A"]}
       start={{ x: 0.1, y: 0 }}
       end={{ x: 0.9, y: 1 }}
       style={[s.hero, { paddingTop: insets.top + 18 }]}>
-
-      {/* Beacon dots */}
-      <Animated.View style={[s.beacon, { right: 60, top: insets.top + 30 }, beaconAnim]} />
-      <Animated.View style={[s.beacon, { right: 80, top: insets.top + 50, width: 60, height: 60, borderRadius: 30 }, beaconAnim]} />
-
-      {/* Vertical rules */}
-      {[0.25, 0.55, 0.80].map((pos, i) => (
-        <View key={i} style={[s.vRule, { left: `${pos * 100}%` as unknown as number }]} />
-      ))}
 
       {/* Top bar: logo  ←→  cart */}
       <View style={s.topBar}>
@@ -119,7 +72,7 @@ export const DeliveryHeader = memo(function DeliveryHeader({
       </View>
 
       {/* Headline */}
-      <Animated.View entering={FadeInUp.duration(440).delay(80)} style={s.headingStack}>
+      <View style={s.headingStack}>
         <UIText variant="eyebrow" align="right" style={s.greetingText}>
           {greeting}
         </UIText>
@@ -129,26 +82,24 @@ export const DeliveryHeader = memo(function DeliveryHeader({
         <UIText variant="body-sm" align="right" style={s.heroSub}>
           {t("home.heroTaglineSub")}
         </UIText>
-      </Animated.View>
+      </View>
 
       {/* Search bar — tappable shortcut */}
-      <Animated.View entering={FadeInUp.duration(440).delay(160)}>
-        <Pressable onPress={onSearchPress} style={s.searchBar}>
-          <Ionicons name="search-outline" size={17} color="rgba(255,255,255,0.65)" />
-          <UIText variant="body-sm" align="right" style={s.searchPlaceholder}>
-            {t("search.placeholder")}
+      <Pressable onPress={onSearchPress} style={s.searchBar}>
+        <Ionicons name="search-outline" size={17} color="rgba(255,255,255,0.65)" />
+        <UIText variant="body-sm" align="right" style={s.searchPlaceholder}>
+          {t("search.placeholder")}
+        </UIText>
+        <LinearGradient
+          colors={["rgba(13,184,168,0.5)", "rgba(8,145,178,0.5)"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={s.searchKbd}>
+          <UIText variant="caption" weight="bold" style={{ color: "#fff" }}>
+            {t("tabs.search")}
           </UIText>
-          <LinearGradient
-            colors={["rgba(13,184,168,0.5)", "rgba(8,145,178,0.5)"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={s.searchKbd}>
-            <UIText variant="caption" weight="bold" style={{ color: "#fff" }}>
-              {t("tabs.search")}
-            </UIText>
-          </LinearGradient>
-        </Pressable>
-      </Animated.View>
+        </LinearGradient>
+      </Pressable>
     </LinearGradient>
   );
 });
@@ -158,22 +109,6 @@ const s = StyleSheet.create({
     paddingBottom:     52,
     paddingHorizontal: theme.layout.pagePaddingH,
     overflow:          "hidden",
-  },
-  beacon: {
-    position:        "absolute",
-    width:           90,
-    height:          90,
-    borderRadius:    45,
-    borderWidth:     1.5,
-    borderColor:     "rgba(13,184,168,0.28)",
-    backgroundColor: "transparent",
-  },
-  vRule: {
-    position:        "absolute",
-    top:             0,
-    bottom:          0,
-    width:           1,
-    backgroundColor: "rgba(255,255,255,0.025)",
   },
   topBar: {
     flexDirection:  "row-reverse",
@@ -229,7 +164,7 @@ const s = StyleSheet.create({
     fontFamily: theme.fonts.black,
   },
   headingStack: {
-    gap:          theme.spacing[2],
+    gap:          theme.spacing.lg,
     marginBottom: 22,
   },
   greetingText: {

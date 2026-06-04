@@ -7,14 +7,14 @@ import { theme } from "@/shared/theme";
 
 // ─── Section containers ────────────────────────────────────────────────────────
 export const sectionStyles = StyleSheet.create({
-  /** Standard section padding — replaces hardcoded paddingTop: 32 */
+  /** Standard section vertical gap — 24px between major home sections. */
   wrap: {
-    paddingTop: theme.spacing[8],
-    gap:        theme.spacing[4],
+    paddingTop: theme.spacing['2xl'],  // 24  (was 64 — spacing[8])
+    gap:        theme.spacing[4],       // 32  — internal header/content gap
   },
-  /** Taller section gap for visual rhythm before the flash sale rail */
+  /** Slightly taller gap before the flash sale rail. */
   wrapTall: {
-    paddingTop: theme.spacing[9],
+    paddingTop: theme.spacing['3xl'],  // 32  (was 72 — spacing[9])
   },
 });
 
@@ -134,8 +134,8 @@ export const featuredStyles = StyleSheet.create({
 // ─── Pharmacist support card ───────────────────────────────────────────────────
 export const supportStyles = StyleSheet.create({
   wrap: {
-    paddingHorizontal: theme.spacing[4],
-    paddingTop:        theme.spacing[9],
+    paddingHorizontal: theme.spacing[4],     // 32 — intentional wider inset for floating card
+    paddingTop:        theme.spacing['3xl'],  // 32  (was 72 — spacing[9])
   },
   card: {
     borderRadius:  24,

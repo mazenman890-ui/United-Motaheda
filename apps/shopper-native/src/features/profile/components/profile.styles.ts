@@ -189,7 +189,7 @@ export const styles = StyleSheet.create({
 
   // ── Guest hero ──
   guestHero: {
-    paddingHorizontal: theme.spacing[3],
+    paddingHorizontal: theme.layout.pagePaddingH,  // 20 — consistent with auth hero
     paddingBottom:     34,
     alignItems:        "center",
     gap:               10,
@@ -354,13 +354,12 @@ export const styles = StyleSheet.create({
 
   // ── Sections ──
   section: {
-    paddingHorizontal: theme.spacing.lg,
-    marginTop:         28,
+    paddingHorizontal: theme.spacing.lg,       // 16 — canonical profile content inset
+    marginTop:         theme.spacing['2xl'],    // 24  (was 28 — raw pixel)
     gap:               10,
   },
   sectionLabelNew: {
-    paddingHorizontal: theme.spacing.xs,
-    marginBottom:      theme.spacing.xs,
+    marginBottom: theme.spacing.xs,            // removed inner paddingHorizontal — label aligns to section edge
   },
 
   // ── Menu card ──

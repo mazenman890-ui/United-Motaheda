@@ -54,9 +54,10 @@ function drain(): void {
       .finally(() => {
         inFlight--;
         // Cap the dedup set so a long session can't grow it unbounded.
-        if (seen.size > 1500) {
+        // Reduced cap: 10 pages × 15 items = 150 visible max, so 300 is plenty.
+        if (seen.size > 300) {
           // Drop ~half of the oldest. Set iteration is insertion-ordered.
-          let toDrop = seen.size - 750;
+          let toDrop = seen.size - 150;
           for (const v of seen) {
             seen.delete(v);
             if (--toDrop <= 0) break;

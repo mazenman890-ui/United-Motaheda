@@ -5,7 +5,10 @@
  * visually overlapping the bottom of the hero (marginTop: -28).
  *
  * PromoCarousel: FlatList with 4.2-second auto-advance and dot indicators.
- * Both sections live here so the hero-overlap layout stays coherent.
+ *
+ * Removed: two FadeInDown entrance animations (TrustStrip + carouselWrap).
+ * The component mounts instantly — entrance animations were delaying first
+ * paint without providing any UX value on a home screen that loads fast.
  */
 
 import React, { memo, useEffect, useRef, useState } from "react";
@@ -18,7 +21,6 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
@@ -87,11 +89,9 @@ export const PromoBanner = memo(function PromoBanner({ onSlidePress }: PromoBann
       {/* Trust strip — overlaps bottom of hero */}
       <TrustStrip />
       {/* Promo carousel */}
-      <Animated.View
-        entering={FadeInDown.duration(380).delay(110)}
-        style={s.carouselWrap}>
+      <View style={s.carouselWrap}>
         <PromoCarousel onSlidePress={onSlidePress} />
-      </Animated.View>
+      </View>
     </>
   );
 });
@@ -101,7 +101,7 @@ export const PromoBanner = memo(function PromoBanner({ onSlidePress }: PromoBann
 const TrustStrip = memo(function TrustStrip() {
   const badges = useTrustBadges();
   return (
-    <Animated.View entering={FadeInDown.duration(440).delay(120)} style={s.trustWrap}>
+    <View style={s.trustWrap}>
       <View style={s.trustCard}>
         {badges.map((b, i) => (
           <View
@@ -120,7 +120,7 @@ const TrustStrip = memo(function TrustStrip() {
           </View>
         ))}
       </View>
-    </Animated.View>
+    </View>
   );
 });
 
@@ -238,8 +238,8 @@ const s = StyleSheet.create({
   // ── Trust strip ─────────────────────────────────────────────────────────────
   trustWrap: {
     marginTop:        -28,
-    marginHorizontal: theme.spacing[4],
-    marginBottom:     theme.spacing[2],
+    marginHorizontal: theme.spacing[4],  // 32 — intentional inset for floating card
+    marginBottom:     theme.spacing.lg,  // 16
   },
   trustCard: {
     backgroundColor:   "#fff",
@@ -280,8 +280,8 @@ const s = StyleSheet.create({
 
   // ── Carousel ─────────────────────────────────────────────────────────────────
   carouselWrap: {
-    paddingTop:    theme.spacing[6],
-    paddingBottom: theme.spacing[1],
+    paddingTop:    theme.spacing['2xl'],  // 24 — was 48 (theme.spacing[6])
+    paddingBottom: theme.spacing.sm,      // 8
   },
   slideOuter: { paddingHorizontal: theme.layout.pagePaddingH },
   slide: {

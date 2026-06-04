@@ -29,8 +29,8 @@ import {
 } from "../types";
 
 /** Server page size — maps to RPC p_limit and PostgREST .range(from, to). */
-const DEFAULT_PAGE_SIZE = 20;
-const MAX_PAGE_SIZE     = 100;
+const DEFAULT_PAGE_SIZE = 15;
+const MAX_PAGE_SIZE     = 50;
 
 /** Explicit column list for direct selects against the products table. */
 const PRODUCT_COLUMNS =

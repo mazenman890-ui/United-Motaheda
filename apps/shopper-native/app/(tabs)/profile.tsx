@@ -1,10 +1,17 @@
+/**
+ * ProfileScreen — static, instant render.
+ *
+ * Removed: import Animated, { FadeInDown } + 4 × Animated.View section
+ * wrappers (delays 340 ms → 520 ms). The staggered entrance made the three
+ * menu-card groups appear one by one, causing the "floating and disjointed"
+ * perception. All sections now paint in the same frame as the hero.
+ */
 import React, { useCallback, useMemo, useState } from "react";
 import { Linking, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import { useAuth } from "@/features/auth";
 import { useCartStore } from "@/stores/cart";
 import { useWishlistStore } from "@/stores/wishlist";
@@ -104,9 +111,7 @@ export default function ProfileScreen() {
   const { t }   = useTranslation();
   const { language, setLanguage } = useAppLanguage();
 
-  // Auth is React context — destructure directly (no Zustand selector possible)
   const { user, signOut } = useAuth();
-  // Granular Zustand selectors for store subscriptions
   const cartCount     = useCartStore((s) => s.itemCount());
   const wishlistCount = useWishlistStore((s) => s.items.length);
   const orders        = useOrderStore((s) => s.orders);
@@ -135,11 +140,12 @@ export default function ProfileScreen() {
   }, [signOut]);
 
   return (
-    <View style={screenStyle.screen}>
+    <View style={s.screen}>
       <ScrollView
         contentContainerStyle={{ paddingBottom: theme.layout.tabBarHeight + 24 }}
         showsVerticalScrollIndicator={false}>
 
+        {/* Hero */}
         {user ? (
           <ProfileAuthHero
             user={user}
@@ -156,7 +162,7 @@ export default function ProfileScreen() {
         )}
 
         {/* ── Settings ── */}
-        <Animated.View entering={FadeInDown.delay(340).duration(280)} style={styles.section}>
+        <View style={styles.section}>
           <UIText variant="eyebrow" color="tertiary" align="right" style={styles.sectionLabelNew}>
             {t("profile.settingsSection")}
           </UIText>
@@ -190,10 +196,10 @@ export default function ProfileScreen() {
               last
             />
           </View>
-        </Animated.View>
+        </View>
 
         {/* ── Support ── */}
-        <Animated.View entering={FadeInDown.delay(400).duration(280)} style={styles.section}>
+        <View style={styles.section}>
           <UIText variant="eyebrow" color="tertiary" align="right" style={styles.sectionLabelNew}>
             {t("profile.sectionSupport")}
           </UIText>
@@ -219,10 +225,10 @@ export default function ProfileScreen() {
               last
             />
           </View>
-        </Animated.View>
+        </View>
 
         {/* ── About ── */}
-        <Animated.View entering={FadeInDown.delay(460).duration(280)} style={styles.section}>
+        <View style={styles.section}>
           <UIText variant="eyebrow" color="tertiary" align="right" style={styles.sectionLabelNew}>
             {t("profile.sectionAbout")}
           </UIText>
@@ -244,22 +250,20 @@ export default function ProfileScreen() {
               last
             />
           </View>
-        </Animated.View>
+        </View>
 
         {/* ── Sign out ── */}
         {user && (
-          <Animated.View
-            entering={FadeInDown.delay(520).duration(280)}
-            style={{ paddingHorizontal: theme.spacing.lg, marginTop: theme.spacing.sm }}>
+          <View style={s.signOut}>
             <Button variant="ghost" size="md" fullWidth loading={signingOut} onPress={handleSignOut}>
-              <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: theme.spacing.sm }}>
+              <View style={s.signOutInner}>
                 <Ionicons name="log-out-outline" size={16} color={theme.colors.error.base} />
                 <UIText variant="body-sm" weight="black" style={{ color: theme.colors.error.base }}>
                   {t("profile.logout")}
                 </UIText>
               </View>
             </Button>
-          </Animated.View>
+          </View>
         )}
 
         {/* ── Footer ── */}
@@ -280,6 +284,18 @@ export default function ProfileScreen() {
   );
 }
 
-const screenStyle = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: theme.colors.bg },
+const s = StyleSheet.create({
+  screen: {
+    flex:            1,
+    backgroundColor: theme.colors.bg,
+  },
+  signOut: {
+    paddingHorizontal: theme.spacing.lg,           // 16 — consistent with sections
+    marginTop:         theme.spacing.sm,           // 8
+  },
+  signOutInner: {
+    flexDirection: "row-reverse",
+    alignItems:    "center",
+    gap:           theme.spacing.sm,
+  },
 });

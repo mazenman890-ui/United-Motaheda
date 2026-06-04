@@ -27,13 +27,15 @@ import { productKeys } from "../api/queryKeys";
 import { isRetryable } from "@/lib/supabaseRequest";
 import type { NativeProduct, ProductFilters, ProductPage } from "../types";
 
-const DEFAULT_PAGE_SIZE  = 20;
+const DEFAULT_PAGE_SIZE  = 15;
 const SEARCH_DEBOUNCE_MS = 300;
-// Hard cap: never accumulate more than this many pages in memory regardless of
-// how long the user has been scrolling. At 20 items/page this is 2 000 items —
-// more than any realistic pharmacy catalog. Prevents unbounded memory growth
-// if a user leaves a list running for a very long time.
-const DEFAULT_MAX_PAGES  = 100;
+// Hard cap: never accumulate more than this many pages in memory.
+// At 15 items/page this is 150 items max — enough for comfortable browsing
+// without choking the UI thread with thousands of mounted Reanimated nodes.
+// Each ProductCard holds 3 useSharedValue instances; 150 cards = 450 nodes.
+// The old cap of 100 pages (2 000 cards = 6 000 nodes) was the primary
+// cause of JS-thread lag during extended scroll sessions.
+const DEFAULT_MAX_PAGES  = 10;
 
 // Separate stale windows: browsing a category is low-churn and should survive
 // back-navigation without re-fetching; live search results need to feel fresh.
@@ -114,7 +116,7 @@ export function useInfiniteProducts(args: UseInfiniteProductsArgs = {}): UseInfi
     placeholderData:  keepPreviousData,
     enabled,
     staleTime: isSearchMode ? SEARCH_STALE_MS : BROWSE_STALE_MS,
-    gcTime:    5 * 60_000,   // keep pages in memory for 5 min after unmount
+    gcTime:    2 * 60_000,   // release pages 2 min after unmount (was 5 min)
     retry:     (failureCount, error) => {
       // Never retry terminal errors (bad request, permissions). Retry
       // transient ones (network, 5xx) up to 2 times.

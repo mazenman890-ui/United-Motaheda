@@ -218,8 +218,10 @@ export const ProductCard = memo(function ProductCard({
     transform: [{ scale: hrtScale.value }],
   }));
 
-  const handlePressIn  = () => { cardScale.value = withSpring(0.975, { damping: 20, stiffness: 420 }); };
-  const handlePressOut = () => { cardScale.value = withSpring(1.0,   { damping: 18, stiffness: 380 }); };
+  // 0.97 — matches Button's canonical press value; `press` spring is tuned for
+  // a decisive click feel without bounce. Runs 100% on the UI thread.
+  const handlePressIn  = () => { cardScale.value = withSpring(0.97, theme.animation.spring.press); };
+  const handlePressOut = () => { cardScale.value = withSpring(1,    theme.animation.spring.press); };
 
   const maxQty  = product.inStock && product.stock > 0 ? Math.floor(product.stock) : 0;
   const isAtMax = maxQty > 0 && cartQty >= maxQty;
@@ -299,7 +301,8 @@ export const ProductCard = memo(function ProductCard({
               source={{ uri: product.imageUrl }}
               style={StyleSheet.absoluteFill}
               contentFit="contain"
-              transition={150}
+              cachePolicy="memory-disk"
+              transition={200}
             />
           ) : (
             <ProductImagePlaceholder category={product.categoryName} />
@@ -444,7 +447,8 @@ export const ProductCard = memo(function ProductCard({
             source={{ uri: product.imageUrl }}
             style={StyleSheet.absoluteFill}
             contentFit="contain"
-            transition={150}
+            cachePolicy="memory-disk"
+            transition={200}
           />
         ) : (
           <ProductImagePlaceholder category={product.categoryName} />
