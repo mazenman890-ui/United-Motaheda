@@ -44,12 +44,23 @@ export function PaymentMethodCard({ method, selected, onSelect }: Props) {
         onPress={handlePress}
         style={[
           styles.card,
-          selected && { borderColor: colors.ring, borderWidth: 2, backgroundColor: colors.bg + "30" },
+          selected && {
+            borderColor:     colors.ring,
+            borderWidth:     2,
+            backgroundColor: colors.bg + "50",
+          },
         ]}>
-        {/* Radio indicator */}
-        <View style={[styles.radio, selected && { borderColor: colors.accent }]}>
+        {/* Checkmark indicator — solid circle, Stripe / Apple Pay aesthetic */}
+        <View style={[
+          styles.checkCircle,
+          selected
+            ? { backgroundColor: colors.accent, borderColor: colors.accent }
+            : { backgroundColor: "transparent", borderColor: theme.colors.slate[300] },
+        ]}>
           {selected && (
-            <Animated.View entering={FadeIn.duration(150)} style={[styles.radioDot, { backgroundColor: colors.accent }]} />
+            <Animated.View entering={FadeIn.duration(120)}>
+              <Ionicons name="checkmark" size={13} color="#fff" />
+            </Animated.View>
           )}
         </View>
 
@@ -104,37 +115,31 @@ export function PaymentMethodCard({ method, selected, onSelect }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    // "row" + RTL system flag = right-to-left flow automatically.
-    // "row-reverse" was double-reversing: RTL flip + row-reverse = LTR,
-    // which pushed the radio to the physical left instead of the logical right.
-    flexDirection: "row",
+    flexDirection: "row",      // RTL system auto-mirrors
     alignItems: "center",
-    gap: 12,
-    padding: 16,
-    borderRadius: 18,
+    gap: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    borderRadius: 20,
     backgroundColor: "#fff",
     borderWidth: 1.5,
-    borderColor: theme.colors.border.default,
-    ...theme.shadow.xs,
+    borderColor: theme.colors.border.hairline,
+    ...theme.shadow.sm,
   },
-  radio: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: theme.colors.slate[300],
-    alignItems: "center",
+  // Solid checkmark circle — Stripe / Apple Pay style
+  checkCircle: {
+    width:          22,
+    height:         22,
+    borderRadius:   11,
+    borderWidth:    2,
+    alignItems:     "center",
     justifyContent: "center",
-  },
-  radioDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    flexShrink:     0,
   },
   iconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
   },

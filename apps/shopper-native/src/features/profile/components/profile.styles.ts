@@ -362,12 +362,12 @@ export const styles = StyleSheet.create({
     marginBottom: theme.spacing.xs,
   },
 
-  // ── Menu card — surfaceSunken background adds depth vs page bg ──
+  // ── Menu card — pure white surface for premium iOS Settings look ──
   menuCard: {
-    backgroundColor: theme.colors.surfaceSunken,
-    borderRadius:    18,
+    backgroundColor: theme.colors.surface,   // white card on bg background
+    borderRadius:    16,
     overflow:        "hidden",
-    ...theme.shadow.card,
+    ...theme.shadow.sm,
   },
 
   // ── Menu row ──

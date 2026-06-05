@@ -6,6 +6,8 @@ import * as Haptics from "expo-haptics";
 import Animated, {
   FadeIn,
   FadeInDown,
+  FadeOut,
+  LinearTransition,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -49,14 +51,17 @@ export const FAQAccordion = memo(function FAQAccordion({
   }, [onToggle]);
 
   return (
-    <Animated.View entering={FadeInDown.delay(index * 40).duration(220)}>
+    // LinearTransition: card container smoothly grows/shrinks when answer appears/disappears
+    <Animated.View
+      entering={FadeInDown.delay(index * 40).duration(220)}
+      layout={LinearTransition.duration(240).easing(Easing.out(Easing.cubic))}
+      style={[styles.card, expanded && styles.cardExpanded]}>
       <Pressable
         onPress={handlePress}
         accessibilityRole="button"
         accessibilityLabel={item.question}
         accessibilityState={{ expanded }}
-        accessibilityHint={expanded ? "اضغط لإغلاق الإجابة" : "اضغط لعرض الإجابة"}
-        style={[styles.card, expanded && styles.cardExpanded]}>
+        accessibilityHint={expanded ? "اضغط لإغلاق الإجابة" : "اضغط لعرض الإجابة"}>
 
         {/* Question row */}
         <View style={styles.questionRow}>
@@ -75,9 +80,12 @@ export const FAQAccordion = memo(function FAQAccordion({
           </Animated.View>
         </View>
 
-        {/* Answer (progressive disclosure) */}
+        {/* Answer — smooth entry AND smooth exit (FadeOut) */}
         {expanded && (
-          <Animated.View entering={FadeIn.duration(180)} style={styles.answerWrap}>
+          <Animated.View
+            entering={FadeIn.duration(200)}
+            exiting={FadeOut.duration(150)}
+            style={styles.answerWrap}>
             <View style={styles.answerDivider} />
             <UIText style={styles.answer}>{item.answer}</UIText>
             <View style={styles.catPill}>
@@ -115,16 +123,15 @@ const styles = StyleSheet.create({
     marginTop: 7,
   },
   question: {
-    flex: 1,
-    fontSize: 13,
-    fontFamily: theme.fonts.bold,
-    color: theme.colors.slate[700],
-    textAlign: "right",
-    lineHeight: 20,
+    flex:       1,
+    fontSize:   14,                        // bumped from 13 → more readable
+    fontFamily: theme.fonts.black,         // bold by default (was: bold)
+    color:      theme.colors.text.primary, // was slate[700]
+    textAlign:  "right",
+    lineHeight: 22,                        // generous rhythm
   },
   questionExpanded: {
-    color: theme.colors.text.primary,
-    fontFamily: theme.fonts.black,
+    color: theme.colors.brand[700],        // accent tint when open
   },
   chevronWrap: {
     width: 28,
@@ -146,11 +153,11 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.slate[100],
   },
   answer: {
-    fontSize: 12,
+    fontSize:   13,
     fontFamily: theme.fonts.regular,
-    color: theme.colors.slate[500],
-    textAlign: "right",
-    lineHeight: 20,
+    color:      theme.colors.text.muted,   // softer hierarchy vs question (theme.colors.text.muted)
+    textAlign:  "right",
+    lineHeight: 24,                        // editorial rhythm
   },
   catPill: {
     alignSelf: "flex-end",

@@ -1,5 +1,18 @@
+/**
+ * OrderCard — premium logistics / tracking card (ground-up visual rewrite).
+ *
+ * Design changes:
+ *   • Removed colored status bar at top → cleaner status badge at top-right
+ *   • Added TrackingTimeline: horizontal 4-step stepper with icon dots,
+ *     emerald-green filled circles for done steps, teal glow for current,
+ *     gray hollow for future. Connected by thin progress lines.
+ *   • Massive clean whitespace (paddingVertical 18, gap 14)
+ *   • Soft shadow: elevation 2, shadowOpacity 0.05 — no visual noise
+ *   • No border — pure white card on off-white bg speaks for itself
+ */
+
 import React, { memo, useCallback } from "react";
-import { Platform, Pressable, View } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
@@ -19,7 +32,7 @@ import { formatPrice } from "@/utils/format";
 import type { Order, OrderStatus } from "@/stores/orders";
 import { listS, INDIGO_DOT, EMERALD_DOT } from "./orders.styles";
 
-// ─── Status metadata ──────────────────────────────────────────────────────────
+// ─── Status metadata (unchanged — used by Badge and dot colors) ───────────────
 
 export const STATUS_META: Record<
   OrderStatus,
@@ -60,17 +73,90 @@ export function paymentDot(status: string): string | null {
   }
 }
 
+// ─── TrackingTimeline ─────────────────────────────────────────────────────────
+// 4-step horizontal stepper. RTL: pending on RIGHT, delivered on LEFT.
+// Step dots contain contextual icons; no text labels (icons are self-describing).
+
+type StepDef = {
+  status: OrderStatus;
+  icon:   React.ComponentProps<typeof Ionicons>["name"];
+  match:  OrderStatus[];
+};
+
+const TIMELINE_STEPS: StepDef[] = [
+  { status: "pending",    icon: "time-outline",             match: ["pending", "pending_payment"] },
+  { status: "processing", icon: "refresh-outline",          match: ["processing"]                 },
+  { status: "shipped",    icon: "car-outline",              match: ["shipped"]                    },
+  { status: "delivered",  icon: "checkmark-circle-outline", match: ["delivered"]                  },
+];
+
+const EMERALD = "#10B981";
+
+const TrackingTimeline = memo(function TrackingTimeline({
+  status,
+}: { status: OrderStatus }) {
+  // Cancelled orders: status badge in header already communicates this.
+  // No stepper needed — returning null avoids empty space.
+  if (status === "cancelled") return null;
+
+  // Find which step this status maps to (0-3)
+  const currentIdx = TIMELINE_STEPS.findIndex((s) => s.match.includes(status));
+  const safeIdx    = currentIdx === -1 ? 0 : currentIdx;
+
+  return (
+    <View style={tl.container}>
+      {/* Progress track rendered as background */}
+      <View style={tl.row}>
+        {TIMELINE_STEPS.map((step, i) => {
+          const isDone    = i < safeIdx;
+          const isCurrent = i === safeIdx;
+          const isLast    = i === TIMELINE_STEPS.length - 1;
+
+          return (
+            <React.Fragment key={step.status}>
+              {/* Step dot — icon inside */}
+              <View
+                style={[
+                  tl.dot,
+                  isDone    && tl.dotDone,
+                  isCurrent && tl.dotCurrent,
+                  !isDone && !isCurrent && tl.dotFuture,
+                ]}>
+                <Ionicons
+                  name={step.icon}
+                  size={isCurrent ? 13 : 11}
+                  color={isDone || isCurrent ? theme.colors.surface : theme.colors.slate[400]}
+                />
+              </View>
+
+              {/* Connecting line (omit after last dot) */}
+              {!isLast && (
+                <View
+                  style={[
+                    tl.line,
+                    i < safeIdx ? tl.lineActive : tl.lineGray,
+                  ]}
+                />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </View>
+    </View>
+  );
+});
+
 // ─── SkeletonCard ─────────────────────────────────────────────────────────────
 
 export function SkeletonCard(): React.ReactElement {
   return (
     <Animated.View entering={FadeIn.duration(300)} style={listS.card}>
       <View style={listS.skeletonRow}>
-        <View style={[listS.skeletonRect, { width: 36, height: 36, borderRadius: 12 }]} />
+        <View style={[listS.skeletonRect, { width: 36, height: 36, borderRadius: 18 }]} />
         <View style={{ flex: 1, gap: 6 }}>
           <View style={[listS.skeletonRect, { width: "35%", height: 9 }]} />
           <View style={[listS.skeletonRect, { width: "55%", height: 14 }]} />
-          <View style={[listS.skeletonRect, { width: "40%", height: 9 }]} />
+          <View style={[listS.skeletonRect, { width: "40%", height: 9  }]} />
         </View>
         <View style={[listS.skeletonRect, { width: 72, height: 24, borderRadius: 20 }]} />
       </View>
@@ -100,17 +186,20 @@ export const OrderCard = memo(function OrderCard({
   const firstItem    = order.items[0];
   const extraCount   = order.items.length - 1;
   const shortId      = order.id.slice(-8).toUpperCase();
-  const pmDot        = paymentDot(order.paymentStatus ?? "");
 
-  const scale = useSharedValue(1);
+  const scale    = useSharedValue(1);
   const cardAnim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
-  const handlePress     = useCallback(() => {
+  const handlePress    = useCallback(() => {
     if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
     onPress(order.id);
   }, [onPress, order.id]);
-  const handlePressIn   = useCallback(() => { scale.value = withSpring(0.978, { damping: 20, stiffness: 400 }); }, [scale]);
-  const handlePressOut  = useCallback(() => { scale.value = withSpring(1.0,   { damping: 18, stiffness: 380 }); }, [scale]);
+  const handlePressIn  = useCallback(() => {
+    scale.value = withSpring(0.978, { damping: 20, stiffness: 400 });
+  }, [scale]);
+  const handlePressOut = useCallback(() => {
+    scale.value = withSpring(1.0, { damping: 18, stiffness: 380 });
+  }, [scale]);
 
   return (
     <Animated.View
@@ -122,35 +211,55 @@ export const OrderCard = memo(function OrderCard({
         onPressOut={handlePressOut}
         style={listS.card}>
 
-        <View style={[listS.statusLine, { backgroundColor: meta.dot }]} />
-
-        <View style={listS.cardHeader}>
-          <View style={listS.headerLeft}>
-            <View style={[listS.orderIcon, { borderColor: meta.dot + "30", backgroundColor: meta.dot + "12" }]}>
+        {/* ── TOP: Order reference + date + status badge ─── */}
+        <View style={oc.headerRow}>
+          {/* Left cluster — icon + ID + date (RTL: appears on RIGHT) */}
+          <View style={oc.headerLeft}>
+            <View style={[oc.statusCircle, { backgroundColor: `${meta.dot}1A` }]}>
               <Ionicons name={meta.icon} size={16} color={meta.dot} />
             </View>
-            <View>
-              <UIText style={listS.orderRef}>{t("orders.orderLabel")} #{shortId}</UIText>
-              <UIText style={listS.orderDate}>{formatDate(order.createdAt, language)}</UIText>
+            <View style={{ gap: 2 }}>
+              <UIText style={oc.orderRef}>
+                {t("orders.orderLabel")} #{shortId}
+              </UIText>
+              <UIText style={oc.orderDate}>
+                {formatDate(order.createdAt, language)}
+              </UIText>
             </View>
           </View>
-          <View style={listS.badgeGroup}>
-            <Badge variant={meta.variant} size="sm">{t(meta.labelKey)}</Badge>
-            {pmDot && <View style={[listS.pmDot, { backgroundColor: pmDot }]} />}
-          </View>
+
+          {/* Right side — status badge (RTL: appears on LEFT) */}
+          <Badge variant={meta.variant} size="sm">
+            {t(meta.labelKey)}
+          </Badge>
         </View>
 
-        <View style={listS.itemsRow}>
-          {firstItem?.imageUrl ? (
-            <Image source={{ uri: firstItem.imageUrl }} style={listS.itemThumb} contentFit="contain" />
-          ) : (
-            <View style={[listS.itemThumb, listS.itemPlaceholder]}>
-              <Ionicons name="medkit-outline" size={20} color={theme.colors.slate[300]} />
-            </View>
-          )}
+        {/* ── TRACKING TIMELINE ─────────────────────────── */}
+        <TrackingTimeline status={order.status} />
+
+        {/* ── ITEM ROW ───────────────────────────────────── */}
+        <View style={oc.itemRow}>
+          <View style={oc.thumb}>
+            {firstItem?.imageUrl ? (
+              <Image
+                source={{ uri: firstItem.imageUrl }}
+                style={{ width: "100%", height: "100%" }}
+                contentFit="contain"
+                transition={150}
+              />
+            ) : (
+              <View style={oc.thumbFallback}>
+                <Ionicons name="medkit-outline" size={20} color={theme.colors.slate[300]} />
+              </View>
+            )}
+          </View>
           <View style={{ flex: 1, gap: 3 }}>
-            <UIText variant="body-sm" weight="bold" align="right" numberOfLines={1}>
-              {firstItem?.name || t("orders.noItems")}
+            <UIText
+              variant="body-sm"
+              weight="bold"
+              align="right"
+              numberOfLines={2}>
+              {firstItem?.name ?? t("orders.noItems")}
             </UIText>
             {extraCount > 0 && (
               <UIText variant="caption" color="muted" align="right">
@@ -161,11 +270,144 @@ export const OrderCard = memo(function OrderCard({
           <Ionicons name="chevron-back" size={14} color={theme.colors.slate[300]} />
         </View>
 
-        <View style={listS.cardFooter}>
-          <UIText variant="caption" color="muted">{t("orders.total")}</UIText>
-          <UIText style={listS.totalText}>{formatPrice(order.total)}</UIText>
+        {/* ── FOOTER: Total price ────────────────────────── */}
+        <View style={oc.footer}>
+          <UIText variant="caption" color="tertiary">{t("orders.total")}</UIText>
+          <UIText style={oc.totalText}>{formatPrice(order.total)}</UIText>
         </View>
+
       </Pressable>
     </Animated.View>
   );
+});
+
+// ─── OrderCard internal styles ────────────────────────────────────────────────
+
+const oc = StyleSheet.create({
+  headerRow: {
+    flexDirection:  "row-reverse",
+    alignItems:     "center",
+    justifyContent: "space-between",
+  },
+  headerLeft: {
+    flexDirection: "row-reverse",
+    alignItems:    "center",
+    gap:           10,
+  },
+  // Circular status icon bubble
+  statusCircle: {
+    width:          40,
+    height:         40,
+    borderRadius:   99,
+    alignItems:     "center",
+    justifyContent: "center",
+  },
+  orderRef: {
+    fontFamily:    theme.fonts.black,
+    fontSize:      14,
+    color:         theme.colors.text.primary,
+    textAlign:     "right",
+    letterSpacing: -0.2,
+  },
+  orderDate: {
+    fontFamily: theme.fonts.regular,
+    fontSize:   11,
+    color:      theme.colors.text.tertiary,
+    textAlign:  "right",
+  },
+  // Item row — product thumbnail + name
+  itemRow: {
+    flexDirection:   "row-reverse",
+    alignItems:      "center",
+    gap:             12,
+    backgroundColor: theme.colors.surfaceSunken,
+    borderRadius:    14,
+    padding:         12,
+  },
+  thumb: {
+    width:           60,
+    height:          60,
+    borderRadius:    12,
+    overflow:        "hidden",
+    backgroundColor: theme.colors.surface,
+    flexShrink:      0,
+  },
+  thumbFallback: {
+    flex:            1,
+    alignItems:      "center",
+    justifyContent:  "center",
+    backgroundColor: theme.colors.slate[50],
+  },
+  // Footer — total label + price
+  footer: {
+    flexDirection:  "row-reverse",
+    alignItems:     "center",
+    justifyContent: "space-between",
+    paddingTop:     12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(15,23,42,0.06)",
+  },
+  totalText: {
+    fontFamily:    theme.fonts.black,
+    fontSize:      17,
+    color:         theme.colors.brand[700],
+    letterSpacing: -0.4,
+    textAlign:     "right",
+  },
+});
+
+// ─── TrackingTimeline styles ──────────────────────────────────────────────────
+
+const tl = StyleSheet.create({
+  container: {
+    paddingVertical: 4,
+  },
+  // RTL row — step[0] (pending) on RIGHT, step[3] (delivered) on LEFT
+  row: {
+    flexDirection: "row-reverse",
+    alignItems:    "center",
+  },
+
+  // ── Step dot ──────────────────────────────────────────────────────────────
+  dot: {
+    width:          24,
+    height:         24,
+    borderRadius:   12,
+    alignItems:     "center",
+    justifyContent: "center",
+    zIndex:         1,
+  },
+  // Completed step — solid emerald green fill
+  dotDone: {
+    backgroundColor: EMERALD,
+  },
+  // Active/current step — teal fill + green glow shadow
+  dotCurrent: {
+    width:          28,
+    height:         28,
+    borderRadius:   14,
+    backgroundColor: theme.colors.teal[500],
+    shadowColor:     EMERALD,
+    shadowOffset:    { width: 0, height: 0 },
+    shadowOpacity:   0.55,
+    shadowRadius:    7,
+    elevation:       4,
+  },
+  // Future step — hollow circle (border only, transparent fill)
+  dotFuture: {
+    backgroundColor: "transparent",
+    borderWidth:     1.5,
+    borderColor:     theme.colors.slate[300],
+  },
+
+  // ── Connecting line ────────────────────────────────────────────────────────
+  line: {
+    flex:         1,
+    height:       2,
+    borderRadius: 1,
+  },
+  lineActive: { backgroundColor: EMERALD },
+  lineGray:   { backgroundColor: theme.colors.slate[200] },
+
+  // (cancelled state returns null — no banner needed, status badge handles it)
 });

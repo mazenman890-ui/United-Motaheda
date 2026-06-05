@@ -292,26 +292,32 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 14, fontFamily: theme.fonts.black, color: theme.colors.text.primary },
 
-  // Card
+  // Card — white surface, soft shadow, no heavy border
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: theme.colors.border.default,
-    overflow: "hidden",
-    ...theme.shadow.xs,
+    backgroundColor: theme.colors.surface,
+    borderRadius:    18,
+    overflow:        "hidden",
+    ...theme.shadow.sm,
   },
   row: {
-    flexDirection: "row-reverse", alignItems: "center", gap: 12,
-    paddingHorizontal: 14, paddingVertical: 12,
+    flexDirection:   "row-reverse",
+    alignItems:      "center",
+    gap:             12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   rowBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.slate[100],
+    borderBottomColor: theme.colors.border.hairline,
   },
+  // Circular pastel icon bubble — matches Profile MenuRow style
   rowIcon: {
-    width: 36, height: 36, borderRadius: 11,
-    alignItems: "center", justifyContent: "center",
+    width:          38,
+    height:         38,
+    borderRadius:   99,
+    alignItems:     "center",
+    justifyContent: "center",
+    flexShrink:     0,
   },
   rowText: { flex: 1, gap: 2 },
   rowLabel: { fontSize: 13, fontFamily: theme.fonts.bold, color: theme.colors.text.primary, textAlign: "right" },

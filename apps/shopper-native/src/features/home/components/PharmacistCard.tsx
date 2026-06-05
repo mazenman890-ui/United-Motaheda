@@ -19,13 +19,23 @@ import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
+import { useAppLanguage } from "@/i18n/LanguageProvider";
 
-const WHATSAPP_URL =
-  "https://wa.me/201112343212?text=مرحباً،%20أود%20الاستفسار";
+const WA_NUMBER = "201112343212";
+
+/** Pre-filled message localised to the active app language. */
+function getWaUrl(lang: string): string {
+  const msg =
+    lang === "en"
+      ? "Hello, I need help with a specific medicine or order."
+      : "مرحباً، أحتاج مساعدة بخصوص دواء أو طلب معين.";
+  return `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`;
+}
 
 export const PharmacistCard = memo(function PharmacistCard() {
-  const { t } = useTranslation();
-  const scale = useSharedValue(1);
+  const { t }          = useTranslation();
+  const { language }   = useAppLanguage();
+  const scale          = useSharedValue(1);
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -34,7 +44,7 @@ export const PharmacistCard = memo(function PharmacistCard() {
   const handlePress = () => {
     if (Platform.OS !== "web")
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    Linking.openURL(WHATSAPP_URL).catch(() => {});
+    Linking.openURL(getWaUrl(language)).catch(() => {});
   };
 
   return (

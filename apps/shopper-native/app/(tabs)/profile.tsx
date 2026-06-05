@@ -22,6 +22,14 @@ import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { useTranslation } from "react-i18next";
 import { useAppLanguage } from "@/i18n/LanguageProvider";
+
+/** Localised WhatsApp deep-link with pre-filled message. */
+function waUrl(lang: string): string {
+  const msg = lang === "en"
+    ? "Hello, I need help with a specific medicine or order."
+    : "مرحباً، أحتاج مساعدة بخصوص دواء أو طلب معين.";
+  return `https://wa.me/201112343212?text=${encodeURIComponent(msg)}`;
+}
 import { ProfileAuthHero } from "@/features/profile/components/ProfileAuthHero";
 import { ProfileGuestHero } from "@/features/profile/components/ProfileGuestHero";
 import { styles, PROFILE } from "@/features/profile/components/profile.styles";
@@ -83,19 +91,17 @@ function MenuRow({
         borderBottomColor: theme.colors.border.hairline,
       })}>
 
-      {/* Icon tile — first child → RIGHT in RTL */}
+      {/* Icon tile — perfectly round pastel bubble per intent */}
       <View style={{
         width:           40,
         height:          40,
-        borderRadius:    12,
+        borderRadius:    99,              // circular — premium iOS Settings aesthetic
         alignItems:      "center",
         justifyContent:  "center",
-        backgroundColor: danger ? theme.colors.error.bg : `${ic}14`,
-        borderWidth:     1,
-        borderColor:     danger ? theme.colors.error.light : `${ic}22`,
+        backgroundColor: danger ? theme.colors.error.bg : `${ic}22`,
         flexShrink:      0,
       }}>
-        <Ionicons name={icon} size={17} color={ic} />
+        <Ionicons name={icon} size={18} color={ic} />
       </View>
 
       {/* Label + subtitle — flex:1 fills the middle */}
@@ -147,8 +153,8 @@ function MenuRow({
 export default function ProfileScreen() {
   const router  = useRouter();
   const insets  = useSafeAreaInsets();
-  const { t }   = useTranslation();
-  const { language, setLanguage } = useAppLanguage();
+  const { t }                      = useTranslation();
+  const { language, setLanguage }  = useAppLanguage();
 
   const { user, signOut } = useAuth();
   const cartCount     = useCartStore((s) => s.itemCount());
@@ -248,7 +254,7 @@ export default function ProfileScreen() {
               label={t("profile.whatsapp")}
               subtitle={t("profile.whatsappSubtitle")}
               color={PROFILE.whatsappGreen}
-              onPress={() => Linking.openURL("https://wa.me/201112343212?text=مرحباً").catch(() => {})}
+              onPress={() => Linking.openURL(waUrl(language)).catch(() => {})}
             />
             <MenuRow
               icon="call-outline"

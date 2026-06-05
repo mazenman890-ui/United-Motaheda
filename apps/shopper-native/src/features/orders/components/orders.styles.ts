@@ -263,18 +263,18 @@ export const emptyS = StyleSheet.create({
     textAlign:  "center",
   },
   ctaWrap: {
-    borderRadius: 18,
+    borderRadius: 999,   // pill — highly clickable per spec
     overflow:     "hidden",
-    width:        220,
+    width:        240,
   },
   ctaGrad: {
     flexDirection:     "row",
     alignItems:        "center",
     justifyContent:    "center",
     gap:               theme.spacing.sm,
-    paddingVertical:   14,
+    paddingVertical:   16,
     paddingHorizontal: theme.spacing[3.5],
-    borderRadius:      18,
+    borderRadius:      999,
   },
   ctaText: {
     fontFamily: theme.fonts.black,
@@ -353,29 +353,22 @@ export const listS = StyleSheet.create({
     lineHeight: 13,
   },
   card: {
-    backgroundColor:   theme.colors.surface,
-    borderRadius:      18,
-    padding:           theme.spacing.lg,
+    backgroundColor:   theme.colors.surface,  // pure white
+    borderRadius:      20,
     paddingHorizontal: theme.layout.pagePaddingH,  // 20 — standard page content width
-    gap:               theme.spacing.md,
-    // overflow: "hidden" intentionally absent — physically clipped the status-line
-    // tracking dots and order icons at the card's bottom boundary.
-    shadowColor:     theme.colors.hero,
-    shadowOffset:    { width: 0, height: 3 },
-    shadowOpacity:   0.07,
-    shadowRadius:    12,
-    elevation:       4,
-    borderWidth:     1,
-    borderColor:     ORDER_DARK.d05,
+    paddingVertical:   18,
+    gap:               14,                     // massive clean whitespace
+    // Soft shadow — elevation 2, premium feel without visual noise
+    shadowColor:       theme.colors.hero,
+    shadowOffset:      { width: 0, height: 2 },
+    shadowOpacity:     0.05,
+    shadowRadius:      10,
+    elevation:         2,
+    // No border — pure white card speaks for itself on off-white bg
   },
+  // statusLine kept for backward-compat but no longer rendered in new OrderCard
   statusLine: {
-    position:             "absolute",
-    top:                  0,
-    left:                 0,
-    right:                0,
-    height:               3,
-    borderTopLeftRadius:  18,
-    borderTopRightRadius: 18,
+    height: 0,  // effectively removed — TrackingTimeline replaces this
   },
   cardHeader: {
     flexDirection:  "row-reverse",

@@ -23,7 +23,9 @@ function Section({ title, children, delay = 0 }: SectionProps) {
   return (
     <Animated.View entering={FadeInDown.duration(350).delay(delay)} style={styles.section}>
       <View style={styles.sectionHeader}>
-        <View style={styles.sectionDot} />
+        <View style={styles.sectionDot}>
+          <Ionicons name="shield-checkmark-outline" size={12} color={theme.colors.brand[700]} />
+        </View>
         <UIText style={styles.sectionTitle}>{title}</UIText>
       </View>
       <UIText style={styles.sectionBody}>{children}</UIText>
@@ -150,10 +152,40 @@ const styles = StyleSheet.create({
   updatedText:   { fontSize: theme.fontSize.sm, fontFamily: theme.fonts.semibold, color: theme.colors.brand[700] },
   introBanner:   { flexDirection: "row-reverse", alignItems: "flex-start", gap: 10, backgroundColor: theme.colors.brand[50], borderRadius: theme.radius.xl, padding: 16, borderWidth: 1, borderColor: theme.colors.brand[100], marginBottom: 20 },
   introText:     { flex: 1, fontSize: theme.fontSize.base, fontFamily: theme.fonts.semibold, color: theme.colors.text.primary, textAlign: "right", lineHeight: 22 },
-  section:       { marginBottom: 22 },
-  sectionHeader: { flexDirection: "row-reverse", alignItems: "center", gap: 8, marginBottom: 10 },
-  sectionDot:    { width: 6, height: 6, borderRadius: 3, backgroundColor: theme.colors.brand[600] },
-  sectionTitle:  { fontSize: theme.fontSize.lg, fontFamily: theme.fonts.black, color: theme.colors.text.primary },
-  sectionBody:   { fontSize: theme.fontSize.base, fontFamily: theme.fonts.regular, color: theme.colors.text.secondary, textAlign: "right", lineHeight: 24, backgroundColor: theme.colors.surface, borderRadius: theme.radius.xl, padding: 16, borderWidth: 1, borderColor: theme.colors.border.default },
-  footer:        { fontSize: 11, color: theme.colors.text.disabled, textAlign: "center", paddingTop: 16 },
+  section:       { marginBottom: 28 },
+  sectionHeader: {
+    flexDirection:     "row-reverse",
+    alignItems:        "center",
+    gap:               10,
+    marginBottom:      12,
+    paddingBottom:     10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.border.hairline,
+  },
+  sectionDot: {
+    width:           26,
+    height:          26,
+    borderRadius:    8,
+    backgroundColor: theme.colors.brand.lighter,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
+    alignItems:      "center",
+    justifyContent:  "center",
+  },
+  sectionTitle: {
+    fontSize:      17,
+    fontFamily:    theme.fonts.black,
+    color:         theme.colors.text.primary,
+    flex:          1,
+    textAlign:     "right",
+    letterSpacing: -0.3,
+  },
+  sectionBody: {
+    fontSize:   theme.fontSize.base,
+    fontFamily: theme.fonts.regular,
+    color:      theme.colors.text.secondary,
+    textAlign:  "right",
+    lineHeight: 28,
+  },
+  footer: { fontSize: 11, color: theme.colors.text.disabled, textAlign: "center", paddingTop: 16 },
 });
