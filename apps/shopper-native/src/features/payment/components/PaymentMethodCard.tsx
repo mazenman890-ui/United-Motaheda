@@ -104,7 +104,10 @@ export function PaymentMethodCard({ method, selected, onSelect }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: "row-reverse",
+    // "row" + RTL system flag = right-to-left flow automatically.
+    // "row-reverse" was double-reversing: RTL flip + row-reverse = LTR,
+    // which pushed the radio to the physical left instead of the logical right.
+    flexDirection: "row",
     alignItems: "center",
     gap: 12,
     padding: 16,
@@ -152,7 +155,7 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   phoneRow: {
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     alignItems: "center",
     gap: 6,
     marginTop: 4,
@@ -166,8 +169,10 @@ const styles = StyleSheet.create({
   secureBadge: {
     position: "absolute",
     top: 8,
-    left: 8,
-    flexDirection: "row-reverse",
+    // "end" is RTL-aware: resolves to "left" in LTR and "right" in RTL,
+    // keeping the badge on the trailing (inner) edge of the card regardless of direction.
+    end: 8,
+    flexDirection: "row",
     alignItems: "center",
     gap: 3,
     backgroundColor: theme.colors.green[50],
@@ -182,7 +187,7 @@ const styles = StyleSheet.create({
   },
   detailsCard: {
     marginTop: 6,
-    marginRight: 32,
+    marginEnd: 32,   // RTL-aware: logical "end" margin instead of physical right
     padding: 12,
     borderRadius: 14,
     backgroundColor: theme.colors.slate[50],
@@ -191,7 +196,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border.default,
   },
   detailRow: {
-    flexDirection: "row-reverse",
+    flexDirection: "row",    // RTL system handles reversal; no need for row-reverse
     alignItems: "center",
     gap: 8,
   },

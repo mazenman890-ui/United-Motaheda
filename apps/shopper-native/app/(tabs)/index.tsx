@@ -38,6 +38,7 @@ import {
 } from "@/features/products";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { theme } from "@/shared/theme";
 import { useCartStore, selectItemCount } from "@/stores/cart";
 import { useAuth } from "@/features/auth";
@@ -236,8 +237,19 @@ export default function HomeScreen() {
               initialNumToRender={8}
               maxToRenderPerBatch={8}
               columnWrapperStyle={s.colWrap}
-              contentContainerStyle={s.gridContent}
+              // minHeight prevents the 0-height collapse when featured is empty
+              // (scrollEnabled={false} inside ScrollView doesn't self-size on mobile)
+              contentContainerStyle={[s.gridContent, { minHeight: 320 }]}
               renderItem={renderFeatured}
+              ListEmptyComponent={
+                <EmptyState
+                  icon="star-outline"
+                  title={t("home.featuredTitle")}
+                  description={t("errors.network")}
+                  actionLabel={t("common.retry")}
+                  onAction={() => void refFeat()}
+                />
+              }
             />
           )}
         </View>

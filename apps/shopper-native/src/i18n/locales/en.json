@@ -423,7 +423,8 @@
         "pharmacistCard": "Pharmacist Support  •  24 Hours",
         "needAdvice": "Need Advice?",
         "pharmacistReply": "Our pharmacy team replies on WhatsApp within minutes",
-        "chatWhatsapp": "Chat on WhatsApp"
+        "chatWhatsapp": "Chat on WhatsApp",
+        "recentlyViewed": "Recently Viewed"
     },
     "interaction": {
         "confirm": "Confirm",

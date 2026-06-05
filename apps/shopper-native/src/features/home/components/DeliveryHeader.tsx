@@ -124,9 +124,10 @@ const s = StyleSheet.create({
     width:           54,
     height:          54,
     borderRadius:    16,
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.brand.lightest,  // brand-tinted bg; AppLogo PNG sits on this colour
     alignItems:      "center",
     justifyContent:  "center",
+    overflow:        "hidden",               // clips the brand-teal placeholder to rounded corners
     shadowColor:     "#000",
     shadowOffset:    { width: 0, height: 4 },
     shadowOpacity:   0.20,
