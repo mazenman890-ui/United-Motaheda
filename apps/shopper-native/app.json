@@ -8,7 +8,7 @@
     "scheme": "shopper",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash-mark.png",
+      "image": "./assets/splash-logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -44,8 +44,8 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/splash-mark.png",
-          "imageWidth": 160,
+          "image": "./assets/splash-logo.png",
+          "imageWidth": 300,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }

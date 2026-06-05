@@ -30,6 +30,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "react-i18next";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -342,34 +343,37 @@ export default function SearchScreen() {
   return (
     <View style={s.screen}>
 
-      {/* ─── Premium light header ────────────────────────────────────── */}
-      <View style={[s.header, { paddingTop: insets.top + 12 }]}>
+      {/* ─── Premium dark-gradient header — consistent with app design language ── */}
+      <LinearGradient
+        colors={theme.gradients.heroPrimary as [string, string, string]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.8, y: 1 }}
+        style={[s.header, { paddingTop: insets.top + 12 }]}>
 
-        {/* Top row — editorial label + result count */}
+        {/* Decorative orb */}
+        <View style={s.headerOrb} />
+
+        {/* Top row — title + result count badge */}
         <View style={s.topRow}>
           <View style={s.topLeft}>
             <View style={s.headerIcon}>
-              <Ionicons name="search" size={14} color={theme.colors.brand[700]} />
+              <Ionicons name="search" size={15} color={theme.colors.teal[400]} />
             </View>
             <View>
-              <UIText variant="eyebrow" color="tertiary" align="right">
-                {t("search.eyebrow")}
-              </UIText>
-              <UIText variant="card-title" align="right" style={s.headerTitle}>
-                {t("search.title")}
-              </UIText>
+              <UIText style={s.headerEyebrow}>{t("search.eyebrow")}</UIText>
+              <UIText style={s.headerTitle}>{t("search.title")}</UIText>
             </View>
           </View>
           {hasResults && totalCount > 0 && !isSearching && (
             <Animated.View entering={FadeIn.duration(200)} style={s.countPill}>
-              <UIText variant="caption" weight="black" color="brand">
+              <UIText style={s.countPillText}>
                 {t("search.resultCount", { count: totalCount.toLocaleString() })}
               </UIText>
             </Animated.View>
           )}
         </View>
 
-        {/* ─── Command bar — premium light search field ── */}
+        {/* ─── Command bar — glassmorphic on dark header ── */}
         <View style={s.barContainer}>
           <Animated.View style={[s.barGlow, glowAnim, { pointerEvents: "none" }]} />
 
@@ -482,10 +486,10 @@ export default function SearchScreen() {
         {/* Quiet keyboard hint */}
         {focused && !hasResults && debouncedQ.length < 2 && (
           <Animated.View entering={FadeIn.duration(180)} style={s.hint}>
-            <UIText variant="eyebrow" color="tertiary">{t("search.hint")}</UIText>
+            <UIText style={s.hintText}>{t("search.hint")}</UIText>
           </Animated.View>
         )}
-      </View>
+      </LinearGradient>
 
       {/* ─── Content area ──────────────────────────────────────────── */}
       <View style={s.content}>
@@ -871,16 +875,22 @@ const s = StyleSheet.create({
   screen:  { flex: 1, backgroundColor: theme.colors.bg },
   content: { flex: 1, position: "relative" },
 
-  // ── Header — clean elevated white strip
+  // ── Header — dark gradient, consistent with Home/Profile/Orders
   header: {
-    paddingHorizontal: 16,
-    paddingBottom:     14,
+    paddingHorizontal: 20,
+    paddingBottom:     18,
     gap:               14,
-    backgroundColor:   theme.colors.surface,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.border.hairline,
+    overflow:          "hidden",
   },
-
+  headerOrb: {
+    position:        "absolute",
+    right:           -40,
+    top:             -40,
+    width:           130,
+    height:          130,
+    borderRadius:    65,
+    backgroundColor: "rgba(13,184,168,0.10)",
+  },
   topRow: {
     flexDirection:  "row-reverse",
     alignItems:     "center",
@@ -892,69 +902,84 @@ const s = StyleSheet.create({
     gap:           theme.spacing.md,
   },
   headerIcon: {
-    width:           34,
-    height:          34,
-    borderRadius:    11,
-    backgroundColor: theme.colors.brand.lighter,
+    width:           40,
+    height:          40,
+    borderRadius:    13,
+    backgroundColor: "rgba(13,184,168,0.18)",
     borderWidth:     1,
-    borderColor:     theme.colors.border.brandSoft,
+    borderColor:     "rgba(13,184,168,0.30)",
     alignItems:      "center",
     justifyContent:  "center",
   },
+  headerEyebrow: {
+    fontSize:      10,
+    fontFamily:    theme.fonts.bold,
+    color:         "rgba(255,255,255,0.50)",
+    textAlign:     "right",
+    letterSpacing: 0.4,
+  },
   headerTitle: {
-    letterSpacing: -0.2,
-    marginTop:     1,
+    fontSize:      24,
+    fontFamily:    theme.fonts.black,
+    color:         theme.colors.surface,
+    textAlign:     "right",
+    letterSpacing: -0.5,
+    marginTop:     2,
   },
   countPill: {
-    flexDirection:    "row-reverse",
-    alignItems:       "center",
-    gap:              6,
-    backgroundColor:  theme.colors.brand.lighter,
-    borderRadius:     999,
-    paddingHorizontal: 10,
-    paddingVertical:   5,
-    borderWidth:      1,
-    borderColor:      theme.colors.border.brandSoft,
+    backgroundColor:   "rgba(255,255,255,0.12)",
+    borderRadius:      999,
+    paddingHorizontal: 12,
+    paddingVertical:   6,
+    borderWidth:       1,
+    borderColor:       "rgba(255,255,255,0.18)",
+  },
+  countPillText: {
+    fontSize:   11,
+    fontFamily: theme.fonts.black,
+    color:      theme.colors.teal[300],
   },
 
-  // ── Command bar — premium light field with brand glow
+  // ── Command bar — glassmorphic on dark gradient header
   barContainer: { position: "relative" },
   barGlow: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius:    18,
+    borderRadius:    20,
     opacity:         0,
-    backgroundColor: SEARCH_OVERLAY.teal10,
+    backgroundColor: "rgba(13,184,168,0.20)",
     transform:       [{ scale: 1.04 }],
   },
   bar: {
-    flexDirection:   "row",
-    alignItems:      "center",
-    backgroundColor: theme.colors.surface,
-    borderRadius:    18,
-    paddingHorizontal: 5,
-    height:          54,
-    borderWidth:     1.5,
-    borderColor:     theme.colors.border.hairline,
-    gap:             2,
+    flexDirection:     "row",
+    alignItems:        "center",
+    backgroundColor:   "rgba(255,255,255,0.94)",
+    borderRadius:      20,
+    paddingHorizontal: 6,
+    height:            54,
+    borderWidth:       1,
+    borderColor:       "rgba(255,255,255,0.60)",
+    gap:               2,
+    ...theme.shadow.lg,
+    shadowOpacity:     0.18,
   },
   barFocused: {
+    backgroundColor: theme.colors.surface,
     borderColor:     theme.colors.brand[400],
-    ...theme.shadow.brandGlow,
   },
   barIconWrap: {
     width:           40,
     height:          40,
-    borderRadius:    12,
+    borderRadius:    13,
     backgroundColor: theme.colors.surfaceSunken,
     alignItems:      "center",
     justifyContent:  "center",
   },
   barInput: {
-    flex:       1,
-    fontSize:   14.5,
-    fontFamily: theme.fonts.semibold,
-    color:      theme.colors.text.primary,
-    textAlign:  "right",
+    flex:              1,
+    fontSize:          14.5,
+    fontFamily:        theme.fonts.semibold,
+    color:             theme.colors.text.primary,
+    textAlign:         "right",
     paddingHorizontal: 10,
   },
   barClear: {
@@ -1012,6 +1037,12 @@ const s = StyleSheet.create({
   hint: {
     alignItems: "center",
     paddingTop: 2,
+  },
+  hintText: {
+    fontSize:   11,
+    fontFamily: theme.fonts.semibold,
+    color:      "rgba(255,255,255,0.45)",
+    textAlign:  "center",
   },
 
   // ── Highlight match
@@ -1196,9 +1227,13 @@ const s = StyleSheet.create({
     borderWidth:     1,
     borderColor:     theme.colors.border.hairline,
   },
+  // Section titles — 18px black, matching the app's HomeSectionHeader hierarchy
   sectionTitleNew: {
-    letterSpacing: -0.2,
-    marginTop:     1,
+    fontSize:      18,
+    fontFamily:    theme.fonts.black,
+    color:         theme.colors.text.primary,
+    letterSpacing: -0.3,
+    marginTop:     2,
   },
 
   // Recent searches — refined chips

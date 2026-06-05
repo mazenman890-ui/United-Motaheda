@@ -1,14 +1,24 @@
 /**
- * ProfileAuthHero — static premium hero for authenticated users.
+ * ProfileAuthHero — premium hero for authenticated users.
  *
- * Removed: FadeIn on top bar, and 4 × FadeInDown entering wrappers
- * (delays 60 ms → 280 ms) that caused the hero to stagger-flicker on
- * every profile mount. All sections now render instantly.
+ * Performance wins vs. previous version:
+ *   - StatPill press:          Reanimated withSpring(0.97) on UI thread
+ *     (was `({ pressed }) => [style, pressed && { opacity, scale }]` — JS thread)
+ *   - QuickActionTile press:   Reanimated withSpring(0.94) on UI thread
+ *     (was same JS-thread pattern)
+ *   - QuickActionTile extracted as memo'd component so each tile owns its
+ *     useSharedValue — parent re-renders never recreate the animation state
+ *   - All onPress handlers: useCallback at component level, passed as stable refs
  */
-import React, { memo } from "react";
-import { Platform, Pressable, View } from "react-native";
+import React, { memo, useCallback } from "react";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
@@ -47,7 +57,7 @@ interface ProfileAuthHeroProps {
   insetsTop:     number;
 }
 
-// ─── StatPill ─────────────────────────────────────────────────────────────────
+// ─── StatPill — Reanimated UI-thread scale ────────────────────────────────────
 
 const StatPill = memo(function StatPill({
   value, label, icon, accent, onPress,
@@ -58,33 +68,120 @@ const StatPill = memo(function StatPill({
   accent:  string;
   onPress: () => void;
 }) {
+  const scale = useSharedValue(1);
+  const anim  = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  const handleIn    = useCallback(() => { scale.value = withSpring(0.97, theme.animation.spring.press); }, [scale]);
+  const handleOut   = useCallback(() => { scale.value = withSpring(1,   theme.animation.spring.press); }, [scale]);
+  const handlePress = useCallback(() => {
+    if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
+    onPress();
+  }, [onPress]);
+
   return (
     <Pressable
-      onPress={() => {
-        if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
-        onPress();
-      }}
+      onPress={handlePress}
+      onPressIn={handleIn}
+      onPressOut={handleOut}
       accessibilityRole="button"
       accessibilityLabel={`${label}: ${value}`}
-      style={({ pressed }) => [
-        styles.statCol,
-        pressed && { opacity: 0.72, transform: [{ scale: 0.97 }] },
-      ]}>
-      <View style={[
-        styles.statIconWrap,
-        { backgroundColor: `${accent}14`, borderColor: `${accent}26` },
-      ]}>
-        <Ionicons name={icon} size={15} color={accent} />
-      </View>
-      <UIText variant="card-title" weight="black" style={styles.statValueNew}>
-        {value}
-      </UIText>
-      <UIText variant="eyebrow" color="tertiary">
-        {label}
+      style={styles.statCol}>
+      <Animated.View style={[sp.inner, anim]}>
+        <View style={[
+          styles.statIconWrap,
+          { backgroundColor: `${accent}14`, borderColor: `${accent}26` },
+        ]}>
+          <Ionicons name={icon} size={15} color={accent} />
+        </View>
+        <UIText variant="card-title" weight="black" style={styles.statValueNew}>
+          {value}
+        </UIText>
+        <UIText variant="eyebrow" color="tertiary">
+          {label}
+        </UIText>
+      </Animated.View>
+    </Pressable>
+  );
+});
+
+// ─── QuickActionTile — Reanimated UI-thread scale ─────────────────────────────
+
+interface TileProps {
+  icon:     IoniconsName;
+  labelKey: string;
+  grad:     readonly [string, string];
+  route:    string;
+  onPress:  (route: string) => void;
+}
+
+const QuickActionTile = memo(function QuickActionTile({
+  icon, labelKey, grad, route, onPress,
+}: TileProps) {
+  const { t } = useTranslation();
+  const scale = useSharedValue(1);
+  const anim  = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  // 0.94 — more aggressive press for tiles vs. rows (0.985) / cards (0.97)
+  const handleIn    = useCallback(() => { scale.value = withSpring(0.94, theme.animation.spring.press); }, [scale]);
+  const handleOut   = useCallback(() => { scale.value = withSpring(1,   theme.animation.spring.press); }, [scale]);
+  const handlePress = useCallback(() => {
+    if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
+    onPress(route);
+  }, [route, onPress]);
+
+  return (
+    <Pressable
+      onPress={handlePress}
+      onPressIn={handleIn}
+      onPressOut={handleOut}
+      accessibilityRole="button"
+      accessibilityLabel={t(labelKey)}
+      style={styles.quickGridItem}>
+      <Animated.View style={[qt.iconWrap, anim]}>
+        <LinearGradient
+          colors={grad as [string, string]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.quickGridIconWrap}>
+          <View style={styles.quickGridShine} />
+          <Ionicons name={icon} size={20} color={HERO_GLASS.w95} />
+        </LinearGradient>
+      </Animated.View>
+      <UIText variant="caption" weight="bold" align="center" color="secondary">
+        {t(labelKey)}
       </UIText>
     </Pressable>
   );
 });
+
+// ─── Module-level quick actions (zero re-allocation per render) ───────────────
+
+const QUICK_ACTIONS = [
+  {
+    icon:     "bag-handle-outline" as IoniconsName,
+    labelKey: "profile.myOrders",
+    grad:     [theme.colors.brand[600], theme.colors.teal[500]] as const,
+    route:    "/orders",
+  },
+  {
+    icon:     "heart-outline" as IoniconsName,
+    labelKey: "profile.wishlist",
+    grad:     [PROFILE.wishlistRed, theme.colors.rose[500]] as const,
+    route:    "/favorites",
+  },
+  {
+    icon:     "diamond-outline" as IoniconsName,
+    labelKey: "profile.loyaltyCard",
+    grad:     [PROFILE.loyaltyViolet, PROFILE.loyaltyPurple] as const,
+    route:    "/loyalty",
+  },
+  {
+    icon:     "location-outline" as IoniconsName,
+    labelKey: "profile.addresses",
+    grad:     [theme.colors.amber[600], theme.colors.amber[500]] as const,
+    route:    "/addresses",
+  },
+] as const;
 
 // ─── ProfileAuthHero ──────────────────────────────────────────────────────────
 
@@ -101,32 +198,19 @@ export const ProfileAuthHero = memo(function ProfileAuthHero({
   const router = useRouter();
   const { t }  = useTranslation();
 
-  const QUICK_ACTIONS = [
-    {
-      icon:     "bag-handle-outline" as IoniconsName,
-      labelKey: "profile.myOrders",
-      grad:     [theme.colors.brand[600], theme.colors.teal[500]] as [string, string],
-      route:    "/orders",
-    },
-    {
-      icon:     "heart-outline" as IoniconsName,
-      labelKey: "profile.wishlist",
-      grad:     [PROFILE.wishlistRed, theme.colors.rose[500]] as [string, string],
-      route:    "/favorites",
-    },
-    {
-      icon:     "diamond-outline" as IoniconsName,
-      labelKey: "profile.loyaltyCard",
-      grad:     [PROFILE.loyaltyViolet, PROFILE.loyaltyPurple] as [string, string],
-      route:    "/loyalty",
-    },
-    {
-      icon:     "location-outline" as IoniconsName,
-      labelKey: "profile.addresses",
-      grad:     [theme.colors.amber[600], theme.colors.amber[500]] as [string, string],
-      route:    "/addresses",
-    },
-  ] as const;
+  // Stable per-destination handlers — QuickActionTile memo never re-renders
+  // when unrelated hero state changes.
+  const goCart     = useCallback(() => router.push("/(tabs)/cart"),    [router]);
+  const goSettings = useCallback(() => router.push("/notifications"),  [router]);
+  const goOrders   = useCallback(() => router.push("/orders"),         [router]);
+  const goWishlist = useCallback(() => router.push("/favorites"),      [router]);
+  const goLoyalty  = useCallback(() => router.push("/loyalty"),        [router]);
+
+  // Single stable handler passed to every QuickActionTile
+  const goRoute = useCallback(
+    (route: string) => router.push(route as Parameters<typeof router.push>[0]),
+    [router],
+  );
 
   return (
     <View>
@@ -140,14 +224,14 @@ export const ProfileAuthHero = memo(function ProfileAuthHero({
         <View style={styles.heroDecor2} />
         <View style={styles.heroDecor3} />
 
-        {/* Top bar */}
+        {/* Top bar — title + cart + settings */}
         <View style={styles.heroTopBar}>
-          <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>
+          <View style={tb.left}>
             <UIText variant="eyebrow" style={styles.heroPageLabelNew}>{t("profile.title")}</UIText>
           </View>
-          <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>
+          <View style={tb.right}>
             <Pressable
-              onPress={() => router.push("/(tabs)/cart")}
+              onPress={goCart}
               accessibilityRole="button"
               accessibilityLabel={t("tabs.cart")}
               style={styles.heroIconBtn}>
@@ -161,7 +245,7 @@ export const ProfileAuthHero = memo(function ProfileAuthHero({
               )}
             </Pressable>
             <Pressable
-              onPress={() => router.push("/notifications")}
+              onPress={goSettings}
               accessibilityRole="button"
               accessibilityLabel={t("profile.settings")}
               style={styles.heroIconBtn}>
@@ -198,7 +282,7 @@ export const ProfileAuthHero = memo(function ProfileAuthHero({
             </UIText>
           </View>
 
-          <Pressable onPress={() => router.push("/loyalty")} style={styles.tierChip}>
+          <Pressable onPress={goLoyalty} style={styles.tierChip}>
             <Ionicons name={tier.icon} size={12} color={tier.color} />
             <UIText variant="caption" weight="bold" style={styles.tierChipLabelNew}>
               {t("profile.memberTier", { tier: t(tier.nameKey) })}
@@ -222,7 +306,7 @@ export const ProfileAuthHero = memo(function ProfileAuthHero({
           label={t("profile.statOrders")}
           icon="bag-handle-outline"
           accent={theme.colors.brand[600]}
-          onPress={() => router.push("/orders")}
+          onPress={goOrders}
         />
         <View style={styles.statDivider} />
         <StatPill
@@ -230,7 +314,7 @@ export const ProfileAuthHero = memo(function ProfileAuthHero({
           label={t("profile.statWishlist")}
           icon="heart-outline"
           accent={theme.colors.rose[500]}
-          onPress={() => router.push("/favorites")}
+          onPress={goWishlist}
         />
         <View style={styles.statDivider} />
         <StatPill
@@ -238,7 +322,7 @@ export const ProfileAuthHero = memo(function ProfileAuthHero({
           label={t("profile.statPoints")}
           icon="diamond-outline"
           accent={PROFILE.loyaltyPurple}
-          onPress={() => router.push("/loyalty")}
+          onPress={goLoyalty}
         />
         <View style={styles.statDivider} />
         <StatPill
@@ -246,21 +330,21 @@ export const ProfileAuthHero = memo(function ProfileAuthHero({
           label={t("profile.statCart")}
           icon="cart-outline"
           accent={theme.colors.amber[600]}
-          onPress={() => router.push("/(tabs)/cart")}
+          onPress={goCart}
         />
       </View>
 
-      {/* Last order */}
+      {/* Last order quick-peek */}
       {lastOrder && (
         <View style={styles.quickCardWrap}>
           <Pressable
-            onPress={() => router.push("/orders")}
+            onPress={goOrders}
             style={({ pressed }) => [styles.quickCard, pressed && { opacity: 0.88 }]}>
             <View style={styles.quickCardIcon}>
               <Ionicons name="bag-handle" size={17} color={theme.colors.brand[600]} />
             </View>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 6 }}>
+            <View style={lo.info}>
+              <View style={lo.nameRow}>
                 <UIText variant="body-sm" weight="bold" align="right">
                   {t("profile.lastOrderCard")}
                 </UIText>
@@ -280,32 +364,53 @@ export const ProfileAuthHero = memo(function ProfileAuthHero({
       {/* Quick action grid */}
       <View style={styles.quickGrid}>
         {QUICK_ACTIONS.map((a) => (
-          <Pressable
-            key={a.labelKey}
-            onPress={() => {
-              if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
-              router.push(a.route as Parameters<typeof router.push>[0]);
-            }}
-            style={({ pressed }) => [
-              styles.quickGridItem,
-              pressed && { transform: [{ scale: 0.94 }], opacity: 0.88 },
-            ]}>
-            <View style={styles.quickGridIconShadow}>
-              <LinearGradient
-                colors={a.grad}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.quickGridIconWrap}>
-                <View style={styles.quickGridShine} />
-                <Ionicons name={a.icon} size={20} color={HERO_GLASS.w95} />
-              </LinearGradient>
-            </View>
-            <UIText variant="caption" weight="bold" align="center" color="secondary">
-              {t(a.labelKey)}
-            </UIText>
-          </Pressable>
+          <QuickActionTile
+            key={a.route}
+            icon={a.icon}
+            labelKey={a.labelKey}
+            grad={a.grad}
+            route={a.route}
+            onPress={goRoute}
+          />
         ))}
       </View>
     </View>
   );
+});
+
+// ─── Local styles ─────────────────────────────────────────────────────────────
+
+// StatPill inner: Animated.View wraps the visual content so the scale
+// worklet can run on the UI thread. The outer Pressable keeps a fixed touch
+// target (flex:1) that doesn't scale with the animation.
+const sp = StyleSheet.create({
+  inner: {
+    alignItems: "center",
+    gap:        6,
+  },
+});
+
+// QuickActionTile icon wrapper — shadow/elevation lives here (no overflow:hidden)
+// so the gradient tile can clip its corners independently.
+const qt = StyleSheet.create({
+  iconWrap: {
+    borderRadius:  16,
+    shadowColor:   PROFILE.shadowDark,
+    shadowOffset:  { width: 0, height: 3 },
+    shadowOpacity: 0.20,
+    shadowRadius:  8,
+    elevation:     4,
+  },
+});
+
+// Top-bar flex rows
+const tb = StyleSheet.create({
+  left:  { flexDirection: "row-reverse", alignItems: "center", gap: 8 },
+  right: { flexDirection: "row-reverse", alignItems: "center", gap: 8 },
+});
+
+// Last-order info block
+const lo = StyleSheet.create({
+  info:    { flex: 1 },
+  nameRow: { flexDirection: "row-reverse", alignItems: "center", gap: 6 },
 });

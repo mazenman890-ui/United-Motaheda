@@ -1,4 +1,4 @@
-﻿import React, { useCallback } from "react";
+﻿import React, { memo, useCallback } from "react";
 import { FlatList, Platform, Pressable, StyleSheet, View, type DimensionValue } from "react-native";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { fetchCategories, fetchFeaturedProducts } from "@/services/productsApi";
+import { fetchCategories, fetchFeaturedProducts, type NativeProduct } from "@/services/productsApi";
 import { CategoryCard } from "@/components/CategoryCard";
 import { CategoryStatsDock } from "@/components/CategoryStatsDock";
 import { ProductCard } from "@/components/ProductCard";
@@ -17,6 +17,29 @@ import { useCartStore } from "@/stores/cart";
 import { useMountTiming } from "@/lib/devTiming";
 import { theme } from "@/shared/theme";
 import { useTranslation } from "react-i18next";
+
+// ─── Featured product card width (matches Home screen) ────────────────────────
+const FEAT_W = 162;
+
+// ─── Memoised featured item — stable per-item onPress avoids inline arrows ────
+const FeaturedProductItem = memo(function FeaturedProductItem({
+  item, lang, onPress,
+}: {
+  item:    NativeProduct;
+  lang:    "ar" | "en";
+  onPress: (id: string) => void;
+}) {
+  const handlePress = useCallback(() => onPress(item.id), [item.id, onPress]);
+  return (
+    <View style={featItemStyle}>
+      <ProductCard product={item} lang={lang} onPress={handlePress} />
+    </View>
+  );
+});
+
+// Module-level styles — zero re-allocation per render
+const featItemStyle  = { width: FEAT_W } as const;
+const featListContent = { paddingHorizontal: 20, gap: 12 } as const;
 
 export default function ProductsScreen() {
   useMountTiming("ProductsScreen");
@@ -50,6 +73,15 @@ export default function ProductsScreen() {
   const goProduct  = useCallback(
     (id: string) => router.push({ pathname: "/product/[id]", params: { id } }),
     [router],
+  );
+
+  // Stable renderItem — prevents FlatList from treating renderItem as changed
+  // on every parent render. ProductCard's custom comparator skips onPress.
+  const renderFeatured = useCallback(
+    ({ item }: { item: NativeProduct }) => (
+      <FeaturedProductItem item={item} lang={lang} onPress={goProduct} />
+    ),
+    [lang, goProduct],
   );
 
   const totalProducts = categories.reduce((sum, c) => sum + c.count, 0);
@@ -200,22 +232,16 @@ export default function ProductsScreen() {
                   </Pressable>
                 </View>
 
+                {/* inverted removed — causes RTL double-reversal on Android */}
                 <FlatList
                   data={featured.slice(0, 8)}
                   horizontal
-                  inverted
                   showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}
+                  contentContainerStyle={featListContent}
                   keyExtractor={(p) => p.id}
-                  renderItem={({ item }) => (
-                    <View style={{ width: 162 }}>
-                      <ProductCard
-                        product={item}
-                        lang={lang}
-                        onPress={() => goProduct(item.id)}
-                      />
-                    </View>
-                  )}
+                  initialNumToRender={4}
+                  maxToRenderPerBatch={4}
+                  renderItem={renderFeatured}
                 />
               </Animated.View>
             )}

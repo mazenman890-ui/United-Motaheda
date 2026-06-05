@@ -211,7 +211,10 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* 7 — Featured products — premium horizontal rail */}
+        {/* 7 — Featured products — premium horizontal rail
+             NOTE: `inverted` deliberately removed — it double-reverses in Arabic
+             RTL on Android, collapsing FlatList height to 0. RTL scroll direction
+             is handled by the OS I18nManager layer, so no prop needed.              */}
         <View style={sectionStyles.wrap}>
           <HomeSectionHeader
             eyebrow={t("home.featuredEyebrow")}
@@ -221,22 +224,20 @@ export default function HomeScreen() {
             onMore={() => router.push({ pathname: "/featured" })}
           />
           {featLoading ? (
-            /* Skeleton row while loading */
             <FlatList
               data={SKELETON_KEYS}
               horizontal
-              inverted
               showsHorizontalScrollIndicator={false}
               scrollEnabled={false}
               keyExtractor={(k) => String(k)}
               contentContainerStyle={s.hListContent}
               renderItem={renderFeaturedSkeleton}
             />
-          ) : (
+          ) : featured.length > 0 ? (
+            /* Products available — horizontal snap rail */
             <FlatList
               data={featured.slice(0, 8)}
               horizontal
-              inverted
               showsHorizontalScrollIndicator={false}
               keyExtractor={(p) => p.id}
               initialNumToRender={4}
@@ -245,16 +246,19 @@ export default function HomeScreen() {
               decelerationRate="fast"
               contentContainerStyle={s.hListContent}
               renderItem={renderFeatured}
-              ListEmptyComponent={
-                <EmptyState
-                  icon="star-outline"
-                  title={t("home.featuredTitle")}
-                  description={t("errors.network")}
-                  actionLabel={t("common.retry")}
-                  onAction={() => void refFeat()}
-                />
-              }
             />
+          ) : (
+            /* Empty state OUTSIDE the FlatList — ListEmptyComponent inside a
+               horizontal FlatList renders at 0-height, creating ghost gaps.      */
+            <View style={s.emptyWrap}>
+              <EmptyState
+                icon="star-outline"
+                title={t("home.featuredTitle")}
+                description={t("errors.network")}
+                actionLabel={t("common.retry")}
+                onAction={() => void refFeat()}
+              />
+            </View>
           )}
         </View>
 
@@ -277,9 +281,13 @@ const renderFeaturedSkeleton = () => (
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   root:         { flex: 1, backgroundColor: theme.colors.bg },
-  // Horizontal featured rail — snapped padding aligns first card to page margin
   hListContent: {
     paddingHorizontal: theme.layout.pagePaddingH,
     gap:               FEAT_GAP,
+  },
+  // Empty state wrapper — gives the EmptyState reasonable height and centering
+  emptyWrap: {
+    minHeight:   260,
+    paddingTop:  20,
   },
 });

@@ -59,11 +59,12 @@ export const CategoryStrip = memo(function CategoryStrip({
         icon="grid-outline"
         onMore={onViewAll}
       />
+      {/* NOTE: `inverted` removed — causes RTL double-reversal on Android.
+           OS I18nManager handles scroll direction; no prop needed.           */}
       {isLoading ? (
         <FlatList
           data={SKELETON_KEYS}
           horizontal
-          inverted
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={CONTENT_STYLE}
           keyExtractor={(k) => String(k)}
@@ -74,7 +75,6 @@ export const CategoryStrip = memo(function CategoryStrip({
           data={categories}
           keyExtractor={(c) => c.id}
           horizontal
-          inverted
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={CONTENT_STYLE}
           removeClippedSubviews
