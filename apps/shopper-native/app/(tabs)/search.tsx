@@ -1258,7 +1258,9 @@ const s = StyleSheet.create({
   // Trending — premium tile rows
   trendGrid: { gap: theme.spacing.sm },
   trendItem: {
-    flexDirection:     "row-reverse",
+    // "row" in RTL places children right-to-left: icon(right) → label(mid) → rank(left)
+    // "row-reverse" in RTL caused the rank badge to stack below the icon on some devices.
+    flexDirection:     "row",
     alignItems:        "center",
     gap:               theme.spacing.md,
     backgroundColor:   theme.colors.surface,
@@ -1268,15 +1270,17 @@ const s = StyleSheet.create({
     ...theme.shadow.card,
   },
   trendIcon: {
-    width:           38,
-    height:          38,
-    borderRadius:    12,
+    width:           40,
+    height:          40,
+    borderRadius:    13,
     alignItems:      "center",
     justifyContent:  "center",
     borderWidth:     1,
+    flexShrink:      0,
   },
   trendLabel: {
-    flex: 1,
+    flex:      1,
+    textAlign: "right",
   },
   trendIdxWrap: {
     width:           28,
@@ -1295,7 +1299,8 @@ const s = StyleSheet.create({
     ...theme.shadow.card,
   },
   catRow: {
-    flexDirection:     "row-reverse",
+    // "row" in RTL: icon appears on the right (leading side), chevron on left
+    flexDirection:     "row",
     alignItems:        "center",
     gap:               theme.spacing.md,
     paddingHorizontal: theme.spacing.lg,

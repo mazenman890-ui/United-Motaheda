@@ -15,9 +15,11 @@
  */
 
 import React, { memo, useCallback } from "react";
-import { View } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
@@ -84,6 +86,33 @@ const FlashSaleItem = memo(function FlashSaleItem({
   );
 });
 
+// ─── "View All" button styles ─────────────────────────────────────────────────
+
+const va = StyleSheet.create({
+  wrap: {
+    paddingHorizontal: theme.layout.pagePaddingH,
+    paddingTop:        10,
+  },
+  btn: {
+    borderRadius: 14,
+    overflow:     "hidden",
+  },
+  grad: {
+    flexDirection:   "row",
+    alignItems:      "center",
+    justifyContent:  "center",
+    gap:             8,
+    paddingVertical: 13,
+    borderRadius:    14,
+  },
+  text: {
+    fontFamily:    theme.fonts.black,
+    fontSize:      14,
+    color:         theme.colors.surface,
+    letterSpacing: 0.1,
+  },
+});
+
 // ─── FlashSaleSection ─────────────────────────────────────────────────────────
 
 interface FlashSaleSectionProps {
@@ -108,20 +137,26 @@ export const FlashSaleSection = memo(function FlashSaleSection({
     [lang, onProductPress],
   );
 
+  const handleViewAll = useCallback(() => {
+    if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
+    onViewAll?.();
+  }, [onViewAll]);
+
   if (items.length === 0) return null;
 
   return (
     <View style={fs.sectionGap}>
+      {/* Header: countdown fills the rightSlot; "See All" is a separate
+          button below so both elements are always visible.                */}
       <HomeSectionHeader
         eyebrow={t("home.flashEnds")}
         title={t("home.flashTitle")}
         icon="flash"
         accent={theme.colors.red[500]}
-        onMore={onViewAll}
         rightSlot={<CountdownDisplay />}
       />
-      {/* FlashList v2: estimatedItemSize and inverted removed.
-          overrideItemLayout provides per-item size hints when needed.      */}
+
+      {/* Horizontal product rail */}
       <FlashList
         data={items}
         keyExtractor={(p) => p.id}
@@ -129,7 +164,28 @@ export const FlashSaleSection = memo(function FlashSaleSection({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: theme.layout.pagePaddingH }}
         renderItem={renderFlashItem}
+        estimatedItemSize={162}
       />
+
+      {/* ── "View All Deals" CTA — always visible below the rail ── */}
+      {onViewAll && (
+        <View style={va.wrap}>
+          <Pressable
+            onPress={handleViewAll}
+            accessibilityRole="button"
+            style={({ pressed }) => [va.btn, pressed && { opacity: 0.85 }]}>
+            <LinearGradient
+              colors={[theme.colors.red[600], theme.colors.red[500]]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={va.grad}>
+              <Ionicons name="flame" size={15} color={theme.colors.surface} />
+              <UIText style={va.text}>{t("home.viewAll")}</UIText>
+              <Ionicons name="chevron-back" size={15} color={theme.colors.surface} />
+            </LinearGradient>
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 });

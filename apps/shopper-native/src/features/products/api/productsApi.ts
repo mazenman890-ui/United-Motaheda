@@ -53,7 +53,16 @@ export async function fetchProductsPage(args: FetchProductsArgs = {}): Promise<P
     page     = 1,
     pageSize = DEFAULT_PAGE_SIZE,
     signal,
+    isSale,
   } = args;
+
+  // ── Sale filter: bypass the RPC ──────────────────────────────────────────
+  // The `search_products` RPC has no `p_is_sale` parameter. When the caller
+  // requests sale products, skip the RPC entirely and use the direct table
+  // query which supports arbitrary column filters.
+  if (isSale) {
+    return _fetchProductsPageDirect(args);
+  }
 
   const safePageSize = Math.max(1, Math.min(pageSize, MAX_PAGE_SIZE));
   const offset       = (Math.max(1, page) - 1) * safePageSize;
@@ -117,7 +126,8 @@ export async function fetchProductsPage(args: FetchProductsArgs = {}): Promise<P
   }
 }
 
-/** Direct Supabase table query — used as fallback when the RPC is unavailable. */
+/** Direct Supabase table query — used as fallback when the RPC is unavailable,
+ *  AND as the primary path when `isSale=true` (RPC has no sale filter). */
 async function _fetchProductsPageDirect(args: FetchProductsArgs): Promise<ProductPage> {
   const {
     search,
@@ -129,6 +139,7 @@ async function _fetchProductsPageDirect(args: FetchProductsArgs): Promise<Produc
     page     = 1,
     pageSize = DEFAULT_PAGE_SIZE,
     signal,
+    isSale,
   } = args;
 
   const safePageSize = Math.max(1, Math.min(pageSize, MAX_PAGE_SIZE));
@@ -140,6 +151,14 @@ async function _fetchProductsPageDirect(args: FetchProductsArgs): Promise<Produc
     .from("products")
     .select(PRODUCT_COLUMNS, { count: "exact" })
     .eq("is_active", true);
+
+  // ── Sale filter — real deal products only ───────────────────────────────
+  // Matches products the admin has explicitly flagged as on sale, OR that
+  // carry a discount_percent value (both count as a "deal").
+  if (isSale) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    query = (query as any).or("is_sale.eq.true,discount_percent.gt.0");
+  }
 
   // Category filter (exact match on the Arabic category name)
   if (categoryId) {

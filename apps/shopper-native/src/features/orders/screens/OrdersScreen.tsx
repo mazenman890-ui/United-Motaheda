@@ -62,7 +62,7 @@ function OrdersHeader({
             <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.80)" />
           </Pressable>
         ) : (
-          <View style={h.backBtn} />
+          <View style={h.backBtnSpacer} />
         )}
         <View style={{ flex: 1 }}>
           <UIText style={h.eyebrow}>{t("orders.eyebrow")}</UIText>
@@ -253,6 +253,7 @@ const h = StyleSheet.create({
     borderWidth:     1,
     borderColor:     "rgba(255,255,255,0.12)",
   },
+  backBtnSpacer: { width: 38, height: 38 },
   eyebrow: {
     fontSize:      10,
     fontFamily:    theme.fonts.bold,

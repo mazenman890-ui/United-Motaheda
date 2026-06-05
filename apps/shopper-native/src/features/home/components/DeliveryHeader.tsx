@@ -6,7 +6,7 @@
  * removed as they were choking the UI thread on every home-screen mount.
  */
 
-import React, { memo } from "react";
+import React, { memo, useMemo } from "react";
 import {
   Platform,
   Pressable,
@@ -16,10 +16,19 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { AppLogo } from "@/shared/components/AppLogo";
+
+// Returns an Ionicons name matching the current time of day
+function getTimeIcon(): React.ComponentProps<typeof Ionicons>["name"] {
+  const h = new Date().getHours();
+  if (h >= 5  && h < 12) return "sunny-outline";
+  if (h >= 12 && h < 18) return "partly-sunny-outline";
+  return "moon-outline";
+}
 
 interface DeliveryHeaderProps {
   insets:        { top: number };
@@ -36,7 +45,11 @@ export const DeliveryHeader = memo(function DeliveryHeader({
   onCartPress,
   onSearchPress,
 }: DeliveryHeaderProps) {
-  const { t } = useTranslation();
+  const { t }  = useTranslation();
+  const router = useRouter();
+
+  // Stable — computed once on mount, never re-evaluated
+  const timeIcon = useMemo(() => getTimeIcon(), []);
 
   const greeting = user?.name
     ? t("home.greeting",      { name: user.name.split(" ")[0] })
@@ -73,9 +86,13 @@ export const DeliveryHeader = memo(function DeliveryHeader({
 
       {/* Headline */}
       <View style={s.headingStack}>
-        <UIText variant="eyebrow" align="right" style={s.greetingText}>
-          {greeting}
-        </UIText>
+        {/* Greeting row — time icon + text together */}
+        <View style={s.greetingRow}>
+          <Ionicons name={timeIcon} size={13} color="#5EEAD4" />
+          <UIText variant="eyebrow" align="right" style={s.greetingText}>
+            {greeting}
+          </UIText>
+        </View>
         <UIText variant="screen-title" align="right" style={s.heroTitle}>
           {t("home.heroTaglineTitle")}
         </UIText>
@@ -100,13 +117,40 @@ export const DeliveryHeader = memo(function DeliveryHeader({
           </UIText>
         </LinearGradient>
       </Pressable>
+
+      {/* Quick-access chips — Deals + Featured */}
+      <View style={s.chipRow}>
+        <Pressable
+          onPress={() => router.push("/deals")}
+          style={s.dealChip}
+          accessibilityRole="button">
+          <Ionicons name="flame" size={11} color="#FCA5A5" />
+          <UIText style={s.dealChipText}>{t("home.flashTitle")}</UIText>
+        </Pressable>
+
+        <Pressable
+          onPress={() => router.push("/featured")}
+          style={s.featChip}
+          accessibilityRole="button">
+          <Ionicons name="star" size={11} color={theme.colors.amber[300]} />
+          <UIText style={s.featChipText}>{t("home.featuredTitle")}</UIText>
+        </Pressable>
+
+        <Pressable
+          onPress={() => router.push("/(tabs)/products")}
+          style={s.allChip}
+          accessibilityRole="button">
+          <Ionicons name="grid-outline" size={11} color="rgba(255,255,255,0.65)" />
+          <UIText style={s.allChipText}>{t("products.allProducts")}</UIText>
+        </Pressable>
+      </View>
     </LinearGradient>
   );
 });
 
 const s = StyleSheet.create({
   hero: {
-    paddingBottom:     52,
+    paddingBottom:     24,   // chips row takes the extra space
     paddingHorizontal: theme.layout.pagePaddingH,
     overflow:          "hidden",
   },
@@ -169,8 +213,14 @@ const s = StyleSheet.create({
     textAlignVertical:   "center",
   },
   headingStack: {
-    gap:          theme.spacing.lg,
-    marginBottom: 22,
+    gap:          theme.spacing.sm,
+    marginBottom: 18,
+  },
+  greetingRow: {
+    flexDirection:  "row",
+    alignItems:     "center",
+    justifyContent: "flex-end",
+    gap:            6,
   },
   greetingText: {
     color:         "#5EEAD4",
@@ -206,5 +256,64 @@ const s = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical:   7,
     overflow:          "hidden",
+  },
+
+  // ── Quick-access chips below search bar ─────────────────────────────────────
+  chipRow: {
+    flexDirection:  "row",
+    justifyContent: "flex-end",
+    gap:            8,
+    marginTop:      10,
+  },
+  // 🔥 Deals chip — red-tinted
+  dealChip: {
+    flexDirection:     "row",
+    alignItems:        "center",
+    gap:               5,
+    backgroundColor:   "rgba(239,68,68,0.20)",
+    borderRadius:      999,
+    paddingHorizontal: 12,
+    paddingVertical:   6,
+    borderWidth:       1,
+    borderColor:       "rgba(252,165,165,0.30)",
+  },
+  dealChipText: {
+    fontFamily: theme.fonts.bold,
+    fontSize:   11,
+    color:      "#FCA5A5",
+  },
+  // ⭐ Featured chip — amber-tinted
+  featChip: {
+    flexDirection:     "row",
+    alignItems:        "center",
+    gap:               5,
+    backgroundColor:   "rgba(245,158,11,0.18)",
+    borderRadius:      999,
+    paddingHorizontal: 12,
+    paddingVertical:   6,
+    borderWidth:       1,
+    borderColor:       "rgba(251,191,36,0.28)",
+  },
+  featChipText: {
+    fontFamily: theme.fonts.bold,
+    fontSize:   11,
+    color:      theme.colors.amber[300],
+  },
+  // 🔲 All categories chip — subtle glass
+  allChip: {
+    flexDirection:     "row",
+    alignItems:        "center",
+    gap:               5,
+    backgroundColor:   "rgba(255,255,255,0.08)",
+    borderRadius:      999,
+    paddingHorizontal: 12,
+    paddingVertical:   6,
+    borderWidth:       1,
+    borderColor:       "rgba(255,255,255,0.14)",
+  },
+  allChipText: {
+    fontFamily: theme.fonts.bold,
+    fontSize:   11,
+    color:      "rgba(255,255,255,0.65)",
   },
 });

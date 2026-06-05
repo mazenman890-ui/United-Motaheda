@@ -23,6 +23,7 @@ import Animated, {
   useAnimatedStyle,
   interpolate,
   Extrapolation,
+  withSpring,
   type SharedValue,
 } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
@@ -164,23 +165,47 @@ const PromoSlide = memo(function PromoSlide({
   );
 });
 
-// ─── PaginationDots — live-updating dot indicators ────────────────────────────
+// ─── PaginationDots — Reanimated spring-animated pill indicators ───────────────
+// Each dot owns a useSharedValue(width) that springs between 6 (inactive) and
+// 24 (active). The transition runs on the UI thread — zero JS-thread jank even
+// when the JS thread is busy loading product data in the background.
 
-interface PaginationDotsProps {
-  count:   number;
-  current: number;
-}
+interface AnimatedDotProps { isActive: boolean; accent: string }
+
+const AnimatedDot = memo(function AnimatedDot({ isActive, accent }: AnimatedDotProps) {
+  const width = useSharedValue(isActive ? 24 : 6);
+
+  useEffect(() => {
+    width.value = withSpring(isActive ? 24 : 6, {
+      damping:   18,
+      stiffness: 220,
+      mass:      0.5,
+    });
+  }, [isActive, width]);
+
+  const dotAnim = useAnimatedStyle(() => ({ width: width.value }));
+
+  return (
+    <Animated.View
+      style={[
+        s.dot,
+        dotAnim,
+        isActive && { backgroundColor: accent },
+      ]}
+    />
+  );
+});
+
+interface PaginationDotsProps { count: number; current: number }
 
 const PaginationDots = memo(function PaginationDots({ count, current }: PaginationDotsProps) {
   return (
     <View style={s.dotsRow}>
       {Array.from({ length: count }).map((_, i) => (
-        <View
+        <AnimatedDot
           key={i}
-          style={[
-            s.dot,
-            i === current && [s.dotActive, { backgroundColor: PROMO_SLIDES[current].accent }],
-          ]}
+          isActive={i === current}
+          accent={PROMO_SLIDES[current]?.accent ?? PROMO_SLIDES[0].accent}
         />
       ))}
     </View>

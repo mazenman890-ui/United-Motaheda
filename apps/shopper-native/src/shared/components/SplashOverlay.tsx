@@ -29,7 +29,6 @@ import { StatusBar, StyleSheet, View } from "react-native";
 import { Video, ResizeMode, type AVPlaybackStatus } from "expo-av";
 import Animated, {
   Easing,
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -72,13 +71,17 @@ export function SplashOverlay(): React.ReactElement | null {
     if (dismissedRef.current) return;
     dismissedRef.current = true;
 
-    overlayOpacity.value = withTiming(
-      0,
-      { duration: FADE_OUT_MS, easing: Easing.out(Easing.cubic) },
-      (finished) => {
-        if (finished) runOnJS(setRender)(false);
-      },
-    );
+    // Start the UI-thread fade animation.
+    overlayOpacity.value = withTiming(0, {
+      duration: FADE_OUT_MS,
+      easing:   Easing.out(Easing.cubic),
+    });
+
+    // setTimeout is the PRIMARY unmount trigger — more reliable than the
+    // withTiming completion callback, which can silently fail on some Android
+    // devices (Reanimated worklet callback not bridging back to JS thread).
+    // The +80 ms buffer lets the fade finish before the component unmounts.
+    setTimeout(() => setRender(false), FADE_OUT_MS + 80);
   }, [overlayOpacity]);
 
   // ── Mount effects ──────────────────────────────────────────────────────────

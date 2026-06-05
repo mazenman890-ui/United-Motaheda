@@ -23,6 +23,13 @@ export interface ProductFilters {
   sortBy?:     ProductSortMode | "newest" | "price_asc" | "price_desc" | "name_asc";
   page?:       number;
   pageSize?:   number;
+  /**
+   * When true, restricts results to products marked `is_sale=true` OR
+   * `discount_percent > 0` in the database. This filter bypasses the
+   * `search_products` RPC (which has no `p_is_sale` param) and uses a
+   * direct Supabase table query instead.
+   */
+  isSale?:     boolean;
 }
 
 // ─── Server DTOs (zod-validated) ────────────────────────────────────────────

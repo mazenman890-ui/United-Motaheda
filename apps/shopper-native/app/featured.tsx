@@ -1,87 +1,140 @@
 /**
- * Featured — Editor's Picks
+ * FeaturedScreen — Editor's Picks, real data only.
  *
- * Infinite-scroll grid of featured products with category filter rail.
- * List rendering:  ProductGrid (FlashList on native / FlatList on web)
- *                  — shared with CategoryScreen for identical perf characteristics.
+ * Data source: `get_featured_products` RPC → products flagged
+ * `is_new=true OR is_bestseller=true OR is_sale=true` in the database.
+ * NEVER dumps all products — if nothing is marked featured the page
+ * shows a proper empty state.
+ *
+ * Search: client-side (200-product cap) — fast, no extra round-trips.
+ * Tabs:   All · New · Bestseller · Sale
+ * Filter: category rail derived from the actual featured set.
  */
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useDeferredValue,
+  useMemo,
+  useState,
+} from "react";
 import {
   Platform,
   Pressable,
-  RefreshControl,
   ScrollView,
   StyleSheet,
+  TextInput,
   View,
 } from "react-native";
-import { Text as UIText } from "@/shared/ui";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useQuery } from "@tanstack/react-query";
-import * as Haptics from "expo-haptics";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
+import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useQuery } from "@tanstack/react-query";
+import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
-import { useInfiniteProducts, ProductGrid, type NativeProduct } from "@/features/products";
-import { fetchCategories } from "@/services/productsApi";
+import { fetchFeaturedProducts } from "@/features/products";
+import { ProductGrid } from "@/features/products";
+import type { NativeProduct } from "@/features/products";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
+import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 
-// ─── Glass / dark overlay palette ────────────────────────────────────────────
-// White glass values on the dark amber hero gradient — no theme token exists.
-const FG = {
-  w04:  "rgba(255,255,255,0.04)",
-  w06:  "rgba(255,255,255,0.06)",
-  w10:  "rgba(255,255,255,0.10)",
-  w12:  "rgba(255,255,255,0.12)",
-  w15:  "rgba(255,255,255,0.15)",
-  w16:  "rgba(255,255,255,0.16)",
-  w18:  "rgba(255,255,255,0.18)",
-  w22:  "rgba(255,255,255,0.22)",
-  w55:  "rgba(255,255,255,0.55)",
+// ─── Glass palette ─────────────────────────────────────────────────────────────
+const G = {
+  w06: "rgba(255,255,255,0.06)",
+  w10: "rgba(255,255,255,0.10)",
+  w13: "rgba(255,255,255,0.13)",
+  w15: "rgba(255,255,255,0.15)",
+  w20: "rgba(255,255,255,0.20)",
+  w45: "rgba(255,255,255,0.45)",
+  w60: "rgba(255,255,255,0.60)",
+  w80: "rgba(255,255,255,0.80)",
 } as const;
 
-// Dark slate overlays on light surfaces
-const FD = {
-  d07: "rgba(15,23,42,0.07)",
-  d08: "rgba(15,23,42,0.08)",
-} as const;
+// Dark amber editorial gradient (featured = gold / curated = warm tone)
+const HEADER_GRAD: [string, string, string] = [
+  "#2D1000", "#6B3000", theme.colors.amber[700],
+];
 
-// Intentional dark-amber editorial gradient — flash/featured palette
-const HEADER_GRAD: [string, string, string] = ["#3B1500", "#6B2800", theme.colors.amber[700]];
+type Tab = "all" | "new" | "bestseller" | "sale";
 
-// ─── Category chip ────────────────────────────────────────────────────────────
+const TABS: { key: Tab; labelKey: string; icon: React.ComponentProps<typeof Ionicons>["name"] }[] = [
+  { key: "all",        labelKey: "products.allProducts",    icon: "apps-outline"          },
+  { key: "new",        labelKey: "products.badgeNew",       icon: "sparkles-outline"      },
+  { key: "bestseller", labelKey: "products.badgeBestSeller",icon: "trending-up-outline"   },
+  { key: "sale",       labelKey: "products.badgeSale",      icon: "pricetag-outline"      },
+];
 
-function CatChip({
-  label, active, onPress,
-}: { label: string; active: boolean; onPress: () => void }) {
+// ─── TabPill ───────────────────────────────────────────────────────────────────
+
+const TabPill = React.memo(function TabPill({
+  label, icon, active, onPress,
+}: { label: string; icon: React.ComponentProps<typeof Ionicons>["name"]; active: boolean; onPress: () => void }) {
   const scale = useSharedValue(1);
   const anim  = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-
   const handlePress = useCallback(() => {
-    scale.value = withSpring(0.92, { damping: 16, stiffness: 400 });
-    setTimeout(() => { scale.value = withSpring(1.0, { damping: 14, stiffness: 350 }); }, 80);
+    scale.value = withSpring(0.93, theme.animation.spring.press);
+    setTimeout(() => { scale.value = withSpring(1, theme.animation.spring.press); }, 80);
     if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
     onPress();
   }, [onPress, scale]);
 
   return (
     <Animated.View style={anim}>
-      <Pressable onPress={handlePress} style={[fc.chip, active && fc.chipActive]}>
-        {active && <LinearGradient colors={[theme.colors.amber[700], theme.colors.amber[600]]} style={fc.chipGrad} />}
-        <UIText style={[fc.chipText, active && fc.chipTextActive]} numberOfLines={1}>{label}</UIText>
+      <Pressable onPress={handlePress} style={[f.tab, active && f.tabActive]}>
+        {active && (
+          <LinearGradient
+            colors={[theme.colors.amber[600], theme.colors.amber[700]]}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+        )}
+        <Ionicons
+          name={icon}
+          size={13}
+          color={active ? theme.colors.surface : theme.colors.text.secondary}
+        />
+        <UIText style={[f.tabText, active && f.tabTextActive]} numberOfLines={1}>
+          {label}
+        </UIText>
       </Pressable>
     </Animated.View>
   );
+});
+
+// ─── CatChip ───────────────────────────────────────────────────────────────────
+
+const CatChip = React.memo(function CatChip({
+  label, active, onPress,
+}: { label: string; active: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[f.catChip, active && f.catChipActive]}>
+      <UIText style={[f.catChipText, active && f.catChipTextActive]} numberOfLines={1}>
+        {label}
+      </UIText>
+    </Pressable>
+  );
+});
+
+// ─── StatBadge ─────────────────────────────────────────────────────────────────
+
+function StatBadge({ count, label, color }: { count: number; label: string; color: string }) {
+  return (
+    <View style={[f.stat, { borderColor: color + "30", backgroundColor: color + "15" }]}>
+      <UIText style={[f.statNum, { color }]}>{count}</UIText>
+      <UIText style={[f.statLbl, { color: color + "CC" }]}>{label}</UIText>
+    </View>
+  );
 }
 
-// ─── Screen ───────────────────────────────────────────────────────────────────
+// ─── Screen ────────────────────────────────────────────────────────────────────
 
 export default function FeaturedScreen(): React.ReactElement {
   const { t, i18n } = useTranslation();
@@ -89,30 +142,82 @@ export default function FeaturedScreen(): React.ReactElement {
   const router      = useRouter();
   const insets      = useSafeAreaInsets();
 
-  const [selectedCat, setSelectedCat] = useState<string | undefined>(undefined);
+  const [query,       setQuery]       = useState("");
+  const [activeTab,   setActiveTab]   = useState<Tab>("all");
+  const [selectedCat, setSelectedCat] = useState<string | null>(null);
 
-  const { data: categories = [] } = useQuery({
-    queryKey:  ["categories"],
-    queryFn:   fetchCategories,
-    staleTime: 10 * 60_000,
-  });
+  // Defer the query for smoother typing — expensive filter runs off the render path
+  const deferredQuery = useDeferredValue(query.trim().toLowerCase());
 
+  // ── Real featured products from the DB ────────────────────────────────────
   const {
-    products,
+    data: allFeatured = [],
     isLoading,
     isError,
-    isFetchingNextPage,
-    isRefreshing,
-    hasNextPage,
-    fetchNextPage,
     refetch,
-  } = useInfiniteProducts({
-    sortBy:     "newest",
-    categoryId: selectedCat,
-    pageSize:   20,
+  } = useQuery({
+    queryKey:  ["featured-all"],
+    queryFn:   () => fetchFeaturedProducts(200),
+    staleTime: 5 * 60_000,
   });
 
-  const handlePress = useCallback(
+  // ── Stats from the full set ───────────────────────────────────────────────
+  const stats = useMemo(() => ({
+    newCount:        allFeatured.filter((p) => p.isNew).length,
+    bestsellerCount: allFeatured.filter((p) => p.isBestseller).length,
+    saleCount:       allFeatured.filter((p) => p.isSale).length,
+  }), [allFeatured]);
+
+  // ── Filtered product list ─────────────────────────────────────────────────
+  const filtered = useMemo(() => {
+    let list = allFeatured;
+
+    // Tab filter
+    if (activeTab === "new")        list = list.filter((p) => p.isNew);
+    if (activeTab === "bestseller") list = list.filter((p) => p.isBestseller);
+    if (activeTab === "sale")       list = list.filter((p) => p.isSale);
+
+    // Category filter
+    if (selectedCat) {
+      list = list.filter(
+        (p) => p.categoryName === selectedCat || p.categoryNameEn === selectedCat,
+      );
+    }
+
+    // Text search — Arabic + English name
+    if (deferredQuery.length >= 2) {
+      list = list.filter(
+        (p) =>
+          p.nameAr?.toLowerCase().includes(deferredQuery) ||
+          p.nameEn?.toLowerCase().includes(deferredQuery) ||
+          p.name?.toLowerCase().includes(deferredQuery)  ||
+          p.categoryName?.toLowerCase().includes(deferredQuery),
+      );
+    }
+
+    return list;
+  }, [allFeatured, activeTab, selectedCat, deferredQuery]);
+
+  // ── Category chips derived from the current filtered base ────────────────
+  const categories = useMemo(() => {
+    const base = activeTab === "all" ? allFeatured
+      : activeTab === "new"         ? allFeatured.filter((p) => p.isNew)
+      : activeTab === "bestseller"  ? allFeatured.filter((p) => p.isBestseller)
+      :                               allFeatured.filter((p) => p.isSale);
+
+    const seen = new Set<string>();
+    const cats: string[] = [];
+    for (const p of base) {
+      const name = lang === "en" ? (p.categoryNameEn ?? p.categoryName) : p.categoryName;
+      if (name && !seen.has(p.categoryName)) {
+        seen.add(p.categoryName);
+        cats.push(name);
+      }
+    }
+    return cats;
+  }, [allFeatured, activeTab, lang]);
+
+  const handleProductPress = useCallback(
     (p: NativeProduct) => {
       if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
       router.push({ pathname: "/product/[id]", params: { id: p.id } });
@@ -120,91 +225,155 @@ export default function FeaturedScreen(): React.ReactElement {
     [router],
   );
 
-  const CatRail = useMemo(() => (
-    <View style={fc.railWrap}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={fc.railContent}>
-        <CatChip label={t("products.allProducts")} active={!selectedCat} onPress={() => setSelectedCat(undefined)} />
-        {categories.map((c) => {
-          const display = lang === "en" ? (c.nameEn ?? c.name) : c.name;
-          return (
-            <CatChip
-              key={c.id}
-              label={display}
-              active={selectedCat === c.id}
-              onPress={() => setSelectedCat((prev) => prev === c.id ? undefined : c.id)}
-            />
-          );
-        })}
-      </ScrollView>
-    </View>
-  ), [categories, selectedCat, lang, t]);
-
-  const Header = useMemo(() => (
+  // ── Header + search + tabs (memoised — heavy subview) ────────────────────
+  const ListHeader = useMemo(() => (
     <>
+      {/* ── Gradient hero ── */}
       <LinearGradient
         colors={HEADER_GRAD}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[fc.header, { paddingTop: insets.top + 12 }]}>
-        <View style={[fc.orb, { top: -50, right: -50, width: 180, height: 180 }]} />
-        <View style={[fc.orb, { bottom: -20, left: -20, width: 80, height: 80, backgroundColor: FG.w04 }]} />
+        end={{ x: 0.9, y: 1 }}
+        style={[f.hero, { paddingTop: insets.top + 14 }]}>
 
-        <View style={fc.topRow}>
-          <Pressable onPress={() => router.back()} hitSlop={10} style={fc.backBtn}>
-            <Ionicons name="arrow-forward" size={16} color={theme.colors.surface} />
+        <View style={f.glowOrb} />
+        <View style={f.glowOrb2} />
+
+        {/* Top bar */}
+        <View style={f.topBar}>
+          <Pressable onPress={() => router.back()} style={f.backBtn} accessibilityRole="button">
+            <Ionicons name="arrow-forward" size={16} color={G.w80} />
           </Pressable>
-          <View style={fc.flex1}>
-            <UIText style={fc.eyebrow}>{t("home.featuredEyebrow").toUpperCase()}</UIText>
-            <UIText style={fc.headerTitle}>{t("home.featuredTitle")}</UIText>
+          <View style={{ flex: 1 }}>
+            <UIText style={f.eyebrow}>{t("home.featuredEyebrow")}</UIText>
+            <UIText style={f.heroTitle}>{t("home.featuredTitle")}</UIText>
           </View>
-          <View style={fc.starWrap}>
-            <Ionicons name="star" size={24} color={theme.colors.amber[300]} />
+          <View style={f.starTile}>
+            <Ionicons name="star" size={22} color={theme.colors.amber[300]} />
           </View>
         </View>
 
-        <View style={fc.statsRow}>
-          {[
-            { icon: "cube-outline"             as const, label: t("products.badgeNew") },
-            { icon: "trending-up-outline"      as const, label: t("products.badgeBestSeller") },
-            { icon: "checkmark-circle-outline" as const, label: t("product.trustOriginal") },
-          ].map((pill) => (
-            <View key={pill.label} style={fc.statPill}>
-              <Ionicons name={pill.icon} size={12} color={theme.colors.amber[300]} />
-              <UIText style={fc.statText}>{pill.label}</UIText>
-            </View>
-          ))}
+        {/* Stats row */}
+        <View style={f.statsRow}>
+          <StatBadge count={stats.newCount}        label={t("products.badgeNew")}        color={theme.colors.brand[400]} />
+          <StatBadge count={stats.bestsellerCount} label={t("products.badgeBestSeller")} color={theme.colors.amber[400]} />
+          <StatBadge count={stats.saleCount}       label={t("products.badgeSale", { n: "" }).replace("%", "").trim()} color={theme.colors.red[400]} />
         </View>
       </LinearGradient>
 
-      {CatRail}
-    </>
-  ), [insets.top, t, router, CatRail]);
+      {/* ── Search bar ── */}
+      <View style={f.searchWrap}>
+        <View style={f.searchBar}>
+          <Ionicons name="search" size={16} color={theme.colors.slate[400]} />
+          <TextInput
+            style={f.searchInput}
+            placeholder={t("search.placeholder")}
+            placeholderTextColor={theme.colors.text.tertiary}
+            value={query}
+            onChangeText={setQuery}
+            returnKeyType="search"
+            autoCorrect={false}
+            textAlign="right"
+            selectionColor={theme.colors.brand[600]}
+          />
+          {query.length > 0 && (
+            <Pressable onPress={() => setQuery("")} hitSlop={8} style={f.searchClear}>
+              <Ionicons name="close-circle" size={16} color={theme.colors.slate[400]} />
+            </Pressable>
+          )}
+        </View>
+      </View>
 
+      {/* ── Tabs ── */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={f.tabsContent}>
+        {TABS.map((tab) => (
+          <TabPill
+            key={tab.key}
+            label={tab.key === "sale"
+              ? t("products.badgeSale", { n: "" }).replace("%", "").trim()
+              : t(tab.labelKey)}
+            icon={tab.icon}
+            active={activeTab === tab.key}
+            onPress={() => { setActiveTab(tab.key); setSelectedCat(null); }}
+          />
+        ))}
+      </ScrollView>
+
+      {/* ── Category chips ── */}
+      {categories.length > 1 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={f.catsContent}>
+          <CatChip
+            label={t("products.allProducts")}
+            active={selectedCat === null}
+            onPress={() => setSelectedCat(null)}
+          />
+          {categories.map((cat) => (
+            <CatChip
+              key={cat}
+              label={cat}
+              active={selectedCat === cat}
+              onPress={() => setSelectedCat((p) => p === cat ? null : cat)}
+            />
+          ))}
+        </ScrollView>
+      )}
+
+      {/* ── Result count ── */}
+      <View style={f.countRow}>
+        <UIText variant="eyebrow" color="tertiary" align="right">
+          {t("search.resultCount", { count: filtered.length })}
+        </UIText>
+      </View>
+    </>
+  ), [
+    insets.top, t, router, query, activeTab, selectedCat,
+    stats, categories, filtered.length,
+  ]);
+
+  // ── Loading skeleton ──────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <View style={fc.screen}>
-        {Header}
-        <View style={fc.skeletonGrid}>
+      <View style={f.screen}>
+        <LinearGradient
+          colors={HEADER_GRAD}
+          style={[f.hero, { paddingTop: insets.top + 14 }]}>
+          <View style={f.glowOrb} />
+          <View style={f.topBar}>
+            <Pressable onPress={() => router.back()} style={f.backBtn}>
+              <Ionicons name="arrow-forward" size={16} color={G.w80} />
+            </Pressable>
+            <View style={{ flex: 1 }}>
+              <UIText style={f.eyebrow}>{t("home.featuredEyebrow")}</UIText>
+              <UIText style={f.heroTitle}>{t("home.featuredTitle")}</UIText>
+            </View>
+            <View style={f.starTile}>
+              <Ionicons name="star" size={22} color={theme.colors.amber[300]} />
+            </View>
+          </View>
+        </LinearGradient>
+        <View style={f.skeletonGrid}>
           {Array.from({ length: 6 }).map((_, i) => (
-            <View key={i} style={fc.cell}><ProductCardSkeleton /></View>
+            <View key={i} style={f.skeletonCell}><ProductCardSkeleton /></View>
           ))}
         </View>
       </View>
     );
   }
 
+  // ── Error ─────────────────────────────────────────────────────────────────
   if (isError) {
     return (
-      <View style={fc.screen}>
-        {Header}
-        <View style={fc.center}>
-          <Ionicons name="wifi-outline" size={44} color={theme.colors.slate[300]} />
-          <UIText style={fc.errorTitle}>{t("common.error")}</UIText>
-          <Pressable onPress={() => void refetch()} style={fc.retryBtn}>
-            <UIText style={fc.retryText}>{t("common.retry")}</UIText>
+      <View style={f.screen}>
+        <View style={f.center}>
+          <Ionicons name="wifi-outline" size={48} color={theme.colors.slate[300]} />
+          <UIText style={f.emptyTitle}>{t("errors.network")}</UIText>
+          <Pressable onPress={() => void refetch()} style={f.retryBtn}>
+            <UIText style={f.retryText}>{t("common.retry")}</UIText>
           </Pressable>
         </View>
       </View>
@@ -212,117 +381,252 @@ export default function FeaturedScreen(): React.ReactElement {
   }
 
   return (
-    <View style={fc.screen}>
+    <View style={f.screen}>
       <ProductGrid
-        products={products}
+        products={filtered}
         lang={lang}
-        onProductPress={handlePress}
-        onEndReached={hasNextPage && !isFetchingNextPage ? fetchNextPage : undefined}
-        ListHeaderComponent={Header}
-        ListFooterComponent={<View style={{ height: insets.bottom + 36 }} />}
+        onProductPress={handleProductPress}
+        ListHeaderComponent={ListHeader}
+        ListFooterComponent={<View style={{ height: insets.bottom + 40 }} />}
         ListEmptyComponent={
-          <View style={fc.emptyWrap}>
-            <Ionicons name="search-outline" size={44} color={theme.colors.slate[300]} />
-            <UIText style={fc.emptyTitle}>{t("products.noProducts")}</UIText>
+          <View style={f.center}>
+            <Ionicons
+              name={allFeatured.length === 0 ? "star-outline" : "search-outline"}
+              size={48}
+              color={theme.colors.slate[300]}
+            />
+            <UIText style={f.emptyTitle}>
+              {allFeatured.length === 0
+                ? t("home.featuredTitle")
+                : t("search.noResults")}
+            </UIText>
+            {query.length > 0 && (
+              <Pressable onPress={() => setQuery("")} style={f.retryBtn}>
+                <UIText style={f.retryText}>{t("search.clearRecents")}</UIText>
+              </Pressable>
+            )}
           </View>
         }
-        refreshing={isRefreshing}
-        onRefresh={refetch}
+        refreshing={false}
+        onRefresh={() => void refetch()}
         contentContainerStyle={{ padding: theme.spacing.md }}
       />
     </View>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// ─── Styles ────────────────────────────────────────────────────────────────────
 
-const fc = StyleSheet.create({
+const f = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.bg },
-  flex1:  { flex: 1 },
 
-  header: {
-    paddingHorizontal: theme.spacing.lg,
+  // Hero
+  hero: {
+    paddingHorizontal: theme.layout.pagePaddingH,
     paddingBottom:     20,
-    gap:               theme.spacing.lg,
+    gap:               14,
     overflow:          "hidden",
   },
-  orb: {
+  glowOrb: {
     position:        "absolute",
+    top:             -50,
+    right:           -50,
+    width:           180,
+    height:          180,
     borderRadius:    90,
-    backgroundColor: FG.w06,
+    backgroundColor: G.w06,
   },
-  topRow:  { flexDirection: "row-reverse", alignItems: "center", gap: theme.spacing.md },
+  glowOrb2: {
+    position:        "absolute",
+    bottom:          -30,
+    left:            -20,
+    width:           100,
+    height:          100,
+    borderRadius:    50,
+    backgroundColor: "rgba(251,191,36,0.08)",
+  },
+  topBar: {
+    flexDirection: "row-reverse",
+    alignItems:    "center",
+    gap:           theme.spacing.md,
+  },
   backBtn: {
     width:           38,
     height:          38,
     borderRadius:    12,
-    backgroundColor: FG.w15,
+    backgroundColor: G.w13,
     alignItems:      "center",
     justifyContent:  "center",
     borderWidth:     1,
-    borderColor:     FG.w22,
+    borderColor:     G.w20,
   },
-  eyebrow:     { fontFamily: theme.fonts.bold, fontSize: 9.5, color: FG.w55, letterSpacing: 0.8, marginBottom: 3 },
-  headerTitle: { fontFamily: theme.fonts.black, fontSize: 26, color: theme.colors.surface, letterSpacing: -0.5, textAlign: "right", lineHeight: 32 },
-  starWrap: {
+  eyebrow: {
+    fontFamily:    theme.fonts.bold,
+    fontSize:      10,
+    color:         G.w45,
+    letterSpacing: 0.6,
+    textAlign:     "right",
+    marginBottom:  2,
+  },
+  heroTitle: {
+    fontFamily:    theme.fonts.black,
+    fontSize:      26,
+    color:         theme.colors.surface,
+    letterSpacing: -0.5,
+    textAlign:     "right",
+    lineHeight:    32,
+  },
+  starTile: {
     width:           44,
     height:          44,
     borderRadius:    14,
-    backgroundColor: FG.w12,
+    backgroundColor: G.w10,
     alignItems:      "center",
     justifyContent:  "center",
     borderWidth:     1,
-    borderColor:     FG.w18,
+    borderColor:     G.w15,
   },
-  statsRow: { flexDirection: "row", gap: theme.spacing.sm, justifyContent: "flex-end" },
-  statPill: {
+
+  statsRow: {
+    flexDirection:  "row",
+    gap:            10,
+    justifyContent: "flex-end",
+  },
+  stat: {
     flexDirection:     "row-reverse",
     alignItems:        "center",
-    gap:               5,
-    backgroundColor:   FG.w10,
-    borderRadius:      999,
+    gap:               6,
     paddingHorizontal: 10,
     paddingVertical:   5,
+    borderRadius:      999,
     borderWidth:       1,
-    borderColor:       FG.w16,
   },
-  statText: { fontFamily: theme.fonts.semibold, fontSize: 10, color: theme.colors.amber[300], letterSpacing: 0.2 },
+  statNum: {
+    fontFamily:    theme.fonts.black,
+    fontSize:      13,
+    letterSpacing: -0.3,
+  },
+  statLbl: {
+    fontFamily: theme.fonts.semibold,
+    fontSize:   10,
+  },
 
-  // Category rail
-  railWrap: {
+  // Search
+  searchWrap: {
+    paddingHorizontal: theme.layout.pagePaddingH,
+    paddingVertical:   12,
     backgroundColor:   theme.colors.surface,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: FD.d07,
-    shadowColor:       theme.colors.slate[900],
-    shadowOffset:      { width: 0, height: 2 },
-    shadowOpacity:     0.04,
-    shadowRadius:      4,
-    elevation:         2,
+    borderBottomColor: theme.colors.border.hairline,
   },
-  railContent: { paddingHorizontal: 14, paddingVertical: 11, gap: theme.spacing.sm, flexDirection: "row-reverse" },
-  chip: {
+  searchBar: {
+    flexDirection:     "row-reverse",
+    alignItems:        "center",
+    gap:               10,
+    backgroundColor:   theme.colors.surfaceSunken,
+    borderRadius:      14,
     paddingHorizontal: 14,
-    paddingVertical:   7,
+    paddingVertical:   11,
+    borderWidth:       1,
+    borderColor:       theme.colors.border.hairline,
+  },
+  searchInput: {
+    flex:       1,
+    fontSize:   14,
+    fontFamily: theme.fonts.semibold,
+    color:      theme.colors.text.primary,
+    textAlign:  "right",
+    paddingVertical: 0,
+  },
+  searchClear: {
+    padding: 2,
+  },
+
+  // Tabs
+  tabsContent: {
+    paddingHorizontal: theme.layout.pagePaddingH,
+    paddingVertical:   10,
+    gap:               8,
+    flexDirection:     "row-reverse",
+    backgroundColor:   theme.colors.surface,
+  },
+  tab: {
+    flexDirection:     "row-reverse",
+    alignItems:        "center",
+    gap:               6,
+    paddingHorizontal: 14,
+    paddingVertical:   8,
     borderRadius:      20,
     backgroundColor:   theme.colors.slate[100],
     borderWidth:       1,
-    borderColor:       FD.d08,
+    borderColor:       theme.colors.border.hairline,
     overflow:          "hidden",
   },
-  chipActive:     { borderColor: "transparent" },
-  chipGrad:       StyleSheet.absoluteFillObject,
-  chipText:       { fontFamily: theme.fonts.semibold, fontSize: 12.5, color: theme.colors.text.secondary },
-  chipTextActive: { color: theme.colors.surface, fontFamily: theme.fonts.black },
+  tabActive:        { borderColor: "transparent" },
+  tabText:          { fontFamily: theme.fonts.semibold, fontSize: 12.5, color: theme.colors.text.secondary },
+  tabTextActive:    { color: theme.colors.surface, fontFamily: theme.fonts.black },
+
+  // Categories
+  catsContent: {
+    paddingHorizontal: theme.layout.pagePaddingH,
+    paddingVertical:   10,
+    gap:               8,
+    flexDirection:     "row-reverse",
+    backgroundColor:   theme.colors.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.border.hairline,
+  },
+  catChip: {
+    paddingHorizontal: 12,
+    paddingVertical:   6,
+    borderRadius:      16,
+    backgroundColor:   theme.colors.surfaceSunken,
+    borderWidth:       1,
+    borderColor:       theme.colors.border.hairline,
+  },
+  catChipActive: {
+    backgroundColor: theme.colors.amber[600],
+    borderColor:     theme.colors.amber[700],
+  },
+  catChipText:       { fontFamily: theme.fonts.semibold, fontSize: 12, color: theme.colors.text.secondary },
+  catChipTextActive: { color: theme.colors.surface, fontFamily: theme.fonts.black },
+
+  // Count
+  countRow: {
+    paddingHorizontal: theme.layout.pagePaddingH,
+    paddingVertical:   8,
+  },
 
   // Skeleton
-  skeletonGrid: { flexDirection: "row-reverse", flexWrap: "wrap", padding: theme.spacing.md, gap: theme.spacing.md },
-  cell:         { flex: 1 },
+  skeletonGrid: {
+    flexDirection: "row-reverse",
+    flexWrap:      "wrap",
+    padding:       theme.spacing.md,
+    gap:           theme.spacing.md,
+  },
+  skeletonCell: { width: "47%" as any },
 
-  // Error / empty
-  center:     { flex: 1, alignItems: "center", justifyContent: "center", gap: theme.spacing.md, padding: theme.spacing[4] },
-  errorTitle: { fontFamily: theme.fonts.black, fontSize: 16, color: theme.colors.text.primary, textAlign: "center" },
-  retryBtn:   { paddingHorizontal: theme.spacing[3], paddingVertical: 11, borderRadius: 14, backgroundColor: theme.colors.amber[600], marginTop: theme.spacing.xs },
-  retryText:  { fontFamily: theme.fonts.black, fontSize: 13, color: theme.colors.surface },
-  emptyWrap:  { alignItems: "center", justifyContent: "center", paddingVertical: 60, gap: 14 },
-  emptyTitle: { fontFamily: theme.fonts.bold, fontSize: 15, color: theme.colors.text.secondary, textAlign: "center" },
+  // Empty / error
+  center: {
+    flex:            1,
+    alignItems:      "center",
+    justifyContent:  "center",
+    gap:             14,
+    padding:         theme.spacing[4],
+    paddingTop:      60,
+  },
+  emptyTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize:   15,
+    color:      theme.colors.text.secondary,
+    textAlign:  "center",
+  },
+  retryBtn: {
+    paddingHorizontal: theme.spacing[3],
+    paddingVertical:   11,
+    borderRadius:      14,
+    backgroundColor:   theme.colors.amber[600],
+    marginTop:         theme.spacing.xs,
+  },
+  retryText: { fontFamily: theme.fonts.black, fontSize: 13, color: theme.colors.surface },
 });

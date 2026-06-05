@@ -1,5 +1,19 @@
+/**
+ * QuickActions — Option A: Unified Floating Panel.
+ *
+ * A single premium surface card that floats over the bottom of the
+ * PromoBanner via marginTop: -24, creating a layered depth effect.
+ * Divided internally into 3 equal-width action zones, separated by
+ * hairline dividers.
+ *
+ * Animation: Reanimated withSpring(0.97) scale-down on PressIn.
+ * Runs exclusively as a UI-thread worklet — zero JS-bridge overhead.
+ * Icons: LinearGradient tile + Ionicons — no <Image> usage anywhere.
+ */
+
 import React, { memo, useCallback } from "react";
 import { Platform, Pressable, StyleSheet, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   useAnimatedStyle,
@@ -10,43 +24,40 @@ import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
-import { HomeSectionHeader } from "./HomeSectionHeader";
-import { sectionStyles } from "./home.styles";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
-// ─── 3 feature card definitions (module-level — zero re-allocation) ──────────
-const FEATURE_CARDS: {
-  icon:       IoniconsName;
-  labelKey:   string;
-  iconBg:     string;
-  iconColor:  string;
-  route:      string;
-}[] = [
+// ─── Panel action definitions (module-level — zero re-allocation per render) ──
+
+type PanelAction = {
+  icon:     IoniconsName;
+  labelKey: string;
+  gradient: [string, string];
+  route:    string;
+};
+
+const PANEL_ACTIONS: PanelAction[] = [
   {
-    icon:      "medical-outline",
-    labelKey:  "home.qaRx",
-    iconBg:    theme.colors.brand.lighter,
-    iconColor: theme.colors.brand[700],
-    route:     "/(tabs)/search",
+    icon:     "medical-outline",
+    labelKey: "home.qaRx",
+    gradient: ["#0891B2", "#0DB8A8"],
+    route:    "/(tabs)/search",
   },
   {
-    icon:      "leaf-outline",
-    labelKey:  "home.qaVitamins",
-    iconBg:    theme.colors.success.bg,
-    iconColor: theme.colors.success.strong,
-    route:     "/(tabs)/products",
+    icon:     "leaf-outline",
+    labelKey: "home.qaVitamins",
+    gradient: ["#10B981", "#059669"],
+    route:    "/(tabs)/products",
   },
   {
-    icon:      "pricetag-outline",
-    labelKey:  "home.qaOffers",
-    iconBg:    theme.colors.amber[50],
-    iconColor: theme.colors.amber[700],
-    route:     "/deals",
+    icon:     "pricetag-outline",
+    labelKey: "home.qaOffers",
+    gradient: ["#D97706", "#F59E0B"],
+    route:    "/deals",
   },
 ];
 
-// ─── QuickActions section ─────────────────────────────────────────────────────
+// ─── QuickActions ─────────────────────────────────────────────────────────────
 
 interface QuickActionsProps {
   onNavigate: (route: string) => void;
@@ -55,52 +66,57 @@ interface QuickActionsProps {
 export const QuickActions = memo(function QuickActions({ onNavigate }: QuickActionsProps) {
   const { t } = useTranslation();
   return (
-    <View style={sectionStyles.wrap}>
-      <HomeSectionHeader
-        eyebrow={t("home.catalogEyebrow")}
-        title={t("home.quickSearch")}
-        icon="apps-outline"
-      />
-      <View style={cs.row}>
-        {FEATURE_CARDS.map((card) => (
-          <FeatureCard
-            key={card.labelKey}
-            icon={card.icon}
-            label={t(card.labelKey)}
-            iconBg={card.iconBg}
-            iconColor={card.iconColor}
-            route={card.route}
-            onNavigate={onNavigate}
-          />
+    // Outer: shadow host. No overflow:hidden so the drop-shadow
+    // bleeds cleanly outside the card edge on iOS/Android.
+    <View style={cs.shadowHost}>
+      {/* Inner: clips zone content and android ripple to borderRadius. */}
+      <View style={cs.panel}>
+        {PANEL_ACTIONS.map((action, index) => (
+          <React.Fragment key={action.labelKey}>
+            {index > 0 && <View style={cs.divider} />}
+            <ActionZone
+              icon={action.icon}
+              label={t(action.labelKey)}
+              gradient={action.gradient}
+              route={action.route}
+              onNavigate={onNavigate}
+            />
+          </React.Fragment>
         ))}
       </View>
     </View>
   );
 });
 
-// ─── FeatureCard — UI-thread spring scale (withSpring runs as worklet) ────────
+// ─── ActionZone — pressable zone with UI-thread spring scale ──────────────────
 
-interface FeatureCardProps {
+interface ActionZoneProps {
   icon:       IoniconsName;
   label:      string;
-  iconBg:     string;
-  iconColor:  string;
+  gradient:   [string, string];
   route:      string;
   onNavigate: (route: string) => void;
 }
 
-const FeatureCard = memo(function FeatureCard({
-  icon, label, iconBg, iconColor, route, onNavigate,
-}: FeatureCardProps) {
+const ActionZone = memo(function ActionZone({
+  icon, label, gradient, route, onNavigate,
+}: ActionZoneProps) {
   const scale = useSharedValue(1);
 
-  // Reads only scale.value (a shared value) → worklet runs exclusively on the
-  // UI thread; no JS-frame object allocations.
-  const anim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  // Reads only scale.value (a shared value) → worklet runs exclusively on
+  // the UI thread; no JS-frame object allocations on press events.
+  const anim = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
-  // 0.97 — canonical press value from design system (Button, ProductCard, CategoryCard).
-  const handleIn    = useCallback(() => { scale.value = withSpring(0.97, theme.animation.spring.press); }, [scale]);
-  const handleOut   = useCallback(() => { scale.value = withSpring(1,    theme.animation.spring.press); }, [scale]);
+  const handleIn = useCallback(
+    () => { scale.value = withSpring(0.97, theme.animation.spring.press); },
+    [scale],
+  );
+  const handleOut = useCallback(
+    () => { scale.value = withSpring(1, theme.animation.spring.press); },
+    [scale],
+  );
   const handlePress = useCallback(() => {
     if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
     onNavigate(route);
@@ -113,17 +129,22 @@ const FeatureCard = memo(function FeatureCard({
       onPressOut={handleOut}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={cs.cardOuter}>
-      <Animated.View style={[cs.card, anim]}>
-        <View style={[cs.iconTile, { backgroundColor: iconBg }]}>
-          <Ionicons name={icon} size={22} color={iconColor} />
-        </View>
+      android_ripple={{ color: "rgba(0,0,0,0.05)", borderless: false }}
+      style={cs.zone}>
+      <Animated.View style={[cs.zoneInner, anim]}>
+        <LinearGradient
+          colors={gradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={cs.iconTile}>
+          <Ionicons name={icon} size={20} color="#fff" />
+        </LinearGradient>
         <UIText
           variant="caption"
           weight="bold"
           align="center"
           numberOfLines={2}
-          style={[cs.label, { color: iconColor }]}>
+          style={cs.label}>
           {label}
         </UIText>
       </Animated.View>
@@ -134,44 +155,65 @@ const FeatureCard = memo(function FeatureCard({
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const cs = StyleSheet.create({
-  // 3-card row: flex:1 children guarantee mathematically identical widths.
-  // justifyContent:'space-between' distributes remaining space (redundant when
-  // all children have flex:1, but explicit for design-system clarity).
-  row: {
-    flexDirection:     "row",
-    justifyContent:    "space-between",
-    gap:               8,
-    paddingHorizontal: theme.layout.pagePaddingH,
+  // Shadow host: pulls the panel up to overlap the PromoBanner bottom by 24px,
+  // creating the "floating card emerges from behind hero" depth effect.
+  // No overflow:hidden — lets the box-shadow bleed outside the card boundary.
+  shadowHost: {
+    marginTop:        -24,
+    marginHorizontal: theme.layout.pagePaddingH,  // 20
+    marginBottom:     theme.spacing['2xl'],        // 24
+    zIndex:           theme.zIndex.raised,         // 10
+    borderRadius:     16,
+    shadowColor:      "#021D2E",
+    shadowOffset:     { width: 0, height: 8 },
+    shadowOpacity:    0.13,
+    shadowRadius:     20,
+    elevation:        10,
   },
 
-  // Outer Pressable — flex:1 = exact 1/3 of available row width
-  cardOuter: {
+  // Panel surface: the visible white card. overflow:'hidden' clips zone
+  // press highlights and android ripple to the rounded card shape.
+  panel: {
+    backgroundColor: theme.colors.surface,
+    borderRadius:    16,
+    flexDirection:   "row",
+    overflow:        "hidden",
+  },
+
+  // One of three equal-width clickable zones. flex:1 ensures exact thirds.
+  zone: {
     flex: 1,
   },
 
-  // Inner Animated.View — aspectRatio:1 enforces a perfect square regardless
-  // of screen width. theme.radius.xl = 18 px.
-  card: {
-    backgroundColor: theme.colors.surface,
-    borderRadius:    theme.radius.xl,
-    borderWidth:     1,
-    borderColor:     theme.colors.border.hairline,
-    aspectRatio:     1,
-    alignItems:      "center",
-    justifyContent:  "center",
-    gap:             10,
-    ...theme.shadow.card,
+  // Animated content block that scales on press. Centered icon + label.
+  zoneInner: {
+    paddingVertical:   22,
+    paddingHorizontal: 8,
+    alignItems:        "center",
+    gap:               10,
   },
 
+  // Vertical hairline between zones. marginVertical keeps it from spanning
+  // the full card height — reads as a refined separator, not a hard wall.
+  divider: {
+    width:           StyleSheet.hairlineWidth,
+    backgroundColor: theme.colors.border.default,
+    marginVertical:  16,
+  },
+
+  // Gradient icon badge — 46×46 rounded tile.
   iconTile: {
-    width:          44,
-    height:         44,
+    width:          46,
+    height:         46,
     borderRadius:   13,
     alignItems:     "center",
     justifyContent: "center",
+    overflow:       "hidden",
   },
 
+  // Zone label — secondary text, centered, max 2 lines.
   label: {
+    color:             theme.colors.text.secondary,
     fontFamily:        theme.fonts.bold,
     fontSize:          11,
     lineHeight:        15,

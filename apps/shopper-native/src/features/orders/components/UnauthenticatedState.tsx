@@ -118,7 +118,8 @@ export function UnauthenticatedState({ showBack }: { showBack: boolean }): React
                 <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.80)" />
               </Pressable>
             ) : (
-              <View style={s.backBtn} />
+              /* Transparent spacer — keeps title centred without showing a ghost button */
+              <View style={s.backBtnSpacer} />
             )}
             <UIText style={s.pageEyebrow}>{t("orders.eyebrow")}</UIText>
             <View style={s.headerIconTile}>
@@ -253,6 +254,12 @@ const s = StyleSheet.create({
     justifyContent:  "center",
     borderWidth:     1,
     borderColor:     "rgba(255,255,255,0.12)",
+  },
+  // Invisible spacer — same dimensions as backBtn so title stays centred,
+  // but no background/border so it doesn't render as a ghost button.
+  backBtnSpacer: {
+    width:  38,
+    height: 38,
   },
   pageEyebrow: {
     fontSize:      13,

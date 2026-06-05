@@ -1,71 +1,82 @@
 /**
- * Deals — Today's Best Prices
+ * DealsScreen — Today's Best Prices, warrior edition.
  *
- * Curated selection of the most affordable in-stock products.
- * Capped at 12 items — feels intentional, not a catalog dump.
+ * Data: useInfiniteProducts({ sortBy: "price_asc", inStock: true })
+ *       — lowest-priced, in-stock products; server-side paginated.
+ *       Search + category filter forwarded to the search_products RPC.
  *
- * List rendering:  ProductGrid (FlashList on native / FlatList on web)
- * Header:          Full-bleed crimson gradient with live countdown
- * Hero card:       First product, enlarged with sale badge
+ * Features:
+ *   • Live end-of-day countdown in the header
+ *   • Search bar with debounce
+ *   • Category filter chips (horizontal rail)
+ *   • Sort toggle: Price ↑ | Newest
+ *   • Infinite scroll via ProductGrid (FlashList on native)
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
+  ActivityIndicator,
   Platform,
   Pressable,
-  RefreshControl,
+  ScrollView,
   StyleSheet,
+  TextInput,
   View,
 } from "react-native";
-import { Text as UIText } from "@/shared/ui";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
-import { useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
 import Animated, {
-  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
   withSequence,
-  withSpring,
   withTiming,
 } from "react-native-reanimated";
+import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useQuery } from "@tanstack/react-query";
+import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
 import { useInfiniteProducts, ProductGrid, type NativeProduct } from "@/features/products";
+import { fetchCategories } from "@/services/productsApi";
+import { useDebounce } from "@/hooks/useDebounce";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
+import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 
-// ─── Glass / dark overlay palette ────────────────────────────────────────────
-// White glass values on the dark crimson hero gradient — no theme token exists.
-const DG = {
-  w04:  "rgba(255,255,255,0.04)",
-  w05:  "rgba(255,255,255,0.05)",
-  w06:  "rgba(255,255,255,0.06)",
-  w10:  "rgba(255,255,255,0.10)",
-  w12:  "rgba(255,255,255,0.12)",
-  w15:  "rgba(255,255,255,0.15)",
-  w18:  "rgba(255,255,255,0.18)",
-  w22:  "rgba(255,255,255,0.22)",
-  w45:  "rgba(255,255,255,0.45)",
-  w55:  "rgba(255,255,255,0.55)",
-  w60:  "rgba(255,255,255,0.60)",
+// ─── Glass palette ─────────────────────────────────────────────────────────────
+const G = {
+  w05: "rgba(255,255,255,0.05)",
+  w08: "rgba(255,255,255,0.08)",
+  w10: "rgba(255,255,255,0.10)",
+  w13: "rgba(255,255,255,0.13)",
+  w15: "rgba(255,255,255,0.15)",
+  w20: "rgba(255,255,255,0.20)",
+  w45: "rgba(255,255,255,0.45)",
+  w55: "rgba(255,255,255,0.55)",
+  w60: "rgba(255,255,255,0.60)",
+  w80: "rgba(255,255,255,0.80)",
 } as const;
 
-// Crimson design accents — no theme token (flash-sale palette)
-const DR = {
-  glow:   "rgba(239,68,68,0.20)",  // hero glow orb
-  rose45: "rgba(255,80,80,0.45)",  // placeholder icon on dark bg
-  rose300:"#FCA5A5",               // price text / savings icons / live dot
+const R = {
+  rose300: "#FCA5A5",
+  glow:    "rgba(239,68,68,0.22)",
 } as const;
 
-// Intentional dark-red header gradients — editorial "flash sale" palette
-const HEADER_GRAD: [string, string, string] = ["#4A0000", "#800000", theme.colors.red[700]];
-const HERO_BG_GRAD: [string, string]         = ["#1A0000", "#3D0000"];
+// Crimson deals gradient
+const HEADER_GRAD: [string, string, string] = [
+  "#3D0000", "#7A0000", theme.colors.red[700],
+];
 
-// ─── Countdown ────────────────────────────────────────────────────────────────
+type SortMode = "price_asc" | "newest";
+
+// ─── Countdown hook ────────────────────────────────────────────────────────────
 
 function useCountdown() {
   const getMs = () => {
@@ -74,117 +85,122 @@ function useCountdown() {
     end.setHours(23, 59, 59, 0);
     return Math.max(0, end.getTime() - now.getTime());
   };
-  const [ms, setMs] = useState(getMs);
-  const isMounted = useRef(true);
+  const [ms, setMs]   = useState(getMs);
+  const mounted       = useRef(true);
   useEffect(() => {
-    isMounted.current = true;
-    const id = setInterval(() => { if (isMounted.current) setMs(getMs()); }, 1000);
-    return () => { isMounted.current = false; clearInterval(id); };
+    mounted.current = true;
+    const id = setInterval(() => { if (mounted.current) setMs(getMs()); }, 1_000);
+    return () => { mounted.current = false; clearInterval(id); };
   }, []);
   const pad = (n: number) => String(n).padStart(2, "0");
   return {
-    h: pad(Math.floor(ms / 3_600_000)),
-    m: pad(Math.floor((ms % 3_600_000) / 60_000)),
-    s: pad(Math.floor((ms % 60_000) / 1_000)),
+    h:   pad(Math.floor(ms / 3_600_000)),
+    m:   pad(Math.floor((ms % 3_600_000) / 60_000)),
+    s:   pad(Math.floor((ms % 60_000) / 1_000)),
   };
 }
 
-// ─── Digit block ──────────────────────────────────────────────────────────────
+// ─── DigitBlock ────────────────────────────────────────────────────────────────
 
 function DigitBlock({ value, label }: { value: string; label: string }) {
   return (
-    <View style={s.digitWrap}>
-      <LinearGradient colors={[DG.w22, DG.w10]} style={s.digitBox}>
-        <UIText style={s.digitValue}>{value}</UIText>
+    <View style={d.digitUnit}>
+      <LinearGradient colors={[G.w20, G.w08]} style={d.digitBox}>
+        <UIText style={d.digitValue}>{value}</UIText>
       </LinearGradient>
-      <UIText style={s.digitLabel}>{label}</UIText>
+      <UIText style={d.digitLabel}>{label}</UIText>
     </View>
   );
 }
 
-// ─── Hero product ─────────────────────────────────────────────────────────────
+// ─── CatChip ───────────────────────────────────────────────────────────────────
 
-const HeroDeal = React.memo(function HeroDeal({
-  product, lang, onPress,
-}: { product: NativeProduct; lang: "ar" | "en"; onPress: () => void }) {
-  const { t } = useTranslation();
-  const name     = lang === "en" ? (product.nameEn ?? product.name) : product.name;
-  const discount = product.discountPercent ?? null;
-  const scale = useSharedValue(1);
-  const anim  = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-
+const CatChip = React.memo(function CatChip({
+  label, active, onPress,
+}: { label: string; active: boolean; onPress: () => void }) {
   return (
-    <Animated.View entering={FadeInDown.duration(380).delay(100)} style={s.heroWrap}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={() => { scale.value = withSpring(0.976, { damping: 20, stiffness: 400 }); }}
-        onPressOut={() => { scale.value = withSpring(1.0,   { damping: 18, stiffness: 380 }); }}
-        style={s.heroPressable}>
-        <Animated.View style={[s.heroCard, anim]}>
-          <LinearGradient colors={HERO_BG_GRAD} style={s.heroBg}>
-            <View style={s.heroGlow} />
-            <View style={s.heroInner}>
-              <View style={s.heroImg}>
-                {product.imageUrl ? (
-                  <Image source={{ uri: product.imageUrl }} style={s.heroImgFill} contentFit="contain" transition={180} />
-                ) : (
-                  <View style={s.heroImgFallback}>
-                    <Ionicons name="medkit-outline" size={52} color={DR.rose45} />
-                  </View>
-                )}
-              </View>
-              <View style={s.heroInfo}>
-                {discount != null && (
-                  <LinearGradient colors={[theme.colors.red[500], theme.colors.red[600]]} style={s.heroBadge}>
-                    <Ionicons name="flash" size={11} color={theme.colors.surface} />
-                    <UIText style={s.heroBadgeText}>{t("products.badgeSale", { n: Math.round(discount) })}</UIText>
-                  </LinearGradient>
-                )}
-                <UIText style={s.heroName} numberOfLines={2}>{name}</UIText>
-                <View style={s.heroPriceRow}>
-                  <UIText style={s.heroPrice}>{product.price.toFixed(2)}</UIText>
-                  <UIText style={s.heroCurrency}>{t("common.currency")}</UIText>
-                </View>
-                <View style={s.heroSavings}>
-                  <Ionicons name="flash" size={11} color={DR.rose300} />
-                  <UIText style={s.heroSavingsText}>{t("home.flashSale")}</UIText>
-                </View>
-              </View>
-            </View>
-          </LinearGradient>
-        </Animated.View>
-      </Pressable>
-    </Animated.View>
+    <Pressable
+      onPress={() => {
+        if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
+        onPress();
+      }}
+      style={[d.chip, active && d.chipActive]}>
+      {active && (
+        <LinearGradient
+          colors={[theme.colors.red[600], theme.colors.red[500]]}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+          style={StyleSheet.absoluteFillObject}
+        />
+      )}
+      <UIText style={[d.chipText, active && d.chipTextActive]} numberOfLines={1}>
+        {label}
+      </UIText>
+    </Pressable>
   );
 });
 
-// ─── Screen ───────────────────────────────────────────────────────────────────
+// ─── Screen ────────────────────────────────────────────────────────────────────
 
 export default function DealsScreen(): React.ReactElement {
   const { t, i18n } = useTranslation();
   const lang        = i18n.language === "en" ? "en" as const : "ar" as const;
   const router      = useRouter();
   const insets      = useSafeAreaInsets();
-  const { h, m, s: sec } = useCountdown();
+  const { h, m, s } = useCountdown();
 
+  const [query,       setQuery]       = useState("");
+  const [sortBy,      setSortBy]      = useState<SortMode>("price_asc");
+  const [selectedCat, setSelectedCat] = useState<string | undefined>(undefined);
+
+  const debouncedQuery = useDebounce(query.trim(), 250);
+
+  // Live-dot pulse
+  const dotOp = useSharedValue(1);
+  useEffect(() => {
+    dotOp.value = withRepeat(
+      withSequence(withTiming(0.25, { duration: 700 }), withTiming(1, { duration: 700 })),
+      -1, true,
+    );
+  }, [dotOp]);
+  const dotAnim = useAnimatedStyle(() => ({ opacity: dotOp.value }));
+
+  // ── Categories for filter rail ───────────────────────────────────────────
+  const { data: allCats = [] } = useQuery({
+    queryKey:  ["categories"],
+    queryFn:   fetchCategories,
+    staleTime: 10 * 60_000,
+  });
+  const visibleCats = useMemo(
+    () => allCats.filter((c) => c.count > 0).slice(0, 12),
+    [allCats],
+  );
+
+  // ── Real sale / discount products (server-side infinite) ─────────────────
+  // isSale=true → bypasses the search_products RPC (which has no p_is_sale
+  // param) and goes directly to:
+  //   SELECT ... WHERE is_sale = true OR discount_percent > 0
+  // This guarantees ONLY genuinely discounted products appear — never a
+  // random "cheapest products" dump.
   const {
     products,
+    totalCount,
     isLoading,
     isError,
     isRefreshing,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
     refetch,
   } = useInfiniteProducts({
-    sortBy:   "price_asc",
-    inStock:  true,
-    pageSize: 12,
-    maxPages: 1,
+    isSale:     true,
+    inStock:    true,
+    sortBy,
+    search:     debouncedQuery || undefined,
+    categoryId: selectedCat,
+    pageSize:   20,
   });
 
-  const curated   = useMemo(() => products.slice(0, 12), [products]);
-  const heroProd  = curated[0];
-  const gridProds = useMemo(() => curated.slice(1), [curated]);
-
-  const handlePress = useCallback(
+  const handleProductPress = useCallback(
     (p: NativeProduct) => {
       if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
       router.push({ pathname: "/product/[id]", params: { id: p.id } });
@@ -192,88 +208,172 @@ export default function DealsScreen(): React.ReactElement {
     [router],
   );
 
-  const dotOp = useSharedValue(1);
-  useEffect(() => {
-    dotOp.value = withRepeat(
-      withSequence(withTiming(0.3, { duration: 700 }), withTiming(1, { duration: 700 })),
-      -1, true,
-    );
-  }, [dotOp]);
-  const dotAnim = useAnimatedStyle(() => ({ opacity: dotOp.value }));
+  const loadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  const Header = useMemo(() => (
+  // ── Header ───────────────────────────────────────────────────────────────
+  const ListHeader = useMemo(() => (
     <>
+      {/* ── Hero gradient ── */}
       <LinearGradient
         colors={HEADER_GRAD}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[s.header, { paddingTop: insets.top + 12 }]}>
-        <View style={[s.orb, { top: -50, right: -50, width: 180, height: 180 }]} />
-        <View style={[s.orb, { bottom: -30, left: -30, width: 100, height: 100, backgroundColor: DG.w04 }]} />
+        end={{ x: 0.9, y: 1 }}
+        style={[d.hero, { paddingTop: insets.top + 14 }]}>
 
-        <View style={s.topRow}>
-          <Pressable onPress={() => router.back()} hitSlop={10} style={s.backBtn}>
-            <Ionicons name="arrow-forward" size={16} color={theme.colors.surface} />
+        <View style={[d.glow, { top: -50, right: -50, width: 180, height: 180 }]} />
+        <View style={[d.glow, { bottom: -30, left: -20, width: 90, height: 90, backgroundColor: R.glow }]} />
+
+        {/* Top bar */}
+        <View style={d.topBar}>
+          <Pressable onPress={() => router.back()} style={d.backBtn} accessibilityRole="button">
+            <Ionicons name="arrow-forward" size={16} color={G.w80} />
           </Pressable>
-          <View style={s.flex1}>
-            <View style={s.eyebrowRow}>
-              <Animated.View style={[s.liveDot, dotAnim]} />
-              <UIText style={s.eyebrow}>{t("home.flashEnds").toUpperCase()}</UIText>
+          <View style={{ flex: 1 }}>
+            <View style={d.eyebrowRow}>
+              <Animated.View style={[d.liveDot, dotAnim]} />
+              <UIText style={d.eyebrow}>{t("home.flashEnds")}</UIText>
             </View>
-            <UIText style={s.headerTitle}>{t("home.flashTitle")}</UIText>
+            <UIText style={d.heroTitle}>{t("home.flashTitle")}</UIText>
           </View>
-          <View style={s.flameWrap}>
-            <Ionicons name="flame" size={28} color={DR.rose300} />
+          <View style={d.flameTile}>
+            <Ionicons name="flame" size={24} color={R.rose300} />
           </View>
         </View>
 
-        <View style={s.timerRow}>
-          <UIText style={s.timerLabel}>{t("home.timeLeft")}</UIText>
-          <View style={s.timerUnits}>
-            <DigitBlock value={h} label={t("home.flashHrs")} />
-            <UIText style={s.colon}>:</UIText>
-            <DigitBlock value={m} label={t("home.flashMin")} />
-            <UIText style={s.colon}>:</UIText>
-            <DigitBlock value={sec} label={t("home.flashSec")} />
+        {/* Countdown */}
+        <View style={d.timerRow}>
+          <UIText style={d.timerLabel}>{t("home.timeLeft")}</UIText>
+          <View style={d.timerUnits}>
+            <DigitBlock value={h}  label={t("home.flashHrs")} />
+            <UIText style={d.colon}>:</UIText>
+            <DigitBlock value={m}  label={t("home.flashMin")} />
+            <UIText style={d.colon}>:</UIText>
+            <DigitBlock value={s}  label={t("home.flashSec")} />
           </View>
         </View>
+
+        {/* Count badge */}
+        {totalCount > 0 && (
+          <View style={d.countBadge}>
+            <Ionicons name="pricetag-outline" size={11} color={R.rose300} />
+            <UIText style={d.countBadgeText}>
+              {totalCount.toLocaleString()} {t("search.resultCount", { count: totalCount }).replace(/\d[\d,]*/g, "").trim()}
+            </UIText>
+          </View>
+        )}
       </LinearGradient>
 
-      {heroProd && (
-        <HeroDeal product={heroProd} lang={lang} onPress={() => handlePress(heroProd)} />
-      )}
-
-      {gridProds.length > 0 && (
-        <View style={s.sectionHeader}>
-          <Ionicons name="grid-outline" size={14} color={theme.colors.red[500]} />
-          <UIText style={s.sectionTitle}>{t("home.flashSale")}</UIText>
+      {/* ── Search bar ── */}
+      <View style={d.searchWrap}>
+        <View style={d.searchBar}>
+          <Ionicons name="search" size={16} color={theme.colors.slate[400]} />
+          <TextInput
+            style={d.searchInput}
+            placeholder={t("search.placeholder")}
+            placeholderTextColor={theme.colors.text.tertiary}
+            value={query}
+            onChangeText={setQuery}
+            returnKeyType="search"
+            autoCorrect={false}
+            textAlign="right"
+            selectionColor={theme.colors.red[500]}
+          />
+          {query.length > 0 && (
+            <Pressable onPress={() => setQuery("")} hitSlop={8}>
+              <Ionicons name="close-circle" size={16} color={theme.colors.slate[400]} />
+            </Pressable>
+          )}
         </View>
-      )}
-    </>
-  ), [insets.top, h, m, sec, t, router, dotAnim, heroProd, lang, handlePress, gridProds.length]);
 
-  if (isLoading) {
+        {/* Sort toggle */}
+        <Pressable
+          onPress={() => setSortBy((s) => s === "price_asc" ? "newest" : "price_asc")}
+          style={d.sortBtn}
+          accessibilityRole="button">
+          <Ionicons
+            name={sortBy === "price_asc" ? "trending-down-outline" : "time-outline"}
+            size={15}
+            color={theme.colors.red[600]}
+          />
+        </Pressable>
+      </View>
+
+      {/* ── Category chips ── */}
+      {visibleCats.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={d.catsContent}>
+          <CatChip
+            label={t("products.allProducts")}
+            active={selectedCat === undefined}
+            onPress={() => setSelectedCat(undefined)}
+          />
+          {visibleCats.map((cat) => {
+            const label = lang === "en" ? (cat.nameEn ?? cat.name) : cat.name;
+            return (
+              <CatChip
+                key={cat.id}
+                label={label}
+                active={selectedCat === cat.id}
+                onPress={() => setSelectedCat((p) => p === cat.id ? undefined : cat.id)}
+              />
+            );
+          })}
+        </ScrollView>
+      )}
+
+      {/* ── Section label ── */}
+      <View style={d.sectionRow}>
+        <Ionicons name="grid-outline" size={13} color={theme.colors.red[500]} />
+        <UIText style={d.sectionLabel}>{t("home.flashSale")}</UIText>
+      </View>
+    </>
+  ), [
+    insets.top, h, m, s, t, router, dotAnim, query, sortBy,
+    selectedCat, visibleCats, lang, totalCount,
+  ]);
+
+  // ── Loading skeleton ──────────────────────────────────────────────────────
+  if (isLoading && products.length === 0) {
     return (
-      <View style={s.screen}>
-        {Header}
-        <View style={s.skeletonGrid}>
+      <View style={d.screen}>
+        <LinearGradient
+          colors={HEADER_GRAD}
+          style={[d.hero, { paddingTop: insets.top + 14 }]}>
+          <View style={d.topBar}>
+            <Pressable onPress={() => router.back()} style={d.backBtn}>
+              <Ionicons name="arrow-forward" size={16} color={G.w80} />
+            </Pressable>
+            <View style={{ flex: 1 }}>
+              <UIText style={d.eyebrow}>{t("home.flashEnds")}</UIText>
+              <UIText style={d.heroTitle}>{t("home.flashTitle")}</UIText>
+            </View>
+            <View style={d.flameTile}>
+              <Ionicons name="flame" size={24} color={R.rose300} />
+            </View>
+          </View>
+        </LinearGradient>
+        <View style={d.skeletonGrid}>
           {Array.from({ length: 6 }).map((_, i) => (
-            <View key={i} style={s.cell}><ProductCardSkeleton /></View>
+            <View key={i} style={d.skeletonCell}><ProductCardSkeleton /></View>
           ))}
         </View>
       </View>
     );
   }
 
-  if (isError) {
+  // ── Error ─────────────────────────────────────────────────────────────────
+  if (isError && products.length === 0) {
     return (
-      <View style={s.screen}>
-        {Header}
-        <View style={s.center}>
-          <Ionicons name="wifi-outline" size={44} color={theme.colors.slate[300]} />
-          <UIText style={s.errorTitle}>{t("common.error")}</UIText>
-          <Pressable onPress={() => void refetch()} style={s.retryBtn}>
-            <UIText style={s.retryText}>{t("common.retry")}</UIText>
+      <View style={d.screen}>
+        <View style={d.center}>
+          <Ionicons name="wifi-outline" size={48} color={theme.colors.slate[300]} />
+          <UIText style={d.emptyTitle}>{t("errors.network")}</UIText>
+          <Pressable onPress={() => void refetch()} style={d.retryBtn}>
+            <UIText style={d.retryText}>{t("common.retry")}</UIText>
           </Pressable>
         </View>
       </View>
@@ -281,148 +381,286 @@ export default function DealsScreen(): React.ReactElement {
   }
 
   return (
-    <View style={s.screen}>
+    <View style={d.screen}>
       <ProductGrid
-        products={gridProds}
+        products={products}
         lang={lang}
-        onProductPress={handlePress}
-        ListHeaderComponent={Header}
-        ListFooterComponent={<View style={{ height: insets.bottom + 36 }} />}
+        onProductPress={handleProductPress}
+        onEndReached={loadMore}
+        ListHeaderComponent={ListHeader}
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <View style={d.footerLoader}>
+              <ActivityIndicator size="small" color={theme.colors.red[500]} />
+            </View>
+          ) : (
+            <View style={{ height: insets.bottom + 40 }} />
+          )
+        }
+        ListEmptyComponent={
+          <View style={d.center}>
+            <Ionicons name="pricetag-outline" size={48} color={theme.colors.slate[300]} />
+            <UIText style={d.emptyTitle}>{t("search.noResults")}</UIText>
+            {(query.length > 0 || selectedCat) && (
+              <Pressable
+                onPress={() => { setQuery(""); setSelectedCat(undefined); }}
+                style={d.retryBtn}>
+                <UIText style={d.retryText}>{t("search.reset")}</UIText>
+              </Pressable>
+            )}
+          </View>
+        }
         refreshing={isRefreshing}
-        onRefresh={refetch}
+        onRefresh={() => void refetch()}
         contentContainerStyle={{ padding: theme.spacing.md }}
       />
     </View>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// ─── Styles ────────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
+const d = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.bg },
-  flex1:  { flex: 1 },
 
-  header: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingBottom:     22,
-    gap:               18,
+  // Hero
+  hero: {
+    paddingHorizontal: theme.layout.pagePaddingH,
+    paddingBottom:     20,
+    gap:               16,
     overflow:          "hidden",
   },
-  orb: {
+  glow: {
     position:        "absolute",
     borderRadius:    90,
-    backgroundColor: DG.w06,
+    backgroundColor: G.w05,
   },
-  topRow:    { flexDirection: "row-reverse", alignItems: "center", gap: theme.spacing.md },
+  topBar: {
+    flexDirection: "row-reverse",
+    alignItems:    "center",
+    gap:           theme.spacing.md,
+  },
   backBtn: {
     width:           38,
     height:          38,
     borderRadius:    12,
-    backgroundColor: DG.w15,
+    backgroundColor: G.w13,
     alignItems:      "center",
     justifyContent:  "center",
     borderWidth:     1,
-    borderColor:     DG.w22,
+    borderColor:     G.w20,
   },
-  eyebrowRow: { flexDirection: "row-reverse", alignItems: "center", gap: 6, marginBottom: 3 },
-  liveDot:    { width: 7, height: 7, borderRadius: 4, backgroundColor: DR.rose300 },
-  eyebrow:    { fontFamily: theme.fonts.bold, fontSize: 9.5, color: DG.w60, letterSpacing: 0.8 },
-  headerTitle:{ fontFamily: theme.fonts.black, fontSize: 26, color: theme.colors.surface, letterSpacing: -0.5, textAlign: "right", lineHeight: 32 },
-  flameWrap: {
+  eyebrowRow: {
+    flexDirection:  "row-reverse",
+    alignItems:     "center",
+    gap:            6,
+    marginBottom:   3,
+  },
+  liveDot: {
+    width:           7,
+    height:          7,
+    borderRadius:    4,
+    backgroundColor: R.rose300,
+  },
+  eyebrow: {
+    fontFamily:    theme.fonts.bold,
+    fontSize:      10,
+    color:         G.w60,
+    letterSpacing: 0.6,
+  },
+  heroTitle: {
+    fontFamily:    theme.fonts.black,
+    fontSize:      26,
+    color:         theme.colors.surface,
+    letterSpacing: -0.5,
+    textAlign:     "right",
+    lineHeight:    32,
+  },
+  flameTile: {
     width:           44,
     height:          44,
     borderRadius:    14,
-    backgroundColor: DG.w12,
+    backgroundColor: G.w10,
     alignItems:      "center",
     justifyContent:  "center",
     borderWidth:     1,
-    borderColor:     DG.w18,
+    borderColor:     G.w15,
   },
 
-  timerRow:   { flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" },
-  timerLabel: { fontFamily: theme.fonts.semibold, fontSize: 11, color: DG.w55 },
-  timerUnits: { flexDirection: "row", alignItems: "center", gap: 6 },
-  digitWrap:  { alignItems: "center", gap: theme.spacing.xs },
+  timerRow: {
+    flexDirection:  "row-reverse",
+    alignItems:     "center",
+    justifyContent: "space-between",
+  },
+  timerLabel: {
+    fontFamily: theme.fonts.semibold,
+    fontSize:   11,
+    color:      G.w55,
+  },
+  timerUnits: {
+    flexDirection: "row",
+    alignItems:    "center",
+    gap:           6,
+  },
+  digitUnit:  { alignItems: "center", gap: 3 },
   digitBox: {
     borderRadius:      10,
-    paddingHorizontal: 11,
-    paddingVertical:   7,
-    minWidth:          40,
+    paddingHorizontal: 10,
+    paddingVertical:   6,
+    minWidth:          38,
     alignItems:        "center",
     borderWidth:       1,
-    borderColor:       DG.w18,
+    borderColor:       G.w15,
   },
-  digitValue: { fontFamily: theme.fonts.black, fontSize: 18, color: theme.colors.surface, letterSpacing: 1 },
-  digitLabel: { fontFamily: theme.fonts.regular, fontSize: 9, color: DG.w45 },
-  colon:      { fontFamily: theme.fonts.black, fontSize: 20, color: DG.w45, marginBottom: theme.spacing.md },
+  digitValue: {
+    fontFamily:    theme.fonts.black,
+    fontSize:      17,
+    color:         theme.colors.surface,
+    letterSpacing: 1,
+  },
+  digitLabel: {
+    fontFamily: theme.fonts.regular,
+    fontSize:   9,
+    color:      G.w45,
+  },
+  colon: {
+    fontFamily: theme.fonts.black,
+    fontSize:   18,
+    color:      G.w45,
+    marginBottom: theme.spacing.md,
+  },
 
-  // Hero
-  heroWrap:      { marginHorizontal: theme.spacing.md, marginTop: theme.spacing.lg },
-  heroCard:      { borderRadius: 22, overflow: "hidden" },
-  heroBg:        { borderRadius: 22, overflow: "hidden" },
-  heroPressable: { borderRadius: 22, overflow: "hidden" },
-  heroGlow: {
-    position:        "absolute",
-    top:             -40,
-    right:           -40,
-    width:           160,
-    height:          160,
-    borderRadius:    80,
-    backgroundColor: DR.glow,
-  },
-  heroInner:       { flexDirection: "row-reverse", alignItems: "center", padding: 18, gap: 16 },
-  heroImg: {
-    width:           120,
-    height:          120,
-    borderRadius:    16,
-    overflow:        "hidden",
-    backgroundColor: DG.w05,
-  },
-  heroImgFill:     { flex: 1 },
-  heroImgFallback: { flex: 1, alignItems: "center", justifyContent: "center" },
-  heroInfo:        { flex: 1, gap: 10 },
-  heroBadge: {
+  countBadge: {
     flexDirection:     "row-reverse",
     alignItems:        "center",
-    gap:               theme.spacing.xs,
-    paddingHorizontal: 10,
-    paddingVertical:   5,
-    borderRadius:      999,
+    gap:               6,
     alignSelf:         "flex-end",
+    backgroundColor:   G.w10,
+    borderRadius:      999,
+    paddingHorizontal: 12,
+    paddingVertical:   5,
+    borderWidth:       1,
+    borderColor:       G.w15,
+  },
+  countBadgeText: {
+    fontFamily: theme.fonts.bold,
+    fontSize:   11,
+    color:      R.rose300,
+  },
+
+  // Search
+  searchWrap: {
+    flexDirection:     "row",
+    alignItems:        "center",
+    gap:               10,
+    paddingHorizontal: theme.layout.pagePaddingH,
+    paddingVertical:   12,
+    backgroundColor:   theme.colors.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.border.hairline,
+  },
+  searchBar: {
+    flex:              1,
+    flexDirection:     "row-reverse",
+    alignItems:        "center",
+    gap:               10,
+    backgroundColor:   theme.colors.surfaceSunken,
+    borderRadius:      14,
+    paddingHorizontal: 14,
+    paddingVertical:   10,
+    borderWidth:       1,
+    borderColor:       theme.colors.border.hairline,
+  },
+  searchInput: {
+    flex:       1,
+    fontSize:   14,
+    fontFamily: theme.fonts.semibold,
+    color:      theme.colors.text.primary,
+    textAlign:  "right",
+    paddingVertical: 0,
+  },
+  sortBtn: {
+    width:           42,
+    height:          42,
+    borderRadius:    13,
+    backgroundColor: theme.colors.red[50],
+    alignItems:      "center",
+    justifyContent:  "center",
+    borderWidth:     1,
+    borderColor:     `${theme.colors.red[500]}28`,
+  },
+
+  // Categories
+  catsContent: {
+    paddingHorizontal: theme.layout.pagePaddingH,
+    paddingVertical:   10,
+    gap:               8,
+    flexDirection:     "row-reverse",
+    backgroundColor:   theme.colors.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: theme.colors.border.hairline,
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical:   7,
+    borderRadius:      20,
+    backgroundColor:   theme.colors.slate[100],
+    borderWidth:       1,
+    borderColor:       theme.colors.border.hairline,
     overflow:          "hidden",
   },
-  heroBadgeText:  { fontFamily: theme.fonts.black, fontSize: 10, color: theme.colors.surface, letterSpacing: 0.4 },
-  heroName:       { fontFamily: theme.fonts.black, fontSize: 15, color: theme.colors.surface, textAlign: "right", lineHeight: 22, letterSpacing: -0.2 },
-  heroPriceRow:   { flexDirection: "row-reverse", alignItems: "baseline", gap: theme.spacing.xs },
-  heroPrice:      { fontFamily: theme.fonts.black, fontSize: 24, color: DR.rose300, letterSpacing: -0.5 },
-  heroCurrency:   { fontFamily: theme.fonts.bold,  fontSize: 13, color: DR.rose300 },
-  heroSavings: {
-    flexDirection:     "row-reverse",
-    alignItems:        "center",
-    gap:               5,
-    backgroundColor:   DG.w10,
-    borderRadius:      8,
-    paddingHorizontal: 10,
-    paddingVertical:   5,
-    alignSelf:         "flex-end",
-  },
-  heroSavingsText: { fontFamily: theme.fonts.semibold, fontSize: 11, color: DR.rose300 },
+  chipActive:        { borderColor: "transparent" },
+  chipText:          { fontFamily: theme.fonts.semibold, fontSize: 12.5, color: theme.colors.text.secondary },
+  chipTextActive:    { color: theme.colors.surface, fontFamily: theme.fonts.black },
 
-  sectionHeader: {
+  sectionRow: {
     flexDirection:     "row-reverse",
     alignItems:        "center",
-    gap:               theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
+    gap:               6,
+    paddingHorizontal: theme.layout.pagePaddingH,
     paddingTop:        theme.spacing[2.5],
     paddingBottom:     theme.spacing.xs,
   },
-  sectionTitle: { fontFamily: theme.fonts.black, fontSize: 14, color: theme.colors.text.primary, letterSpacing: -0.2 },
+  sectionLabel: {
+    fontFamily:    theme.fonts.black,
+    fontSize:      14,
+    color:         theme.colors.text.primary,
+    letterSpacing: -0.2,
+  },
 
-  skeletonGrid: { flexDirection: "row-reverse", flexWrap: "wrap", padding: theme.spacing.md, gap: theme.spacing.md },
-  cell:         { flex: 1 },
+  footerLoader: {
+    paddingVertical: 20,
+    alignItems:      "center",
+  },
 
-  center:     { flex: 1, alignItems: "center", justifyContent: "center", gap: theme.spacing.md, padding: theme.spacing[4] },
-  errorTitle: { fontFamily: theme.fonts.black, fontSize: 16, color: theme.colors.text.primary, textAlign: "center" },
-  retryBtn:   { paddingHorizontal: theme.spacing[3], paddingVertical: 11, borderRadius: 14, backgroundColor: theme.colors.red[500], marginTop: theme.spacing.xs },
-  retryText:  { fontFamily: theme.fonts.black, fontSize: 13, color: theme.colors.surface },
+  skeletonGrid: {
+    flexDirection: "row-reverse",
+    flexWrap:      "wrap",
+    padding:       theme.spacing.md,
+    gap:           theme.spacing.md,
+  },
+  skeletonCell: { width: "47%" as any },
+
+  center: {
+    flex:           1,
+    alignItems:     "center",
+    justifyContent: "center",
+    gap:            14,
+    padding:        theme.spacing[4],
+    paddingTop:     60,
+  },
+  emptyTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize:   15,
+    color:      theme.colors.text.secondary,
+    textAlign:  "center",
+  },
+  retryBtn: {
+    paddingHorizontal: theme.spacing[3],
+    paddingVertical:   11,
+    borderRadius:      14,
+    backgroundColor:   theme.colors.red[500],
+    marginTop:         theme.spacing.xs,
+  },
+  retryText: { fontFamily: theme.fonts.black, fontSize: 13, color: theme.colors.surface },
 });

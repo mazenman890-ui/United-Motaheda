@@ -49,11 +49,19 @@ export default function ProductsScreen() {
   const cartCount = useCartStore((s) => s.itemCount());
   const lang      = i18n.language === "en" ? "en" as const : "ar" as const;
 
-  const { data: categories = [], isLoading: catsLoading, isError, refetch } = useQuery({
+  const { data: rawCategories = [], isLoading: catsLoading, isError, refetch } = useQuery({
     queryKey:  ["categories"],
     queryFn:   fetchCategories,
     staleTime: 10 * 60_000,  // categories change infrequently
   });
+
+  // Hide categories that have zero products — keeps the grid clean and avoids
+  // the user tapping a category that shows an empty screen.
+  // Fallback: if ALL counts are 0 (seed/dev data), show everything so the UI
+  // isn't a blank page during development.
+  const categories = rawCategories.some((c) => c.count > 0)
+    ? rawCategories.filter((c) => c.count > 0)
+    : rawCategories;
 
   const { data: featured = [], isLoading: featLoading } = useQuery({
     queryKey:  ["featured"],
@@ -64,7 +72,8 @@ export default function ProductsScreen() {
   // Memoised navigation handlers — stable references stop FlatList renderItem
   // from re-running on every parent render.
   const goSearch   = useCallback(() => { if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {}); router.push("/(tabs)/search"); }, [router]);
-  const goCart     = useCallback(() => { if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {}); router.push("/(tabs)/cart"); }, [router]);
+  const goFeatured = useCallback(() => { if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {}); router.push("/featured"); },        [router]);
+  const goCart     = useCallback(() => { if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {}); router.push("/(tabs)/cart"); },     [router]);
   const goCategory = useCallback(
     (item: { id: string; nameEn?: string; name: string }) =>
       router.push({ pathname: "/category/[id]", params: { id: item.id, nameEn: item.nameEn ?? "", name: item.name ?? "" } }),
@@ -226,7 +235,7 @@ export default function ProductsScreen() {
                       </UIText>
                     </View>
                   </View>
-                  <Pressable onPress={goSearch} style={styles.moreBtn} hitSlop={6}>
+                  <Pressable onPress={goFeatured} style={styles.moreBtn} hitSlop={6}>
                     <UIText variant="caption" weight="bold" color="brand">{t("home.viewAll")}</UIText>
                     <Ionicons name="chevron-back" size={13} color={theme.colors.brand[700]} />
                   </Pressable>

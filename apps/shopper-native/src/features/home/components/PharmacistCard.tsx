@@ -6,7 +6,7 @@
  * Spacing: uniform theme.spacing.lg (16px) padding, 12px internal gap.
  */
 
-import React, { memo } from "react";
+import React, { memo, useEffect } from "react";
 import { Linking, Platform, Pressable, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,6 +14,9 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withRepeat,
+  withSequence,
+  withTiming,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
@@ -37,8 +40,33 @@ export const PharmacistCard = memo(function PharmacistCard() {
   const { language }   = useAppLanguage();
   const scale          = useSharedValue(1);
 
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
+  // Pulsing ring around the availability dot — runs on UI thread, no JS work
+  const pulseScale = useSharedValue(1);
+  const pulseOp    = useSharedValue(0.7);
+
+  useEffect(() => {
+    pulseScale.value = withRepeat(
+      withSequence(
+        withTiming(1.8, { duration: 900 }),
+        withTiming(1.0, { duration: 700 }),
+      ),
+      -1,
+      false,
+    );
+    pulseOp.value = withRepeat(
+      withSequence(
+        withTiming(0, { duration: 900 }),
+        withTiming(0.7, { duration: 700 }),
+      ),
+      -1,
+      false,
+    );
+  }, [pulseScale, pulseOp]);
+
+  const animStyle  = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value }],
+    opacity:   pulseOp.value,
   }));
 
   const handlePress = () => {
@@ -62,6 +90,15 @@ export const PharmacistCard = memo(function PharmacistCard() {
 
         {/* Text stack — eyebrow → title → subtitle, all right-aligned RTL */}
         <View style={s.textStack}>
+          {/* "Available now" badge with pulsing ring */}
+          <View style={s.availableRow}>
+            {/* Pulse ring (larger, fades out) */}
+            <Animated.View style={[s.pulseDot, pulseStyle]} />
+            {/* Solid dot (always visible) */}
+            <View style={s.solidDot} />
+            <UIText style={s.availableText}>{t("home.pharmacistAvailable")}</UIText>
+          </View>
+
           <UIText variant="eyebrow" style={s.eyebrow}>
             {t("home.pharmacistCard")}
           </UIText>
@@ -140,6 +177,37 @@ const s = StyleSheet.create({
     borderRadius: 50,
     borderWidth:  1,
     borderColor:  "rgba(13,184,168,0.20)",
+  },
+
+  // ── "Available now" pill ────────────────────────────────────────────────────
+  availableRow: {
+    flexDirection:  "row",
+    alignItems:     "center",
+    gap:            7,
+    marginBottom:   4,
+    alignSelf:      "flex-end",  // right-aligned in RTL
+  },
+  // Outer pulsing ring — scales out and fades
+  pulseDot: {
+    position:        "absolute",
+    width:           12,
+    height:          12,
+    borderRadius:    6,
+    backgroundColor: "#4ADE80",   // green-400
+    opacity:         0.5,
+  },
+  // Inner solid dot — always visible
+  solidDot: {
+    width:           9,
+    height:          9,
+    borderRadius:    5,
+    backgroundColor: "#22C55E",   // green-500
+  },
+  availableText: {
+    fontFamily:    theme.fonts.semibold,
+    fontSize:      11,
+    color:         "#86EFAC",     // green-300 — readable on dark bg
+    letterSpacing: 0.2,
   },
 
   // ── Text stack ──────────────────────────────────────────────────────────────

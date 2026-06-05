@@ -50,11 +50,16 @@ export interface UseInfiniteProductsArgs {
   maxPrice?:   number;
   sortBy?:     ProductFilters["sortBy"];
   pageSize?:   number;
-  /** Maximum pages to keep in memory. Defaults to 100 (≈2 000 items at 20/page).
-   *  When reached, `hasNextPage` becomes false so infinite scroll stops naturally. */
+  /** Maximum pages to keep in memory. Defaults to 10 (≈150 items at 15/page). */
   maxPages?:   number;
   /** If false, the query is disabled. Defaults to true. */
   enabled?:    boolean;
+  /**
+   * Restrict results to real sale / discount products (`is_sale=true OR
+   * discount_percent > 0`). Bypasses the search RPC and queries the table
+   * directly so the filter is applied server-side.
+   */
+  isSale?:     boolean;
 }
 
 export interface UseInfiniteProductsResult {
@@ -82,6 +87,7 @@ export function useInfiniteProducts(args: UseInfiniteProductsArgs = {}): UseInfi
     pageSize = DEFAULT_PAGE_SIZE,
     maxPages = DEFAULT_MAX_PAGES,
     enabled  = true,
+    isSale   = false,
   } = args;
 
   const debouncedSearch = useDebounce(search?.trim() ?? "", SEARCH_DEBOUNCE_MS);
@@ -95,6 +101,7 @@ export function useInfiniteProducts(args: UseInfiniteProductsArgs = {}): UseInfi
       minPrice,
       maxPrice,
       sortBy,
+      isSale,
     }),
     initialPageParam: 1 as number,
     queryFn: ({ pageParam, signal }) =>
@@ -105,6 +112,7 @@ export function useInfiniteProducts(args: UseInfiniteProductsArgs = {}): UseInfi
         minPrice,
         maxPrice,
         sortBy,
+        isSale,
         page:      pageParam as number,
         pageSize,
         signal,

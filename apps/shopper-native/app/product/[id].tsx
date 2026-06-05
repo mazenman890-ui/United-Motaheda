@@ -200,40 +200,33 @@ export default function ProductDetailScreen() {
         </View>
       </Animated.View>
 
-      {/* ── Floating action buttons — premium glass tiles ── */}
-      <View style={{ position: "absolute", top: insets.top + 12, right: 16, zIndex: 20, gap: 10 }}>
+      {/* ── Floating action buttons ──
+           Dark semi-transparent bg so they're always visible on light AND dark
+           hero images (product photo, placeholder gradient, OOS overlay).       */}
+      <View style={[fab.stack, { top: insets.top + 12 }]}>
         <Pressable
           onPress={() => router.back()}
           accessibilityRole="button"
           accessibilityLabel={t("common.back")}
-          style={({ pressed }) => ({
-            width: 44, height: 44, borderRadius: 14,
-            backgroundColor: "rgba(255,255,255,0.97)",
-            alignItems: "center", justifyContent: "center",
-            opacity: pressed ? 0.86 : 1,
-            ...theme.shadow.card,
-          })}>
-          <Ionicons name="arrow-forward" size={18} color={theme.colors.slate[700]} />
+          style={({ pressed }) => [fab.btn, pressed && fab.btnPressed]}>
+          <Ionicons name="arrow-forward" size={18} color="#fff" />
         </Pressable>
+
         {product && (
           <Animated.View style={hrtAnim}>
             <Pressable
               onPress={handleWishlist}
               accessibilityRole="button"
               accessibilityLabel={inWishlist ? t("product.removeFromWishlist") : t("product.addToWishlist")}
-              style={({ pressed }) => ({
-                width: 44, height: 44, borderRadius: 14,
-                backgroundColor: inWishlist ? theme.colors.rose[50] : "rgba(255,255,255,0.97)",
-                alignItems: "center", justifyContent: "center",
-                opacity: pressed ? 0.86 : 1,
-                ...theme.shadow.card,
-                borderWidth: inWishlist ? 1 : 0,
-                borderColor: theme.colors.rose[100],
-              })}>
+              style={({ pressed }) => [
+                fab.btn,
+                inWishlist && fab.btnWishlistActive,
+                pressed && fab.btnPressed,
+              ]}>
               <Ionicons
                 name={inWishlist ? "heart" : "heart-outline"}
                 size={18}
-                color={inWishlist ? theme.colors.rose[500] : theme.colors.slate[600]}
+                color={inWishlist ? theme.colors.rose[400] : "#fff"}
               />
             </Pressable>
           </Animated.View>
@@ -514,6 +507,42 @@ function DetailRow({ label, value, last = false }: { label: string; value: strin
     </View>
   );
 }
+
+// ─── Floating action buttons ──────────────────────────────────────────────────
+// Dark frosted pill — visible on white placeholder, light gradients AND product
+// photos, without the invisible-white-on-white problem.
+const fab = StyleSheet.create({
+  stack: {
+    position: "absolute",
+    top:      0,    // will be offset by insets in JSX (see paddingTop on hero)
+    right:    16,
+    zIndex:   20,
+    gap:      10,
+    // We add the inset offset directly in JSX below
+  },
+  btn: {
+    width:           44,
+    height:          44,
+    borderRadius:    14,
+    backgroundColor: "rgba(15,23,42,0.55)",  // dark slate at 55% — readable everywhere
+    alignItems:      "center",
+    justifyContent:  "center",
+    borderWidth:     1,
+    borderColor:     "rgba(255,255,255,0.15)",
+    shadowColor:     "#000",
+    shadowOffset:    { width: 0, height: 2 },
+    shadowOpacity:   0.22,
+    shadowRadius:    6,
+    elevation:       4,
+  },
+  btnPressed: {
+    opacity: 0.75,
+  },
+  btnWishlistActive: {
+    backgroundColor: "rgba(244,63,94,0.80)",  // rose-tinted when wishlisted
+    borderColor:     "rgba(255,255,255,0.25)",
+  },
+});
 
 const pdStyles = StyleSheet.create({
   // ── Category + stock row ─────────────────────────────────────────

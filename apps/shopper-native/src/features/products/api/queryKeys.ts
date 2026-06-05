@@ -24,7 +24,7 @@ export const productKeys = {
     [ROOT, "featured", limit] as const,
 
   /** Infinite list keyed by the discriminating filters. */
-  list: (filters: Pick<ProductFilters, "categoryId" | "search" | "inStock" | "minPrice" | "maxPrice" | "sortBy">) =>
+  list: (filters: Pick<ProductFilters, "categoryId" | "search" | "inStock" | "minPrice" | "maxPrice" | "sortBy" | "isSale">) =>
     [
       ROOT,
       "list",
@@ -35,6 +35,7 @@ export const productKeys = {
         minPrice:   filters.minPrice ?? null,
         maxPrice:   filters.maxPrice ?? null,
         sortBy:     filters.sortBy ?? "newest",
+        isSale:     filters.isSale ?? false,   // must be in key — different data source
       },
     ] as const,
 
