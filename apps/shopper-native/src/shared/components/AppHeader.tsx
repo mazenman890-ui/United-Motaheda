@@ -172,9 +172,12 @@ const styles = StyleSheet.create({
     justifyContent:    "center",
   },
   badgeText: {
-    color:      "#fff",
-    fontSize:   10,
-    lineHeight: 12,
-    fontFamily: theme.fonts.extrabold,
+    color:               "#fff",
+    fontSize:            10,
+    lineHeight:          10,        // must equal fontSize — prevents vertical push-down
+    fontFamily:          theme.fonts.extrabold,
+    includeFontPadding:  false,     // Android: remove internal font top/bottom padding
+    textAlign:           "center",
+    textAlignVertical:   "center",
   },
 });

@@ -145,9 +145,9 @@ export default function ProductsScreen() {
 
             {/* ── Categories grid ────────────────────────────────── */}
             {catsLoading ? (
-              <View style={{ flexDirection: "row-reverse", flexWrap: "wrap", gap: 10, paddingHorizontal: 20 }}>
+              <View style={catGrid.grid}>
                 {Array(8).fill(null).map((_, i) => (
-                  <View key={i} style={{ width: "47%" as DimensionValue }}><CategoryCardSkeleton /></View>
+                  <View key={i} style={catGrid.cell}><CategoryCardSkeleton /></View>
                 ))}
               </View>
             ) : isError ? (
@@ -161,17 +161,17 @@ export default function ProductsScreen() {
             ) : categories.length === 0 ? (
               <EmptyState icon="grid-outline" title={t("products.noProducts")} description={t("products.loading")} />
             ) : (
-              <View style={{ flexDirection: "row-reverse", flexWrap: "wrap", gap: 10, paddingHorizontal: 20 }}>
+              <View style={catGrid.grid}>
                 {categories.map((item, index) => (
                   <Animated.View
                     key={item.id}
-                    entering={FadeInDown.duration(300).delay(index * 35)}
-                    style={{ width: "47%" as DimensionValue }}>
+                    entering={FadeInDown.duration(280).delay(index * 30)}
+                    style={catGrid.cell}>
                     <CategoryCard
                       category={item}
                       gradientIdx={index}
                       lang={lang}
-                      variant="tile"
+                      variant="pastel"
                       onPress={() => goCategory(item)}
                     />
                   </Animated.View>
@@ -294,7 +294,13 @@ const styles = StyleSheet.create({
     justifyContent:  "center",
   },
   cartBadgeText: {
-    fontSize: 9,
+    color:               "#fff",
+    fontSize:            9,
+    lineHeight:          9,
+    fontFamily:          theme.fonts.black,
+    includeFontPadding:  false,
+    textAlign:           "center",
+    textAlignVertical:   "center",
   },
 
   // ── Search prompt — light field
@@ -326,14 +332,14 @@ const styles = StyleSheet.create({
     borderColor:      theme.colors.border.hairline,
   },
 
-  // ── Section header (unified)
+  // ── Section header (unified) ─────────────────────────────────────────────────
   sectionHeader: {
     flexDirection:  "row-reverse",
     alignItems:     "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
     marginBottom:    14,
-    marginTop:       20,
+    marginTop:       24,
   },
   sectionTitleWrap: {
     flexDirection: "row-reverse",
@@ -341,28 +347,52 @@ const styles = StyleSheet.create({
     gap:           12,
   },
   sectionIcon: {
-    width:           34,
-    height:          34,
-    borderRadius:    11,
+    width:           40,
+    height:          40,
+    borderRadius:    12,
     backgroundColor: theme.colors.brand.lighter,
     borderWidth:     1,
     borderColor:     theme.colors.border.brandSoft,
     alignItems:      "center",
     justifyContent:  "center",
   },
+  // 22 px section title — matches HomeSectionHeader spec
   sectionTitle: {
-    letterSpacing: -0.2,
+    fontSize:      22,
+    fontFamily:    theme.fonts.black,
+    color:         theme.colors.text.primary,
+    letterSpacing: -0.5,
+    lineHeight:    28,
     marginTop:     1,
   },
   moreBtn: {
-    flexDirection: "row-reverse",
-    alignItems:    "center",
-    gap:           4,
+    flexDirection:     "row-reverse",
+    alignItems:        "center",
+    gap:               3,
+    backgroundColor:   theme.colors.brand.lighter,
+    borderRadius:      999,
+    paddingHorizontal: 12,
+    paddingVertical:   6,
+    borderWidth:       1,
+    borderColor:       theme.colors.border.brandSoft,
   },
 
   // ── Featured block
   featuredBlock: {
     marginTop: 12,
     gap:       14,
+  },
+});
+
+// ─── Category grid — 2-column pastel layout ────────────────────────────────────
+const catGrid = StyleSheet.create({
+  grid: {
+    flexDirection:  "row-reverse",
+    flexWrap:       "wrap",
+    gap:            12,
+    paddingHorizontal: 20,
+  },
+  cell: {
+    width: "47%" as DimensionValue,
   },
 });

@@ -325,9 +325,12 @@ const styles = StyleSheet.create({
     elevation:         5,
   },
   badgeText: {
-    color:      "#fff",
-    fontSize:   8.5,
-    fontFamily: theme.fonts.black,
-    lineHeight: 11,
+    color:               "#fff",
+    fontSize:            9,
+    lineHeight:          9,
+    fontFamily:          theme.fonts.black,
+    includeFontPadding:  false,
+    textAlign:           "center",
+    textAlignVertical:   "center",
   },
 });

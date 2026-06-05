@@ -167,10 +167,13 @@ export const supportStyles = StyleSheet.create({
     borderWidth:  1,
     borderColor:  "rgba(13,184,168,0.20)",
   },
+  // "row" + RTL = icon on logical right, text fills flex: 1 in middle.
+  // "row-reverse" was causing double-reversal → floating/aimless layout.
   row: {
-    flexDirection: "row-reverse",
-    alignItems:    "center",
-    gap:           14,
+    flexDirection:  "row",
+    alignItems:     "center",
+    justifyContent: "space-between",
+    gap:            14,
   },
   iconTile: {
     width:          52,
@@ -179,6 +182,7 @@ export const supportStyles = StyleSheet.create({
     alignItems:     "center",
     justifyContent: "center",
     overflow:       "hidden",
+    flexShrink:     0,   // never shrink the icon tile
   },
   title: {
     color:         "#FFFFFF",
@@ -196,10 +200,11 @@ export const supportStyles = StyleSheet.create({
     textAlign:  "right",
     marginTop:  theme.spacing[0.5],
   },
+  // CTA: WhatsApp icon + text on left; chevron pinned to right via space-between
   cta: {
     flexDirection:     "row",
     alignItems:        "center",
-    justifyContent:    "center",
+    justifyContent:    "space-between",   // was: center — chevron now pins to edge
     gap:               10,
     backgroundColor:   "#fff",
     borderRadius:      14,
@@ -212,10 +217,11 @@ export const supportStyles = StyleSheet.create({
     elevation:         3,
   },
   ctaText: {
+    flex:       1,                        // text fills available space
     color:      theme.colors.slate[900],
     fontSize:   14,
     fontFamily: theme.fonts.extrabold,
-    textAlign:  "center",
+    textAlign:  "left",
   },
-  ctaArrow: { marginStart: "auto" },
+  ctaArrow: {},                           // chevron sits at end naturally via space-between
 });

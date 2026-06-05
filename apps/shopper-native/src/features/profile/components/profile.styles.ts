@@ -239,7 +239,7 @@ export const styles = StyleSheet.create({
   statsCard: {
     flexDirection:     "row-reverse",
     backgroundColor:   theme.colors.surface,
-    marginHorizontal:  theme.spacing.lg,
+    marginHorizontal:  theme.layout.pagePaddingH,  // 20 — matches section bounds
     marginTop:         -36,
     borderRadius:      20,
     paddingVertical:   18,
@@ -270,7 +270,7 @@ export const styles = StyleSheet.create({
 
   // ── Quick last-order card ──
   quickCardWrap: {
-    paddingHorizontal: theme.spacing.lg,
+    paddingHorizontal: theme.layout.pagePaddingH,  // 20 — matches section bounds
     marginTop:         14,
   },
   quickCard: {
@@ -308,7 +308,7 @@ export const styles = StyleSheet.create({
   quickGrid: {
     flexDirection:     "row-reverse",
     gap:               10,
-    paddingHorizontal: theme.spacing.lg,
+    paddingHorizontal: theme.layout.pagePaddingH,  // 20 — matches section bounds
     marginTop:         18,
   },
   quickGridItem: {
@@ -354,29 +354,32 @@ export const styles = StyleSheet.create({
 
   // ── Sections ──
   section: {
-    paddingHorizontal: theme.spacing.lg,       // 16 — canonical profile content inset
-    marginTop:         theme.spacing['2xl'],    // 24  (was 28 — raw pixel)
+    paddingHorizontal: theme.layout.pagePaddingH,  // 20 — forces whole group to pagePaddingH bounds
+    marginTop:         theme.spacing['2xl'],        // 24
     gap:               10,
   },
   sectionLabelNew: {
-    marginBottom: theme.spacing.xs,            // removed inner paddingHorizontal — label aligns to section edge
+    marginBottom: theme.spacing.xs,
   },
 
-  // ── Menu card ──
+  // ── Menu card — surfaceSunken background adds depth vs page bg ──
   menuCard: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.colors.surfaceSunken,
     borderRadius:    18,
     overflow:        "hidden",
     ...theme.shadow.card,
   },
 
   // ── Menu row ──
+  // "row" + RTL system flag = icon on logical right, chevron on logical left.
+  // "row-reverse" was causing double-reversal (RTL flip + row-reverse = LTR),
+  // which destroyed the visual hierarchy.
   menuRow: {
-    flexDirection:     "row-reverse",
+    flexDirection:     "row",
     alignItems:        "center",
     gap:               theme.spacing.md,
     paddingHorizontal: theme.spacing.lg,
-    paddingVertical:   15,
+    paddingVertical:   16,           // was 15 — strict 16px spec
   },
   menuRowBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,

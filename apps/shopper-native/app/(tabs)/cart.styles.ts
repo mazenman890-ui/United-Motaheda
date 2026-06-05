@@ -431,35 +431,35 @@ export const s = StyleSheet.create({
     color:       theme.colors.text.tertiary,
     marginRight: theme.spacing.xs,
   },
+  // ── Pill stepper — circle buttons inside a pill container ─────────────────
   stepper: {
     flexDirection:     "row",
     alignItems:        "center",
-    gap:               6,
-    backgroundColor:   theme.colors.subtle,
-    borderRadius:      12,
-    paddingVertical:   6,
-    paddingHorizontal: theme.spacing.sm,
+    gap:               4,
+    backgroundColor:   theme.colors.surfaceSunken,
+    borderRadius:      999,    // pill container
+    padding:           4,
     borderWidth:       1,
-    borderColor:       DARK_OVERLAY.d07,
+    borderColor:       DARK_OVERLAY.d05,
   },
   stepBtn: {
-    width:        28,
-    height:       28,
-    borderRadius: 8,
+    width:           32,
+    height:          32,
+    borderRadius:    999,     // circle
     backgroundColor: theme.colors.surface,
-    borderWidth:  1,
-    borderColor:  TEAL_GLASS.border30,
-    alignItems:   "center",
-    justifyContent: "center",
-    shadowColor:  theme.colors.brand[600],
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.12,
-    shadowRadius: 3,
-    elevation:    2,
+    borderWidth:     1,
+    borderColor:     TEAL_GLASS.border20,
+    alignItems:      "center",
+    justifyContent:  "center",
+    shadowColor:     theme.colors.brand[600],
+    shadowOffset:    { width: 0, height: 1 },
+    shadowOpacity:   0.10,
+    shadowRadius:    3,
+    elevation:       2,
   },
   stepBtnDisabled: {
     backgroundColor: theme.colors.slate[100],
-    borderColor:     DARK_OVERLAY.d08,
+    borderColor:     DARK_OVERLAY.d05,
     shadowOpacity:   0,
     elevation:       0,
   },
@@ -492,28 +492,34 @@ export const s = StyleSheet.create({
     color:      theme.colors.amber[700],
   },
 
-  // ── Footer ─────────────────────────────────────────────────────────────────
+  // ── Checkout Footer — sticky, elevated, horizontal layout ──────────────────
+  // Total price on one side, massive pill CTA on the other.
   footer: {
     backgroundColor:   theme.colors.surface,
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop:        theme.spacing.xs,
+    paddingHorizontal: theme.layout.pagePaddingH,
+    paddingTop:        16,
+    // Soft top shadow — elevated surface
     shadowColor:       SHADOW_NAV,
-    shadowOffset:      { width: 0, height: -6 },
-    shadowOpacity:     0.08,
+    shadowOffset:      { width: 0, height: -4 },
+    shadowOpacity:     0.06,
     shadowRadius:      16,
-    elevation:         12,
+    elevation:         14,
   },
   footerHandle: {
-    width:           40,
+    width:           36,
     height:          3,
     borderRadius:    2,
-    backgroundColor: DARK_OVERLAY.d08,
+    backgroundColor: DARK_OVERLAY.d07,
     alignSelf:       "center",
     marginBottom:    14,
   },
+  // Condensed subtotal rows above the CTA row
   totalsBlock: {
-    gap:          theme.spacing.sm,
-    marginBottom: 14,
+    gap:            5,
+    marginBottom:   12,
+    paddingBottom:  10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: DARK_OVERLAY.d07,
   },
   totalRow: {
     flexDirection:  "row-reverse",
@@ -522,62 +528,71 @@ export const s = StyleSheet.create({
   },
   totalLabel: {
     fontFamily: theme.fonts.regular,
-    fontSize:   13.5,
-    color:      theme.colors.text.secondary,
+    fontSize:   12.5,
+    color:      theme.colors.text.tertiary,
   },
   totalValue: {
     fontFamily: theme.fonts.semibold,
-    fontSize:   13.5,
-    color:      theme.colors.text.primary,
+    fontSize:   12.5,
+    color:      theme.colors.text.secondary,
   },
   totalFree: {
     fontFamily: theme.fonts.black,
-    fontSize:   13.5,
+    fontSize:   12.5,
     color:      FREE_GREEN.deep,
   },
   totalDivider: {
-    height:        StyleSheet.hairlineWidth,
-    backgroundColor: DARK_OVERLAY.d08,
-    marginVertical: 2,
+    height:          StyleSheet.hairlineWidth,
+    backgroundColor: DARK_OVERLAY.d07,
+    marginVertical:  2,
   },
-  grandRow: {
-    flexDirection:  "row-reverse",
-    alignItems:     "baseline",
+  // ── Checkout row — price LEFT + pill button RIGHT (RTL: price on right, btn on left)
+  checkoutRow: {
+    flexDirection:  "row",     // RTL system flips: price→right, btn→left
+    alignItems:     "center",
     justifyContent: "space-between",
+    gap:            14,
   },
-  grandLabel: {
-    fontFamily:    theme.fonts.black,
-    fontSize:      18,
-    color:         theme.colors.text.primary,
-    letterSpacing: -0.3,
+  priceBlock: {
+    gap: 2,
   },
-  grandRight: {
-    flexDirection: "row-reverse",
+  priceLabel: {
+    fontFamily: theme.fonts.regular,
+    fontSize:   11,
+    color:      theme.colors.text.tertiary,
+    textAlign:  "right",
+  },
+  priceRow: {
+    flexDirection: "row",   // RTL auto-mirrors: currency right of number
     alignItems:    "baseline",
-    gap:           theme.spacing.xs,
+    gap:           4,
   },
-  grandValue: {
+  priceTotal: {
     fontFamily:    theme.fonts.black,
     fontSize:      26,
     color:         theme.colors.teal[600],
     letterSpacing: -0.8,
   },
-  grandCurrency: {
+  priceCurrency: {
     fontFamily: theme.fonts.bold,
     fontSize:   13,
     color:      theme.colors.teal[500],
   },
+  // Massive pill CTA
   checkoutOuter: {
-    borderRadius: 18,
+    flex:         1,
+    borderRadius: 999,
     overflow:     "hidden",
+    maxWidth:     220,
   },
   checkoutGrad: {
     flexDirection:   "row-reverse",
     alignItems:      "center",
     justifyContent:  "center",
-    gap:             10,
-    paddingVertical: theme.spacing.lg,
-    borderRadius:    18,
+    gap:             8,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius:    999,
   },
   checkoutText: {
     fontFamily:    theme.fonts.black,
@@ -585,4 +600,10 @@ export const s = StyleSheet.create({
     color:         theme.colors.surface,
     letterSpacing: 0.1,
   },
+  // Legacy aliases (grandRow / grandLabel etc.) are no longer used
+  grandRow:      { display: "none" },
+  grandLabel:    { display: "none" },
+  grandRight:    { display: "none" },
+  grandValue:    { display: "none" },
+  grandCurrency: { display: "none" },
 });

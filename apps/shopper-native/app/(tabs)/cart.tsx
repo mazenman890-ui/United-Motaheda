@@ -451,8 +451,10 @@ export default function CartScreen() {
         renderItem={renderItem}
       />
 
-      <View style={[s.footer, { paddingBottom: Math.max(insets.bottom, 10) + 8 }]}>
+      <View style={[s.footer, { paddingBottom: Math.max(insets.bottom, 12) + 4 }]}>
         <View style={s.footerHandle} />
+
+        {/* Condensed subtotal + delivery rows */}
         <View style={s.totalsBlock}>
           <View style={s.totalRow}>
             <UIText style={s.totalLabel}>{t("cart.subtotal")}</UIText>
@@ -466,41 +468,46 @@ export default function CartScreen() {
               <UIText style={s.totalValue}>{deliveryCost.toFixed(2)} {t("common.currency")}</UIText>
             )}
           </View>
-          <View style={s.totalDivider} />
-          <View style={s.grandRow}>
-            <UIText style={s.grandLabel}>{t("cart.total")}</UIText>
-            <View style={s.grandRight}>
-              <UIText style={s.grandValue}>{total.toFixed(2)}</UIText>
-              <UIText style={s.grandCurrency}>{t("common.currency")}</UIText>
-            </View>
-          </View>
         </View>
 
-        <Pressable
-          onPress={handleCheckout}
-          disabled={!delivery.isDeliverable}
-          style={({ pressed }) => [
-            s.checkoutOuter,
-            pressed && { opacity: 0.93 },
-            !delivery.isDeliverable && { opacity: 0.55 },
-          ]}>
-          <LinearGradient
-            colors={
-              delivery.isDeliverable
-                ? [theme.colors.teal[500], theme.colors.brand[600]]
-                : [theme.colors.slate[400], theme.colors.slate[400]]
-            }
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={s.checkoutGrad}>
-            <Ionicons name="bag-check-outline" size={20} color={theme.colors.surface} />
-            <UIText style={s.checkoutText}>
-              {delivery.isDeliverable
-                ? t("cart.checkoutBtn", { total: total.toFixed(2) })
-                : t("cart.outsideDelivery")}
-            </UIText>
-          </LinearGradient>
-        </Pressable>
+        {/* Conversion row — total price + massive pill CTA side-by-side */}
+        <View style={s.checkoutRow}>
+          {/* Total price block (RTL: appears on right) */}
+          <View style={s.priceBlock}>
+            <UIText style={s.priceLabel}>{t("cart.total")}</UIText>
+            <View style={s.priceRow}>
+              <UIText style={s.priceTotal}>{total.toFixed(2)}</UIText>
+              <UIText style={s.priceCurrency}>{t("common.currency")}</UIText>
+            </View>
+          </View>
+
+          {/* Pill checkout button (RTL: appears on left) */}
+          <Pressable
+            onPress={handleCheckout}
+            disabled={!delivery.isDeliverable}
+            style={({ pressed }) => [
+              s.checkoutOuter,
+              pressed && { opacity: 0.92 },
+              !delivery.isDeliverable && { opacity: 0.5 },
+            ]}>
+            <LinearGradient
+              colors={
+                delivery.isDeliverable
+                  ? [theme.colors.teal[500], theme.colors.brand[600]]
+                  : [theme.colors.slate[400], theme.colors.slate[400]]
+              }
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={s.checkoutGrad}>
+              <Ionicons name="arrow-forward-outline" size={18} color={theme.colors.surface} />
+              <UIText style={s.checkoutText}>
+                {delivery.isDeliverable
+                  ? t("cart.checkoutBtn", { total: total.toFixed(2) })
+                  : t("cart.outsideDelivery")}
+              </UIText>
+            </LinearGradient>
+          </Pressable>
+        </View>
       </View>
     </View>
   );

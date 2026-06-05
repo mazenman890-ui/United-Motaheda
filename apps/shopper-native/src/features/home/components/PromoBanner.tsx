@@ -1,17 +1,14 @@
 /**
- * PromoBanner — trust strip + auto-scrolling promo carousel.
+ * PromoBanner — trust strip + production-grade promo carousel.
  *
- * Trust strip: elevated white card with four delivery/quality badges,
- * visually overlapping the bottom of the hero (marginTop: -28).
- *
- * PromoCarousel: FlatList with 4.2-second auto-advance and dot indicators.
- *
- * Removed: two FadeInDown entrance animations (TrustStrip + carouselWrap).
- * The component mounts instantly — entrance animations were delaying first
- * paint without providing any UX value on a home screen that loads fast.
+ * Carousel upgrade:
+ *   pagingEnabled + decelerationRate="fast" → bounded, perfect-snap paging.
+ *   Reanimated interpolation: active slide scale(1.05), adjacent scale(0.9).
+ *   scrollX shared value updated via onScroll → PromoSlide useAnimatedStyle.
+ *   PaginationDots component updates live on scroll.
  */
 
-import React, { memo, useEffect, useRef, useState } from "react";
+import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
   FlatList,
   Pressable,
@@ -21,6 +18,13 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+  type SharedValue,
+} from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
@@ -65,6 +69,8 @@ const PROMO_SLIDES = [
   },
 ];
 
+const SLIDE_H = 160;
+
 // ─── Trust badges data ────────────────────────────────────────────────────────
 
 const useTrustBadges = () => {
@@ -77,6 +83,110 @@ const useTrustBadges = () => {
   ];
 };
 
+// ─── PromoSlide — per-slide Reanimated scale interpolation ───────────────────
+
+interface PromoSlideProps {
+  item:    (typeof PROMO_SLIDES)[number];
+  index:   number;
+  screenW: number;
+  scrollX: SharedValue<number>;
+  onPress: (route: string) => void;
+}
+
+const PromoSlide = memo(function PromoSlide({
+  item, index, screenW, scrollX, onPress,
+}: PromoSlideProps) {
+  const { t } = useTranslation();
+
+  // Full-bleed: active slide at 1.0 (fills screen), adjacent shrink to 0.88 for depth.
+  // Scaling ABOVE 1.0 is intentionally avoided on full-bleed items (overflows screen).
+  const animStyle = useAnimatedStyle(() => {
+    const scale = interpolate(
+      scrollX.value,
+      [(index - 1) * screenW, index * screenW, (index + 1) * screenW],
+      [0.88, 1.0, 0.88],
+      Extrapolation.CLAMP,
+    );
+    return { transform: [{ scale }] };
+  });
+
+  return (
+    <Pressable
+      onPress={() => onPress(item.route)}
+      style={({ pressed }) => ({ opacity: pressed ? 0.93 : 1, width: screenW })}>
+      <Animated.View style={[s.slideOuter, animStyle]}>
+        <LinearGradient
+          colors={item.gradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[s.slide, { height: SLIDE_H }]}>
+          <View style={[s.glowOrb,  { backgroundColor: item.glowColor }]} />
+          <View style={[s.glowOrb2, { backgroundColor: item.glowColor }]} />
+          <View style={[s.gridLine, { left: "33%" }]} />
+          <View style={[s.gridLine, { left: "66%" }]} />
+
+          <View style={s.slideRow}>
+            <View style={s.copy}>
+              <View style={s.tagRow}>
+                <View style={[s.tagPill, { backgroundColor: item.accent + "28", borderColor: item.accent + "50" }]}>
+                  <UIText variant="eyebrow" style={{ color: item.accent, letterSpacing: 0.5 }}>
+                    {t(item.tagKey)}
+                  </UIText>
+                </View>
+              </View>
+              <UIText
+                variant="sheet-title"
+                color="inverse"
+                align="right"
+                style={s.slideTitle}>
+                {t(item.titleKey)}
+              </UIText>
+              <UIText
+                variant="body-sm"
+                color="inverse-muted"
+                align="right"
+                style={s.slideSub}>
+                {t(item.subKey)}
+              </UIText>
+            </View>
+
+            <View style={[s.iconTile, { borderColor: item.accent + "40" }]}>
+              <LinearGradient
+                colors={[item.accent + "22", item.accent + "0A"]}
+                style={StyleSheet.absoluteFill}
+              />
+              <Ionicons name={item.icon} size={28} color={item.accent} />
+            </View>
+          </View>
+        </LinearGradient>
+      </Animated.View>
+    </Pressable>
+  );
+});
+
+// ─── PaginationDots — live-updating dot indicators ────────────────────────────
+
+interface PaginationDotsProps {
+  count:   number;
+  current: number;
+}
+
+const PaginationDots = memo(function PaginationDots({ count, current }: PaginationDotsProps) {
+  return (
+    <View style={s.dotsRow}>
+      {Array.from({ length: count }).map((_, i) => (
+        <View
+          key={i}
+          style={[
+            s.dot,
+            i === current && [s.dotActive, { backgroundColor: PROMO_SLIDES[current].accent }],
+          ]}
+        />
+      ))}
+    </View>
+  );
+});
+
 // ─── PromoBanner ──────────────────────────────────────────────────────────────
 
 interface PromoBannerProps {
@@ -86,9 +196,7 @@ interface PromoBannerProps {
 export const PromoBanner = memo(function PromoBanner({ onSlidePress }: PromoBannerProps) {
   return (
     <>
-      {/* Trust strip — overlaps bottom of hero */}
       <TrustStrip />
-      {/* Promo carousel */}
       <View style={s.carouselWrap}>
         <PromoCarousel onSlidePress={onSlidePress} />
       </View>
@@ -130,13 +238,14 @@ const PromoCarousel = memo(function PromoCarousel({
   onSlidePress,
 }: { onSlidePress: (route: string) => void }) {
   const { width: screenW } = useWindowDimensions();
-  const { t }              = useTranslation();
   const listRef    = useRef<FlatList>(null);
   const [current, setCurrent] = useState(0);
   const currentRef = useRef(0);
 
-  const SLIDE_H = 160;
+  // Reanimated shared value — tracks horizontal scroll offset
+  const scrollX = useSharedValue(0);
 
+  // Auto-advance every 4.2 seconds
   useEffect(() => {
     const timer = setInterval(() => {
       const next = (currentRef.current + 1) % PROMO_SLIDES.length;
@@ -147,6 +256,19 @@ const PromoCarousel = memo(function PromoCarousel({
     return () => clearInterval(timer);
   }, [screenW]);
 
+  const renderSlide = useCallback(
+    ({ item, index }: { item: (typeof PROMO_SLIDES)[number]; index: number }) => (
+      <PromoSlide
+        item={item}
+        index={index}
+        screenW={screenW}
+        scrollX={scrollX}
+        onPress={onSlidePress}
+      />
+    ),
+    [screenW, scrollX, onSlidePress],
+  );
+
   return (
     <View>
       <FlatList
@@ -155,79 +277,21 @@ const PromoCarousel = memo(function PromoCarousel({
         keyExtractor={(item) => item.id}
         horizontal
         pagingEnabled
+        decelerationRate="fast"
         showsHorizontalScrollIndicator={false}
         scrollEventThrottle={16}
-        onMomentumScrollEnd={(e) => {
+        onScroll={(e) => {
+          scrollX.value = e.nativeEvent.contentOffset.x;
           const idx = Math.round(e.nativeEvent.contentOffset.x / screenW);
-          currentRef.current = idx;
-          setCurrent(idx);
+          if (idx !== currentRef.current) {
+            currentRef.current = idx;
+            setCurrent(idx);
+          }
         }}
-        renderItem={({ item }) => (
-          <Pressable
-            onPress={() => onSlidePress(item.route)}
-            style={({ pressed }) => ({ opacity: pressed ? 0.93 : 1, width: screenW })}>
-            <View style={s.slideOuter}>
-              <LinearGradient
-                colors={item.gradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[s.slide, { height: SLIDE_H }]}>
-                <View style={[s.glowOrb,  { backgroundColor: item.glowColor }]} />
-                <View style={[s.glowOrb2, { backgroundColor: item.glowColor }]} />
-                <View style={[s.gridLine, { left: "33%" }]} />
-                <View style={[s.gridLine, { left: "66%" }]} />
-
-                <View style={s.slideRow}>
-                  <View style={s.copy}>
-                    <View style={s.tagRow}>
-                      <View style={[s.tagPill, { backgroundColor: item.accent + "28", borderColor: item.accent + "50" }]}>
-                        <UIText variant="eyebrow" style={{ color: item.accent, letterSpacing: 0.5 }}>
-                          {t(item.tagKey)}
-                        </UIText>
-                      </View>
-                    </View>
-                    <UIText
-                      variant="sheet-title"
-                      color="inverse"
-                      align="right"
-                      style={s.slideTitle}>
-                      {t(item.titleKey)}
-                    </UIText>
-                    <UIText
-                      variant="body-sm"
-                      color="inverse-muted"
-                      align="right"
-                      style={s.slideSub}>
-                      {t(item.subKey)}
-                    </UIText>
-                  </View>
-
-                  <View style={[s.iconTile, { borderColor: item.accent + "40" }]}>
-                    <LinearGradient
-                      colors={[item.accent + "22", item.accent + "0A"]}
-                      style={StyleSheet.absoluteFill}
-                    />
-                    <Ionicons name={item.icon} size={28} color={item.accent} />
-                  </View>
-                </View>
-              </LinearGradient>
-            </View>
-          </Pressable>
-        )}
+        renderItem={renderSlide}
       />
 
-      {/* Dot indicators */}
-      <View style={s.dotsRow}>
-        {PROMO_SLIDES.map((_, i) => (
-          <View
-            key={i}
-            style={[
-              s.dot,
-              i === current && [s.dotActive, { backgroundColor: PROMO_SLIDES[current].accent }],
-            ]}
-          />
-        ))}
-      </View>
+      <PaginationDots count={PROMO_SLIDES.length} current={current} />
     </View>
   );
 });
@@ -278,21 +342,26 @@ const s = StyleSheet.create({
     lineHeight: 13,
   },
 
-  // ── Carousel ─────────────────────────────────────────────────────────────────
+  // ── Carousel wrapper ─────────────────────────────────────────────────────────
   carouselWrap: {
-    paddingTop:    theme.spacing['2xl'],  // 24 — was 48 (theme.spacing[6])
-    paddingBottom: theme.spacing.sm,      // 8
+    paddingTop:    theme.spacing['2xl'],  // 24
+    paddingBottom: theme.spacing.sm,     // 8
   },
-  slideOuter: { paddingHorizontal: theme.layout.pagePaddingH },
+
+  // ── Slide — full-bleed, zero horizontal padding ─────────────────────────────
+  // Adjacent slides recede via scale(0.88); border radius only on top corners
+  // so the slide feels edge-to-edge yet cleanly separated from the header.
+  slideOuter: { paddingHorizontal: 0 },
   slide: {
-    borderRadius:  24,
+    borderRadius:  0,   // true full-bleed
     padding:       22,
+    paddingHorizontal: 24,
     overflow:      "hidden",
     shadowColor:   "#000",
-    shadowOffset:  { width: 0, height: 6 },
-    shadowOpacity: 0.22,
-    shadowRadius:  16,
-    elevation:     8,
+    shadowOffset:  { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius:  12,
+    elevation:     6,
   },
   glowOrb: {
     position:     "absolute",
@@ -322,8 +391,8 @@ const s = StyleSheet.create({
     alignItems:     "center",
     justifyContent: "space-between",
   },
-  copy:        { flex: 1, gap: 6 },
-  tagRow:      { flexDirection: "row-reverse" },
+  copy:    { flex: 1, gap: 6 },
+  tagRow:  { flexDirection: "row-reverse" },
   tagPill: {
     borderRadius:      999,
     paddingHorizontal: 12,
@@ -342,17 +411,14 @@ const s = StyleSheet.create({
     marginStart:    16,
     overflow:       "hidden",
   },
+
+  // ── Pagination dots ──────────────────────────────────────────────────────────
   dotsRow: {
     flexDirection:  "row",
     justifyContent: "center",
     gap:            5,
     marginTop:      14,
   },
-  dot: {
-    width:           6,
-    height:          6,
-    borderRadius:    3,
-    backgroundColor: theme.colors.slate[300],
-  },
+  dot:       { width: 6,  height: 6, borderRadius: 3, backgroundColor: theme.colors.slate[300] },
   dotActive: { width: 24, borderRadius: 3 },
 });

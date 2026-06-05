@@ -65,7 +65,7 @@ export function UnauthenticatedState({ showBack }: { showBack: boolean }): React
           colors={HERO_GRAD}
           start={{ x: 0.1, y: 0 }}
           end={{ x: 0.9, y: 1 }}
-          style={[authS.hero, { paddingBottom: 48 }]}>
+          style={authS.hero}>
 
           <Animated.View style={[authS.pulseRing, pulseAnim]} />
           <View style={authS.staticRing} />

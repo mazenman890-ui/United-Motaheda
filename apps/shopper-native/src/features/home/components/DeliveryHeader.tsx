@@ -160,9 +160,13 @@ const s = StyleSheet.create({
     borderColor:       theme.colors.hero,
   },
   cartBadgeText: {
-    color:      "#fff",
-    fontSize:   9,
-    fontFamily: theme.fonts.black,
+    color:               "#fff",
+    fontSize:            9,
+    lineHeight:          9,
+    fontFamily:          theme.fonts.black,
+    includeFontPadding:  false,
+    textAlign:           "center",
+    textAlignVertical:   "center",
   },
   headingStack: {
     gap:          theme.spacing.lg,

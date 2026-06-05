@@ -54,10 +54,13 @@ export const EMERALD_DOT = "#10B981";   // delivered status dot / payment verifi
 export const authS = StyleSheet.create({
   hero: {
     alignItems:        "center",
-    paddingTop:        40,
-    paddingHorizontal: theme.spacing[3],
+    paddingTop:        48,           // breathing room above icon tile + pulse ring
+    paddingBottom:     48,           // was inline override in JSX — moved here
+    // Kept at spacing.lg (16): was spacing[3]=24 which squeezed "تتبع طلبك".
+    paddingHorizontal: theme.spacing.lg,
     gap:               theme.spacing[3],
-    overflow:          "hidden",
+    // overflow: "hidden" intentionally absent — it physically clipped the
+    // animated pulse ring and the decorative tracking dots at the bottom.
   },
   pulseRing: {
     position:     "absolute",
@@ -117,16 +120,17 @@ export const authS = StyleSheet.create({
     maxWidth:   280,
   },
   card: {
-    margin:          theme.spacing.lg,
-    backgroundColor: theme.colors.surface,
-    borderRadius:    24,
-    padding:         theme.spacing[2.5],
-    gap:             theme.spacing.lg,
-    shadowColor:     theme.colors.hero,
-    shadowOffset:    { width: 0, height: 8 },
-    shadowOpacity:   0.10,
-    shadowRadius:    20,
-    elevation:       8,
+    margin:            theme.spacing.lg,
+    backgroundColor:   theme.colors.surface,
+    borderRadius:      24,
+    paddingVertical:   theme.spacing[2.5],  // 20 — keep vertical rhythm
+    paddingHorizontal: theme.spacing.lg,    // 16 — was 20; reduces per-side squeeze by 4px
+    gap:               theme.spacing.lg,
+    shadowColor:       theme.colors.hero,
+    shadowOffset:      { width: 0, height: 8 },
+    shadowOpacity:     0.10,
+    shadowRadius:      20,
+    elevation:         8,
   },
   signInBtn: {
     borderRadius: 16,
@@ -349,11 +353,13 @@ export const listS = StyleSheet.create({
     lineHeight: 13,
   },
   card: {
-    backgroundColor: theme.colors.surface,
-    borderRadius:    18,
-    padding:         theme.spacing.lg,
-    gap:             theme.spacing.md,
-    overflow:        "hidden",
+    backgroundColor:   theme.colors.surface,
+    borderRadius:      18,
+    padding:           theme.spacing.lg,
+    paddingHorizontal: theme.layout.pagePaddingH,  // 20 — standard page content width
+    gap:               theme.spacing.md,
+    // overflow: "hidden" intentionally absent — physically clipped the status-line
+    // tracking dots and order icons at the card's bottom boundary.
     shadowColor:     theme.colors.hero,
     shadowOffset:    { width: 0, height: 3 },
     shadowOpacity:   0.07,

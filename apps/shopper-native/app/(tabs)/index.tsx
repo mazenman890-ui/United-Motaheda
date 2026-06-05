@@ -53,11 +53,13 @@ import { RecentlyViewedCarousel } from "@/features/home/components/RecentlyViewe
 import { FlashSaleSection }       from "@/features/home/components/FlashSaleSection";
 import { PharmacistCard }         from "@/features/home/components/PharmacistCard";
 import { HomeSectionHeader }      from "@/features/home/components/HomeSectionHeader";
-import { sectionStyles, featuredStyles } from "@/features/home/components/home.styles";
+import { sectionStyles } from "@/features/home/components/home.styles";
 
-// ─── FeaturedProductItem — memo'd cell with stable per-item onPress ───────────
-// Kept here (not extracted) because it is tightly coupled to the 2-column
-// FlatList below and is not reused elsewhere. Memo + stable callback preserved.
+// ─── Constants ────────────────────────────────────────────────────────────────
+const FEAT_CARD_W = 162;  // fixed-width card for horizontal FlatList
+const FEAT_GAP    = 12;
+
+// ─── FeaturedProductItem — memo'd cell, fixed width for horizontal scroll ─────
 const FeaturedProductItem = memo(function FeaturedProductItem({
   item, index, lang, onPress,
 }: {
@@ -68,7 +70,7 @@ const FeaturedProductItem = memo(function FeaturedProductItem({
 }) {
   const handlePress = useCallback(() => onPress(item.id), [item.id, onPress]);
   return (
-    <View style={featuredStyles.itemWrap}>
+    <View style={{ width: FEAT_CARD_W }}>
       <ProductCard
         product={item}
         lang={lang}
@@ -154,7 +156,7 @@ export default function HomeScreen() {
     <View style={s.root}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={s.scrollContent}
+        contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
         removeClippedSubviews
         scrollEventThrottle={32}
@@ -209,7 +211,7 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* 7 — Featured products — 2-column RTL grid */}
+        {/* 7 — Featured products — premium horizontal rail */}
         <View style={sectionStyles.wrap}>
           <HomeSectionHeader
             eyebrow={t("home.featuredEyebrow")}
@@ -219,27 +221,29 @@ export default function HomeScreen() {
             onMore={() => router.push({ pathname: "/featured" })}
           />
           {featLoading ? (
+            /* Skeleton row while loading */
             <FlatList
               data={SKELETON_KEYS}
-              numColumns={2}
+              horizontal
+              inverted
+              showsHorizontalScrollIndicator={false}
               scrollEnabled={false}
               keyExtractor={(k) => String(k)}
-              columnWrapperStyle={s.colWrap}
-              contentContainerStyle={s.gridContent}
+              contentContainerStyle={s.hListContent}
               renderItem={renderFeaturedSkeleton}
             />
           ) : (
             <FlatList
               data={featured.slice(0, 8)}
-              numColumns={2}
-              scrollEnabled={false}
+              horizontal
+              inverted
+              showsHorizontalScrollIndicator={false}
               keyExtractor={(p) => p.id}
-              initialNumToRender={8}
-              maxToRenderPerBatch={8}
-              columnWrapperStyle={s.colWrap}
-              // minHeight prevents the 0-height collapse when featured is empty
-              // (scrollEnabled={false} inside ScrollView doesn't self-size on mobile)
-              contentContainerStyle={[s.gridContent, { minHeight: 320 }]}
+              initialNumToRender={4}
+              maxToRenderPerBatch={4}
+              snapToInterval={FEAT_CARD_W + FEAT_GAP}
+              decelerationRate="fast"
+              contentContainerStyle={s.hListContent}
               renderItem={renderFeatured}
               ListEmptyComponent={
                 <EmptyState
@@ -267,14 +271,15 @@ export default function HomeScreen() {
 // ─── Skeleton helpers (module-level — zero re-allocation per render) ──────────
 const SKELETON_KEYS = [1, 2, 3, 4];
 const renderFeaturedSkeleton = () => (
-  <View style={featuredStyles.itemWrap}><ProductCardSkeleton /></View>
+  <View style={{ width: FEAT_CARD_W }}><ProductCardSkeleton /></View>
 );
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  root:          { flex: 1, backgroundColor: theme.colors.bg },
-  scrollContent: { paddingBottom: theme.layout.tabBarHeight + 24 },
-  // RTL 2-column grid — consistent horizontal padding
-  colWrap:       { gap: theme.spacing['2xl'], flexDirection: "row-reverse" },
-  gridContent:   { paddingHorizontal: theme.layout.pagePaddingH, gap: theme.spacing['2xl'] },
+  root:         { flex: 1, backgroundColor: theme.colors.bg },
+  // Horizontal featured rail — snapped padding aligns first card to page margin
+  hListContent: {
+    paddingHorizontal: theme.layout.pagePaddingH,
+    gap:               FEAT_GAP,
+  },
 });

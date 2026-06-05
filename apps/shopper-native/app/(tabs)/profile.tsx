@@ -41,6 +41,15 @@ function getTier(points: number) {
 }
 
 // ─── MenuRow ──────────────────────────────────────────────────────────────────
+// Deleted: nested wrappers with flexDirection:"row-reverse" (RTL double-reversal),
+// styles.menuRow, styles.menuTextWrap, styles.menuIcon, styles.badge,
+// styles.menuRowBorder — all replaced with flat inline styles.
+//
+// New layout: flexDirection:"row" — RTL system flag auto-mirrors to right-to-left.
+//   First child (icon tile) → appears on RIGHT in RTL   ✓
+//   Second child (text)     → fills flex:1 in the middle ✓
+//   Optional badge
+//   Last child (chevron)    → appears on LEFT in RTL    ✓
 
 function MenuRow({
   icon, label, subtitle, onPress, badge, color, danger, last,
@@ -63,19 +72,34 @@ function MenuRow({
       }}
       accessibilityRole="button"
       accessibilityLabel={subtitle ? `${label}, ${subtitle}` : label}
-      style={({ pressed }) => [
-        styles.menuRow,
-        !last && styles.menuRowBorder,
-        pressed && { backgroundColor: theme.colors.surfaceSunken },
-      ]}>
-      <View style={[
-        styles.menuIcon,
-        { backgroundColor: danger ? theme.colors.error.bg : `${ic}14`,
-          borderColor:     danger ? theme.colors.error.light : `${ic}22` },
-      ]}>
+      style={({ pressed }) => ({
+        flexDirection:     "row",
+        alignItems:        "center",
+        justifyContent:    "space-between",
+        paddingVertical:   16,
+        paddingHorizontal: 16,
+        backgroundColor:   pressed ? theme.colors.surfaceSunken : "transparent",
+        borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth,
+        borderBottomColor: theme.colors.border.hairline,
+      })}>
+
+      {/* Icon tile — first child → RIGHT in RTL */}
+      <View style={{
+        width:           40,
+        height:          40,
+        borderRadius:    12,
+        alignItems:      "center",
+        justifyContent:  "center",
+        backgroundColor: danger ? theme.colors.error.bg : `${ic}14`,
+        borderWidth:     1,
+        borderColor:     danger ? theme.colors.error.light : `${ic}22`,
+        flexShrink:      0,
+      }}>
         <Ionicons name={icon} size={17} color={ic} />
       </View>
-      <View style={styles.menuTextWrap}>
+
+      {/* Label + subtitle — flex:1 fills the middle */}
+      <View style={{ flex: 1, paddingHorizontal: 12, gap: 2 }}>
         <UIText
           variant="body-sm"
           weight="bold"
@@ -84,13 +108,26 @@ function MenuRow({
           {label}
         </UIText>
         {subtitle && (
-          <UIText variant="caption" color="tertiary" align="right" style={styles.menuSubtitleNew}>
+          <UIText variant="caption" color="tertiary" align="right">
             {subtitle}
           </UIText>
         )}
       </View>
+
+      {/* Optional numeric/string badge */}
       {badge != null && (
-        <View style={[styles.badge, danger && { backgroundColor: theme.colors.error.bg }]}>
+        <View style={{
+          minWidth:          22,
+          height:            22,
+          borderRadius:      11,
+          alignItems:        "center",
+          justifyContent:    "center",
+          paddingHorizontal: 6,
+          backgroundColor:   danger ? theme.colors.error.bg : theme.colors.brand.lighter,
+          borderWidth:       1,
+          borderColor:       danger ? theme.colors.error.light : theme.colors.border.brandSoft,
+          marginEnd:         8,
+        }}>
           <UIText
             variant="eyebrow"
             style={{ color: danger ? theme.colors.error.base : theme.colors.brand[700] }}>
@@ -98,6 +135,8 @@ function MenuRow({
           </UIText>
         </View>
       )}
+
+      {/* Chevron — last child → LEFT in RTL */}
       <Ionicons name="chevron-back" size={15} color={theme.colors.slate[300]} />
     </Pressable>
   );
@@ -290,8 +329,8 @@ const s = StyleSheet.create({
     backgroundColor: theme.colors.bg,
   },
   signOut: {
-    paddingHorizontal: theme.spacing.lg,           // 16 — consistent with sections
-    marginTop:         theme.spacing.sm,           // 8
+    paddingHorizontal: theme.layout.pagePaddingH,  // 20 — consistent with sections
+    marginTop:         theme.spacing.sm,
   },
   signOutInner: {
     flexDirection: "row-reverse",

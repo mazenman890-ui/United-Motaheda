@@ -1,17 +1,41 @@
+/**
+ * PharmacistCard — premium feature card, vertical stack layout.
+ *
+ * Architecture: gradient card → [decorative orbs] → [text stack] → [pill CTA]
+ * Micro-interaction: Reanimated spring scale (0.97 on press) on WhatsApp pill.
+ * Spacing: uniform theme.spacing.lg (16px) padding, 12px internal gap.
+ */
+
 import React, { memo } from "react";
-import { Linking, Pressable, View } from "react-native";
+import { Linking, Platform, Pressable, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
-import { supportStyles as s } from "./home.styles";
 
 const WHATSAPP_URL =
   "https://wa.me/201112343212?text=مرحباً،%20أود%20الاستفسار";
 
 export const PharmacistCard = memo(function PharmacistCard() {
   const { t } = useTranslation();
+  const scale = useSharedValue(1);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePress = () => {
+    if (Platform.OS !== "web")
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    Linking.openURL(WHATSAPP_URL).catch(() => {});
+  };
 
   return (
     <View style={s.wrap}>
@@ -20,45 +44,126 @@ export const PharmacistCard = memo(function PharmacistCard() {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={s.card}>
-        {/* Decorative elements */}
-        <View style={s.glow} />
-        <View style={s.ring} />
 
-        {/* Content row */}
-        <View style={s.row}>
-          <LinearGradient
-            colors={[theme.colors.teal[500], theme.colors.brand[600]]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={s.iconTile}>
-            <Ionicons name="medkit-outline" size={22} color="#fff" />
-          </LinearGradient>
-          <View style={{ flex: 1 }}>
-            <UIText variant="eyebrow" align="right" style={{ color: "#5EEAD4", letterSpacing: 0.5 }}>
-              {t("home.pharmacistCard")}
-            </UIText>
-            <UIText variant="section-head" align="right" style={s.title}>
-              {t("home.needAdvice")}
-            </UIText>
-            <UIText variant="body-sm" align="right" style={s.sub}>
-              {t("home.pharmacistReply")}
-            </UIText>
-          </View>
+        {/* Decorative teal glow orbs — depth on dark background */}
+        <View style={s.glowLarge} />
+        <View style={s.glowSmall} />
+        <View style={s.glowRing} />
+
+        {/* Text stack — eyebrow → title → subtitle, all right-aligned RTL */}
+        <View style={s.textStack}>
+          <UIText variant="eyebrow" style={s.eyebrow}>
+            {t("home.pharmacistCard")}
+          </UIText>
+          <UIText variant="section-head" style={s.title}>
+            {t("home.needAdvice")}
+          </UIText>
+          <UIText variant="body-sm" style={s.sub}>
+            {t("home.pharmacistReply")}
+          </UIText>
         </View>
 
-        {/* WhatsApp CTA */}
-        <Pressable
-          onPress={() => Linking.openURL(WHATSAPP_URL).catch(() => {})}
-          style={({ pressed }) => [s.cta, { opacity: pressed ? 0.92 : 1 }]}>
-          <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
-          <UIText variant="body-sm" weight="extrabold" style={s.ctaText}>
-            {t("home.chatWhatsapp")}
-          </UIText>
-          <View style={s.ctaArrow}>
-            <Ionicons name="chevron-back" size={12} color={theme.colors.slate[500]} />
-          </View>
-        </Pressable>
+        {/* WhatsApp pill CTA — full-width, Reanimated spring scale (0.97 → 1.0) */}
+        <Animated.View style={animStyle}>
+          <Pressable
+            onPress={handlePress}
+            onPressIn={() => {
+              scale.value = withSpring(0.97, theme.animation.spring.press);
+            }}
+            onPressOut={() => {
+              scale.value = withSpring(1.0, theme.animation.spring.press);
+            }}
+            style={s.ctaBtn}
+            accessibilityRole="button"
+            accessibilityLabel={t("home.chatWhatsapp")}>
+            <Ionicons name="logo-whatsapp" size={20} color="#25D366" />
+            <UIText variant="body-sm" weight="black" style={s.ctaLabel}>
+              {t("home.chatWhatsapp")}
+            </UIText>
+          </Pressable>
+        </Animated.View>
+
       </LinearGradient>
     </View>
   );
+});
+
+const s = StyleSheet.create({
+  wrap: {
+    paddingHorizontal: theme.spacing.lg,     // 16 — standard page indent
+    paddingTop:        theme.spacing['3xl'],  // 32
+    paddingBottom:     theme.spacing.lg,     // 16
+  },
+  card: {
+    borderRadius: 20,
+    padding:      theme.spacing.lg,  // 16 — uniform padding per mandate
+    gap:          12,                // 12px vertical gap standard
+    overflow:     "hidden",
+    ...theme.shadow.lg,
+  },
+
+  // ── Decorative background elements ─────────────────────────────────────────
+  glowLarge: {
+    position:        "absolute",
+    top:             -60,
+    right:           -60,
+    width:           160,
+    height:          160,
+    borderRadius:    80,
+    backgroundColor: "rgba(13,184,168,0.15)",
+  },
+  glowSmall: {
+    position:        "absolute",
+    bottom:          -40,
+    left:            -40,
+    width:           110,
+    height:          110,
+    borderRadius:    55,
+    backgroundColor: "rgba(13,184,168,0.08)",
+  },
+  glowRing: {
+    position:     "absolute",
+    top:          -20,
+    right:        -20,
+    width:        100,
+    height:       100,
+    borderRadius: 50,
+    borderWidth:  1,
+    borderColor:  "rgba(13,184,168,0.20)",
+  },
+
+  // ── Text stack ──────────────────────────────────────────────────────────────
+  textStack: { gap: 4 },
+  eyebrow: {
+    color:         "#5EEAD4",
+    letterSpacing: 0.5,
+    textAlign:     "right",
+  },
+  title: {
+    color:         "#FFFFFF",
+    textAlign:     "right",
+    letterSpacing: -0.3,
+  },
+  sub: {
+    color:      "rgba(255,255,255,0.55)",
+    lineHeight: 18,
+    textAlign:  "right",
+  },
+
+  // ── WhatsApp pill CTA ───────────────────────────────────────────────────────
+  ctaBtn: {
+    flexDirection:     "row",
+    alignItems:        "center",
+    justifyContent:    "center",
+    gap:               8,
+    backgroundColor:   "#FFFFFF",
+    borderRadius:      999,           // pill
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical:   13,
+    ...theme.shadow.sm,
+  },
+  ctaLabel: {
+    color:    theme.colors.slate[800],
+    fontSize: 13,
+  },
 });

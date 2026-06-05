@@ -302,7 +302,7 @@ export const ProductCard = memo(function ProductCard({
               style={StyleSheet.absoluteFill}
               contentFit="contain"
               cachePolicy="memory-disk"
-              transition={200}
+              transition={100}
             />
           ) : (
             <ProductImagePlaceholder category={product.categoryName} />
@@ -386,9 +386,18 @@ export const ProductCard = memo(function ProductCard({
             </View>
           )}
 
+          {/* ── Price + button row ───────────────────────────────────────────
+               Deleted wrappers:
+                 - <View priceCol>  (extra column grouper)
+                 - <View priceInner> (extra row grouper for value+currency)
+                 - <Animated.View><Pressable><View addBtn> chain →
+                   collapsed to single AnimatedPressable with addBtn styles
+               Two layers removed from the tree. */}
           <View style={styles.priceRow}>
-            <View style={{ alignItems: "flex-end", gap: 1 }}>
-              <View style={styles.priceInner}>
+
+            {/* Price value + currency in a direct row-reverse sub-group */}
+            <View style={styles.priceGroup}>
+              <View style={styles.priceAmountRow}>
                 <UIText variant="card-title" weight="black" style={styles.priceValue}>
                   {product.price.toFixed(2)}
                 </UIText>
@@ -401,31 +410,30 @@ export const ProductCard = memo(function ProductCard({
               )}
             </View>
 
-            <Animated.View style={[btnAnim, !product.inStock && styles.btnDisabled]}>
-              <Pressable
-                onPress={handleAddToCart}
-                disabled={!product.inStock}
-                hitSlop={8}
-                style={styles.addBtnWrap}>
-                {isAtMax ? (
-                  <View style={[styles.addBtn, styles.addBtnLocked]}>
-                    <Ionicons name="lock-closed" size={14} color={CARD.rose300} />
-                  </View>
-                ) : (
-                  <View style={[styles.addBtn, showAdded && styles.addBtnSuccess]}>
-                    {showAdded ? (
-                      <Ionicons name="checkmark" size={18} color={theme.colors.surface} />
-                    ) : inCart ? (
-                      <UIText variant="caption" weight="black" style={styles.addBtnQty}>
-                        {cartQty}
-                      </UIText>
-                    ) : (
-                      <Ionicons name="add" size={20} color={theme.colors.surface} />
-                    )}
-                  </View>
-                )}
-              </Pressable>
-            </Animated.View>
+            {/* Add-to-cart: Animated.View+Pressable+View → single AnimatedPressable */}
+            <AnimatedPressable
+              onPress={handleAddToCart}
+              disabled={!product.inStock}
+              hitSlop={8}
+              style={[
+                btnAnim,
+                isAtMax ? [styles.addBtn, styles.addBtnLocked]
+                        : [styles.addBtn, showAdded && styles.addBtnSuccess],
+                !product.inStock && styles.btnDisabled,
+              ]}>
+              {isAtMax ? (
+                <Ionicons name="lock-closed" size={14} color={CARD.rose300} />
+              ) : showAdded ? (
+                <Ionicons name="checkmark" size={18} color={theme.colors.surface} />
+              ) : inCart ? (
+                <UIText variant="caption" weight="black" style={styles.addBtnQty}>
+                  {cartQty}
+                </UIText>
+              ) : (
+                <Ionicons name="add" size={20} color={theme.colors.surface} />
+              )}
+            </AnimatedPressable>
+
           </View>
         </View>
       </AnimatedPressable>
@@ -477,7 +485,8 @@ export const ProductCard = memo(function ProductCard({
           </View>
         )}
         <View style={styles.rowPriceRow}>
-          <View style={styles.priceInner}>
+          {/* Row variant: priceInner replaced with priceAmountRow (same rename as grid) */}
+          <View style={styles.priceAmountRow}>
             <UIText variant="card-title" weight="black" style={styles.priceValue}>
               {product.price.toFixed(2)}
             </UIText>
@@ -779,7 +788,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop:      theme.spacing.sm,
   },
-  priceInner: {
+  // Replaces priceCol + priceInner (2 levels removed):
+  // priceGroup: column container for amount-row + optional strikethrough price
+  priceGroup: {
+    alignItems: "flex-end",
+    gap:        1,
+  },
+  // priceAmountRow: single row for the number + currency label
+  priceAmountRow: {
     flexDirection: "row-reverse",
     alignItems:    "baseline",
     gap:           3,
@@ -802,10 +818,6 @@ const styles = StyleSheet.create({
     fontFamily:         theme.fonts.regular,
   },
 
-  addBtnWrap: {
-    borderRadius: 14,
-    overflow:     "hidden",
-  },
   addBtn: {
     width:           40,
     height:          40,
