@@ -423,6 +423,21 @@ export default function OnboardingScreen() {
 
   return (
     <View style={styles.root}>
+      {/* Premium absolute Skip button — overlays the gradient visual at top-right.
+          Hidden on the final slide where the CTA becomes "Start". */}
+      {!isLast && (
+        <Pressable
+          onPress={finish}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={t("onboarding.skipLabel")}
+          style={[styles.skipBtn, { top: insets.top + 16 }]}>
+          <Text variant="caption" weight="extrabold" style={styles.skipText}>
+            {t("onboarding.skip")}
+          </Text>
+        </Pressable>
+      )}
+
       {/* Visual area: full‑width horizontal slide deck */}
       <FlatList
         ref={flatRef}
@@ -654,6 +669,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: theme.spacing[0.5],
+  },
+
+  // Absolute Skip pill — top-right, above the gradient visual area
+  skipBtn: {
+    position:          "absolute",
+    right:             16,
+    zIndex:            50,
+    backgroundColor:   "rgba(0,0,0,0.40)",
+    borderRadius:      20,
+    paddingHorizontal: 16,
+    paddingVertical:   8,
+  },
+  skipText: {
+    color:      "#fff",
+    fontFamily: theme.fonts.bold,
+    fontSize:   12,
   },
 
   // CTA pill

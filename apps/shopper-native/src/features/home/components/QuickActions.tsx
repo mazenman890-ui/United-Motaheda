@@ -41,19 +41,19 @@ const PANEL_ACTIONS: PanelAction[] = [
     icon:     "medical-outline",
     labelKey: "home.qaRx",
     gradient: ["#0891B2", "#0DB8A8"],
-    route:    "/(tabs)/search",
-  },
-  {
-    icon:     "leaf-outline",
-    labelKey: "home.qaVitamins",
-    gradient: ["#10B981", "#059669"],
-    route:    "/(tabs)/products",
+    route:    "/prescriptions",
   },
   {
     icon:     "pricetag-outline",
     labelKey: "home.qaOffers",
     gradient: ["#D97706", "#F59E0B"],
     route:    "/deals",
+  },
+  {
+    icon:     "diamond-outline",
+    labelKey: "home.qaLoyalty",
+    gradient: ["#6D28D9", "#A855F7"],
+    route:    "/loyalty",
   },
 ];
 

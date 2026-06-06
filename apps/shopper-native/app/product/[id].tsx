@@ -514,32 +514,31 @@ function DetailRow({ label, value, last = false }: { label: string; value: strin
 const fab = StyleSheet.create({
   stack: {
     position: "absolute",
-    top:      0,    // will be offset by insets in JSX (see paddingTop on hero)
+    // top set inline in JSX via [fab.stack, { top: insets.top + 12 }]
     right:    16,
-    zIndex:   20,
+    zIndex:   100,   // was 20 — raised to ensure it's above ScrollView on Android
     gap:      10,
-    // We add the inset offset directly in JSX below
   },
   btn: {
     width:           44,
     height:          44,
-    borderRadius:    14,
-    backgroundColor: "rgba(15,23,42,0.55)",  // dark slate at 55% — readable everywhere
+    borderRadius:    22,                      // full circle (width / 2 = 22)
+    backgroundColor: "rgba(0,0,0,0.35)",      // clean dark — legible on light & dark images
     alignItems:      "center",
     justifyContent:  "center",
     borderWidth:     1,
-    borderColor:     "rgba(255,255,255,0.15)",
+    borderColor:     "rgba(255,255,255,0.20)",
+    elevation:       8,                       // Android — brings FABs above scroll content
     shadowColor:     "#000",
     shadowOffset:    { width: 0, height: 2 },
-    shadowOpacity:   0.22,
-    shadowRadius:    6,
-    elevation:       4,
+    shadowOpacity:   0.30,
+    shadowRadius:    8,
   },
   btnPressed: {
-    opacity: 0.75,
+    opacity: 0.72,
   },
   btnWishlistActive: {
-    backgroundColor: "rgba(244,63,94,0.80)",  // rose-tinted when wishlisted
+    backgroundColor: "rgba(244,63,94,0.75)",  // rose-tinted when wishlisted
     borderColor:     "rgba(255,255,255,0.25)",
   },
 });

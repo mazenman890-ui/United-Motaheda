@@ -382,35 +382,39 @@ export default function FeaturedScreen(): React.ReactElement {
 
   return (
     <View style={f.screen}>
-      <ProductGrid
-        products={filtered}
-        lang={lang}
-        onProductPress={handleProductPress}
-        ListHeaderComponent={ListHeader}
-        ListFooterComponent={<View style={{ height: insets.bottom + 40 }} />}
-        ListEmptyComponent={
-          <View style={f.center}>
-            <Ionicons
-              name={allFeatured.length === 0 ? "star-outline" : "search-outline"}
-              size={48}
-              color={theme.colors.slate[300]}
-            />
-            <UIText style={f.emptyTitle}>
-              {allFeatured.length === 0
-                ? t("home.featuredTitle")
-                : t("search.noResults")}
-            </UIText>
-            {query.length > 0 && (
-              <Pressable onPress={() => setQuery("")} style={f.retryBtn}>
-                <UIText style={f.retryText}>{t("search.clearRecents")}</UIText>
-              </Pressable>
-            )}
-          </View>
-        }
-        refreshing={false}
-        onRefresh={() => void refetch()}
-        contentContainerStyle={{ padding: theme.spacing.md }}
-      />
+      {/* Explicit flex:1 bridge — ensures FlashList receives a measured height
+          from its containing View and never collapses to zero on Android.      */}
+      <View style={f.listWrap}>
+        <ProductGrid
+          products={filtered}
+          lang={lang}
+          onProductPress={handleProductPress}
+          ListHeaderComponent={ListHeader}
+          ListFooterComponent={<View style={{ height: insets.bottom + 40 }} />}
+          ListEmptyComponent={
+            <View style={f.center}>
+              <Ionicons
+                name={allFeatured.length === 0 ? "star-outline" : "search-outline"}
+                size={48}
+                color={theme.colors.slate[300]}
+              />
+              <UIText style={f.emptyTitle}>
+                {allFeatured.length === 0
+                  ? t("home.featuredTitle")
+                  : t("search.noResults")}
+              </UIText>
+              {query.length > 0 && (
+                <Pressable onPress={() => setQuery("")} style={f.retryBtn}>
+                  <UIText style={f.retryText}>{t("search.clearRecents")}</UIText>
+                </Pressable>
+              )}
+            </View>
+          }
+          refreshing={false}
+          onRefresh={() => void refetch()}
+          contentContainerStyle={{ padding: theme.spacing.md }}
+        />
+      </View>
     </View>
   );
 }
@@ -418,7 +422,8 @@ export default function FeaturedScreen(): React.ReactElement {
 // ─── Styles ────────────────────────────────────────────────────────────────────
 
 const f = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: theme.colors.bg },
+  screen:   { flex: 1, backgroundColor: theme.colors.bg },
+  listWrap: { flex: 1 },  // explicit bridge so FlashList gets a measured height
 
   // Hero
   hero: {

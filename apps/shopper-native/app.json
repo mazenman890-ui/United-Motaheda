@@ -8,7 +8,7 @@
     "scheme": "shopper",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash-logo.png",
+      "image": "./assets/splash-mark.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -30,6 +30,8 @@
       "jsEngine": "hermes",
       "permissions": [
         "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
       ]
     },
@@ -44,8 +46,8 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/splash-logo.png",
-          "imageWidth": 300,
+          "image": "./assets/splash-mark.png",
+          "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
@@ -88,6 +90,9 @@
       }
     },
     "runtimeVersion": "1.0.0",
-    "owner": "united-baqy"
+    "owner": "united-baqy",
+    "updates": {
+      "url": "https://u.expo.dev/1f6bee7a-6298-40a9-bf47-23e2254814ab"
+    }
   }
 }

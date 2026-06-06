@@ -506,10 +506,11 @@ const mr = StyleSheet.create({
   row: {
     flexDirection:     "row",
     alignItems:        "center",
+    justifyContent:    "space-between",
     paddingVertical:   14,
     paddingHorizontal: 16,
     backgroundColor:   theme.colors.surface,
-    gap:               0,
+    gap:               12,
   },
   sep: {
     borderBottomWidth: StyleSheet.hairlineWidth,

@@ -181,10 +181,8 @@ export default function HomeScreen() {
         {/* 2 — Trust strip + auto-carousel */}
         <PromoBanner onSlidePress={handleSlidePress} />
 
-        {/* 3 — Quick action chips */}
-        <View>
-          <QuickActions onNavigate={handleNavigate} />
-        </View>
+        {/* 3 — Unified floating panel (overlaps PromoBanner bottom by 24px) */}
+        <QuickActions onNavigate={handleNavigate} />
 
         {/* 4 — Category pill rail */}
         <View>

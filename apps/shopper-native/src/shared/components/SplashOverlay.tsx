@@ -1,31 +1,32 @@
 /**
  * SplashOverlay — cinematic full-screen video intro.
  *
- * Three-phase experience:
- *   1. White hold     — matches native splash bg; zero colour flash on hand-off
- *   2. Video fade-in  — 200 ms dissolve from white once the first frame is ready
- *                       (onReadyForDisplay), preventing a blank-frame flash
- *   3. Video fade-out — 420 ms dissolve after playback ends; driven on the
- *                       UI thread so a busy JS boot doesn't stutter the exit
+ * Four-phase experience:
+ *   1. White hold      — matches native splash bg; zero colour flash on hand-off
+ *   2. Video fade-in   — 200 ms dissolve from white once the first frame is ready
+ *                        (onReadyForDisplay), preventing a blank-frame flash
+ *   3. Skip pill       — glassmorphic pill fades in after 1.5 s so users see the
+ *                        video before the option to skip appears
+ *   4. Video fade-out  — 420 ms dissolve driven on the UI thread; JS thread is
+ *                        never involved in the exit animation
  *
  * Status bar hidden for the full duration → true edge-to-edge cinema view,
  * restored with a matching fade when the overlay unmounts.
  *
  * Architecture:
  *   expo-av Video        hardware-decoded MP4, zero JS-thread work
- *   Reanimated           both fade animations run as UI-thread worklets
- *   dismissedRef         prevents double-dismiss (status + timeout + error)
+ *   ResizeMode.COVER     fills every aspect ratio (16:9 → 20:9+) edge-to-edge
+ *   Reanimated           all fade animations run as UI-thread worklets
+ *   dismissedRef         prevents double-dismiss (status + error + skip)
  *   alreadyShown guard   renders null after first session; never replays
- *   Safety timeout 6 s   always opens the app even on slow/old devices
- *   ErrorBoundary        wraps this in _layout.tsx; any crash → null fallback
- *
- * Device fitting:
- *   ResizeMode.COVER fills every aspect ratio (16:9 → 20:9+) edge-to-edge.
- *   No letterboxing. The white root backgroundColor fills any residual edges.
+ *   onError → dismiss    resilient: hardware decode failure still opens app
+ *   No hard timeout      video plays to natural completion; skip provides user
+ *                        escape if something stalls
  */
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { StatusBar, StyleSheet, View } from "react-native";
+import { Pressable, StatusBar, StyleSheet, Text, View } from "react-native";
+import { initialWindowMetrics } from "react-native-safe-area-context";
 import { Video, ResizeMode, type AVPlaybackStatus } from "expo-av";
 import Animated, {
   Easing,
@@ -34,80 +35,102 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-// ─── Timing ───────────────────────────────────────────────────────────────────
+// ─── Timing constants ─────────────────────────────────────────────────────────
 
-/** Video fade-in once first frame is ready. Keeps it imperceptible. */
-const FADE_IN_MS  = 200;
+/** Video fades in from white once the first frame is decoded. */
+const FADE_IN_MS       = 200;
 
-/** Overlay fade-out after video ends. */
-const FADE_OUT_MS = 420;
+/** Overlay fades out after natural video end or skip press. */
+const FADE_OUT_MS      = 420;
 
 /**
- * Safety timeout — auto-dismiss if the video stalls or can't be decoded.
- * Generous enough for slow devices but not so long it feels broken.
+ * Delay before the Skip pill appears.
+ * 1.5 s — ensures users see a meaningful portion of the video
+ * before the option to skip is offered. Not too long to feel trapped.
  */
-const TIMEOUT_MS  = 6_000;
+const SKIP_DELAY_MS    = 1_500;
+
+/** Skip pill itself fades in over 350 ms once the delay elapses. */
+const SKIP_FADE_IN_MS  = 350;
 
 // ─── Session guard ────────────────────────────────────────────────────────────
+// Module-level flag: replays are blocked even across hot reloads during dev.
 let alreadyShown = false;
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function SplashOverlay(): React.ReactElement | null {
-  const [render, setRender]        = useState(!alreadyShown);
-  const dismissedRef               = useRef(false);
+// Module-level — no provider needed. SplashOverlay is intentionally mounted
+// outside SafeAreaProvider in _layout.tsx; useSafeAreaInsets() would throw.
+// initialWindowMetrics is populated synchronously before any JS runs.
+const TOP_INSET = (initialWindowMetrics?.insets.top ?? 44) + 16;
 
-  // Overlay fade-out — shared value drives the Animated.View on the UI thread
+export function SplashOverlay(): React.ReactElement | null {
+  const [render, setRender] = useState(!alreadyShown);
+  const dismissedRef = useRef(false);
+
+  // ── Overlay (exit) fade — drives the whole overlay off the screen ────────────
   const overlayOpacity = useSharedValue(1);
   const overlayAnim    = useAnimatedStyle(() => ({ opacity: overlayOpacity.value }));
 
-  // Video fade-in — starts at 0 (invisible white bg shows), fades to 1
-  // when onReadyForDisplay fires so the first frame always has content
-  const videoOpacity   = useSharedValue(0);
-  const videoAnim      = useAnimatedStyle(() => ({ opacity: videoOpacity.value }));
+  // ── Video (enter) fade — prevents blank-frame flash at video start ───────────
+  const videoOpacity = useSharedValue(0);
+  const videoAnim    = useAnimatedStyle(() => ({ opacity: videoOpacity.value }));
 
-  // ── dismiss ────────────────────────────────────────────────────────────────
+  // ── Skip pill fade — delayed entrance so the video gets a fair showing ───────
+  const skipOpacity = useSharedValue(0);
+  const skipAnim    = useAnimatedStyle(() => ({ opacity: skipOpacity.value }));
+
+  // ── dismiss ───────────────────────────────────────────────────────────────────
+  // Safe to call from any trigger (natural end, skip press, error).
+  // dismissedRef prevents running the exit sequence more than once.
   const dismiss = useCallback(() => {
     if (dismissedRef.current) return;
     dismissedRef.current = true;
 
-    // Start the UI-thread fade animation.
+    // Fade skip pill out first for a clean exit (runs on UI thread).
+    skipOpacity.value = withTiming(0, { duration: 200, easing: Easing.in(Easing.ease) });
+
+    // Fade overlay out — UI-thread worklet, immune to JS thread congestion.
     overlayOpacity.value = withTiming(0, {
       duration: FADE_OUT_MS,
       easing:   Easing.out(Easing.cubic),
     });
 
-    // setTimeout is the PRIMARY unmount trigger — more reliable than the
-    // withTiming completion callback, which can silently fail on some Android
-    // devices (Reanimated worklet callback not bridging back to JS thread).
-    // The +80 ms buffer lets the fade finish before the component unmounts.
+    // setTimeout is the PRIMARY unmount signal — more reliable than the
+    // Reanimated withTiming callback, which can silently drop on some
+    // Android devices when the bridge is under load at app boot.
+    // +80 ms buffer ensures the CSS-style fade completes before unmount.
     setTimeout(() => setRender(false), FADE_OUT_MS + 80);
-  }, [overlayOpacity]);
+  }, [overlayOpacity, skipOpacity]);
 
-  // ── Mount effects ──────────────────────────────────────────────────────────
+  // ── Mount effects ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!render) return;
     alreadyShown = true;
 
-    // ── Hide status bar for edge-to-edge immersion ──────────────────────────
-    // 'fade' animates the hide/show transitions so they're not jarring.
+    // Hide status bar — true edge-to-edge cinema view.
+    // 'fade' keeps the transition imperceptible.
     StatusBar.setHidden(true, "fade");
 
-    // Safety timeout — always opens the app
-    const timer = setTimeout(dismiss, TIMEOUT_MS);
+    // Fade the Skip pill in after SKIP_DELAY_MS — users see the video first.
+    const skipTimer = setTimeout(() => {
+      skipOpacity.value = withTiming(1, {
+        duration: SKIP_FADE_IN_MS,
+        easing:   Easing.out(Easing.ease),
+      });
+    }, SKIP_DELAY_MS);
 
     return () => {
-      clearTimeout(timer);
-      // Restore status bar when the overlay unmounts (after fade-out).
+      clearTimeout(skipTimer);
+      // Restore status bar on unmount (called after the fade-out completes).
       StatusBar.setHidden(false, "fade");
     };
-  }, [render, dismiss]);
+  }, [render, dismiss, skipOpacity]);
 
-  // ── Video callbacks ────────────────────────────────────────────────────────
+  // ── Video callbacks ───────────────────────────────────────────────────────────
 
-  // Fires when the video surface has its first frame rendered and is ready
-  // to display. We fade the video in from 0 here to prevent a blank-frame
-  // flash between the white hold and the actual video content.
+  // onReadyForDisplay fires when the first decoded frame hits the surface.
+  // We fade the video layer in here to guarantee no blank-frame flash.
   const handleReadyForDisplay = useCallback(() => {
     videoOpacity.value = withTiming(1, {
       duration: FADE_IN_MS,
@@ -115,49 +138,69 @@ export function SplashOverlay(): React.ReactElement | null {
     });
   }, [videoOpacity]);
 
-  // onPlaybackStatusUpdate fires every ~100 ms while playing. We only act
-  // when `didJustFinish` is true — the natural end of playback.
+  // Fires every ~100 ms. We only act when the video reaches natural end.
   const handleStatus = useCallback(
     (status: AVPlaybackStatus) => {
-      if (status.isLoaded && status.didJustFinish) {
-        dismiss();
-      }
+      if (status.isLoaded && status.didJustFinish) dismiss();
     },
     [dismiss],
   );
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────────
   if (!render) return null;
 
   return (
     <Animated.View
       style={[styles.root, overlayAnim]}
-      // Default (no pointerEvents prop) = "auto" → absorbs all touches so
-      // the user can't accidentally tap through to the app during the video.
+      // Absorbs all touches so users can't tap through to the app during
+      // the video. The Skip button is an explicit Pressable child that
+      // intercepts its own region before the parent absorbs the rest.
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      {/* White hold layer — visible at mount before video is ready.
-          Same colour as the native splash so hand-off is invisible. */}
+      {/* 1 — White hold: same colour as native splash → invisible hand-off */}
       <View style={styles.hold} />
 
-      {/* Video layer — initially transparent; fades in via onReadyForDisplay */}
+      {/* 2 — Video layer: initially transparent, fades in on first frame */}
       <Animated.View style={[styles.videoWrap, videoAnim]}>
         <Video
           source={require("../../../assets/splash-video.mp4")}
-
           style={styles.video}
           resizeMode={ResizeMode.COVER}
-
-          shouldPlay           // auto-play on mount
-          isLooping={false}    // play exactly once
-          isMuted              // no audio during splash
+          shouldPlay          // auto-play on mount
+          isLooping={false}   // play exactly once
+          isMuted             // silent during splash — no unexpected audio
           useNativeControls={false}
-
           onReadyForDisplay={handleReadyForDisplay}
           onPlaybackStatusUpdate={handleStatus}
-          onError={dismiss}
+          onError={dismiss}   // hardware decode failure → open app gracefully
         />
+      </Animated.View>
+
+      {/* 3 — Skip pill: glassmorphic, top-right, delayed entrance
+              Placed after videoWrap in the tree so it renders above the video.
+              Pressable intercepts touches in its bounds; the overlay absorbs
+              everything else so the app below stays untouched.               */}
+      <Animated.View
+        style={[
+          styles.skipWrap,
+          skipAnim,
+          { top: TOP_INSET },
+        ]}
+        // Allow screen readers to access this button even though the parent
+        // hides descendants — it's the only interactive element.
+        accessibilityElementsHidden={false}
+        importantForAccessibility="yes"
+      >
+        <Pressable
+          onPress={dismiss}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="تخطى المقدمة"
+          style={({ pressed }) => [styles.skipBtn, pressed && styles.skipBtnPressed]}
+        >
+          <Text style={styles.skipText}>تخطى</Text>
+        </Pressable>
       </Animated.View>
     </Animated.View>
   );
@@ -166,29 +209,65 @@ export function SplashOverlay(): React.ReactElement | null {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  // Full-screen overlay above every route. zIndex 9999 ensures it sits above
-  // modals, sheets, and the notification banner.
+  // Full-screen overlay. zIndex 9999 sits above every modal, sheet,
+  // and notification banner the app might render during cold start.
   root: {
     ...StyleSheet.absoluteFillObject,
     zIndex:          9999,
     backgroundColor: "#ffffff",
   },
 
-  // Hold layer: white opaque background, same colour as native splash.
-  // Rendered beneath the video so there is no colour flash at any phase.
+  // White hold layer — same colour as native splash & app.json splash bg.
+  // Rendered beneath everything so there is never a colour flash at any phase.
   hold: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "#ffffff",
   },
 
-  // Video wrapper carries the Reanimated opacity animation.
-  // Must be absoluteFillObject so it covers the hold layer completely.
+  // Video wrapper carries the Reanimated fade-in animation.
+  // absoluteFillObject ensures it covers the hold layer completely.
   videoWrap: {
     ...StyleSheet.absoluteFillObject,
   },
 
-  // Video itself fills its wrapper; ResizeMode.COVER handles all aspect ratios.
+  // Video fills its wrapper; ResizeMode.COVER handles every aspect ratio.
   video: {
     ...StyleSheet.absoluteFillObject,
+  },
+
+  // Skip pill wrapper — absolute, right-aligned, z above video.
+  skipWrap: {
+    position: "absolute",
+    right:    16,
+    zIndex:   50,
+  },
+
+  // Glassmorphic dark pill — readable over any video content, light or dark.
+  skipBtn: {
+    backgroundColor:   "rgba(0, 0, 0, 0.42)",
+    borderRadius:      20,
+    paddingHorizontal: 18,
+    paddingVertical:   9,
+    borderWidth:       1,
+    borderColor:       "rgba(255, 255, 255, 0.18)",
+    // Subtle shadow so the pill lifts off bright backgrounds
+    shadowColor:       "#000",
+    shadowOffset:      { width: 0, height: 2 },
+    shadowOpacity:     0.25,
+    shadowRadius:      6,
+    elevation:         4,
+  },
+
+  // Pressed state — slight opacity pull-back (no scale needed for a pill)
+  skipBtnPressed: {
+    opacity: 0.72,
+  },
+
+  // Skip label — white, bold, slightly tracked
+  skipText: {
+    color:       "#ffffff",
+    fontSize:    13,
+    fontWeight:  "700",
+    letterSpacing: 0.3,
   },
 });
