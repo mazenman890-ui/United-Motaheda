@@ -27,6 +27,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import { HERO_GRAD, AUTH_TEAL, ORDER_DARK } from "./orders.styles";
 
 // ─── Feature rows — distinct colour per semantic intent ──────────────────────
@@ -140,8 +141,12 @@ export function UnauthenticatedState({ showBack }: { showBack: boolean }): React
 
           {/* Hero text */}
           <Animated.View entering={FadeInUp.duration(460).delay(160)} style={s.heroText}>
-            <UIText style={s.heroTitle}>{t("orders.authTitle")}</UIText>
-            <UIText style={s.heroSub}>{t("orders.authSub")}</UIText>
+            <UIText variant="screen-title" weight="black" color="inverse" style={s.heroTitle}>
+              {t("orders.authTitle")}
+            </UIText>
+            <UIText variant="body-sm" color="inverse-muted" style={s.heroSub}>
+              {t("orders.authSub")}
+            </UIText>
           </Animated.View>
         </LinearGradient>
 
@@ -240,7 +245,7 @@ const s = StyleSheet.create({
   // Top bar — back button + eyebrow label (matches other screens)
   topBar: {
     width:          "100%",
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
     marginBottom:   theme.spacing[3],
@@ -288,34 +293,31 @@ const s = StyleSheet.create({
     ...theme.shadow.lg,
   },
 
-  // Hero text
+  // Hero text — variant/weight/color set via UIText props; only overrides here
   heroText:  { alignItems: "center", gap: theme.spacing.sm },
   heroTitle: {
-    fontFamily:    theme.fonts.black,
-    fontSize:      26,
-    color:         theme.colors.surface,
-    textAlign:     "center",
-    letterSpacing: -0.5,
+    textAlign:          "center",
+    letterSpacing:      -0.5,
+    paddingVertical:    2,
+    includeFontPadding: false,
   },
   heroSub: {
-    fontFamily: theme.fonts.regular,
-    fontSize:   13,
-    color:      "rgba(255,255,255,0.55)",
-    textAlign:  "center",
     lineHeight: 20,
     maxWidth:   280,
+    textAlign:  "center",
   },
 
-  // ── Action card ─────────────────────────────────────────────────────────────
+  // ── Action card — negative margin creates hero overlap depth effect ─────────
   card: {
-    marginHorizontal: theme.spacing.lg,
-    backgroundColor:  theme.colors.surface,
-    borderRadius:     24,
-    paddingVertical:  theme.spacing.xl,
+    marginTop:         -36,
+    marginHorizontal:  theme.spacing.lg,
+    backgroundColor:   theme.colors.surface,
+    borderRadius:      24,
+    paddingVertical:   theme.spacing.xl,
     paddingHorizontal: theme.layout.pagePaddingH,
-    gap:              theme.spacing.lg,
+    gap:               theme.spacing.lg,
     ...theme.shadow.lg,
-    shadowOpacity:    0.10,
+    shadowOpacity:     0.10,
   },
 
   // Login button — pill
@@ -324,7 +326,7 @@ const s = StyleSheet.create({
     overflow:     "hidden",
   },
   signInGrad: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     justifyContent:  "center",
     gap:             10,
@@ -332,10 +334,13 @@ const s = StyleSheet.create({
     borderRadius:    999,
   },
   signInText: {
-    fontFamily:    theme.fonts.black,
-    fontSize:      15,
-    color:         theme.colors.surface,
-    letterSpacing: 0.2,
+    fontFamily:         theme.fonts.black,
+    fontSize:           15,
+    color:              theme.colors.surface,
+    letterSpacing:      0.2,
+    lineHeight:         22,
+    includeFontPadding: false,
+    textAlignVertical:  "center",
   },
 
   // Register button — outlined
@@ -349,15 +354,18 @@ const s = StyleSheet.create({
     backgroundColor: AUTH_TEAL.r05,
   },
   createText: {
-    fontFamily:    theme.fonts.bold,
-    fontSize:      14,
-    color:         theme.colors.brand[700],
-    letterSpacing: 0.1,
+    fontFamily:         theme.fonts.bold,
+    fontSize:           14,
+    color:              theme.colors.brand[700],
+    letterSpacing:      0.1,
+    lineHeight:         20,
+    includeFontPadding: false,
+    textAlignVertical:  "center",
   },
 
   // Divider
   divider: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           theme.spacing.md,
   },
@@ -374,7 +382,7 @@ const s = StyleSheet.create({
 
   // Feature rows — distinct icon backgrounds per row
   feature: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           theme.spacing.md,
   },
@@ -390,12 +398,12 @@ const s = StyleSheet.create({
     fontFamily: theme.fonts.semibold,
     fontSize:   13,
     color:      theme.colors.text.primary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
 
   // Privacy note
   privacyRow: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "center",
     gap:            5,

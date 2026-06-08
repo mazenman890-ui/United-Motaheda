@@ -1,76 +1,73 @@
 /**
- * PromoBanner — trust strip + production-grade promo carousel.
+ * PromoBanner — trust strip + static bento-grid hero section.
  *
- * Carousel upgrade:
- *   pagingEnabled + decelerationRate="fast" → bounded, perfect-snap paging.
- *   Reanimated interpolation: active slide scale(1.05), adjacent scale(0.9).
- *   scrollX shared value updated via onScroll → PromoSlide useAnimatedStyle.
- *   PaginationDots component updates live on scroll.
+ * Carousel removed: the auto-swiping FlatList (+ auto-advance timer,
+ * pagination dots, PromoSlide scale interpolation) is gone entirely.
+ *
+ * Replaced with a bento-grid HeroSection:
+ *   • Primary card (Deals)   — 60 % width, full height, rich copy
+ *   • Secondary stack        — 40 % width, two stacked cards (Products + Loyalty)
+ *   RTL: primary card on the logical start (RIGHT in Arabic) via row-reverse.
+ *
+ * Each card has a Reanimated withSpring(0.96) press scale on the UI thread.
+ * The QuickActions panel's marginTop: -24 still works — the HeroSection
+ * provides a consistent bottom edge for the overlap effect.
  */
 
-import React, { memo, useCallback, useEffect, useRef, useState } from "react";
-import {
-  FlatList,
-  Pressable,
-  StyleSheet,
-  View,
-  useWindowDimensions,
-} from "react-native";
+import React, { memo, useCallback } from "react";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
-  interpolate,
-  Extrapolation,
+  useSharedValue,
   withSpring,
-  type SharedValue,
 } from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
-// ─── Promo slide data ─────────────────────────────────────────────────────────
+// ─── Hero destination data ────────────────────────────────────────────────────
+// Same three destinations the carousel used — now displayed as spatial cards.
 
-const PROMO_SLIDES = [
+const HERO_CARDS = [
   {
-    id:       "1",
+    id:       "deals",
     gradient: [theme.colors.hero, "#053348", "#0A4A65"] as [string, string, string],
     tagKey:   "home.heroTag1",
     titleKey: "home.heroTitle1",
     subKey:   "home.heroSub1",
     icon:     "ticket"  as IoniconsName,
-    accent:   theme.colors.teal[500],
-    glowColor:"rgba(13,184,168,0.18)",
+    accent:   theme.colors.teal[400],
+    glowColor:"rgba(13,184,168,0.22)",
     route:    "/deals",
   },
   {
-    id:       "2",
+    id:       "products",
     gradient: ["#064E3B", theme.colors.teal[800], theme.colors.teal[600]] as [string, string, string],
     tagKey:   "home.heroTag2",
     titleKey: "home.heroTitle2",
     subKey:   "home.heroSub2",
     icon:     "bicycle" as IoniconsName,
     accent:   "#34D399",
-    glowColor:"rgba(52,211,153,0.18)",
+    glowColor:"rgba(52,211,153,0.22)",
     route:    "/(tabs)/products",
   },
   {
-    id:       "3",
+    id:       "loyalty",
     gradient: ["#3B0764", "#5B21B6", "#6D28D9"] as [string, string, string],
     tagKey:   "home.heroTag3",
     titleKey: "home.heroTitle3",
     subKey:   "home.heroSub3",
     icon:     "diamond" as IoniconsName,
     accent:   "#C084FC",
-    glowColor:"rgba(192,132,252,0.18)",
+    glowColor:"rgba(192,132,252,0.22)",
     route:    "/loyalty",
   },
-];
-
-const SLIDE_H = 160;
+] as const;
 
 // ─── Trust badges data ────────────────────────────────────────────────────────
 
@@ -84,130 +81,145 @@ const useTrustBadges = () => {
   ];
 };
 
-// ─── PromoSlide — per-slide Reanimated scale interpolation ───────────────────
+// ─── HeroCard — single destination card with Reanimated press scale ───────────
 
-interface PromoSlideProps {
-  item:    (typeof PROMO_SLIDES)[number];
-  index:   number;
-  screenW: number;
-  scrollX: SharedValue<number>;
+interface HeroCardProps {
+  item:    typeof HERO_CARDS[number];
+  size:    "primary" | "secondary";
   onPress: (route: string) => void;
 }
 
-const PromoSlide = memo(function PromoSlide({
-  item, index, screenW, scrollX, onPress,
-}: PromoSlideProps) {
-  const { t } = useTranslation();
+const HeroCard = memo(function HeroCard({ item, size, onPress }: HeroCardProps) {
+  const { t }  = useTranslation();
+  const scale  = useSharedValue(1);
+  const anim   = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
-  // Full-bleed: active slide at 1.0 (fills screen), adjacent shrink to 0.88 for depth.
-  // Scaling ABOVE 1.0 is intentionally avoided on full-bleed items (overflows screen).
-  const animStyle = useAnimatedStyle(() => {
-    const scale = interpolate(
-      scrollX.value,
-      [(index - 1) * screenW, index * screenW, (index + 1) * screenW],
-      [0.88, 1.0, 0.88],
-      Extrapolation.CLAMP,
-    );
-    return { transform: [{ scale }] };
-  });
+  const handleIn    = useCallback(() => { scale.value = withSpring(0.96, theme.animation.spring.press); }, [scale]);
+  const handleOut   = useCallback(() => { scale.value = withSpring(1,    theme.animation.spring.press); }, [scale]);
+  const handlePress = useCallback(() => {
+    if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
+    onPress(item.route);
+  }, [item.route, onPress]);
+
+  const isPrimary = size === "primary";
 
   return (
     <Pressable
-      onPress={() => onPress(item.route)}
-      style={({ pressed }) => ({ opacity: pressed ? 0.93 : 1, width: screenW })}>
-      <Animated.View style={[s.slideOuter, animStyle]}>
+      onPress={handlePress}
+      onPressIn={handleIn}
+      onPressOut={handleOut}
+      accessibilityRole="button"
+      accessibilityLabel={t(item.titleKey)}
+      style={isPrimary ? hc.primaryOuter : hc.secondaryOuter}>
+      <Animated.View style={[isPrimary ? hc.primaryInner : hc.secondaryInner, anim]}>
         <LinearGradient
           colors={item.gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[s.slide, { height: SLIDE_H }]}>
-          <View style={[s.glowOrb,  { backgroundColor: item.glowColor }]} />
-          <View style={[s.glowOrb2, { backgroundColor: item.glowColor }]} />
-          <View style={[s.gridLine, { left: "33%" }]} />
-          <View style={[s.gridLine, { left: "66%" }]} />
+          start={{ x: 0.1, y: 0 }}
+          end={{ x: 0.9, y: 1 }}
+          style={[hc.gradient, isPrimary ? hc.primaryGrad : hc.secondaryGrad]}>
 
-          <View style={s.slideRow}>
-            <View style={s.copy}>
-              <View style={s.tagRow}>
-                <View style={[s.tagPill, { backgroundColor: item.accent + "28", borderColor: item.accent + "50" }]}>
-                  <UIText variant="eyebrow" style={{ color: item.accent, letterSpacing: 0.5 }}>
-                    {t(item.tagKey)}
-                  </UIText>
-                </View>
-              </View>
-              <UIText
-                variant="sheet-title"
-                color="inverse"
-                align="right"
-                style={s.slideTitle}>
-                {t(item.titleKey)}
-              </UIText>
-              <UIText
-                variant="body-sm"
-                color="inverse-muted"
-                align="right"
-                style={s.slideSub}>
-                {t(item.subKey)}
-              </UIText>
-            </View>
+          {/* Decorative glow orb */}
+          <View style={[hc.glowOrb, { backgroundColor: item.glowColor }]} />
 
-            <View style={[s.iconTile, { borderColor: item.accent + "40" }]}>
-              <LinearGradient
-                colors={[item.accent + "22", item.accent + "0A"]}
-                style={StyleSheet.absoluteFill}
-              />
-              <Ionicons name={item.icon} size={28} color={item.accent} />
-            </View>
+          {/* Icon badge */}
+          <View style={[hc.iconBadge, { borderColor: `${item.accent}44` }]}>
+            <LinearGradient
+              colors={[`${item.accent}28`, `${item.accent}10`]}
+              style={StyleSheet.absoluteFill}
+            />
+            <Ionicons name={item.icon} size={isPrimary ? 22 : 16} color={item.accent} />
           </View>
+
+          {/* Copy — full on primary, tag-only on secondary */}
+          <View style={hc.copy}>
+            <View style={hc.tagRow}>
+              <View style={[hc.tagPill, { backgroundColor: `${item.accent}20`, borderColor: `${item.accent}44` }]}>
+                <UIText variant="eyebrow" style={[hc.tagText, { color: item.accent }]}>
+                  {t(item.tagKey)}
+                </UIText>
+              </View>
+            </View>
+
+            {isPrimary && (
+              <>
+                <UIText
+                  variant="card-title"
+                  color="inverse"
+                  align="right"
+                  style={hc.primaryTitle}>
+                  {t(item.titleKey)}
+                </UIText>
+                <UIText
+                  variant="caption"
+                  color="inverse-muted"
+                  align="right"
+                  style={hc.primarySub}>
+                  {t(item.subKey)}
+                </UIText>
+              </>
+            )}
+          </View>
+
+          {/* Bottom-right chevron on secondary — signals tappability */}
+          {!isPrimary && (
+            <View style={hc.chevronWrap}>
+              <Ionicons name="chevron-back" size={12} color={`${item.accent}90`} />
+            </View>
+          )}
         </LinearGradient>
       </Animated.View>
     </Pressable>
   );
 });
 
-// ─── PaginationDots — Reanimated spring-animated pill indicators ───────────────
-// Each dot owns a useSharedValue(width) that springs between 6 (inactive) and
-// 24 (active). The transition runs on the UI thread — zero JS-thread jank even
-// when the JS thread is busy loading product data in the background.
+// ─── HeroSection — bento-grid layout ─────────────────────────────────────────
 
-interface AnimatedDotProps { isActive: boolean; accent: string }
+interface HeroSectionProps {
+  onNavigate: (route: string) => void;
+}
 
-const AnimatedDot = memo(function AnimatedDot({ isActive, accent }: AnimatedDotProps) {
-  const width = useSharedValue(isActive ? 24 : 6);
-
-  useEffect(() => {
-    width.value = withSpring(isActive ? 24 : 6, {
-      damping:   18,
-      stiffness: 220,
-      mass:      0.5,
-    });
-  }, [isActive, width]);
-
-  const dotAnim = useAnimatedStyle(() => ({ width: width.value }));
-
+const HeroSection = memo(function HeroSection({ onNavigate }: HeroSectionProps) {
   return (
-    <Animated.View
-      style={[
-        s.dot,
-        dotAnim,
-        isActive && { backgroundColor: accent },
-      ]}
-    />
+    <View style={hs.container}>
+      {/*
+        row-reverse → in RTL (Arabic): primary card on the visual RIGHT (start),
+        secondary stack on the LEFT. In LTR: primary LEFT, secondary RIGHT.
+      */}
+      <View style={hs.primarySlot}>
+        <HeroCard item={HERO_CARDS[0]} size="primary" onPress={onNavigate} />
+      </View>
+      <View style={hs.secondarySlot}>
+        <HeroCard item={HERO_CARDS[1]} size="secondary" onPress={onNavigate} />
+        <HeroCard item={HERO_CARDS[2]} size="secondary" onPress={onNavigate} />
+      </View>
+    </View>
   );
 });
 
-interface PaginationDotsProps { count: number; current: number }
+// ─── TrustStrip ───────────────────────────────────────────────────────────────
 
-const PaginationDots = memo(function PaginationDots({ count, current }: PaginationDotsProps) {
+const TrustStrip = memo(function TrustStrip() {
+  const badges = useTrustBadges();
   return (
-    <View style={s.dotsRow}>
-      {Array.from({ length: count }).map((_, i) => (
-        <AnimatedDot
-          key={i}
-          isActive={i === current}
-          accent={PROMO_SLIDES[current]?.accent ?? PROMO_SLIDES[0].accent}
-        />
-      ))}
+    <View style={ts.trustWrap}>
+      <View style={ts.trustCard}>
+        {badges.map((b, i) => (
+          <View
+            key={b.icon}
+            style={[ts.trustCell, i < badges.length - 1 && ts.trustDivider]}>
+            <LinearGradient
+              colors={b.grad}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={ts.trustIcon}>
+              <Ionicons name={b.icon} size={13} color="#fff" />
+            </LinearGradient>
+            <UIText variant="eyebrow" align="center" style={ts.trustLabel}>
+              {b.label}
+            </UIText>
+          </View>
+        ))}
+      </View>
     </View>
   );
 });
@@ -222,113 +234,143 @@ export const PromoBanner = memo(function PromoBanner({ onSlidePress }: PromoBann
   return (
     <>
       <TrustStrip />
-      <View style={s.carouselWrap}>
-        <PromoCarousel onSlidePress={onSlidePress} />
-      </View>
+      <HeroSection onNavigate={onSlidePress} />
     </>
   );
 });
 
-// ─── TrustStrip ───────────────────────────────────────────────────────────────
+// ─── HeroCard styles ──────────────────────────────────────────────────────────
 
-const TrustStrip = memo(function TrustStrip() {
-  const badges = useTrustBadges();
-  return (
-    <View style={s.trustWrap}>
-      <View style={s.trustCard}>
-        {badges.map((b, i) => (
-          <View
-            key={b.icon}
-            style={[s.trustCell, i < badges.length - 1 && s.trustDivider]}>
-            <LinearGradient
-              colors={b.grad}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={s.trustIcon}>
-              <Ionicons name={b.icon} size={13} color="#fff" />
-            </LinearGradient>
-            <UIText variant="eyebrow" align="center" style={s.trustLabel}>
-              {b.label}
-            </UIText>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
+const hc = StyleSheet.create({
+  // Outer Pressable — shadow host (no overflow:hidden so shadow bleeds cleanly)
+  primaryOuter: {
+    flex:          1,   // fills primarySlot (which is flex:6 of bento row)
+    borderRadius:  20,
+    shadowColor:   "#021D2E",
+    shadowOffset:  { width: 0, height: 6 },
+    shadowOpacity: 0.20,
+    shadowRadius:  14,
+    elevation:     8,
+  },
+  secondaryOuter: {
+    flex:          1,   // equal halves inside the secondary stack (flex:4)
+    borderRadius:  16,
+    shadowColor:   "#021D2E",
+    shadowOffset:  { width: 0, height: 4 },
+    shadowOpacity: 0.14,
+    shadowRadius:  10,
+    elevation:     5,
+  },
+
+  // Animated.View — carries the Reanimated scale, clips gradient corners.
+  // Separate radii per variant to match the outer shadow host exactly.
+  primaryInner: {
+    flex:         1,
+    borderRadius: 20,
+    overflow:     "hidden",
+  },
+  secondaryInner: {
+    flex:         1,
+    borderRadius: 16,
+    overflow:     "hidden",
+  },
+
+  // LinearGradient fills the card
+  gradient: {
+    flex:    1,
+    padding: 14,
+  },
+  primaryGrad: {
+    justifyContent: "flex-end",
+    gap:            6,
+  },
+  secondaryGrad: {
+    justifyContent: "space-between",
+  },
+
+  // Decorative soft glow blob (top-right absolute)
+  glowOrb: {
+    position:     "absolute",
+    top:          -36,
+    right:        -36,
+    width:        90,
+    height:       90,
+    borderRadius: 45,
+  },
+
+  // Icon tile — frosted glass pill
+  iconBadge: {
+    width:          38,
+    height:         38,
+    borderRadius:   12,
+    alignItems:     "center",
+    justifyContent: "center",
+    borderWidth:    1,
+    overflow:       "hidden",
+    marginBottom:   4,
+  },
+
+  copy: { gap: 4 },
+
+  tagRow: { flexDirection: "row-reverse" },
+  tagPill: {
+    borderRadius:      999,
+    paddingHorizontal: 8,
+    paddingVertical:   3,
+    borderWidth:       1,
+  },
+  tagText: {
+    fontSize:      9,
+    fontWeight:    "700",
+    letterSpacing: 0.4,
+  },
+
+  primaryTitle: {
+    fontSize:      15,
+    fontWeight:    "800",
+    letterSpacing: -0.3,
+    lineHeight:    20,
+  },
+  primarySub: {
+    fontSize:   11,
+    lineHeight: 15,
+    opacity:    0.80,
+  },
+
+  chevronWrap: {
+    alignSelf: "flex-end",
+  },
 });
 
-// ─── PromoCarousel ────────────────────────────────────────────────────────────
+// ─── HeroSection layout ───────────────────────────────────────────────────────
 
-const PromoCarousel = memo(function PromoCarousel({
-  onSlidePress,
-}: { onSlidePress: (route: string) => void }) {
-  const { width: screenW } = useWindowDimensions();
-  const listRef    = useRef<FlatList>(null);
-  const [current, setCurrent] = useState(0);
-  const currentRef = useRef(0);
-
-  // Reanimated shared value — tracks horizontal scroll offset
-  const scrollX = useSharedValue(0);
-
-  // Auto-advance every 4.2 seconds
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const next = (currentRef.current + 1) % PROMO_SLIDES.length;
-      listRef.current?.scrollToOffset({ offset: next * screenW, animated: true });
-      currentRef.current = next;
-      setCurrent(next);
-    }, 4200);
-    return () => clearInterval(timer);
-  }, [screenW]);
-
-  const renderSlide = useCallback(
-    ({ item, index }: { item: (typeof PROMO_SLIDES)[number]; index: number }) => (
-      <PromoSlide
-        item={item}
-        index={index}
-        screenW={screenW}
-        scrollX={scrollX}
-        onPress={onSlidePress}
-      />
-    ),
-    [screenW, scrollX, onSlidePress],
-  );
-
-  return (
-    <View>
-      <FlatList
-        ref={listRef}
-        data={PROMO_SLIDES}
-        keyExtractor={(item) => item.id}
-        horizontal
-        pagingEnabled
-        decelerationRate="fast"
-        showsHorizontalScrollIndicator={false}
-        scrollEventThrottle={16}
-        onScroll={(e) => {
-          scrollX.value = e.nativeEvent.contentOffset.x;
-          const idx = Math.round(e.nativeEvent.contentOffset.x / screenW);
-          if (idx !== currentRef.current) {
-            currentRef.current = idx;
-            setCurrent(idx);
-          }
-        }}
-        renderItem={renderSlide}
-      />
-
-      <PaginationDots count={PROMO_SLIDES.length} current={current} />
-    </View>
-  );
+const hs = StyleSheet.create({
+  // Outer container: row-reverse for RTL awareness, fixed height
+  container: {
+    flexDirection:    "row-reverse",
+    marginHorizontal: theme.layout.pagePaddingH,
+    marginTop:        theme.spacing["2xl"],   // 24 — space below TrustStrip
+    marginBottom:     theme.spacing.lg,       // 16 — space above QuickActions
+    gap:              10,
+    height:           180,
+  },
+  primarySlot: {
+    flex: 6,
+  },
+  secondarySlot: {
+    flex:          4,
+    flexDirection: "column",
+    gap:           10,
+  },
 });
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// ─── TrustStrip styles ────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
-  // ── Trust strip ─────────────────────────────────────────────────────────────
+const ts = StyleSheet.create({
   trustWrap: {
     marginTop:        -28,
-    marginHorizontal: theme.spacing[4],  // 32 — intentional inset for floating card
-    marginBottom:     theme.spacing.lg,  // 16
+    marginHorizontal: theme.spacing[4],   // 32 — intentional inset for floating card
+    marginBottom:     theme.spacing.lg,   // 16
   },
   trustCard: {
     backgroundColor:   "#fff",
@@ -366,84 +408,4 @@ const s = StyleSheet.create({
     fontFamily: theme.fonts.bold,
     lineHeight: 13,
   },
-
-  // ── Carousel wrapper ─────────────────────────────────────────────────────────
-  carouselWrap: {
-    paddingTop:    theme.spacing['2xl'],  // 24
-    paddingBottom: theme.spacing.sm,     // 8
-  },
-
-  // ── Slide — full-bleed, zero horizontal padding ─────────────────────────────
-  // Adjacent slides recede via scale(0.88); border radius only on top corners
-  // so the slide feels edge-to-edge yet cleanly separated from the header.
-  slideOuter: { paddingHorizontal: 0 },
-  slide: {
-    borderRadius:  0,   // true full-bleed
-    padding:       22,
-    paddingHorizontal: 24,
-    overflow:      "hidden",
-    shadowColor:   "#000",
-    shadowOffset:  { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius:  12,
-    elevation:     6,
-  },
-  glowOrb: {
-    position:     "absolute",
-    top:          -60,
-    right:        -60,
-    width:        140,
-    height:       140,
-    borderRadius: 70,
-  },
-  glowOrb2: {
-    position:     "absolute",
-    bottom:       -50,
-    left:         -40,
-    width:        110,
-    height:       110,
-    borderRadius: 55,
-  },
-  gridLine: {
-    position:        "absolute",
-    top:             0,
-    bottom:          0,
-    width:           1,
-    backgroundColor: "rgba(255,255,255,0.05)",
-  },
-  slideRow: {
-    flexDirection:  "row-reverse",
-    alignItems:     "center",
-    justifyContent: "space-between",
-  },
-  copy:    { flex: 1, gap: 6 },
-  tagRow:  { flexDirection: "row-reverse" },
-  tagPill: {
-    borderRadius:      999,
-    paddingHorizontal: 12,
-    paddingVertical:   5,
-    borderWidth:       1,
-  },
-  slideTitle: { letterSpacing: -0.5, lineHeight: 30 },
-  slideSub:   { lineHeight: 17, fontSize: 12 },
-  iconTile: {
-    width:          66,
-    height:         66,
-    borderRadius:   20,
-    alignItems:     "center",
-    justifyContent: "center",
-    borderWidth:    1.5,
-    marginStart:    16,
-    overflow:       "hidden",
-  },
-
-  // ── Pagination dots ──────────────────────────────────────────────────────────
-  dotsRow: {
-    flexDirection:  "row",
-    justifyContent: "center",
-    gap:            5,
-    marginTop:      14,
-  },
-  dot:       { width: 6,  height: 6, borderRadius: 3, backgroundColor: theme.colors.slate[300] },
-  dotActive: { width: 24, borderRadius: 3 },
 });

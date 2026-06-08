@@ -17,9 +17,6 @@ export const ordersQueryKeys = {
 
 /** Fetch all orders for the authenticated user. */
 export function useOrders(userId: string | null | undefined) {
-  const setOrdersCache = useOrderStore((s) => s.hydrate);
-  const queryClient    = useQueryClient();
-
   const query = useQuery<Order[], Error>({
     queryKey:    ordersQueryKeys.list(userId ?? ""),
     queryFn:     () => fetchUserOrders(userId!),

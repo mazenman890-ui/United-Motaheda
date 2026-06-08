@@ -9,6 +9,7 @@
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash-mark.png",
+      "imageWidth": 280,
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -29,10 +30,7 @@
       "package": "com.unitedpharmacy.app",
       "jsEngine": "hermes",
       "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.CAMERA"
       ]
     },
     "web": {
@@ -47,7 +45,7 @@
         "expo-splash-screen",
         {
           "image": "./assets/splash-mark.png",
-          "imageWidth": 200,
+          "imageWidth": 280,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }

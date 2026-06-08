@@ -18,7 +18,6 @@
 import React, { useCallback, memo } from "react";
 import {
   FlatList,
-  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -27,7 +26,6 @@ import {
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -46,7 +44,6 @@ import { useMountTiming } from "@/lib/devTiming";
 
 // ─── Feature components ───────────────────────────────────────────────────────
 import { DeliveryHeader }         from "@/features/home/components/DeliveryHeader";
-import { PromoBanner }            from "@/features/home/components/PromoBanner";
 import { QuickActions }           from "@/features/home/components/QuickActions";
 import { CategoryStrip }          from "@/features/home/components/CategoryStrip";
 import { RecentlyViewedCarousel } from "@/features/home/components/RecentlyViewedCarousel";
@@ -127,13 +124,6 @@ export default function HomeScreen() {
     () => router.push({ pathname: "/deals" }),
     [router],
   );
-  const handleSlidePress = useCallback(
-    (route: string) => {
-      if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
-      router.push(route as Parameters<typeof router.push>[0]);
-    },
-    [router],
-  );
   const handleCategoryPress = useCallback(
     (id: string, name: string, nameEn: string) =>
       router.push({ pathname: "/category/[id]", params: { id, nameEn, name } }),
@@ -178,10 +168,7 @@ export default function HomeScreen() {
           onSearchPress={() => router.push("/(tabs)/search")}
         />
 
-        {/* 2 — Trust strip + auto-carousel */}
-        <PromoBanner onSlidePress={handleSlidePress} />
-
-        {/* 3 — Unified floating panel (overlaps PromoBanner bottom by 24px) */}
+        {/* 2 — Premium inline navigation row */}
         <QuickActions onNavigate={handleNavigate} />
 
         {/* 4 — Category pill rail */}

@@ -174,6 +174,18 @@ const _alignInput: Record<string, TextStyle> = {
 };
 const ALIGN_STYLES: Record<string, TextStyle> = StyleSheet.create(_alignInput);
 
+// Arabic font-clipping fix — applied to every UIText instance.
+// includeFontPadding: false   removes Android's extra bottom padding that clips
+//                             Arabic descenders (ي، ق، etc.) and diacritics.
+// textAlignVertical: 'center' centres glyphs vertically within the line box so
+//                             taller Arabic letterforms don't shift baseline.
+const TEXT_BASE = StyleSheet.create({
+  fix: {
+    includeFontPadding:  false,
+    textAlignVertical:   "center",
+  } as TextStyle,
+}).fix;
+
 export function Text({
   variant = "body",
   weight,
@@ -189,10 +201,12 @@ export function Text({
   const fontStyle  = weight != null ? FONT_STYLES[weight]             : null;
   const alignStyle = align  != null ? ALIGN_STYLES[align] ?? null     : null;
 
+  // TEXT_BASE injected before caller style so caller can still override
+  // includeFontPadding / textAlignVertical for edge-case layouts if needed.
   return (
     <RNText
       {...rest}
-      style={[baseStyle, fontStyle, COLOR_STYLES[color], alignStyle, style]}>
+      style={[TEXT_BASE, baseStyle, fontStyle, COLOR_STYLES[color], alignStyle, style]}>
       {children}
     </RNText>
   );

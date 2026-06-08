@@ -40,8 +40,11 @@ import { useAppLanguage } from "@/i18n/LanguageProvider";
 import { ProfileAuthHero } from "@/features/profile/components/ProfileAuthHero";
 import { ProfileGuestHero } from "@/features/profile/components/ProfileGuestHero";
 import { PROFILE } from "@/features/profile/components/profile.styles";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
+const startAlign = textAlignStart(isRtl());
+const forwardChevron: IoniconsName = isRtl() ? "chevron-back" : "chevron-forward";
 
 // ─── Helpers (module-level — no re-allocation) ────────────────────────────────
 
@@ -138,13 +141,13 @@ const MenuRow = memo(function MenuRow({
           <UIText
             variant="body-sm"
             weight="bold"
-            align="right"
+            align={startAlign}
             numberOfLines={1}
             style={danger ? mr.dangerLabel : undefined}>
             {label}
           </UIText>
           {subtitle && (
-            <UIText variant="caption" color="tertiary" align="right" numberOfLines={1}>
+            <UIText variant="caption" color="tertiary" align={startAlign} numberOfLines={1}>
               {subtitle}
             </UIText>
           )}
@@ -160,7 +163,7 @@ const MenuRow = memo(function MenuRow({
         )}
 
         {/* Chevron — logical left in RTL */}
-        <Ionicons name="chevron-back" size={15} color={theme.colors.slate[300]} />
+        <Ionicons name={forwardChevron} size={15} color={theme.colors.slate[300]} />
       </Animated.View>
     </Pressable>
   );
@@ -245,7 +248,7 @@ const LoyaltySummaryCard = memo(function LoyaltySummaryCard({
             </UIText>
           </View>
 
-          <Ionicons name="chevron-back" size={14} color={theme.colors.slate[300]} />
+          <Ionicons name={forwardChevron} size={14} color={theme.colors.slate[300]} />
         </Animated.View>
       </Pressable>
     </View>
@@ -455,7 +458,7 @@ export default function ProfileScreen() {
                 style={s.dangerLabel}>
                 {signingOut ? t("common.loading") : t("profile.logout")}
               </UIText>
-              <Ionicons name="chevron-back" size={15} color={theme.colors.error.light} />
+              <Ionicons name={forwardChevron} size={15} color={theme.colors.error.light} />
             </Pressable>
           </View>
         )}
@@ -482,7 +485,7 @@ export default function ProfileScreen() {
 // ─── SectionLabel styles ──────────────────────────────────────────────────────
 const sl = StyleSheet.create({
   row: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               8,
     paddingHorizontal: theme.layout.pagePaddingH,
@@ -504,7 +507,7 @@ const sl = StyleSheet.create({
 // ─── MenuRow styles ───────────────────────────────────────────────────────────
 const mr = StyleSheet.create({
   row: {
-    flexDirection:     "row",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     justifyContent:    "space-between",
     paddingVertical:   14,
@@ -556,7 +559,7 @@ const lc = StyleSheet.create({
     marginTop:         20,
   },
   card: {
-    flexDirection:   "row",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     gap:             14,
     backgroundColor: theme.colors.surface,
@@ -580,7 +583,7 @@ const lc = StyleSheet.create({
     gap:  5,
   },
   topRow: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
   },
@@ -634,7 +637,7 @@ const s = StyleSheet.create({
     marginTop:         theme.spacing["3xl"],   // 32
   },
   dangerCard: {
-    flexDirection:     "row",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               14,
     backgroundColor:   theme.colors.error.bg,
@@ -672,7 +675,7 @@ const s = StyleSheet.create({
     gap:           6,
   },
   footerPill: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               6,
     backgroundColor:   theme.colors.brand.lighter,

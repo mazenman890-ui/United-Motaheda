@@ -4,12 +4,13 @@
  * Replaces `<View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>`
  * patterns scattered across screens.
  *
- * `Row` defaults to RTL (`row-reverse`) since the app is Arabic-first.
- * Pass `ltr` when explicitly mixing LTR content.
+ * `Row` defaults to the app's current direction (RTL → "row-reverse", LTR → "row").
+ * Pass `ltr` to force left-to-right regardless of language setting.
  */
 
 import React from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import { flexRow } from "@/utils/layout";
 
 type Align = "start" | "center" | "end" | "stretch" | "baseline";
 type Justify = "start" | "center" | "end" | "between" | "around" | "evenly";
@@ -58,7 +59,7 @@ export function Row({
     <View
       style={[
         {
-          flexDirection: ltr ? "row" : "row-reverse",
+          flexDirection: ltr ? "row" : flexRow(),
           alignItems: ALIGN_MAP[align],
           justifyContent: JUSTIFY_MAP[justify],
           flexWrap: wrap ? "wrap" : "nowrap",

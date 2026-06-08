@@ -138,9 +138,66 @@ export const CategoryCard = memo(function CategoryCard({
     );
   }
 
-  // ── Gradient tile / pill (unchanged, backward-compat) ────────────────────────
+  // ── Gradient tile / pill ──────────────────────────────────────────────────────
   const isPill = variant === "pill";
 
+  if (isPill) {
+    return (
+      // Shadow host — no overflow:hidden so drop-shadow bleeds outside card edge.
+      <AnimPressable
+        onPress={() => {
+          if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
+          onPress?.();
+        }}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        style={[anim, pill.shadow]}>
+        {/* Inner clip — clips gradient to border radius */}
+        <LinearGradient
+          colors={[c1, c2]}
+          start={{ x: 0.15, y: 0 }}
+          end={{ x: 0.85, y: 1 }}
+          style={pill.gradient}>
+          {/* Shine orb top-right */}
+          <View style={pill.shineOrb} />
+          {/* Subtle grid line for depth */}
+          <View style={pill.gridLine} />
+
+          {/* Icon container */}
+          <View style={pill.iconWrap}>
+            {iconNode}
+          </View>
+
+          {/* Label block */}
+          <View style={pill.labelWrap}>
+            <UIText
+              variant="caption"
+              weight="bold"
+              color="inverse"
+              align="center"
+              numberOfLines={2}
+              style={pill.label}>
+              {label}
+            </UIText>
+          </View>
+
+          {/* Count badge — only when meaningful */}
+          {category.count > 0 && (
+            <View style={pill.countBadge}>
+              <UIText
+                variant="eyebrow"
+                align="center"
+                style={pill.countText}>
+                {category.count}
+              </UIText>
+            </View>
+          )}
+        </LinearGradient>
+      </AnimPressable>
+    );
+  }
+
+  // ── Tile variant ──────────────────────────────────────────────────────────────
   return (
     <AnimPressable
       onPress={() => {
@@ -152,8 +209,8 @@ export const CategoryCard = memo(function CategoryCard({
       style={[
         anim,
         {
-          width:        isPill ? 104 : undefined,
-          height:       isPill ? 168 : 132,
+          width:        undefined,
+          height:       132,
           borderRadius: theme.radius['2xl'],
           overflow:     "hidden",
           ...theme.shadow.card,
@@ -166,16 +223,14 @@ export const CategoryCard = memo(function CategoryCard({
         style={{
           flex:           1,
           alignItems:     "center",
-          justifyContent: isPill ? "space-between" : "center",
-          paddingTop:     isPill ? 20 : 0,
-          paddingBottom:  isPill ? 18 : 0,
-          gap:            isPill ? 0 : 10,
+          justifyContent: "center",
+          gap:            10,
         }}>
         <View style={{ position: "absolute", top: -30, right: -30, width: 100, height: 100, borderRadius: 50, backgroundColor: "rgba(255,255,255,0.10)" }} />
         <View style={{
-          width:           isPill ? 52 : 56,
-          height:          isPill ? 52 : 56,
-          borderRadius:    isPill ? 16 : 17,
+          width:           56,
+          height:          56,
+          borderRadius:    17,
           backgroundColor: "rgba(255,255,255,0.18)",
           alignItems:      "center",
           justifyContent:  "center",
@@ -184,20 +239,114 @@ export const CategoryCard = memo(function CategoryCard({
         }}>
           {iconNode}
         </View>
-        <View style={{ alignItems: "center", paddingHorizontal: 8, gap: 4 }}>
+        <View style={{ alignItems: "center", paddingHorizontal: 8 }}>
           <UIText
             variant="caption"
             weight="bold"
             color="inverse"
             align="center"
             numberOfLines={2}
-            style={{ lineHeight: isPill ? 15 : 17 }}>
+            style={{ lineHeight: 17 }}>
             {label}
           </UIText>
         </View>
       </LinearGradient>
     </AnimPressable>
   );
+});
+
+// ─── Pill-variant styles ──────────────────────────────────────────────────────
+// Separated shadow host from gradient clip so the drop-shadow bleeds cleanly.
+// The pill is 110 px wide × 164 px tall — wider than the old 104×168 to give
+// more breathing room to Arabic labels; slight height reduction for cleaner
+// proportions on the category strip.
+
+const pill = StyleSheet.create({
+  shadow: {
+    width:         110,
+    height:        164,
+    borderRadius:  theme.radius["2xl"],  // 22
+    // Multi-layer shadow: primary drop + subtle ambient
+    shadowColor:   "#0C2240",
+    shadowOffset:  { width: 0, height: 4 },
+    shadowOpacity: 0.14,
+    shadowRadius:  12,
+    elevation:     5,
+  },
+  gradient: {
+    flex:           1,
+    borderRadius:   theme.radius["2xl"],
+    alignItems:     "center",
+    justifyContent: "space-between",
+    paddingTop:     22,
+    paddingBottom:  16,
+    paddingHorizontal: 8,
+    overflow:       "hidden",
+    // Crisp glass border visible on light backgrounds
+    borderWidth:    1,
+    borderColor:    "rgba(255,255,255,0.20)",
+  },
+  // Decorative shine orb — top-right hemisphere
+  shineOrb: {
+    position:        "absolute",
+    top:             -28,
+    right:           -28,
+    width:           80,
+    height:          80,
+    borderRadius:    40,
+    backgroundColor: "rgba(255,255,255,0.13)",
+  },
+  // Subtle vertical grid line for spatial depth
+  gridLine: {
+    position:        "absolute",
+    top:             0,
+    bottom:          0,
+    left:            "50%",
+    width:           1,
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+  // Icon container — frosted glass bubble with clean border
+  iconWrap: {
+    width:           54,
+    height:          54,
+    borderRadius:    17,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    alignItems:      "center",
+    justifyContent:  "center",
+    borderWidth:     1,
+    borderColor:     "rgba(255,255,255,0.28)",
+    // Inner shine overlay (via background gradient not available in RN —
+    // simulate with top-inset border on the icon container)
+  },
+  // Label block — centered below icon with adequate padding for Arabic text
+  labelWrap: {
+    alignItems:        "center",
+    paddingHorizontal: 6,
+    gap:               2,
+    minHeight:         32,  // guard against label collapse on 2-line Arabic
+    justifyContent:    "center",
+  },
+  label: {
+    fontSize:           12,
+    lineHeight:         17,  // generous for Arabic diacritics
+    letterSpacing:      0,
+    includeFontPadding: false,
+  },
+  // Small count pill — tinted glass at card bottom
+  countBadge: {
+    backgroundColor:   "rgba(255,255,255,0.16)",
+    borderRadius:      999,
+    paddingHorizontal: 8,
+    paddingVertical:   2,
+    borderWidth:       1,
+    borderColor:       "rgba(255,255,255,0.22)",
+  },
+  countText: {
+    fontSize:           9,
+    color:              "rgba(255,255,255,0.80)",
+    letterSpacing:      0.3,
+    includeFontPadding: false,
+  },
 });
 
 // ─── Pastel-variant styles ────────────────────────────────────────────────────

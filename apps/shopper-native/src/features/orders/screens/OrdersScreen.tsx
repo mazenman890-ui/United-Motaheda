@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import { useAuth } from "@/features/auth";
 import type { Order } from "@/stores/orders";
 import { useOrders } from "../hooks/useOrders";
@@ -239,7 +240,7 @@ const h = StyleSheet.create({
 
   // Top row
   topRow: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     gap:            12,
   },
@@ -255,19 +256,25 @@ const h = StyleSheet.create({
   },
   backBtnSpacer: { width: 38, height: 38 },
   eyebrow: {
-    fontSize:      10,
-    fontFamily:    theme.fonts.bold,
-    color:         "rgba(255,255,255,0.50)",
-    textAlign:     "right",
-    letterSpacing: 0.4,
+    fontSize:           10,
+    fontFamily:         theme.fonts.bold,
+    color:              "rgba(255,255,255,0.50)",
+    textAlign:          textAlignStart(isRtl()),
+    letterSpacing:      0.4,
+    includeFontPadding: false,
+    lineHeight:         14,
+    textAlignVertical:  "center",
   },
   title: {
-    fontSize:      24,
-    fontFamily:    theme.fonts.black,
-    color:         theme.colors.surface,
-    textAlign:     "right",
-    letterSpacing: -0.5,
-    marginTop:     2,
+    fontSize:           24,
+    fontFamily:         theme.fonts.black,
+    color:              theme.colors.surface,
+    textAlign:          textAlignStart(isRtl()),
+    letterSpacing:      -0.5,
+    marginTop:          2,
+    includeFontPadding: false,
+    lineHeight:         30,
+    textAlignVertical:  "center",
   },
   iconTile: {
     width:           38,
@@ -282,7 +289,7 @@ const h = StyleSheet.create({
 
   // Stat pills — inline in header, no separate floating card
   statsRow: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     backgroundColor: "rgba(255,255,255,0.08)",
     borderRadius:    16,
     borderWidth:     1,
@@ -291,7 +298,7 @@ const h = StyleSheet.create({
   },
   statPill: {
     flex:            1,
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     justifyContent:  "center",
     gap:             8,
@@ -308,16 +315,19 @@ const h = StyleSheet.create({
     flexShrink:   0,
   },
   statVal: {
-    fontFamily:    theme.fonts.black,
-    fontSize:      18,
-    color:         theme.colors.surface,
-    letterSpacing: -0.4,
+    fontFamily:         theme.fonts.black,
+    fontSize:           18,
+    color:              theme.colors.surface,
+    letterSpacing:      -0.4,
+    includeFontPadding: false,
+    lineHeight:         24,
   },
   statLbl: {
-    fontFamily: theme.fonts.regular,
-    fontSize:   9,
-    color:      "rgba(255,255,255,0.50)",
-    textAlign:  "center",
-    lineHeight: 12,
+    fontFamily:         theme.fonts.regular,
+    fontSize:           9,
+    color:              "rgba(255,255,255,0.50)",
+    textAlign:          "center",
+    lineHeight:         13,
+    includeFontPadding: false,
   },
 });

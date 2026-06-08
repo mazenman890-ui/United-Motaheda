@@ -7,6 +7,7 @@
  */
 import { StyleSheet } from "react-native";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl } from "@/utils/layout";
 
 // ─── Glass overlay constants ──────────────────────────────────────────────────
 /** Semi-transparent white values for glass surfaces on the hero gradient. */
@@ -101,7 +102,9 @@ export const styles = StyleSheet.create({
   heroIconBadge: {
     position:          "absolute",
     top:               -4,
-    left:              -4,
+    // Use end instead of left so the badge sits at the logical end of the
+    // icon tile — physical right in LTR, physical left in RTL.
+    end:               -4,
     minWidth:          18,
     height:            18,
     paddingHorizontal: theme.spacing.xs,
@@ -113,10 +116,11 @@ export const styles = StyleSheet.create({
     justifyContent:    "center",
   },
   heroIconBadgeText: {
-    color:      theme.colors.surface,
-    fontSize:   10,
-    lineHeight: 12,
-    fontFamily: theme.fonts.extrabold,
+    color:              theme.colors.surface,
+    fontSize:           10,
+    lineHeight:         12,
+    fontFamily:         theme.fonts.extrabold,
+    includeFontPadding: false,
   },
 
   // ── Avatar ──
@@ -142,9 +146,12 @@ export const styles = StyleSheet.create({
     borderColor:     HERO_GLASS.w25,
   },
   avatarLetter: {
-    fontSize:   32,
-    fontFamily: theme.fonts.black,
-    color:      theme.colors.heroMid,
+    fontSize:           32,
+    fontFamily:         theme.fonts.black,
+    color:              theme.colors.heroMid,
+    includeFontPadding: false,
+    textAlignVertical:  "center",
+    lineHeight:         38,
   },
   tierBadge: {
     position:       "absolute",
@@ -190,9 +197,9 @@ export const styles = StyleSheet.create({
   // ── Guest hero ──
   guestHero: {
     paddingHorizontal: theme.layout.pagePaddingH,  // 20 — consistent with auth hero
-    paddingBottom:     34,
+    paddingBottom:     44,
     alignItems:        "center",
-    gap:               10,
+    gap:               20,
     overflow:          "hidden",
   },
   guestAvatar: {
@@ -375,7 +382,7 @@ export const styles = StyleSheet.create({
   // "row-reverse" was causing double-reversal (RTL flip + row-reverse = LTR),
   // which destroyed the visual hierarchy.
   menuRow: {
-    flexDirection:     "row",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               theme.spacing.md,
     paddingHorizontal: theme.spacing.lg,

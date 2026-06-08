@@ -19,6 +19,7 @@ import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { styles as sharedStyles, HERO_GLASS } from "./profile.styles";
+import { flexRow, isRtl } from "@/utils/layout";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -97,18 +98,20 @@ export const ProfileGuestHero = memo(function ProfileGuestHero({
         </Pressable>
       </View>
 
-      {/* ── Feature rows (what you get) ── */}
+      {/* ── Feature rows — wrapped in glass card ── */}
       <View style={s.featuresWrap}>
-        {FEATURES.map((f) => (
-          <View key={f.labelKey} style={s.featureRow}>
-            <View style={[s.featureIcon, { backgroundColor: f.bg }]}>
-              <Ionicons name={f.icon} size={15} color={f.color} />
+        <View style={s.glassCard}>
+          {FEATURES.map((f) => (
+            <View key={f.labelKey} style={s.featureRow}>
+              <View style={[s.featureIcon, { backgroundColor: f.bg }]}>
+                <Ionicons name={f.icon} size={15} color={f.color} />
+              </View>
+              <UIText variant="caption" style={s.featureLabel}>
+                {t(f.labelKey)}
+              </UIText>
             </View>
-            <UIText variant="caption" style={s.featureLabel} align="right">
-              {t(f.labelKey)}
-            </UIText>
-          </View>
-        ))}
+          ))}
+        </View>
       </View>
     </LinearGradient>
   );
@@ -152,7 +155,7 @@ const s = StyleSheet.create({
     width:        "100%",
   },
   loginGrad: {
-    flexDirection:   "row",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     justifyContent:  "center",
     gap:             10,
@@ -181,14 +184,23 @@ const s = StyleSheet.create({
   },
 
   featuresWrap: {
-    width:         "100%",
-    gap:           8,
-    paddingTop:    4,
+    width:      "100%",
+    paddingTop: 4,
+  },
+  // Glass card wrapping all feature rows — surface with subtle border
+  glassCard: {
+    backgroundColor: HERO_GLASS.w10,
+    borderRadius:    16,
+    borderWidth:     1,
+    borderColor:     HERO_GLASS.w18,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    gap:             12,
   },
   featureRow: {
-    flexDirection: "row",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
-    gap:           12,
+    gap:           10,
   },
   featureIcon: {
     width:          30,
@@ -199,7 +211,7 @@ const s = StyleSheet.create({
     flexShrink:     0,
   },
   featureLabel: {
-    flex:       1,
+    flex:       0,
     color:      HERO_GLASS.w70,
     fontSize:   12.5,
     lineHeight: 18,

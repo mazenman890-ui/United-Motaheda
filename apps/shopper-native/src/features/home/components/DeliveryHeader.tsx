@@ -21,6 +21,7 @@ import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { AppLogo } from "@/shared/components/AppLogo";
+import { flexRow, isRtl } from "@/utils/layout";
 
 // Returns an Ionicons name matching the current time of day
 function getTimeIcon(): React.ComponentProps<typeof Ionicons>["name"] {
@@ -150,7 +151,7 @@ export const DeliveryHeader = memo(function DeliveryHeader({
 
 const s = StyleSheet.create({
   hero: {
-    paddingBottom:     24,   // chips row takes the extra space
+    paddingBottom:     36,
     paddingHorizontal: theme.layout.pagePaddingH,
     overflow:          "hidden",
   },
@@ -217,9 +218,9 @@ const s = StyleSheet.create({
     marginBottom: 18,
   },
   greetingRow: {
-    flexDirection:  "row",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
-    justifyContent: "flex-end",
+    justifyContent: "flex-start",
     gap:            6,
   },
   greetingText: {
@@ -237,15 +238,18 @@ const s = StyleSheet.create({
     lineHeight: 18,
   },
   searchBar: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               12,
-    backgroundColor:   "rgba(255,255,255,0.08)",
+    backgroundColor:   "rgba(255,255,255,0.10)",
     borderRadius:      20,
     paddingHorizontal: 16,
     paddingVertical:   14,
-    borderWidth:       1,
-    borderColor:       "rgba(255,255,255,0.14)",
+    shadowColor:       "#000",
+    shadowOffset:      { width: 0, height: 2 },
+    shadowOpacity:     0.18,
+    shadowRadius:      8,
+    elevation:         3,
   },
   searchPlaceholder: {
     flex:   1,
@@ -260,8 +264,8 @@ const s = StyleSheet.create({
 
   // ── Quick-access chips below search bar ─────────────────────────────────────
   chipRow: {
-    flexDirection:  "row",
-    justifyContent: "flex-end",
+    flexDirection:  flexRow(isRtl()),
+    justifyContent: "flex-start",
     gap:            8,
     marginTop:      10,
   },
