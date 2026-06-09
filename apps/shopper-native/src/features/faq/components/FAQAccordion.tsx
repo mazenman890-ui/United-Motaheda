@@ -14,6 +14,7 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import type { FAQItem } from "../data";
 import { FAQ_CATEGORIES } from "../data";
 
@@ -112,7 +113,7 @@ const styles = StyleSheet.create({
     ...theme.shadow.sm,
   },
   questionRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "flex-start",
     gap: 10,
   },
@@ -127,7 +128,7 @@ const styles = StyleSheet.create({
     fontSize:   14,                        // bumped from 13 → more readable
     fontFamily: theme.fonts.black,         // bold by default (was: bold)
     color:      theme.colors.text.primary, // was slate[700]
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     lineHeight: 22,                        // generous rhythm
   },
   questionExpanded: {
@@ -156,7 +157,7 @@ const styles = StyleSheet.create({
     fontSize:   13,
     fontFamily: theme.fonts.regular,
     color:      theme.colors.text.muted,   // softer hierarchy vs question (theme.colors.text.muted)
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     lineHeight: 24,                        // editorial rhythm
   },
   catPill: {

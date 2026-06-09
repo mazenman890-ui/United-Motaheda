@@ -34,6 +34,7 @@ import type {
   Prescription,
   RxStatus,
 } from "@/stores/prescriptionsStore";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 export type { Prescription, RxStatus };
 
@@ -163,11 +164,11 @@ export const RxCard = memo(
 
 const s = StyleSheet.create({
   flex1:    { flex: 1 },
-  textRight:{ textAlign: "right" },
+  textRight:{ textAlign: textAlignStart(isRtl()) },
 
   // ── Active variant ─────────────────────────────────────────────────────────
   activeTopRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           theme.spacing[1.5],
   },
@@ -181,7 +182,7 @@ const s = StyleSheet.create({
   },
   doseText: {
     marginTop: 2,
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
   },
   activeDivider: {
     height:          1,
@@ -189,18 +190,18 @@ const s = StyleSheet.create({
     marginVertical:  theme.spacing[1.5],
   },
   activeMetaRow: {
-    flexDirection:  "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
   },
   nextRefillValue: {
     marginTop: 2,
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
   },
 
   // ── List variant ───────────────────────────────────────────────────────────
   listCard: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "center",
     gap:               theme.spacing[1.5],
     paddingVertical:   14,

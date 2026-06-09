@@ -26,10 +26,12 @@ import { useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
+import { flexRow, isRtl } from "@/utils/layout";
 import { Text } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { useScreenTrace } from "@/features/observability";
 import { useAuth } from "@/features/auth/context";
+import { flexRow, isRtl } from "@/utils/layout";
 
 import { useLoyaltyBalance }  from "../hooks/useLoyaltyBalance";
 import { useRewardTiers }     from "../hooks/useRewardTiers";
@@ -282,7 +284,7 @@ function HeroSkeleton() {
       <View style={s.skeletonHero} />
       <View style={{ paddingHorizontal: 16, gap: 10 }}>
         <View style={s.skeletonRow} />
-        <View style={{ flexDirection: "row-reverse", gap: 8 }}>
+        <View style={{ flexDirection: flexRow(isRtl()), gap: 8 }}>
           {[0, 1, 2].map((i) => <View key={i} style={s.skeletonCard} />)}
         </View>
         <View style={s.skeletonRow} />
@@ -306,7 +308,7 @@ function blurActiveElementOnWeb() {
 
 const s = StyleSheet.create({
   campaignsBadge: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               5,
     paddingHorizontal: 12,
@@ -354,7 +356,7 @@ const s = StyleSheet.create({
   },
   retryBtn:  { marginTop: 12, borderRadius: 14, overflow: "hidden" },
   retryGrad: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               8,
     paddingHorizontal: 24,

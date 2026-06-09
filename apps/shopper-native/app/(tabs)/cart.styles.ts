@@ -10,6 +10,7 @@
  */
 import { StyleSheet } from "react-native";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 // ─── Palette constants ────────────────────────────────────────────────────────
 
@@ -93,12 +94,12 @@ export const s = StyleSheet.create({
     backgroundColor: TEAL_GLASS.orb,
   },
   headerRow: {
-    flexDirection:  "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
   },
   headerLeft: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           theme.spacing.md,
   },
@@ -116,14 +117,14 @@ export const s = StyleSheet.create({
     fontFamily:    theme.fonts.bold,
     fontSize:      10,
     color:         HEADER_WHITE45,
-    textAlign:     "right",
+    textAlign: textAlignStart(isRtl()),
     letterSpacing: 0.4,
   },
   headerTitle: {
     fontFamily:    theme.fonts.black,
     fontSize:      22,
     color:         theme.colors.surface,
-    textAlign:     "right",
+    textAlign: textAlignStart(isRtl()),
     letterSpacing: -0.4,
     marginTop:     1,
   },
@@ -164,7 +165,7 @@ export const s = StyleSheet.create({
 
   // ── List header components ─────────────────────────────────────────────────
   warnBanner: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "center",
     gap:               10,
     backgroundColor:   theme.colors.amber[50],
@@ -180,11 +181,11 @@ export const s = StyleSheet.create({
     fontFamily: theme.fonts.semibold,
     fontSize:   12,
     color:      theme.colors.amber[900],
-    textAlign:  "right",
+    textAlign: textAlignStart(isRtl()),
     lineHeight: 18,
   },
   branchPill: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "center",
     gap:               theme.spacing.md,
     backgroundColor:   theme.colors.surface,
@@ -214,13 +215,13 @@ export const s = StyleSheet.create({
     fontFamily: theme.fonts.regular,
     fontSize:   10,
     color:      theme.colors.text.tertiary,
-    textAlign:  "right",
+    textAlign: textAlignStart(isRtl()),
   },
   branchName: {
     fontFamily:    theme.fonts.black,
     fontSize:      13,
     color:         theme.colors.text.primary,
-    textAlign:     "right",
+    textAlign: textAlignStart(isRtl()),
     marginTop:     1,
   },
   deliveryCard: {
@@ -235,7 +236,7 @@ export const s = StyleSheet.create({
     elevation:       3,
   },
   freeRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           14,
   },
@@ -251,24 +252,24 @@ export const s = StyleSheet.create({
     fontFamily:    theme.fonts.black,
     fontSize:      15,
     color:         FREE_GREEN.deep,
-    textAlign:     "right",
+    textAlign: textAlignStart(isRtl()),
     letterSpacing: -0.2,
   },
   freeSub: {
     fontFamily: theme.fonts.regular,
     fontSize:   11,
     color:      FREE_GREEN.bright,
-    textAlign:  "right",
+    textAlign: textAlignStart(isRtl()),
     marginTop:  2,
   },
   progressHeader: {
-    flexDirection:  "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
     marginBottom:   10,
   },
   progressLeft: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           7,
     flex:          1,
@@ -277,7 +278,7 @@ export const s = StyleSheet.create({
     fontFamily: theme.fonts.semibold,
     fontSize:   12,
     color:      theme.colors.text.secondary,
-    textAlign:  "right",
+    textAlign: textAlignStart(isRtl()),
     flex:       1,
   },
   progressPct: {
@@ -298,7 +299,7 @@ export const s = StyleSheet.create({
     borderRadius:    4,
   },
   trustRow: {
-    flexDirection:   "row-reverse",
+    flexDirection: flexRow(isRtl()),
     backgroundColor: theme.colors.surface,
     borderRadius:    16,
     paddingVertical: 14,
@@ -353,7 +354,7 @@ export const s = StyleSheet.create({
     borderColor:      DARK_OVERLAY.d05,
   },
   cardTopRow: {
-    flexDirection:  "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
   },
@@ -363,7 +364,7 @@ export const s = StyleSheet.create({
     color:         theme.colors.text.tertiary,
     textTransform: "uppercase",
     letterSpacing: 0.5,
-    textAlign:     "right",
+    textAlign: textAlignStart(isRtl()),
   },
   deleteBtn: {
     width:           30,
@@ -376,7 +377,7 @@ export const s = StyleSheet.create({
     justifyContent:  "center",
   },
   cardMidRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "flex-start",
     gap:           theme.spacing.md,
   },
@@ -399,18 +400,18 @@ export const s = StyleSheet.create({
     fontFamily:    theme.fonts.black,
     fontSize:      14,
     color:         theme.colors.text.primary,
-    textAlign:     "right",
+    textAlign: textAlignStart(isRtl()),
     lineHeight:    21,
     letterSpacing: -0.2,
   },
   cardBottomRow: {
-    flexDirection:  "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
     marginTop:      2,
   },
   priceWrap: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "baseline",
     gap:           theme.spacing.xs,
   },
@@ -475,7 +476,7 @@ export const s = StyleSheet.create({
     color: theme.colors.amber[700],
   },
   maxHint: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "center",
     gap:               theme.spacing.xs,
     alignSelf:         "flex-start",
@@ -522,7 +523,7 @@ export const s = StyleSheet.create({
     borderBottomColor: DARK_OVERLAY.d07,
   },
   totalRow: {
-    flexDirection:  "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
   },
@@ -560,7 +561,7 @@ export const s = StyleSheet.create({
     fontFamily: theme.fonts.regular,
     fontSize:   11,
     color:      theme.colors.text.tertiary,
-    textAlign:  "right",
+    textAlign: textAlignStart(isRtl()),
   },
   priceRow: {
     flexDirection: "row",   // RTL auto-mirrors: currency right of number
@@ -586,7 +587,7 @@ export const s = StyleSheet.create({
     maxWidth:     220,
   },
   checkoutGrad: {
-    flexDirection:   "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:      "center",
     justifyContent:  "center",
     gap:             8,

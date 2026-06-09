@@ -16,6 +16,7 @@ import {
   type NativeProduct,
   type ProductSortMode,
 } from "@/features/products";
+import { flexRow, isRtl } from "@/utils/layout";
 
 const SORT_OPTIONS: { id: ProductSortMode; labelKey: string; icon: React.ComponentProps<typeof Ionicons>["name"] }[] = [
   { id: "newest",     labelKey: "category.sortNewest",    icon: "time-outline" },
@@ -84,7 +85,7 @@ export default function CategoryScreen() {
         <View style={{ position: "absolute", right: -24, top: -24, width: 100, height: 100, borderRadius: 50, backgroundColor: "rgba(255,255,255,0.06)" }} />
 
         {/* Top row */}
-        <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 12, marginBottom: 12 }}>
+        <View style={{ flexDirection: flexRow(isRtl()), alignItems: "center", gap: 12, marginBottom: 12 }}>
           <Pressable
             onPress={() => router.back()}
             hitSlop={10}
@@ -136,7 +137,7 @@ export default function CategoryScreen() {
               setInStockOnly((v) => !v);
             }}
             style={{
-              flexDirection:    "row-reverse",
+              flexDirection: flexRow(isRtl()),
               alignItems:       "center",
               gap:              5,
               paddingHorizontal: 12,
@@ -161,7 +162,7 @@ export default function CategoryScreen() {
                   setSortBy(opt.id);
                 }}
                 style={{
-                  flexDirection:    "row-reverse",
+                  flexDirection: flexRow(isRtl()),
                   alignItems:       "center",
                   gap:              5,
                   paddingHorizontal: 12,
@@ -191,7 +192,7 @@ export default function CategoryScreen() {
           numColumns={2}
           keyExtractor={(k) => String(k)}
           contentContainerStyle={{ padding: 12, gap: 10 }}
-          columnWrapperStyle={{ gap: 10, flexDirection: "row-reverse" }}
+          columnWrapperStyle={{ gap: 10, flexDirection: flexRow(isRtl()) }}
           showsVerticalScrollIndicator={false}
           renderItem={() => (
             <View style={{ flex: 1 }}>

@@ -22,6 +22,7 @@ import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
+import { isRtl, textAlignStart } from "@/utils/layout";
 import { useAppLanguage } from "@/i18n/LanguageProvider";
 
 const WA_NUMBER = "201112343212";
@@ -215,17 +216,17 @@ const s = StyleSheet.create({
   eyebrow: {
     color:         "#5EEAD4",
     letterSpacing: 0.5,
-    textAlign:     "right",
+    textAlign:     textAlignStart(isRtl()),
   },
   title: {
     color:         "#FFFFFF",
-    textAlign:     "right",
+    textAlign:     textAlignStart(isRtl()),
     letterSpacing: -0.3,
   },
   sub: {
     color:      "rgba(255,255,255,0.55)",
     lineHeight: 18,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
 
   // ── WhatsApp pill CTA ───────────────────────────────────────────────────────

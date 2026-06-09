@@ -28,6 +28,7 @@ import {
 import { FlashList } from "@shopify/flash-list";
 import { ProductCard } from "@/components/ProductCard";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl } from "@/utils/layout";
 import type { NativeProduct } from "../types";
 
 const ITEM_TYPE_PRODUCT = "p" as const;
@@ -172,5 +173,5 @@ const cellStyle = {
 } as const;
 
 const columnWrapperStyle = {
-  flexDirection: "row-reverse" as const,
+  flexDirection: flexRow(isRtl()) as const,
 };

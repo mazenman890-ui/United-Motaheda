@@ -52,35 +52,58 @@ export const styles = StyleSheet.create({
     paddingBottom:     58,
     overflow:          "hidden",
   },
+  // Richer layered geometry — four orbs of varying scale/opacity + a stripe
+  // heroDecor1: larger (220) with stronger teal opacity for more bloom presence
   heroDecor1: {
     position:        "absolute",
-    right:           -40,
-    top:             -40,
-    width:           140,
-    height:          140,
-    borderRadius:    70,
-    backgroundColor: HERO_GLASS.w04,
+    right:           -60,
+    top:             -60,
+    width:           220,
+    height:          220,
+    borderRadius:    110,
+    backgroundColor: "rgba(13,184,168,0.09)",
   },
   heroDecor2: {
     position:        "absolute",
-    left:            -30,
-    bottom:          -50,
-    width:           120,
-    height:          120,
-    borderRadius:    60,
+    left:            -50,
+    bottom:          -60,
+    width:           180,
+    height:          180,
+    borderRadius:    90,
     backgroundColor: HERO_GLASS.w025,
   },
+  // heroDecor3: slightly larger (80×80) for better visual balance
   heroDecor3: {
     position:        "absolute",
-    right:           60,
-    top:             40,
-    width:           50,
-    height:          50,
-    borderRadius:    25,
-    backgroundColor: HERO_GLASS.w02,
+    right:           70,
+    top:             50,
+    width:           80,
+    height:          80,
+    borderRadius:    40,
+    backgroundColor: "rgba(13,184,168,0.06)",
+  },
+  // heroDecor4: new — subtle light orb on the opposite corner for depth
+  heroDecor4: {
+    position:        "absolute",
+    left:            30,
+    top:             80,
+    width:           100,
+    height:          100,
+    borderRadius:    50,
+    backgroundColor: "rgba(255,255,255,0.02)",
+  },
+  // Diagonal stripe — subtle scan line across the hero
+  heroDecorStripe: {
+    position:        "absolute",
+    top:             -20,
+    left:            -120,
+    right:           -120,
+    height:          1.5,
+    backgroundColor: HERO_GLASS.w04,
+    transform:       [{ rotate: "-8deg" }],
   },
   heroTopBar: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
     marginBottom:   22,
@@ -123,67 +146,96 @@ export const styles = StyleSheet.create({
     includeFontPadding: false,
   },
 
-  // ── Avatar ──
-  heroIdentity:    { alignItems: "center", gap: 5 },
-  avatarContainer: { position: "relative", marginBottom: 10 },
+  // ── Avatar + identity — asymmetric horizontal layout ──
+  // Avatar floats to the logical start edge; name / email / tier chip stack
+  // vertically in the identity column beside it. More editorial than the old
+  // centered-column approach.
+  heroIdentity: {
+    flexDirection: flexRow(isRtl()),
+    alignItems:    "center",
+    gap:           16,
+    paddingHorizontal: 4,
+  },
+  heroIdentityCol: {
+    flex: 1,
+    gap:  6,
+  },
+  avatarContainer: { position: "relative" },
+  // avatarGlow: larger borderRadius (35) and higher opacity (0.75) for
+  // a stronger tier-colour halo effect around the avatar.
   avatarGlow: {
     position:     "absolute",
     top:          -4,
     left:         -4,
     right:        -4,
     bottom:       -4,
-    borderRadius: 30,
-    opacity:      0.6,
+    borderRadius: 35,
+    opacity:      0.75,
   },
+  // avatarRing: subtle white hairline ring outside the glow for premium depth.
+  // Rendered as the first child in avatarContainer (behind the glow).
+  avatarRing: {
+    position:     "absolute",
+    top:          -6,
+    left:         -6,
+    right:        -6,
+    bottom:       -6,
+    borderRadius: 37,
+    borderWidth:  1,
+    borderColor:  "rgba(255,255,255,0.12)",
+  },
+  // avatar: 90×90 (was 88) for a slightly stronger identity presence
   avatar: {
-    width:           80,
-    height:          80,
-    borderRadius:    26,
+    width:           90,
+    height:          90,
+    borderRadius:    30,
     backgroundColor: theme.colors.surface,
     alignItems:      "center",
     justifyContent:  "center",
     borderWidth:     3,
     borderColor:     HERO_GLASS.w25,
   },
+  // avatarLetter: 38px (was 36) — bolder initials
   avatarLetter: {
-    fontSize:           32,
+    fontSize:           38,
     fontFamily:         theme.fonts.black,
     color:              theme.colors.heroMid,
     includeFontPadding: false,
     textAlignVertical:  "center",
-    lineHeight:         38,
+    lineHeight:         46,
   },
   tierBadge: {
     position:       "absolute",
-    bottom:         -3,
-    right:          -3,
-    width:          24,
-    height:         24,
-    borderRadius:   12,
+    bottom:         -4,
+    right:          -4,
+    width:          26,
+    height:         26,
+    borderRadius:   13,
     alignItems:     "center",
     justifyContent: "center",
     borderWidth:    2.5,
     borderColor:    theme.colors.surface,
   },
-  heroTextGroup: { alignItems: "center", gap: theme.spacing.xs },
+  heroTextGroup: { alignItems: "flex-start", gap: theme.spacing.xs },
   userNameNew:   { letterSpacing: -0.4 },
 
-  // ── Tier chip ──
+  // ── Tier chip — sits below name/email in the identity column ──
   tierChip: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               7,
     backgroundColor:   HERO_GLASS.w13,
     borderRadius:      999,
     paddingHorizontal: 14,
     paddingVertical:   7,
-    marginTop:         10,
+    alignSelf:         "flex-start",   // was marginTop:10, now inline with col
+    marginTop:         4,
     borderWidth:       1,
     borderColor:       HERO_GLASS.w15,
   },
   tierChipLabelNew: { color: HERO_GLASS.w92 },
   pointsChip: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               3,
     backgroundColor:   HERO_GLASS.w12,
@@ -242,27 +294,32 @@ export const styles = StyleSheet.create({
     borderColor:     HERO_GLASS.w18,
   },
 
-  // ── Stats card — clinical lifted surface, hairline dividers ──
+  // ── Stats card — premium lifted surface, hairline dividers ──
+  // marginTop: -40 (was -36) — deeper overlap for a more dramatic hero emergence.
+  // borderRadius: 24, paddingVertical: 22 — more generous, premium proportions.
   statsCard: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     backgroundColor:   theme.colors.surface,
-    marginHorizontal:  theme.layout.pagePaddingH,  // 20 — matches section bounds
-    marginTop:         -36,
-    borderRadius:      20,
-    paddingVertical:   18,
+    marginHorizontal:  theme.layout.pagePaddingH,
+    marginTop:         -40,
+    borderRadius:      24,
+    paddingVertical:   22,
     paddingHorizontal: theme.spacing.xs,
-    ...theme.shadow.lg,
-    shadowOpacity:     0.10,
+    ...theme.shadow.xl,
+    shadowOpacity:     0.12,
+    borderWidth:       1,
+    borderColor:       theme.colors.border.hairline,
   },
   statCol: {
     flex:       1,
     alignItems: "center",
     gap:        6,
   },
+  // statIconWrap: 40×40 (was 38), borderRadius 13 (was 12) — more spacious
   statIconWrap: {
-    width:          34,
-    height:         34,
-    borderRadius:   11,
+    width:          40,
+    height:         40,
+    borderRadius:   13,
     alignItems:     "center",
     justifyContent: "center",
     marginBottom:   2,
@@ -270,10 +327,11 @@ export const styles = StyleSheet.create({
   },
   statDivider: {
     width:           StyleSheet.hairlineWidth,
-    backgroundColor: theme.colors.border.hairline,
+    backgroundColor: theme.colors.border.default,
     marginVertical:  10,
   },
-  statValueNew: { letterSpacing: -0.3 },
+  // letterSpacing: -0.4 (was -0.3) — tighter for premium numerals
+  statValueNew: { letterSpacing: -0.4 },
 
   // ── Quick last-order card ──
   quickCardWrap: {
@@ -281,7 +339,7 @@ export const styles = StyleSheet.create({
     marginTop:         14,
   },
   quickCard: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     gap:             theme.spacing.md,
     backgroundColor: theme.colors.surface,
@@ -298,6 +356,7 @@ export const styles = StyleSheet.create({
     borderColor:     theme.colors.border.brandSoft,
     alignItems:      "center",
     justifyContent:  "center",
+    overflow:        "hidden",
   },
   quickCardSubNew: {
     marginTop:     2,
@@ -312,51 +371,56 @@ export const styles = StyleSheet.create({
   },
 
   // ── Quick action grid ──
+  // quickGridItem: borderRadius 20, paddingVertical 22, heavier shadow
   quickGrid: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     gap:               10,
-    paddingHorizontal: theme.layout.pagePaddingH,  // 20 — matches section bounds
-    marginTop:         18,
+    paddingHorizontal: theme.layout.pagePaddingH,
+    marginTop:         20,
   },
   quickGridItem: {
     flex:              1,
     backgroundColor:   theme.colors.surface,
-    borderRadius:      16,
-    paddingVertical:   theme.spacing.lg,
+    borderRadius:      20,
+    paddingVertical:   22,
     paddingHorizontal: theme.spacing.sm,
     alignItems:        "center",
-    gap:               10,
+    gap:               12,
     shadowColor:       theme.colors.hero,
-    shadowOffset:      { width: 0, height: 3 },
-    shadowOpacity:     0.08,
-    shadowRadius:      8,
-    elevation:         3,
+    shadowOffset:      { width: 0, height: 6 },
+    shadowOpacity:     0.10,
+    shadowRadius:      14,
+    elevation:         5,
+    borderWidth:       1,
+    borderColor:       theme.colors.border.hairline,
   },
   quickGridIconShadow: {
-    borderRadius:  16,
+    borderRadius:  20,
     shadowColor:   PROFILE.shadowDark,
-    shadowOffset:  { width: 0, height: 3 },
-    shadowOpacity: 0.20,
-    shadowRadius:  8,
-    elevation:     4,
+    shadowOffset:  { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius:  10,
+    elevation:     5,
   },
+  // quickGridIconWrap: 60×60 (was 58), borderRadius 20 (was 18)
   quickGridIconWrap: {
-    width:          52,
-    height:         52,
-    borderRadius:   16,
+    width:          60,
+    height:         60,
+    borderRadius:   20,
     alignItems:     "center",
     justifyContent: "center",
     overflow:       "hidden",
   },
+  // quickGridShine: slightly less opacity (0.15 vs 0.18), height 44% (was 48%)
   quickGridShine: {
     position:             "absolute",
     top:                  0,
     left:                 0,
     right:                0,
-    height:               "50%",
-    backgroundColor:      HERO_GLASS.w16,
-    borderTopLeftRadius:  16,
-    borderTopRightRadius: 16,
+    height:               "44%",
+    backgroundColor:      "rgba(255,255,255,0.15)",
+    borderTopLeftRadius:  20,
+    borderTopRightRadius: 20,
   },
 
   // ── Sections ──
@@ -429,7 +493,7 @@ export const styles = StyleSheet.create({
     paddingBottom: theme.spacing.md,
   },
   footerBrand: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               6,
     backgroundColor:   theme.colors.brand.lighter,

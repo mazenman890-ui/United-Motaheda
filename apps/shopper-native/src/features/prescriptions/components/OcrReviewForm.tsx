@@ -14,11 +14,13 @@
 
 import React, { useMemo, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import { Ionicons } from "@expo/vector-icons";
 import { Text } from "@/shared/ui";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import type { RxStatus } from "@/stores/prescriptionsStore";
 import type { ParsedRx } from "../lib/parseRxText";
 
@@ -68,7 +70,7 @@ function Field({
   return (
     <View style={{ gap: theme.spacing[0.5] }}>
       <View style={styles.labelRow}>
-        <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: theme.spacing[0.5] }}>
+        <View style={{ flexDirection: flexRow(isRtl()), alignItems: "center", gap: theme.spacing[0.5] }}>
           <Text variant="caption" weight="bold" align="right">
             {label}{required ? " *" : ""}
           </Text>
@@ -81,7 +83,7 @@ function Field({
         placeholder={placeholder}
         accessibilityLabel={label}
         keyboardType={numeric ? "number-pad" : "default"}
-        textAlign="right"
+        textAlign={textAlignStart(isRtl()) as "left" | "right"}
       />
     </View>
   );
@@ -211,7 +213,7 @@ export function OcrReviewForm({
 
 const styles = StyleSheet.create({
   badge: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               theme.spacing[0.5],
     paddingHorizontal: 6,
@@ -222,12 +224,12 @@ const styles = StyleSheet.create({
     borderColor:       theme.colors.brand.light,
   },
   labelRow: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
   },
   banner: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "flex-start",
     gap:             theme.spacing[1],
     padding:         theme.spacing[1.5],

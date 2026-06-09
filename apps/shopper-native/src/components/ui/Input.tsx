@@ -6,6 +6,9 @@ import {
   type TextInputProps,
   type ViewStyle,
 } from "react-native";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
+
+const _isRtl = isRtl();
 import { Text as UIText } from "@/shared/ui";
 import Animated, {
   useAnimatedStyle,
@@ -83,12 +86,12 @@ export function Input({
     <View style={[{ gap: 6 }, containerStyle]}>
       {/* Label row */}
       {label && (
-        <View style={{ flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" }}>
+        <View style={{ flexDirection: flexRow(_isRtl), alignItems: "center", justifyContent: "space-between" }}>
           <UIText style={{
             fontSize:   theme.fontSize.sm,
             fontFamily: theme.fonts.semibold,
             color:      error ? theme.colors.error.text : theme.colors.text.primary,
-            textAlign:  "right",
+            textAlign:  textAlignStart(_isRtl),
           }}>
             {label}
           </UIText>
@@ -103,7 +106,7 @@ export function Input({
       <AnimView
         style={[
           {
-            flexDirection:     "row-reverse",
+            flexDirection:     flexRow(_isRtl),
             alignItems:        multiline ? "flex-start" : "center",
             minHeight,
             borderRadius:      theme.radius.lg,
@@ -128,7 +131,7 @@ export function Input({
             fontSize:       theme.fontSize.md,
             fontFamily:     theme.fonts.regular,
             color:          theme.colors.text.primary,
-            textAlign:      "right",
+            textAlign:      textAlignStart(_isRtl),
             // Android: pin cursor + text to the top of the textarea.
             // iOS ignores this prop (already top-aligns by default).
             textAlignVertical: multiline ? "top" : "center",
@@ -160,7 +163,7 @@ export function Input({
           fontSize:  theme.fontSize.xs,
           fontFamily: theme.fonts.regular,
           color:     error ? theme.colors.error.base : theme.colors.text.tertiary,
-          textAlign: "right",
+          textAlign: textAlignStart(_isRtl),
           marginTop: 2,
         }}>
           {error ?? hint}

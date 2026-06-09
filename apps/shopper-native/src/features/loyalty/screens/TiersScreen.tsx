@@ -18,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import { theme } from "@/shared/theme";
 import { useScreenTrace } from "@/features/observability";
 import { SubScreenHeader } from "../components/SubScreenHeader";
@@ -272,7 +273,7 @@ const styles = StyleSheet.create({
     borderRadius:      16,
     padding:           16,
     marginTop:         4,
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     justifyContent:    "space-between",
     gap:               12,
@@ -283,13 +284,13 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.regular,
     fontSize:   11,
     color:      theme.colors.text.tertiary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
   statusTier: {
     fontFamily: theme.fonts.black,
     fontSize:   18,
     color:      theme.colors.text.primary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
   statusProgress: {
     flex: 1,
@@ -299,7 +300,7 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.bold,
     fontSize:   11,
     color:      theme.colors.text.secondary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
   progressTrack: {
     height:          6,
@@ -314,7 +315,7 @@ const styles = StyleSheet.create({
   },
 
   tierCard: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     gap:             12,
     backgroundColor: theme.colors.surface,
     borderRadius:    14,
@@ -330,7 +331,7 @@ const styles = StyleSheet.create({
     justifyContent:  "center",
   },
   tierHead: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     gap:            6,
     marginBottom:   4,
@@ -353,11 +354,11 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.regular,
     fontSize:   11,
     color:      theme.colors.text.secondary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     marginBottom: 4,
   },
   multiplierRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           4,
   },
@@ -381,7 +382,7 @@ const styles = StyleSheet.create({
     marginTop:  8,
   },
   primaryBtn: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               8,
     backgroundColor:   theme.colors.brand[600],

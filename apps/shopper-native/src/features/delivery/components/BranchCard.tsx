@@ -10,6 +10,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import type { Branch } from "../branches/types";
 
 interface BranchCardProps {
@@ -98,7 +99,7 @@ export const BranchCard = memo(function BranchCard({
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "flex-start",
     gap: 12,
     padding: 14,
@@ -123,8 +124,8 @@ const styles = StyleSheet.create({
   },
   iconWrapSelected: { backgroundColor: theme.colors.brand[600] },
   body: { flex: 1, gap: 3 },
-  titleRow: { flexDirection: "row-reverse", alignItems: "center", gap: 6 },
-  title: { fontSize: 13, fontFamily: theme.fonts.black, color: theme.colors.text.primary, textAlign: "right" },
+  titleRow: { flexDirection: flexRow(isRtl()), alignItems: "center", gap: 6 },
+  title: { fontSize: 13, fontFamily: theme.fonts.black, color: theme.colors.text.primary, textAlign: textAlignStart(isRtl()) },
   primaryBadge: {
     backgroundColor: theme.colors.amber[50],
     paddingHorizontal: 7,
@@ -132,11 +133,11 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   primaryBadgeText: { fontSize: 9, fontFamily: theme.fonts.bold, color: theme.colors.amber[700] },
-  area: { fontSize: 11, fontFamily: theme.fonts.bold, color: theme.colors.brand[600], textAlign: "right" },
-  address: { fontSize: 11, fontFamily: theme.fonts.regular, color: theme.colors.slate[500], textAlign: "right", lineHeight: 16 },
-  metaRow: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 6, marginTop: 4 },
+  area: { fontSize: 11, fontFamily: theme.fonts.bold, color: theme.colors.brand[600], textAlign: textAlignStart(isRtl()) },
+  address: { fontSize: 11, fontFamily: theme.fonts.regular, color: theme.colors.slate[500], textAlign: textAlignStart(isRtl()), lineHeight: 16 },
+  metaRow: { flexDirection: flexRow(isRtl()), flexWrap: "wrap", gap: 6, marginTop: 4 },
   metaPill: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     gap: 4,
     backgroundColor: theme.colors.slate[50],
@@ -147,7 +148,7 @@ const styles = StyleSheet.create({
   metaText: { fontSize: 9, fontFamily: theme.fonts.semibold, color: theme.colors.slate[500] },
   right: { alignItems: "center", gap: 8 },
   distPill: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     gap: 3,
     backgroundColor: theme.colors.brand[50],

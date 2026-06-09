@@ -28,6 +28,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import { useScreenTrace } from "@/features/observability";
 import { SubScreenHeader } from "../components/SubScreenHeader";
 import { useGiftCatalog } from "../hooks/useGiftCatalog";
@@ -368,7 +369,7 @@ const styles = StyleSheet.create({
   },
 
   balanceChip: {
-    flexDirection:    "row-reverse",
+    flexDirection:    flexRow(isRtl()),
     alignItems:       "center",
     gap:              6,
     alignSelf:        "flex-end",
@@ -388,7 +389,7 @@ const styles = StyleSheet.create({
 
   // Gift card
   giftCard: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "stretch",
     gap:             12,
     backgroundColor: theme.colors.surface,
@@ -443,25 +444,25 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.black,
     fontSize:   14,
     color:      theme.colors.text.primary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     lineHeight: 19,
   },
   giftDesc: {
     fontFamily: theme.fonts.regular,
     fontSize:   11,
     color:      theme.colors.text.tertiary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     marginTop:  3,
     lineHeight: 15,
   },
   giftFoot: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
     marginTop:      8,
   },
   costWrap: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           5,
   },
@@ -502,7 +503,7 @@ const styles = StyleSheet.create({
     minHeight:       112,
   },
   emptyRow: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               10,
     paddingVertical:   18,
@@ -515,7 +516,7 @@ const styles = StyleSheet.create({
     fontSize:   12,
     color:      theme.colors.text.secondary,
     flex:       1,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
   errorPanel: {
     flex:              1,
@@ -538,7 +539,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   primaryBtn: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               8,
     backgroundColor:   theme.colors.brand[600],

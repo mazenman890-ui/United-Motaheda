@@ -17,6 +17,7 @@ import { FAQAccordion, FAQCategoryRail } from "@/features/faq";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FAQ_DATA, FAQ_CATEGORIES, type FAQCategory, type FAQItem } from "@/features/faq";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 export default function FAQScreen() {
   const router  = useRouter();
@@ -98,7 +99,7 @@ export default function FAQScreen() {
             placeholder={t("faq.searchPlaceholder")}
             placeholderTextColor="rgba(255,255,255,0.35)"
             style={styles.searchInput}
-            textAlign="right"
+            textAlign={textAlignStart(isRtl()) as "left" | "right"}
           />
           {query.length > 0 && (
             <Pressable onPress={() => setQuery("")} hitSlop={8} accessibilityRole="button" accessibilityLabel={t("faq.clearSearch")}>
@@ -176,7 +177,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.03)",
   },
   headerTopRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           12,
   },
@@ -194,13 +195,13 @@ const styles = StyleSheet.create({
     fontSize:   22,
     fontFamily: theme.fonts.black,
     color:      "#fff",
-    textAlign:  "right",
+    textAlign: textAlignStart(isRtl()),
   },
   headerSub: {
     fontSize:   11,
     fontFamily: theme.fonts.semibold,
     color:      "rgba(255,255,255,0.50)",
-    textAlign:  "right",
+    textAlign: textAlignStart(isRtl()),
   },
   helpIcon: {
     width:           38,
@@ -213,7 +214,7 @@ const styles = StyleSheet.create({
     borderColor:     "rgba(255,255,255,0.10)",
   },
   searchBar: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "center",
     gap:               10,
     backgroundColor:   "rgba(255,255,255,0.10)",
@@ -246,7 +247,7 @@ const styles = StyleSheet.create({
     fontSize:   11,
     fontFamily: theme.fonts.semibold,
     color:      theme.colors.slate[400],
-    textAlign:  "right",
+    textAlign: textAlignStart(isRtl()),
   },
 
   // Contact bar
@@ -263,7 +264,7 @@ const styles = StyleSheet.create({
     ...theme.shadow.lg,
   },
   contactContent: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           8,
   },
@@ -272,10 +273,10 @@ const styles = StyleSheet.create({
     fontSize:   12,
     fontFamily: theme.fonts.semibold,
     color:      theme.colors.slate[500],
-    textAlign:  "right",
+    textAlign: textAlignStart(isRtl()),
   },
   contactBtn: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "center",
     gap:               4,
     backgroundColor:   theme.colors.brand[50],

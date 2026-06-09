@@ -31,6 +31,7 @@ import Animated, {
 import { useTranslation } from "react-i18next";
 import { geocodeAddress } from "@/lib/geocoding";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl } from "@/utils/layout";
 
 const GEOAPIFY_KEY = "c6beba954a794cb49263d1679e4bc8bf";
 
@@ -304,7 +305,7 @@ const styles = StyleSheet.create({
     marginTop:       2,
   },
   placeholderLabel: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     gap:             5,
     position:        "absolute",
@@ -327,7 +328,7 @@ const styles = StyleSheet.create({
     position:          "absolute",
     bottom:            10,
     left:              10,
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               4,
     backgroundColor:   "rgba(255,255,255,0.92)",
@@ -346,7 +347,7 @@ const styles = StyleSheet.create({
     position:          "absolute",
     bottom:            10,
     right:             10,
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               5,
     backgroundColor:   "#fff",
@@ -370,7 +371,7 @@ const styles = StyleSheet.create({
     position:          "absolute",
     top:               10,
     right:             10,
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               4,
     backgroundColor:   "rgba(5,150,105,0.10)",

@@ -447,7 +447,6 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
 
     if (removedEntirely || !product) return;
-    void prevQuantity;
 
     // Re-reserve the new quantity; pre-validate to reduce server 400s.
     void (async () => {

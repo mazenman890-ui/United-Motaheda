@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import { useScreenTrace } from "@/features/observability";
 import { SubScreenHeader } from "../components/SubScreenHeader";
 import { useLoyaltyHistory } from "../hooks/useLoyaltyHistory";
@@ -255,7 +256,7 @@ const styles = StyleSheet.create({
   },
 
   row: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     gap:             theme.spacing.md,
     backgroundColor: theme.colors.surface,
@@ -279,19 +280,19 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.bold,
     fontSize:   13,
     color:      theme.colors.text.primary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
   rowRef: {
     fontFamily: theme.fonts.regular,
     fontSize:   11,
     color:      theme.colors.text.tertiary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
   rowDate: {
     fontFamily: theme.fonts.regular,
     fontSize:   10,
     color:      theme.colors.text.tertiary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     marginTop:  1,
   },
   rowRight: {
@@ -336,7 +337,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   primaryBtn: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               theme.spacing.sm,
     backgroundColor:   theme.colors.brand[600],

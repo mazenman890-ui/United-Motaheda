@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
+import { isRtl, textAlignStart } from "@/utils/layout";
 import { theme } from "@/shared/theme";
 import type { PaymentMethod } from "../types";
 
@@ -151,13 +152,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: theme.fonts.bold,
     color: theme.colors.slate[700],
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
   },
   desc: {
     fontSize: 11,
     fontFamily: theme.fonts.regular,
     color: theme.colors.slate[400],
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
   },
   phoneRow: {
     flexDirection: "row",
@@ -169,7 +170,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: theme.fonts.semibold,
     color: theme.colors.slate[600],
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
   },
   secureBadge: {
     position: "absolute",
@@ -209,6 +210,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: theme.fonts.semibold,
     color: theme.colors.slate[500],
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
   },
 });

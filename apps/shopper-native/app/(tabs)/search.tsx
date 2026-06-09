@@ -1,22 +1,25 @@
-﻿/**
- * Search — light-mode-first premium discovery experience.
+/**
+ * Search — flagship premium discovery experience.
  *
  * Architectural decisions:
- *   - Light-mode foundation: every surface is `surface` or `surfaceSunken`;
- *     elevation comes from `shadow.card` / `shadow.brandGlow`, never from
- *     dark contrast. Dropped the cinematic dark gradient header entirely.
- *   - Editorial information rhythm: eyebrow → card-title → body-sm →
- *     caption tiers cascade across discovery sections, suggestions, and
- *     filter panel.
- *   - One typography primitive (`UIText`) across the file. Zero raw <UIText>
- *     for content; only `<TextInput>` and highlight slices remain.
- *   - Suggestions overlay rebuilt as elevated white Card with hairline
- *     dividers — reads as predictive helper, not a dropdown menu.
- *   - Discovery cards use `interactive`-style press (scale 0.985 on press)
- *     for premium tactility.
- *   - Result grid leverages the already-refined ProductCard rather than a
- *     bespoke local variant — ensures consistency across Home / Categories /
- *     Search / Wishlist surfaces.
+ *   - Dark navy LinearGradient header with glassmorphic command bar.
+ *   - Language badge (AR/MIX) inside the search bar for bilingual input.
+ *   - Submit button renders as teal LinearGradient when query.length >= 2.
+ *   - Filter button scales to 40×40 with teal glow when active.
+ *   - Discovery sections use a colored left-border bullet + bold title.
+ *   - Recent chips: square-ish borderRadius 14 with teal start-border accent.
+ *   - Trending rows: taller (minHeight 60), rank badge at row top-right.
+ *   - Category tiles: taller, 52×52 icon, count badge pill below name.
+ *   - Suggestion card: borderRadius 24, hairline border, sunken header band.
+ *   - GroupChips and filter chips: borderRadius 12, height 36.
+ *   - Empty state: 80×80 teal-tinted search icon box + improved chips.
+ *   - Translation hint: animated pulsing dot, warm background.
+ *
+ * Search-fix invariant (DO NOT TOUCH):
+ *   - resolvedDebouncedQ → useProductSearch({ query: resolvedDebouncedQ })
+ *   - resolvedSubmitted  → useInfiniteProducts({ search: resolvedSubmitted })
+ *   - <Hl qAlt={resolvedDebouncedQ} />
+ *   - <SuggRow queryResolved={resolvedDebouncedQ} />
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -29,6 +32,8 @@ import {
   StyleSheet,
   TextInput,
   View,
+  type StyleProp,
+  type TextStyle,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "react-i18next";
@@ -45,6 +50,8 @@ import Animated, {
   FadeOut,
   useAnimatedStyle,
   useSharedValue,
+  withRepeat,
+  withSequence,
   withSpring,
   withTiming,
 } from "react-native-reanimated";
@@ -60,7 +67,11 @@ import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { formatPrice } from "@/utils/format";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import type { NativeProduct, NativeCategory } from "@/services/productsApi";
+
+const IS_RTL      = isRtl();
+const INPUT_ALIGN = textAlignStart(IS_RTL) as "left" | "right" | "center";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -84,26 +95,47 @@ const TRENDING_META: { termKey: string; icon: IoniconsName; color: string; bg: s
 
 // ─── Highlight match — premium subtle background ───────────────────────────
 
-function Hl({ text, q, style, lines }: { text: string; q: string; style?: any; lines?: number }) {
+function Hl({
+  text, q, qAlt, style, lines,
+}: {
+  text:   string;
+  q:      string;
+  /** Alternate (translated/resolved) query — tried when the primary q has no match. */
+  qAlt?:  string;
+  style?: StyleProp<TextStyle>;
+  lines?: number;
+}) {
+  const render = (matchQ: string) => {
+    const lower = text.toLowerCase();
+    const ql    = matchQ.toLowerCase().trim();
+    const idx   = lower.indexOf(ql);
+    if (idx < 0) return null;
+    return (
+      <UIText style={style} numberOfLines={lines}>
+        {text.slice(0, idx)}
+        <UIText style={s.hlMatch}>{text.slice(idx, idx + ql.length)}</UIText>
+        {text.slice(idx + ql.length)}
+      </UIText>
+    );
+  };
   if (!q || q.length < 2) return <UIText style={style} numberOfLines={lines}>{text}</UIText>;
-  const lower = text.toLowerCase();
-  const ql    = q.toLowerCase().trim();
-  const idx   = lower.indexOf(ql);
-  if (idx < 0) return <UIText style={style} numberOfLines={lines}>{text}</UIText>;
-  return (
-    <UIText style={style} numberOfLines={lines}>
-      {text.slice(0, idx)}
-      <UIText style={s.hlMatch}>{text.slice(idx, idx + ql.length)}</UIText>
-      {text.slice(idx + ql.length)}
-    </UIText>
+  return render(q) ?? (qAlt && qAlt.length >= 2 ? render(qAlt) : null) ?? (
+    <UIText style={style} numberOfLines={lines}>{text}</UIText>
   );
 }
 
-// ─── Suggestion row — light, refined ────────────────────────────────────────
+// ─── Suggestion row — elevated, premium ─────────────────────────────────────
 
 const SuggRow = React.memo(function SuggRow({
-  product, query, onPress, index, selected,
-}: { product: NativeProduct; query: string; onPress: (p: NativeProduct) => void; index: number; selected: boolean }) {
+  product, query, queryResolved, onPress, index, selected,
+}: {
+  product:       NativeProduct;
+  query:         string;
+  queryResolved: string;
+  onPress:       (p: NativeProduct) => void;
+  index:         number;
+  selected:      boolean;
+}) {
   const { t } = useTranslation();
   const name = product.nameAr ?? product.name;
   const handlePress = useCallback(() => onPress(product), [onPress, product]);
@@ -123,7 +155,11 @@ const SuggRow = React.memo(function SuggRow({
           )}
         </View>
         <View style={{ flex: 1 }}>
-          <Hl text={name} q={query} style={s.suggName} lines={1} />
+          {/* Try to highlight with the raw (possibly Arabic) input first.
+              Fall back to the resolved (translated) query when the product
+              only has an English name — e.g. user typed "بنادول" but the
+              product displays "Panadol Extra".                              */}
+          <Hl text={name} q={query} qAlt={queryResolved} style={s.suggName} lines={1} />
           <UIText variant="eyebrow" color="tertiary" align="right" numberOfLines={1} style={s.suggCat}>
             {product.categoryName}
           </UIText>
@@ -141,6 +177,26 @@ const SuggRow = React.memo(function SuggRow({
     </Animated.View>
   );
 });
+
+// ─── Pulsing dot — live translation indicator ─────────────────────────────
+
+function PulseDot() {
+  const opacity = useSharedValue(1);
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(0.25, { duration: 700 }),
+        withTiming(1,    { duration: 700 }),
+      ),
+      -1,
+      false,
+    );
+  }, [opacity]);
+  const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  return (
+    <Animated.View style={[s.pulseDot, animStyle]} />
+  );
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ═══  SCREEN  ═════════════════════════════════════════════════════════════
@@ -185,6 +241,29 @@ export default function SearchScreen() {
     return raw;
   }, [searchResolution]);
 
+  /**
+   * Resolved debounced query — the term we actually send to Supabase.
+   *
+   * When the user types Arabic (e.g. "بنادول"), resolveSmartQuery maps it to
+   * the English equivalent ("panadol") so the RPC can match product names in
+   * the database. The raw `debouncedQ` is kept for display / highlight only.
+   */
+  const resolvedDebouncedQ = useMemo(() => {
+    if (debouncedQ.length < 2) return debouncedQ;
+    const term = searchResolution?.term;
+    return term && term.length > 0 ? term : debouncedQ;
+  }, [debouncedQ, searchResolution]);
+
+  /**
+   * Resolved submitted query — same translation applied to the committed
+   * search term that drives the full results grid.
+   */
+  const resolvedSubmitted = useMemo(() => {
+    if (!submitted || submitted.length < 2) return submitted;
+    const { term } = resolveSmartQuery(submitted);
+    return term && term.length > 0 ? term : submitted;
+  }, [submitted]);
+
   const showSugg   = focused && debouncedQ.length >= 2 && debouncedQ !== submitted;
   const hasResults = submitted.length >= 2;
 
@@ -196,6 +275,15 @@ export default function SearchScreen() {
   const barScale = useSharedValue(1);
   const barAnim  = useAnimatedStyle(() => ({ transform: [{ scale: barScale.value }] }));
   const glowAnim = useAnimatedStyle(() => ({ opacity: barGlow.value }));
+
+  // Toggle switch animation
+  const swThumbX = useSharedValue(inStockOnly ? 1 : 0);
+  useEffect(() => {
+    swThumbX.value = withSpring(inStockOnly ? 1 : 0, { damping: 22, stiffness: 420, mass: 0.7 });
+  }, [inStockOnly, swThumbX]);
+  const swThumbAnim = useAnimatedStyle(() => ({
+    transform: [{ translateX: swThumbX.value * 16 }],
+  }));
 
   // ── Data ──
   const { data: categories } = useQuery({
@@ -229,10 +317,11 @@ export default function SearchScreen() {
   }, []);
 
   // suggestions — use dedicated hook (sorts by relevance, not newest)
+  // Pass the resolved (translated) query so Arabic input finds English product names.
   const {
     products:  suggestions,
     isLoading: suggFetching,
-  } = useProductSearch({ query: debouncedQ, enabled: showSugg });
+  } = useProductSearch({ query: resolvedDebouncedQ, enabled: showSugg });
 
   const {
     products: results,
@@ -245,7 +334,9 @@ export default function SearchScreen() {
     fetchNextPage,
     refetch: refetchResults,
   } = useInfiniteProducts({
-    search:     submitted || undefined,
+    // Use the smart-resolved query so "بنادول" → "panadol" reaches the DB correctly.
+    // Filters/sort are unchanged; only the free-text search term is translated.
+    search:     resolvedSubmitted || undefined,
     sortBy,
     inStock:    inStockOnly || undefined,
     categoryId: catFilter ?? undefined,
@@ -286,7 +377,6 @@ export default function SearchScreen() {
     setSelectedIdx(-1);
     Keyboard.dismiss();
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    // Analytics: log search term (fire-and-forget, never throws)
     if (__DEV__) console.log("[search] submitted:", q);
   }, [query]);
 
@@ -324,9 +414,6 @@ export default function SearchScreen() {
 
   const filterCount = [inStockOnly, catFilter !== null, sortBy !== "newest"].filter(Boolean).length;
 
-  // Grid rendering is delegated to ProductGrid (FlashList v2). Per-card
-  // memoisation + stable callbacks live in ProductCard itself.
-
   // ── Grouped results by category — for the in-results filter chips ──
   const grouped = useMemo(() => {
     if (!results.length) return [];
@@ -343,15 +430,17 @@ export default function SearchScreen() {
   return (
     <View style={s.screen}>
 
-      {/* ─── Premium dark-gradient header — consistent with app design language ── */}
+      {/* ─── Premium dark-gradient header ── */}
       <LinearGradient
         colors={theme.gradients.heroPrimary as [string, string, string]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0.8, y: 1 }}
         style={[s.header, { paddingTop: insets.top + 12 }]}>
 
-        {/* Decorative orb */}
-        <View style={s.headerOrb} />
+        {/* Layered decorative geometry */}
+        <View style={s.headerOrb1} />
+        <View style={s.headerOrb2} />
+        <View style={s.headerOrbAccent} />
 
         {/* Top row — title + result count badge */}
         <View style={s.topRow}>
@@ -373,11 +462,12 @@ export default function SearchScreen() {
           )}
         </View>
 
-        {/* ─── Command bar — glassmorphic on dark header ── */}
+        {/* ─── Command bar — glassmorphic, taller, more prominent ── */}
         <View style={s.barContainer}>
           <Animated.View style={[s.barGlow, glowAnim, { pointerEvents: "none" }]} />
 
           <Animated.View style={[s.bar, barAnim, focused && s.barFocused]}>
+            {/* Search icon / spinner */}
             <View style={s.barIconWrap}>
               {suggFetching || isSearching ? (
                 <ActivityIndicator size="small" color={theme.colors.brand[700]} />
@@ -386,7 +476,14 @@ export default function SearchScreen() {
               )}
             </View>
 
-            {/* Language badge removed to save space */}
+            {/* Language badge — AR / MIX indicator */}
+            {inputLang && inputLang !== 'english' && (
+              <View style={[s.langBadge, inputLang === 'arabic' ? s.langBadgeAr : s.langBadgeMix]}>
+                <UIText variant="eyebrow" style={{ color: inputLang === 'arabic' ? theme.colors.brand[700] : theme.colors.amber[700], fontSize: 9 }}>
+                  {inputLang === 'arabic' ? 'AR' : 'MIX'}
+                </UIText>
+              </View>
+            )}
 
             <TextInput
               ref={inputRef}
@@ -426,7 +523,7 @@ export default function SearchScreen() {
               }}
               returnKeyType="search"
               autoCorrect={false}
-              textAlign="right"
+              textAlign={INPUT_ALIGN}
               selectionColor={theme.colors.brand[600]}
             />
 
@@ -438,6 +535,7 @@ export default function SearchScreen() {
 
             <View style={s.barDivider} />
 
+            {/* Filter button — 40×40, teal glow when active */}
             <Pressable
               onPress={() => {
                 if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
@@ -458,25 +556,33 @@ export default function SearchScreen() {
               )}
             </Pressable>
 
+            {/* Submit button — teal LinearGradient when query.length >= 2 */}
             {query.length >= 2 && (
               <Pressable
                 onPress={() => submit()}
                 accessibilityRole="button"
                 accessibilityLabel={t("search.searchBtn")}
-                style={({ pressed }) => [s.barSubmit, pressed && { opacity: 0.85 }]}>
-                <Ionicons name="return-down-back" size={14} color={theme.colors.surface} />
+                style={({ pressed }) => [s.barSubmitWrap, pressed && { opacity: 0.85 }]}>
+                <LinearGradient
+                  colors={[theme.colors.teal[500], theme.colors.teal[400]]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={s.barSubmitGrad}>
+                  <Ionicons name="return-down-back" size={14} color={theme.colors.surface} />
+                </LinearGradient>
               </Pressable>
             )}
           </Animated.View>
         </View>
 
-        {/* Translation / typo-fix hint strip */}
+        {/* Translation / typo-fix hint strip — animated warm band */}
         {translationHintText && debouncedQ.length >= 2 && (
           <Animated.View
             entering={FadeInDown.duration(200)}
             exiting={FadeOut.duration(140)}
             style={s.translationHint}>
-            <Ionicons name="language-outline" size={11} color={theme.colors.brand[600]} />
+            <PulseDot />
+            <Ionicons name="language-outline" size={13} color={theme.colors.brand[600]} />
             <UIText variant="eyebrow" style={s.translationHintText}>
               {translationHintText}
             </UIText>
@@ -494,7 +600,7 @@ export default function SearchScreen() {
       {/* ─── Content area ──────────────────────────────────────────── */}
       <View style={s.content}>
 
-        {/* Filter panel — light, refined */}
+        {/* Filter panel — refined, square-ish chips */}
         {showFilters && (
           <Animated.View entering={FadeInDown.duration(220)} style={s.filterPanel}>
             <View style={s.filterHeader}>
@@ -525,6 +631,7 @@ export default function SearchScreen() {
               })}
             </View>
 
+            {/* In-stock toggle — spring animated */}
             <Pressable
               onPress={() => { setInStockOnly((v) => !v); if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {}); }}
               style={s.toggleRow}>
@@ -533,7 +640,7 @@ export default function SearchScreen() {
                 <UIText variant="body-sm" weight="bold" color="secondary">{t("search.inStockOnly")}</UIText>
               </View>
               <View style={[s.sw, inStockOnly && s.swOn]}>
-                <View style={[s.swThumb, inStockOnly && s.swThumbOn]} />
+                <Animated.View style={[s.swThumb, swThumbAnim]} />
               </View>
             </Pressable>
 
@@ -571,26 +678,19 @@ export default function SearchScreen() {
 
         {/* ─── Body ── */}
         {!hasResults ? (
-          /* ── Discovery (light, editorial) ── */
+          /* ── Discovery (editorial sections) ── */
           <ScrollView
             contentContainerStyle={[s.discovery, { paddingBottom: theme.layout.tabBarHeight + 40 }]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled">
 
-            {/* Recent searches */}
+            {/* Recent searches — compact chips with teal start-border */}
             {recents.length > 0 && (
               <Animated.View entering={FadeInDown.delay(40).duration(280)} style={s.section}>
                 <View style={s.sectionHeader}>
-                  <View style={s.sectionTitleWrap}>
-                    <View style={[s.sectionIcon, { backgroundColor: theme.colors.slate[100] }]}>
-                      <Ionicons name="time-outline" size={13} color={theme.colors.slate[600]} />
-                    </View>
-                    <View>
-                      <UIText variant="eyebrow" color="tertiary" align="right">{t("search.recentEyebrow")}</UIText>
-                      <UIText variant="card-title" align="right" style={s.sectionTitleNew}>
-                        {t("search.recentTitle")}
-                      </UIText>
-                    </View>
+                  <View style={s.sectionTitleRow}>
+                    <View style={s.sectionBullet} />
+                    <UIText style={s.sectionTitle}>{t("search.recentTitle")}</UIText>
                   </View>
                   <Pressable onPress={() => {
                     setRecents([]);
@@ -616,35 +716,40 @@ export default function SearchScreen() {
               </Animated.View>
             )}
 
-            {/* Trending */}
+            {/* Trending — taller rows with top-right rank badge */}
             <Animated.View entering={FadeInDown.delay(80).duration(280)} style={s.section}>
-              <View style={s.sectionTitleWrap}>
-                <View style={[s.sectionIcon, { backgroundColor: theme.colors.brand.lighter, borderColor: theme.colors.border.brandSoft }]}>
-                  <Ionicons name="trending-up" size={14} color={theme.colors.brand[700]} />
-                </View>
-                <View>
-                  <UIText variant="eyebrow" color="tertiary" align="right">{t("search.trendingEyebrow")}</UIText>
-                  <UIText variant="card-title" align="right" style={s.sectionTitleNew}>
-                    {t("search.trendingTitle")}
-                  </UIText>
-                </View>
+              <View style={s.sectionTitleRow}>
+                <View style={s.sectionBullet} />
+                <UIText style={s.sectionTitle}>{t("search.trendingTitle")}</UIText>
               </View>
               <View style={s.trendGrid}>
                 {(popularSearches.length > 0 ? popularSearches : TRENDING_META.map((m) => t(m.termKey))).map((term, i) => {
-                  const meta = TRENDING_META.find((m) => t(m.termKey) === term) ?? TRENDING_META[i % TRENDING_META.length];
+                  const meta  = TRENDING_META.find((m) => t(m.termKey) === term) ?? TRENDING_META[i % TRENDING_META.length];
+                  const isTop = i < 3;
                   return (
                     <Pressable
                       key={term}
                       onPress={() => quickSearch(term)}
-                      style={({ pressed }) => [s.trendItem, pressed && { transform: [{ scale: 0.985 }], opacity: 0.92 }]}>
-                      <View style={[s.trendIcon, { backgroundColor: meta.bg, borderColor: `${meta.color}28` }]}>
-                        <Ionicons name={meta.icon} size={16} color={meta.color} />
+                      style={({ pressed }) => [
+                        s.trendItem,
+                        isTop && s.trendItemTop,
+                        pressed && { transform: [{ scale: 0.985 }], opacity: 0.92 },
+                      ]}>
+                      {/* Start-edge accent border — amber for top-3, hairline for rest */}
+                      <View style={[s.trendStartBorder, isTop ? s.trendStartBorderTop : s.trendStartBorderDefault]} />
+                      <View style={[s.trendIcon, { backgroundColor: meta.bg, borderColor: `${meta.color}30` }]}>
+                        <Ionicons name={meta.icon} size={18} color={meta.color} />
                       </View>
                       <UIText variant="body-sm" weight="bold" align="right" style={s.trendLabel}>
                         {term}
                       </UIText>
-                      <View style={s.trendIdxWrap}>
-                        <UIText variant="eyebrow" color="tertiary">#{i + 1}</UIText>
+                      {/* Rank badge at top-right corner */}
+                      <View style={[s.trendRankBadge, isTop ? s.trendRankBadgeTop : s.trendRankBadgeDefault]}>
+                        <UIText
+                          variant="eyebrow"
+                          style={isTop ? s.trendRankTextTop : s.trendRankTextDefault}>
+                          #{i + 1}
+                        </UIText>
                       </View>
                     </Pressable>
                   );
@@ -652,44 +757,39 @@ export default function SearchScreen() {
               </View>
             </Animated.View>
 
-            {/* Categories */}
+            {/* Categories — 2-col grid, taller tiles, count badge pill */}
             {categories && categories.length > 0 && (
               <Animated.View entering={FadeInDown.delay(120).duration(280)} style={s.section}>
-                <View style={s.sectionTitleWrap}>
-                  <View style={[s.sectionIcon, { backgroundColor: theme.colors.brand.lighter, borderColor: theme.colors.border.brandSoft }]}>
-                    <Ionicons name="grid-outline" size={14} color={theme.colors.brand[700]} />
-                  </View>
-                  <View>
-                    <UIText variant="eyebrow" color="tertiary" align="right">{t("search.categoriesEyebrow")}</UIText>
-                    <UIText variant="card-title" align="right" style={s.sectionTitleNew}>
-                      {t("search.categoriesTitle")}
-                    </UIText>
-                  </View>
+                <View style={s.sectionTitleRow}>
+                  <View style={s.sectionBullet} />
+                  <UIText style={s.sectionTitle}>{t("search.categoriesTitle")}</UIText>
                 </View>
-                <View style={s.catList}>
-                  {categories.slice(0, 6).map((cat, i, arr) => (
-                    <Pressable
-                      key={cat.id}
-                      onPress={() => router.push({ pathname: "/category/[id]", params: { id: cat.id } })}
-                      style={({ pressed }) => [
-                        s.catRow,
-                        i < arr.length - 1 && s.catRowDivider,
-                        pressed && { backgroundColor: theme.colors.surfaceSunken },
-                      ]}>
-                      <View style={s.catIcon}>
-                        <Ionicons name="grid" size={14} color={theme.colors.brand[700]} />
-                      </View>
-                      <UIText variant="body-sm" weight="bold" align="right" numberOfLines={1} style={{ flex: 1 }}>
-                        {cat.name}
-                      </UIText>
-                      {cat.count > 0 && (
-                        <View style={s.catCountChip}>
-                          <UIText variant="eyebrow" color="secondary">{cat.count}</UIText>
-                        </View>
-                      )}
-                      <Ionicons name="chevron-back" size={14} color={theme.colors.slate[400]} />
-                    </Pressable>
-                  ))}
+                <View style={s.catGrid}>
+                  {categories.slice(0, 6).map((cat, i) => {
+                    const grad = theme.gradients.categories[i % theme.gradients.categories.length] as [string, string];
+                    return (
+                      <Pressable
+                        key={cat.id}
+                        onPress={() => router.push({ pathname: "/category/[id]", params: { id: cat.id } })}
+                        style={({ pressed }) => [s.catTile, pressed && { opacity: 0.87, transform: [{ scale: 0.975 }] }]}>
+                        <LinearGradient
+                          colors={grad}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={s.catTileGrad}>
+                          <Ionicons name="grid" size={22} color="rgba(255,255,255,0.92)" />
+                        </LinearGradient>
+                        <UIText variant="body-sm" weight="bold" numberOfLines={2} style={s.catTileName}>
+                          {cat.name}
+                        </UIText>
+                        {cat.count > 0 && (
+                          <View style={s.catCountBadge}>
+                            <UIText style={s.catCountBadgeText}>{cat.count}+ items</UIText>
+                          </View>
+                        )}
+                      </Pressable>
+                    );
+                  })}
                 </View>
               </Animated.View>
             )}
@@ -708,9 +808,11 @@ export default function SearchScreen() {
             ListHeaderComponent={
               hasResults && grouped.length > 1 ? (
                 <Animated.View entering={FadeInDown.duration(220)} style={s.groupHeader}>
-                  <UIText variant="eyebrow" color="tertiary" align="right" style={s.groupEyebrow}>
-                    {t("search.groupFilter")}
-                  </UIText>
+                  {/* Section title treatment for results filter */}
+                  <View style={s.sectionTitleRow}>
+                    <View style={s.sectionBullet} />
+                    <UIText style={s.sectionTitleSm}>{t("search.groupFilter")}</UIText>
+                  </View>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.groupChipsRow}>
                     {grouped.map((g) => {
                       const catObj = categories?.find((c) => c.name === g.cat);
@@ -752,6 +854,10 @@ export default function SearchScreen() {
                 </View>
               ) : (
                 <View style={{ paddingTop: 60, paddingHorizontal: theme.spacing[2.5], gap: theme.spacing[2.5] }}>
+                  {/* Large illustrated icon treatment */}
+                  <View style={s.emptyIconBox}>
+                    <Ionicons name="search-outline" size={36} color={theme.colors.teal[500]} />
+                  </View>
                   <EmptyState
                     icon="search-outline"
                     title={t("search.noResults")}
@@ -803,15 +909,14 @@ export default function SearchScreen() {
           </View>
         )}
 
-        {/* ─── Suggestions overlay — elevated white card ──────────── */}
-        {/* bottom: tabBarHeight keeps the card above the floating nav bar  */}
+        {/* ─── Suggestions overlay — premium elevated card ──────────── */}
         {showSugg && (
           <Animated.View
             entering={FadeInDown.springify().damping(22).stiffness(300)}
             exiting={FadeOut.duration(120)}
             style={s.suggOverlay}>
             <View style={s.suggCard}>
-              {/* Header */}
+              {/* Sunken header band */}
               <View style={s.suggHeader}>
                 <View style={s.suggHeaderLeft}>
                   <Ionicons name="sparkles" size={12} color={theme.colors.brand[700]} />
@@ -819,8 +924,10 @@ export default function SearchScreen() {
                 </View>
                 {suggFetching && <ActivityIndicator size="small" color={theme.colors.brand[600]} />}
               </View>
+              {/* Separator under header */}
+              <View style={s.suggSeparator} />
 
-              {/* Scrollable rows — clipped to never overlap the tab bar */}
+              {/* Scrollable rows */}
               <ScrollView bounces={false} keyboardShouldPersistTaps="handled" style={{ flexShrink: 1 }}>
                 {!suggFetching && suggestions.length === 0 && (
                   <View style={s.suggEmpty}>
@@ -835,6 +942,7 @@ export default function SearchScreen() {
                     key={p.id}
                     product={p}
                     query={debouncedQ}
+                    queryResolved={resolvedDebouncedQ}
                     onPress={tapSugg}
                     index={i}
                     selected={selectedIdx === i}
@@ -842,15 +950,22 @@ export default function SearchScreen() {
                 ))}
               </ScrollView>
 
+              {/* Show-all footer — warm LinearGradient */}
               {suggestions.length > 0 && (
                 <Pressable
                   onPress={() => submit()}
-                  style={({ pressed }) => [s.suggShowAll, pressed && { opacity: 0.88 }]}>
-                  <Ionicons name="search" size={14} color={theme.colors.brand[700]} />
-                  <UIText variant="caption" weight="bold" color="brand">
-                    {t("search.showAll", { query: debouncedQ })}
-                  </UIText>
-                  <Ionicons name="return-down-back" size={13} color={theme.colors.brand[700]} />
+                  style={({ pressed }) => [pressed && { opacity: 0.88 }]}>
+                  <LinearGradient
+                    colors={[theme.colors.brand.lighter, theme.colors.teal[25]]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={s.suggShowAll}>
+                    <Ionicons name="search" size={14} color={theme.colors.brand[700]} />
+                    <UIText variant="caption" weight="bold" color="brand">
+                      {t("search.showAll", { query: debouncedQ })}
+                    </UIText>
+                    <Ionicons name="return-down-back" size={13} color={theme.colors.brand[700]} />
+                  </LinearGradient>
                 </Pressable>
               )}
             </View>
@@ -862,42 +977,61 @@ export default function SearchScreen() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ═══  STYLES — light-mode-first  ═══════════════════════════════════════════
+// ═══  STYLES — flagship premium  ═══════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Glass/overlay constants — no theme token for these intentional design values
 const SEARCH_OVERLAY = {
-  teal10:  "rgba(13,184,168,0.10)", // barGlow aura behind search bar
-  white20: "rgba(255,255,255,0.20)", // active chip count badge on brand bg
+  teal10:  "rgba(13,184,168,0.10)",
+  teal20:  "rgba(13,184,168,0.20)",
+  white20: "rgba(255,255,255,0.20)",
 } as const;
 
 const s = StyleSheet.create({
   screen:  { flex: 1, backgroundColor: theme.colors.bg },
   content: { flex: 1, position: "relative" },
 
-  // ── Header — dark gradient, consistent with Home/Profile/Orders
+  // ── Header — dark gradient
   header: {
     paddingHorizontal: 20,
     paddingBottom:     18,
     gap:               14,
     overflow:          "hidden",
   },
-  headerOrb: {
+  headerOrb1: {
     position:        "absolute",
-    right:           -40,
-    top:             -40,
-    width:           130,
-    height:          130,
-    borderRadius:    65,
+    right:           -55,
+    top:             -55,
+    width:           170,
+    height:          170,
+    borderRadius:    85,
     backgroundColor: "rgba(13,184,168,0.10)",
   },
+  headerOrb2: {
+    position:        "absolute",
+    left:            -50,
+    bottom:          -20,
+    width:           120,
+    height:          120,
+    borderRadius:    60,
+    backgroundColor: "rgba(255,255,255,0.025)",
+  },
+  headerOrbAccent: {
+    position:        "absolute",
+    right:           50,
+    top:             55,
+    width:           54,
+    height:          54,
+    borderRadius:    27,
+    backgroundColor: "rgba(13,184,168,0.08)",
+  },
   topRow: {
-    flexDirection:  "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
   },
   topLeft: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           theme.spacing.md,
   },
@@ -915,14 +1049,14 @@ const s = StyleSheet.create({
     fontSize:      10,
     fontFamily:    theme.fonts.bold,
     color:         "rgba(255,255,255,0.50)",
-    textAlign:     "right",
+    textAlign:     textAlignStart(isRtl()),
     letterSpacing: 0.4,
   },
   headerTitle: {
     fontSize:      24,
     fontFamily:    theme.fonts.black,
     color:         theme.colors.surface,
-    textAlign:     "right",
+    textAlign:     textAlignStart(isRtl()),
     letterSpacing: -0.5,
     marginTop:     2,
   },
@@ -940,31 +1074,34 @@ const s = StyleSheet.create({
     color:      theme.colors.teal[300],
   },
 
-  // ── Command bar — glassmorphic on dark gradient header
+  // ── Command bar — taller (58), more prominent (borderRadius 22)
   barContainer: { position: "relative" },
   barGlow: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius:    20,
+    borderRadius:    22,
     opacity:         0,
-    backgroundColor: "rgba(13,184,168,0.20)",
+    backgroundColor: SEARCH_OVERLAY.teal20,
     transform:       [{ scale: 1.04 }],
   },
   bar: {
     flexDirection:     "row",
     alignItems:        "center",
     backgroundColor:   "rgba(255,255,255,0.94)",
-    borderRadius:      20,
+    borderRadius:      22,
     paddingHorizontal: 6,
-    height:            54,
+    height:            58,
     borderWidth:       1,
     borderColor:       "rgba(255,255,255,0.60)",
+    // Subtle inner shadow at the top
+    borderTopColor:    "rgba(0,0,0,0.04)",
+    borderTopWidth:    1,
     gap:               2,
     ...theme.shadow.lg,
-    shadowOpacity:     0.18,
   },
   barFocused: {
     backgroundColor: theme.colors.surface,
     borderColor:     theme.colors.brand[400],
+    borderTopColor:  "rgba(0,0,0,0.04)",
   },
   barIconWrap: {
     width:           40,
@@ -979,7 +1116,7 @@ const s = StyleSheet.create({
     fontSize:          14.5,
     fontFamily:        theme.fonts.semibold,
     color:             theme.colors.text.primary,
-    textAlign:         "right",
+    textAlign:         textAlignStart(IS_RTL),
     paddingHorizontal: 10,
   },
   barClear: {
@@ -991,47 +1128,52 @@ const s = StyleSheet.create({
     justifyContent:  "center",
   },
   barDivider: {
-    width:           StyleSheet.hairlineWidth,
-    height:          24,
-    backgroundColor: theme.colors.border.default,
+    width:            StyleSheet.hairlineWidth,
+    height:           24,
+    backgroundColor:  theme.colors.border.default,
     marginHorizontal: theme.spacing.xs,
   },
+  // Filter button — 40×40, borderRadius 13, teal glow when active
   barFilterBtn: {
-    width:           38,
-    height:          38,
-    borderRadius:    11,
+    width:           40,
+    height:          40,
+    borderRadius:    13,
     backgroundColor: theme.colors.surfaceSunken,
     alignItems:      "center",
     justifyContent:  "center",
     position:        "relative",
   },
   barFilterBtnActive: {
-    backgroundColor: theme.colors.brand[700],
+    backgroundColor: theme.colors.teal[600],
+    ...theme.shadow.teal,
   },
   filterBadge: {
-    position:        "absolute",
-    top:             -3,
-    right:           -3,
-    minWidth:        16,
-    height:          16,
-    borderRadius:    8,
-    backgroundColor: theme.colors.amber[600],
-    alignItems:      "center",
-    justifyContent:  "center",
+    position:          "absolute",
+    top:               -3,
+    right:             -3,
+    minWidth:          16,
+    height:            16,
+    borderRadius:      8,
+    backgroundColor:   theme.colors.amber[600],
+    alignItems:        "center",
+    justifyContent:    "center",
     paddingHorizontal: 3,
-    borderWidth:     1.5,
-    borderColor:     theme.colors.surface,
+    borderWidth:       1.5,
+    borderColor:       theme.colors.surface,
   },
-  barSubmit: {
-    width:           38,
-    height:          38,
-    borderRadius:    11,
-    backgroundColor: theme.colors.brand[700],
+  // Submit button — 40×40 rounded square wrapping a LinearGradient
+  barSubmitWrap: {
+    width:        40,
+    height:       40,
+    borderRadius: 13,
+    overflow:     "hidden",
+    marginLeft:   2,
+    ...theme.shadow.teal,
+  },
+  barSubmitGrad: {
+    flex:            1,
     alignItems:      "center",
     justifyContent:  "center",
-    marginLeft:      2,
-    ...theme.shadow.brand,
-    shadowOpacity:   0.24,
   },
 
   hint: {
@@ -1052,8 +1194,31 @@ const s = StyleSheet.create({
     backgroundColor: theme.colors.brand.lighter,
   },
 
-  // ── Suggestions overlay — elevated white card
-  // bottom: tabBarHeight ensures the card never extends behind the floating nav
+  // ── Translation hint strip — warm animated band
+  translationHint: {
+    flexDirection:     flexRow(isRtl()),
+    alignItems:        "center",
+    gap:               6,
+    backgroundColor:   theme.colors.brand.lighter,
+    borderRadius:      10,
+    paddingHorizontal: 12,
+    paddingVertical:   6,
+  },
+  translationHintText: {
+    color:    theme.colors.brand[700],
+    fontSize: 11,
+    fontFamily: theme.fonts.semibold,
+  },
+
+  // ── Pulsing live indicator dot
+  pulseDot: {
+    width:           6,
+    height:          6,
+    borderRadius:    3,
+    backgroundColor: theme.colors.teal[500],
+  },
+
+  // ── Suggestions overlay
   suggOverlay: {
     position: "absolute",
     top:      theme.spacing.sm,
@@ -1065,28 +1230,33 @@ const s = StyleSheet.create({
   },
   suggCard: {
     backgroundColor: theme.colors.surface,
-    borderRadius:    18,
+    borderRadius:    24,
     overflow:        "hidden",
     flexShrink:      1,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.hairline,
     ...theme.shadow.lg,
-    shadowOpacity:   0.10,
   },
+  // Sunken header band
   suggHeader: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     justifyContent:    "space-between",
     paddingHorizontal: theme.spacing.lg,
     paddingVertical:   theme.spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.border.hairline,
+    backgroundColor:   theme.colors.surfaceSunken,
+  },
+  suggSeparator: {
+    height:          StyleSheet.hairlineWidth,
+    backgroundColor: theme.colors.border.hairline,
   },
   suggHeaderLeft: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           6,
   },
   suggRow: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               theme.spacing.md,
     paddingHorizontal: theme.spacing.lg,
@@ -1094,10 +1264,11 @@ const s = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: theme.colors.border.hairline,
   },
+  // Thumbnail 44×44, borderRadius 14
   suggThumb: {
-    width:           42,
-    height:          42,
-    borderRadius:    12,
+    width:           44,
+    height:          44,
+    borderRadius:    14,
     backgroundColor: theme.colors.surfaceSunken,
     alignItems:      "center",
     justifyContent:  "center",
@@ -1107,38 +1278,55 @@ const s = StyleSheet.create({
     fontSize:   13,
     fontFamily: theme.fonts.bold,
     color:      theme.colors.text.primary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
-  suggCat: {
-    marginTop: 2,
-  },
+  suggCat:   { marginTop: 2 },
   suggPrice: {
     color:         theme.colors.brand[700],
     letterSpacing: -0.2,
   },
   suggOos: {
-    backgroundColor: theme.colors.error.bg,
-    borderRadius:    999,
+    backgroundColor:   theme.colors.error.bg,
+    borderRadius:      999,
     paddingHorizontal: 7,
     paddingVertical:   3,
-    borderWidth:     1,
-    borderColor:     theme.colors.error.light,
+    borderWidth:       1,
+    borderColor:       theme.colors.error.light,
   },
   suggEmpty: {
     alignItems:      "center",
     paddingVertical: theme.spacing[3.5],
     gap:             theme.spacing.sm,
   },
+  // Show-all — warm LinearGradient strip
   suggShowAll: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     justifyContent:  "center",
     gap:             theme.spacing.sm,
     paddingVertical: 14,
-    backgroundColor:  theme.colors.brand.lighter,
   },
 
-  // ── Filter panel — light, refined
+  // ── Language badge
+  langBadge: {
+    height:            20,
+    borderRadius:      6,
+    paddingHorizontal: 6,
+    alignItems:        "center",
+    justifyContent:    "center",
+    marginLeft:        2,
+    borderWidth:       1,
+  },
+  langBadgeAr: {
+    backgroundColor: theme.colors.brand.lighter,
+    borderColor:     theme.colors.border.brandSoft,
+  },
+  langBadgeMix: {
+    backgroundColor: theme.colors.amber[50],
+    borderColor:     `${theme.colors.amber[600]}30`,
+  },
+
+  // ── Filter panel
   filterPanel: {
     backgroundColor:   theme.colors.surface,
     paddingHorizontal: theme.spacing.lg,
@@ -1149,19 +1337,22 @@ const s = StyleSheet.create({
     borderBottomColor: theme.colors.border.hairline,
   },
   filterHeader: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
   },
   chipsRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     flexWrap:      "wrap",
     gap:           7,
   },
+  // Chips — borderRadius 12, height 36
   chip: {
     paddingHorizontal: 14,
-    paddingVertical:   theme.spacing.sm,
-    borderRadius:      999,
+    paddingVertical:   9,
+    borderRadius:      12,
+    height:            36,
+    justifyContent:    "center",
     backgroundColor:   theme.colors.surfaceSunken,
     borderWidth:       1,
     borderColor:       theme.colors.border.hairline,
@@ -1172,22 +1363,23 @@ const s = StyleSheet.create({
   },
 
   toggleRow: {
-    flexDirection:  "row-reverse",
-    alignItems:     "center",
-    justifyContent: "space-between",
+    flexDirection:   flexRow(isRtl()),
+    alignItems:      "center",
+    justifyContent:  "space-between",
     paddingVertical: 6,
   },
   toggleLeft: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           theme.spacing.sm,
   },
+  // Spring-animated toggle
   sw: {
-    width:           38,
-    height:          22,
-    borderRadius:    11,
+    width:           40,
+    height:          24,
+    borderRadius:    12,
     backgroundColor: theme.colors.slate[200],
-    padding:         2,
+    padding:         3,
     justifyContent:  "center",
   },
   swOn: { backgroundColor: theme.colors.brand[600] },
@@ -1196,12 +1388,10 @@ const s = StyleSheet.create({
     height:          18,
     borderRadius:    9,
     backgroundColor: theme.colors.surface,
-    alignSelf:       "flex-end",
-    ...theme.shadow.hairline,
+    ...theme.shadow.xs,
   },
-  swThumbOn: { alignSelf: "flex-start" },
 
-  // ── Discovery sections — editorial light rhythm
+  // ── Discovery sections
   discovery: {
     paddingHorizontal: theme.spacing.lg,
     paddingTop:        theme.spacing[2.5],
@@ -1209,57 +1399,62 @@ const s = StyleSheet.create({
   },
   section: { gap: 14 },
   sectionHeader: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
   },
-  sectionTitleWrap: {
-    flexDirection: "row-reverse",
+  // New: colored left-border bullet + bold title treatment
+  sectionTitleRow: {
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
-    gap:           theme.spacing.md,
+    gap:           10,
   },
-  sectionIcon: {
-    width:           34,
-    height:          34,
-    borderRadius:    11,
-    alignItems:      "center",
-    justifyContent:  "center",
-    borderWidth:     1,
-    borderColor:     theme.colors.border.hairline,
+  // 3×20 teal rounded left-border accent
+  sectionBullet: {
+    width:           3,
+    height:          20,
+    borderRadius:    2,
+    backgroundColor: theme.colors.teal[500],
   },
-  // Section titles — 18px black, matching the app's HomeSectionHeader hierarchy
-  sectionTitleNew: {
-    fontSize:      18,
+  sectionTitle: {
+    fontSize:      20,
+    fontFamily:    theme.fonts.black,
+    color:         theme.colors.text.primary,
+    letterSpacing: -0.4,
+  },
+  // Smaller variant used in results header
+  sectionTitleSm: {
+    fontSize:      16,
     fontFamily:    theme.fonts.black,
     color:         theme.colors.text.primary,
     letterSpacing: -0.3,
-    marginTop:     2,
   },
 
-  // Recent searches — refined chips
+  // Recent chips — borderRadius 14, start-border teal accent
   recentWrap: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     flexWrap:      "wrap",
     gap:           theme.spacing.sm,
   },
   recentChip: {
-    flexDirection:    "row-reverse",
-    alignItems:       "center",
-    gap:              7,
-    paddingHorizontal: 13,
-    paddingVertical:   9,
-    borderRadius:     999,
-    backgroundColor:  theme.colors.surface,
-    borderWidth:      1,
-    borderColor:      theme.colors.border.hairline,
+    flexDirection:      flexRow(isRtl()),
+    alignItems:         "center",
+    gap:                7,
+    paddingHorizontal:  14,
+    paddingVertical:    10,
+    borderRadius:       14,
+    backgroundColor:    theme.colors.surface,
+    borderWidth:        1,
+    borderColor:        theme.colors.border.hairline,
+    // Teal start-edge accent
+    borderStartWidth:   2,
+    borderStartColor:   theme.colors.teal[300],
     ...theme.shadow.hairline,
   },
 
-  // Trending — premium tile rows
+  // Trending rows — taller (minHeight 60), rank badge at top-right
   trendGrid: { gap: theme.spacing.sm },
   trendItem: {
-    // "row" in RTL places children right-to-left: icon(right) → label(mid) → rank(left)
-    // "row-reverse" in RTL caused the rank badge to stack below the icon on some devices.
     flexDirection:     "row",
     alignItems:        "center",
     gap:               theme.spacing.md,
@@ -1267,124 +1462,167 @@ const s = StyleSheet.create({
     borderRadius:      14,
     paddingHorizontal: 14,
     paddingVertical:   theme.spacing.md,
+    minHeight:         60,
+    position:          "relative",
+    overflow:          "hidden",
     ...theme.shadow.card,
   },
+  // Top-3 items get slightly sunken background
+  trendItemTop: {
+    backgroundColor: theme.colors.surfaceSunken,
+  },
+  // Start-edge accent border — RTL-safe via borderStartWidth
+  trendStartBorder: {
+    position:     "absolute",
+    top:          0,
+    bottom:       0,
+    start:        0,
+    width:        3,
+    borderRadius: 2,
+  },
+  trendStartBorderTop: {
+    backgroundColor: theme.colors.amber[400],
+  },
+  trendStartBorderDefault: {
+    backgroundColor: theme.colors.border.hairline,
+  },
+  // Icon container — 44×44, borderRadius 14
   trendIcon: {
-    width:           40,
-    height:          40,
-    borderRadius:    13,
-    alignItems:      "center",
-    justifyContent:  "center",
-    borderWidth:     1,
-    flexShrink:      0,
+    width:          44,
+    height:         44,
+    borderRadius:   14,
+    alignItems:     "center",
+    justifyContent: "center",
+    borderWidth:    1,
+    flexShrink:     0,
+    marginStart:    8,
   },
   trendLabel: {
     flex:      1,
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
   },
-  trendIdxWrap: {
-    width:           28,
-    height:          24,
-    borderRadius:    8,
-    backgroundColor: theme.colors.surfaceSunken,
-    alignItems:      "center",
-    justifyContent:  "center",
-  },
-
-  // Category browse list — one unified card with hairline rows
-  catList: {
-    backgroundColor: theme.colors.surface,
-    borderRadius:    16,
-    overflow:        "hidden",
-    ...theme.shadow.card,
-  },
-  catRow: {
-    // "row" in RTL: icon appears on the right (leading side), chevron on left
-    flexDirection:     "row",
+  // Rank badge positioned at top-right corner
+  trendRankBadge: {
+    position:          "absolute",
+    top:               6,
+    end:               8,
+    minWidth:          28,
+    height:            20,
+    borderRadius:      6,
     alignItems:        "center",
-    gap:               theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical:   14,
+    justifyContent:    "center",
+    paddingHorizontal: 5,
+    borderWidth:       1,
   },
-  catRowDivider: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.border.hairline,
+  trendRankBadgeTop: {
+    backgroundColor: theme.colors.amber[50],
+    borderColor:     `${theme.colors.amber[400]}38`,
   },
-  catIcon: {
-    width:           36,
-    height:          36,
-    borderRadius:    11,
-    backgroundColor: theme.colors.brand.lighter,
-    borderWidth:     1,
-    borderColor:     theme.colors.border.brandSoft,
-    alignItems:      "center",
-    justifyContent:  "center",
-  },
-  catCountChip: {
-    minWidth:        28,
-    height:          22,
-    borderRadius:    7,
+  trendRankBadgeDefault: {
     backgroundColor: theme.colors.surfaceSunken,
-    alignItems:      "center",
-    justifyContent:  "center",
-    paddingHorizontal: 7,
+    borderColor:     theme.colors.border.hairline,
+  },
+  trendRankTextTop: {
+    fontFamily: theme.fonts.black,
+    fontSize:   10,
+    color:      theme.colors.amber[700],
+  },
+  trendRankTextDefault: {
+    fontFamily: theme.fonts.bold,
+    fontSize:   10,
+    color:      theme.colors.text.tertiary,
   },
 
-  // ── Results grid
-  grid:    { paddingHorizontal: theme.spacing.lg, paddingTop: 14 },
-  gridRow: { gap: theme.spacing.md, marginBottom: theme.spacing.md },
+  // Category grid — taller tiles, 52×52 icon
+  catGrid: {
+    flexDirection: flexRow(isRtl()),
+    flexWrap:      "wrap",
+    gap:           10,
+  },
+  catTile: {
+    width:            "48%" as any,
+    backgroundColor:  theme.colors.surface,
+    borderRadius:     20,
+    padding:          14,
+    paddingVertical:  18,
+    alignItems:       "flex-start",
+    gap:              8,
+    ...theme.shadow.card,
+    borderWidth:      1,
+    borderColor:      theme.colors.border.hairline,
+  },
+  // 52×52, borderRadius 16
+  catTileGrad: {
+    width:          52,
+    height:         52,
+    borderRadius:   16,
+    alignItems:     "center",
+    justifyContent: "center",
+  },
+  catTileName: {
+    color:      theme.colors.text.primary,
+    lineHeight: 19,
+  },
+  // Count badge pill chip
+  catCountBadge: {
+    backgroundColor:   theme.colors.teal[50],
+    borderRadius:      999,
+    paddingHorizontal: 8,
+    paddingVertical:   3,
+    borderWidth:       1,
+    borderColor:       theme.colors.border.brandSoft,
+  },
+  catCountBadgeText: {
+    fontSize:   10,
+    fontFamily: theme.fonts.bold,
+    color:      theme.colors.teal[700],
+  },
 
+  // ── Results grid header
   groupHeader: {
     marginBottom: 14,
     gap:          theme.spacing.sm,
   },
-  groupEyebrow: {
-    paddingHorizontal: 2,
-  },
   groupChipsRow: {
-    gap:              7,
+    gap:               7,
     paddingHorizontal: 2,
   },
+  // Group chips — borderRadius 12, height 36
   groupChip: {
-    flexDirection:    "row-reverse",
-    alignItems:       "center",
-    gap:              7,
-    backgroundColor:  theme.colors.surface,
-    borderRadius:     999,
+    flexDirection:     flexRow(isRtl()),
+    alignItems:        "center",
+    gap:               7,
+    backgroundColor:   theme.colors.surface,
+    borderRadius:      12,
+    height:            36,
     paddingHorizontal: theme.spacing.md,
-    paddingVertical:   7,
-    borderWidth:      1,
-    borderColor:      theme.colors.border.hairline,
+    borderWidth:       1,
+    borderColor:       theme.colors.border.hairline,
   },
   groupChipActive: {
     backgroundColor: theme.colors.brand[700],
     borderColor:     theme.colors.brand[700],
   },
   groupChipCount: {
-    minWidth:        20,
-    backgroundColor: theme.colors.surfaceSunken,
-    borderRadius:    999,
+    minWidth:          20,
+    backgroundColor:   theme.colors.surfaceSunken,
+    borderRadius:      999,
     paddingHorizontal: 6,
     paddingVertical:   1,
-    alignItems:      "center",
+    alignItems:        "center",
   },
   groupChipCountActive: {
     backgroundColor: SEARCH_OVERLAY.white20,
   },
 
-  searchingWrap: {
-    paddingTop: 60,
-    alignItems: "center",
-    gap:        theme.spacing.md,
-  },
   footerLoader: {
     paddingVertical: theme.spacing[3],
     alignItems:      "center",
   },
 
-  // Skeleton grid — 2 columns matching the product grid geometry
+  // Skeleton grid
   skeletonGrid: {
-    flexDirection:   "row-reverse",
+    flexDirection: flexRow(isRtl()),
     flexWrap:        "wrap",
     padding:         theme.spacing.md,
     gap:             10,
@@ -1393,65 +1631,42 @@ const s = StyleSheet.create({
     width: "47%" as any,
   },
 
-  // ── Language badge — tiny script indicator inside the search bar ──────────
-  langBadge: {
-    height:          20,
-    borderRadius:    6,
-    paddingHorizontal: 6,
+  // ── Empty state — large illustrated icon
+  emptyIconBox: {
+    width:           80,
+    height:          80,
+    borderRadius:    24,
+    backgroundColor: theme.colors.teal[50],
+    borderWidth:     1,
+    borderColor:     theme.colors.border.brandSoft,
     alignItems:      "center",
     justifyContent:  "center",
-    marginLeft:      2,
-    borderWidth:     1,
+    alignSelf:       "center",
+    marginBottom:    4,
   },
-  langBadgeAr: {
-    backgroundColor: theme.colors.brand.lighter,
-    borderColor:     theme.colors.border.brandSoft,
-  },
-  langBadgeMix: {
-    backgroundColor: theme.colors.amber[50],
-    borderColor:     `${theme.colors.amber[600]}30`,
-  },
-  langBadgeCode: {
-    backgroundColor: theme.colors.purple[50],
-    borderColor:     `${theme.colors.purple[600]}30`,
-  },
-
-  // ── Translation hint strip ────────────────────────────────────────────────
-  translationHint: {
-    flexDirection:    "row-reverse",
-    alignItems:       "center",
-    gap:              6,
-    paddingHorizontal: 6,
-    paddingVertical:   theme.spacing.xs,
-  },
-  translationHintText: {
-    color:    theme.colors.brand[700],
-    fontSize: 11,
-  },
-
-  // ── Empty-state quick suggestions ────────────────────────────────────────
   emptyTrendWrap:  { paddingHorizontal: theme.spacing.xs },
   emptyTrendChips: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     flexWrap:      "wrap",
     gap:           theme.spacing.sm,
   },
+  // Empty-state chips — borderRadius 14, more padding
   emptyTrendChip: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               7,
     paddingHorizontal: theme.spacing.md,
-    paddingVertical:   9,
-    borderRadius:     999,
-    backgroundColor:  theme.colors.surface,
-    borderWidth:      1,
+    paddingVertical:   10,
+    borderRadius:      14,
+    backgroundColor:   theme.colors.surface,
+    borderWidth:       1,
     ...theme.shadow.hairline,
   },
   emptyTrendIcon: {
-    width:        22,
-    height:       22,
-    borderRadius: 7,
-    alignItems:   "center",
+    width:          22,
+    height:         22,
+    borderRadius:   7,
+    alignItems:     "center",
     justifyContent: "center",
   },
 });

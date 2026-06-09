@@ -29,6 +29,9 @@ import Animated, {
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl } from "@/utils/layout";
+
+const _isRtl = isRtl();
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -113,7 +116,7 @@ export function ProductCardSkeleton() {
         <Skeleton width="40%" height={10} radius={6} />
         <Skeleton width="85%" height={13} radius={6} />
         <Skeleton width="60%" height={13} radius={6} />
-        <View style={{ flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "flex-end", marginTop: 6 }}>
+        <View style={{ flexDirection: flexRow(_isRtl), justifyContent: "space-between", alignItems: "flex-end", marginTop: 6 }}>
           <View style={{ gap: 4, alignItems: "flex-end" }}>
             <Skeleton width={64} height={18} radius={6} />
           </View>
@@ -139,8 +142,8 @@ export function OrderCardSkeleton() {
       ...theme.shadow.card,
     }}>
       {/* Header row — icon tile + identity stack + status badge */}
-      <View style={{ flexDirection: "row-reverse", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <View style={{ flexDirection: "row-reverse", gap: 10, alignItems: "center" }}>
+      <View style={{ flexDirection: flexRow(_isRtl), justifyContent: "space-between", alignItems: "flex-start" }}>
+        <View style={{ flexDirection: flexRow(_isRtl), gap: 10, alignItems: "center" }}>
           <Skeleton width={34} height={34} radius={11} />
           <View style={{ gap: 4 }}>
             <Skeleton width={64} height={9}  radius={4} />
@@ -155,7 +158,7 @@ export function OrderCardSkeleton() {
         backgroundColor: theme.colors.surfaceSunken,
         borderRadius: theme.radius.lg,
         padding: 12,
-        flexDirection: "row-reverse",
+        flexDirection: flexRow(_isRtl),
         alignItems: "center",
         gap: 12,
       }}>
@@ -167,7 +170,7 @@ export function OrderCardSkeleton() {
       </View>
       {/* Footer — total */}
       <View style={{
-        flexDirection: "row-reverse",
+        flexDirection: flexRow(_isRtl),
         justifyContent: "space-between",
         alignItems: "center",
         paddingTop: 12,

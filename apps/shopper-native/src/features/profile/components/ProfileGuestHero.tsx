@@ -9,6 +9,12 @@
  *
  * This pattern is standard in Arabic pharmacy / e-commerce apps and reads
  * cleanly in both RTL and LTR without any flexDirection confusion.
+ *
+ * Phase 2 refinements:
+ *   - Staggered FadeInUp entrance animations on each content section
+ *   - Avatar glow ring using a teal ambient halo (matches logged-in avatar)
+ *   - Stronger typography scale on title (letterSpacing tightened)
+ *   - Consistent spacing rhythm across avatar → text → actions → features
  */
 import React, { memo } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
@@ -16,6 +22,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
+import Animated, { FadeInUp } from "react-native-reanimated";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { styles as sharedStyles, HERO_GLASS } from "./profile.styles";
@@ -51,25 +58,33 @@ export const ProfileGuestHero = memo(function ProfileGuestHero({
       <View style={sharedStyles.heroDecor1} />
       <View style={sharedStyles.heroDecor2} />
 
-      {/* Avatar */}
-      <View style={s.avatarWrap}>
+      {/* Avatar with teal ambient glow */}
+      <Animated.View
+        entering={FadeInUp.duration(380).delay(60).springify().damping(22).stiffness(280)}
+        style={s.avatarWrap}>
+        {/* Glow ring — renders behind avatar in z-order */}
+        <View style={s.avatarGlow} />
         <View style={s.avatarInner}>
           <Ionicons name="person" size={38} color={HERO_GLASS.w65} />
         </View>
-      </View>
+      </Animated.View>
 
       {/* Title + description */}
-      <View style={s.textBlock}>
+      <Animated.View
+        entering={FadeInUp.duration(380).delay(130).springify().damping(22).stiffness(280)}
+        style={s.textBlock}>
         <UIText variant="sheet-title" color="inverse" align="center" style={s.title}>
           {t("profile.guestTitle")}
         </UIText>
         <UIText variant="body-sm" color="inverse-muted" align="center" style={s.desc}>
           {t("profile.guestDesc")}
         </UIText>
-      </View>
+      </Animated.View>
 
       {/* ── Actions ── */}
-      <View style={s.actions}>
+      <Animated.View
+        entering={FadeInUp.duration(380).delay(200).springify().damping(22).stiffness(280)}
+        style={s.actions}>
         {/* Primary — Sign In */}
         <Pressable
           onPress={() => router.push("/(auth)/login")}
@@ -96,10 +111,12 @@ export const ProfileGuestHero = memo(function ProfileGuestHero({
             {t("auth.createAccount")}
           </UIText>
         </Pressable>
-      </View>
+      </Animated.View>
 
       {/* ── Feature rows — wrapped in glass card ── */}
-      <View style={s.featuresWrap}>
+      <Animated.View
+        entering={FadeInUp.duration(380).delay(270).springify().damping(22).stiffness(280)}
+        style={s.featuresWrap}>
         <View style={s.glassCard}>
           {FEATURES.map((f) => (
             <View key={f.labelKey} style={s.featureRow}>
@@ -112,7 +129,7 @@ export const ProfileGuestHero = memo(function ProfileGuestHero({
             </View>
           ))}
         </View>
-      </View>
+      </Animated.View>
     </LinearGradient>
   );
 });
@@ -120,6 +137,19 @@ export const ProfileGuestHero = memo(function ProfileGuestHero({
 const s = StyleSheet.create({
   avatarWrap: {
     marginBottom: theme.spacing.sm,
+    position:     "relative",
+    alignItems:   "center",
+    justifyContent: "center",
+  },
+  // Soft teal ambient halo behind the avatar — matches the logged-in profile avatar glow
+  avatarGlow: {
+    position:        "absolute",
+    top:             -10,
+    left:            -10,
+    right:           -10,
+    bottom:          -10,
+    borderRadius:    40,
+    backgroundColor: "rgba(13,184,168,0.18)",
   },
   avatarInner: {
     width:           78,
@@ -138,7 +168,7 @@ const s = StyleSheet.create({
     width:      "100%",
   },
   title: {
-    letterSpacing: -0.4,
+    letterSpacing: -0.6,
   },
   desc: {
     lineHeight: 20,
@@ -189,13 +219,13 @@ const s = StyleSheet.create({
   },
   // Glass card wrapping all feature rows — surface with subtle border
   glassCard: {
-    backgroundColor: HERO_GLASS.w10,
-    borderRadius:    16,
-    borderWidth:     1,
-    borderColor:     HERO_GLASS.w18,
-    paddingVertical: 12,
+    backgroundColor:   HERO_GLASS.w10,
+    borderRadius:      16,
+    borderWidth:       1,
+    borderColor:       HERO_GLASS.w18,
+    paddingVertical:   12,
     paddingHorizontal: 14,
-    gap:             12,
+    gap:               12,
   },
   featureRow: {
     flexDirection: flexRow(isRtl()),

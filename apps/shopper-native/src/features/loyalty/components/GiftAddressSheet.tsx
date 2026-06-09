@@ -36,6 +36,7 @@ import { useAuth } from "@/features/auth/context";
 import { useAddressStore } from "@/features/addresses";
 import type { Address, AddressFormData } from "@/features/addresses";
 import type { RedemptionAddress } from "../types";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 type TFunc = ReturnType<typeof useTranslation>["t"];
@@ -757,7 +758,7 @@ function FormField({
           placeholder={placeholder}
           placeholderTextColor={theme.colors.slate[300]}
           keyboardType={keyboardType ?? "default"}
-          textAlign="right"
+          textAlign={textAlignStart(isRtl()) as "left" | "right"}
           multiline={multiline}
           style={[styles.fieldInput, multiline && { paddingTop: 12, textAlignVertical: "top" }]}
           maxFontSizeMultiplier={1.3}
@@ -777,7 +778,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.bg,
   },
   header: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               12,
     paddingHorizontal: 16,
@@ -797,18 +798,18 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.black,
     fontSize:   16,
     color:      theme.colors.text.primary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
   headerSub: {
     fontFamily: theme.fonts.regular,
     fontSize:   11,
     color:      theme.colors.text.tertiary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     marginTop:  2,
   },
 
   modeRow: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     paddingHorizontal: 16,
     paddingTop:        10,
     paddingBottom:     2,
@@ -849,7 +850,7 @@ const styles = StyleSheet.create({
 
   // Saved address picker
   addrCard: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     gap:             10,
     backgroundColor: theme.colors.surface,
     borderRadius:    14,
@@ -866,7 +867,7 @@ const styles = StyleSheet.create({
     paddingTop: 2,
   },
   addrCardHead: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     gap:            6,
     marginBottom:   4,
@@ -876,7 +877,7 @@ const styles = StyleSheet.create({
     fontSize:   13,
     color:      theme.colors.text.primary,
     flex:       1,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
   addrLabelPill: {
     paddingHorizontal: 7,
@@ -893,20 +894,20 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.regular,
     fontSize:   12,
     color:      theme.colors.text.secondary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     lineHeight: 17,
   },
   addrPhone: {
     fontFamily: theme.fonts.bold,
     fontSize:   11,
     color:      theme.colors.text.tertiary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     marginTop:  4,
     letterSpacing: 0.5,
   },
 
   addNewBtn: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               6,
     paddingVertical:   12,
@@ -930,18 +931,18 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   fieldRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     gap:           10,
   },
   fieldLabel: {
     fontFamily: theme.fonts.bold,
     fontSize:   11,
     color:      theme.colors.text.secondary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     paddingEnd: 2,
   },
   fieldBox: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     backgroundColor:   theme.colors.surface,
     borderRadius:      14,
@@ -965,12 +966,12 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.bold,
     fontSize:   10,
     color:      theme.colors.red[500],
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     paddingEnd: 4,
   },
 
   saveRow: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               8,
     paddingVertical:   10,
@@ -985,14 +986,14 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.semibold,
     fontSize:   12,
     color:      theme.colors.text.primary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
   saveWarn: {
     marginTop:  6,
     fontFamily: theme.fonts.bold,
     fontSize:   11,
     color:      theme.colors.warning.strong,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     paddingEnd: 4,
     lineHeight: 16,
   },
@@ -1020,7 +1021,7 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.semibold,
     fontSize:   13,
     color:      theme.colors.text.primary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
   dropdownItemTextActive: {
     color:      theme.colors.brand[700],
@@ -1036,7 +1037,7 @@ const styles = StyleSheet.create({
     backgroundColor:   theme.colors.bg,
   },
   confirmBtn: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     justifyContent:    "center",
     gap:               8,

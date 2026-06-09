@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { formatPrice } from "@/utils/format";
+import { flexRow, isRtl } from "@/utils/layout";
 
 const FavoriteCard = memo(function FavoriteCard({ product, index }: { product: NativeProduct; index: number }) {
   const router  = useRouter();
@@ -231,7 +232,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   header: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "center",
     justifyContent:    "space-between",
     paddingHorizontal: theme.layout.pagePaddingH,
@@ -257,11 +258,11 @@ const styles = StyleSheet.create({
     gap:     12,
   },
   listHeader: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     marginBottom:  6,
   },
   card: {
-    flexDirection:   "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:      "center",
     gap:             14,
     backgroundColor: theme.colors.surface,

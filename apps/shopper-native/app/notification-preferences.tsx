@@ -25,6 +25,7 @@ import {
   type NotificationChannelPrefs,
 } from "@/features/notifications";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -255,15 +256,15 @@ const styles = StyleSheet.create({
 
   // Header
   header: { paddingHorizontal: 20, paddingBottom: 16, overflow: "hidden" },
-  headerRow: { flexDirection: "row-reverse", alignItems: "center", gap: 12 },
+  headerRow: { flexDirection: flexRow(isRtl()), alignItems: "center", gap: 12 },
   backBtn: {
     width: 38, height: 38, borderRadius: 12,
     backgroundColor: "rgba(255,255,255,0.10)",
     alignItems: "center", justifyContent: "center",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
   },
-  headerTitle: { fontSize: 18, fontFamily: theme.fonts.black, color: "#fff", textAlign: "right" },
-  headerSub: { fontSize: 11, fontFamily: theme.fonts.semibold, color: "rgba(255,255,255,0.50)", textAlign: "right" },
+  headerTitle: { fontSize: 18, fontFamily: theme.fonts.black, color: "#fff", textAlign: textAlignStart(isRtl()) },
+  headerSub: { fontSize: 11, fontFamily: theme.fonts.semibold, color: "rgba(255,255,255,0.50)", textAlign: textAlignStart(isRtl()) },
   shieldIcon: {
     width: 38, height: 38, borderRadius: 12,
     backgroundColor: "rgba(255,255,255,0.08)",
@@ -273,18 +274,18 @@ const styles = StyleSheet.create({
 
   // Signed-out banner
   signedOutBanner: {
-    flexDirection: "row-reverse", alignItems: "center", gap: 8,
+    flexDirection: flexRow(isRtl()), alignItems: "center", gap: 8,
     backgroundColor: theme.colors.amber[50],
     borderRadius: 12, padding: 12, marginBottom: 16,
     borderWidth: 1, borderColor: theme.colors.amber[100],
   },
   signedOutText: {
     flex: 1, fontSize: 11, fontFamily: theme.fonts.bold,
-    color: theme.colors.amber[800], textAlign: "right",
+    color: theme.colors.amber[800], textAlign: textAlignStart(isRtl()),
   },
 
   // Sections
-  sectionHead: { flexDirection: "row-reverse", alignItems: "center", gap: 8, marginBottom: 10 },
+  sectionHead: { flexDirection: flexRow(isRtl()), alignItems: "center", gap: 8, marginBottom: 10 },
   sectionIcon: {
     width: 26, height: 26, borderRadius: 8,
     backgroundColor: theme.colors.brand[50],
@@ -300,7 +301,7 @@ const styles = StyleSheet.create({
     ...theme.shadow.sm,
   },
   row: {
-    flexDirection:   "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:      "center",
     gap:             12,
     paddingHorizontal: 16,
@@ -320,18 +321,18 @@ const styles = StyleSheet.create({
     flexShrink:     0,
   },
   rowText: { flex: 1, gap: 2 },
-  rowLabel: { fontSize: 13, fontFamily: theme.fonts.bold, color: theme.colors.text.primary, textAlign: "right" },
-  rowDesc: { fontSize: 10, fontFamily: theme.fonts.regular, color: theme.colors.slate[400], textAlign: "right" },
+  rowLabel: { fontSize: 13, fontFamily: theme.fonts.bold, color: theme.colors.text.primary, textAlign: textAlignStart(isRtl()) },
+  rowDesc: { fontSize: 10, fontFamily: theme.fonts.regular, color: theme.colors.slate[400], textAlign: textAlignStart(isRtl()) },
 
   // Footer
   footerNote: {
-    flexDirection: "row-reverse", alignItems: "flex-start", gap: 8,
+    flexDirection: flexRow(isRtl()), alignItems: "flex-start", gap: 8,
     backgroundColor: theme.colors.brand[50],
     borderRadius: 12, padding: 12, marginTop: 18,
     borderWidth: 1, borderColor: theme.colors.brand[100],
   },
   footerText: {
     flex: 1, fontSize: 11, fontFamily: theme.fonts.regular,
-    color: theme.colors.brand[700], textAlign: "right", lineHeight: 18,
+    color: theme.colors.brand[700], textAlign: textAlignStart(isRtl()), lineHeight: 18,
   },
 });

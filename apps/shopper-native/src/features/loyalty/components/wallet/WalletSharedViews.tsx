@@ -11,6 +11,7 @@ import {
   skeletonStyles as sk,
   TOUR_GRADIENT,
 } from "./wallet.styles";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 // ─── ScreenHeader ─────────────────────────────────────────────────────────────
 
@@ -58,7 +59,7 @@ export const ScreenHeader = memo(function ScreenHeader({
 
 const headerStyles = StyleSheet.create({
   row: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     paddingHorizontal: theme.spacing.lg,
     paddingVertical:   theme.spacing.md,
@@ -68,7 +69,7 @@ const headerStyles = StyleSheet.create({
     fontFamily:    theme.fonts.black,
     fontSize:      22,
     color:         theme.colors.text.primary,
-    textAlign:     "right",
+    textAlign:     textAlignStart(isRtl()),
     letterSpacing: -0.4,
   },
   tourBtn: {

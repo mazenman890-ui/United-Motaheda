@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { shStyles as base } from "./home.styles";
+import { flexRow, isRtl } from "@/utils/layout";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -93,7 +94,7 @@ const sh = StyleSheet.create({
   },
   // "See All" pill
   pill: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               3,
     backgroundColor:   theme.colors.brand.lighter,

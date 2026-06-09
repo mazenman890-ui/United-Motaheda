@@ -24,6 +24,7 @@ import Animated, {
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import { useAppLanguage } from "@/i18n/LanguageProvider";
 import { Badge } from "@/components/ui/Badge";
 import { Text as UIText } from "@/shared/ui";
@@ -31,6 +32,7 @@ import { theme } from "@/shared/theme";
 import { formatPrice } from "@/utils/format";
 import type { Order, OrderStatus } from "@/stores/orders";
 import { listS, INDIGO_DOT, EMERALD_DOT } from "./orders.styles";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 // ─── Status metadata (unchanged — used by Badge and dot colors) ───────────────
 
@@ -285,12 +287,12 @@ export const OrderCard = memo(function OrderCard({
 
 const oc = StyleSheet.create({
   headerRow: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
   },
   headerLeft: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           10,
   },
@@ -306,7 +308,7 @@ const oc = StyleSheet.create({
     fontFamily:         theme.fonts.black,
     fontSize:           14,
     color:              theme.colors.text.primary,
-    textAlign:          "right",
+    textAlign:          textAlignStart(isRtl()),
     letterSpacing:      -0.2,
     includeFontPadding: false,
     lineHeight:         20,
@@ -315,13 +317,13 @@ const oc = StyleSheet.create({
     fontFamily:         theme.fonts.regular,
     fontSize:           11,
     color:              theme.colors.text.tertiary,
-    textAlign:          "right",
+    textAlign:          textAlignStart(isRtl()),
     includeFontPadding: false,
     lineHeight:         16,
   },
   // Item row — product thumbnail + name
   itemRow: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     gap:             12,
     backgroundColor: theme.colors.surfaceSunken,
@@ -344,7 +346,7 @@ const oc = StyleSheet.create({
   },
   // Footer — total label + price
   footer: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
     paddingTop:     12,
@@ -356,7 +358,7 @@ const oc = StyleSheet.create({
     fontSize:           17,
     color:              theme.colors.brand[700],
     letterSpacing:      -0.4,
-    textAlign:          "right",
+    textAlign:          textAlignStart(isRtl()),
     includeFontPadding: false,
     lineHeight:         22,
   },
@@ -370,7 +372,7 @@ const tl = StyleSheet.create({
   },
   // RTL row — step[0] (pending) on RIGHT, step[3] (delivered) on LEFT
   row: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
   },
 

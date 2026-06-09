@@ -20,6 +20,7 @@ import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "rea
 import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -71,11 +72,11 @@ export function Section({
 const styles = StyleSheet.create({
   wrap: { gap: 10 },
   head: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     justifyContent: "space-between",
   },
-  titleWrap: { flexDirection: "row-reverse", alignItems: "center", gap: 8 },
+  titleWrap: { flexDirection: flexRow(isRtl()), alignItems: "center", gap: 8 },
   iconBox: {
     width: 26,
     height: 26,

@@ -33,6 +33,7 @@ import {
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl } from "@/utils/layout";
 
 // ─── Skeleton shimmer component ──────────────────────────────────────────────
 function ShimmerCard() {
@@ -387,7 +388,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.02)",
   },
   headerTopRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           12,
   },
@@ -423,11 +424,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   statsRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     gap:           8,
   },
   statPill: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "center",
     gap:               5,
     backgroundColor:   "rgba(255,255,255,0.08)",
@@ -463,7 +464,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   sectionHeader: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           12,
     marginBottom:  14,
@@ -485,7 +486,7 @@ const styles = StyleSheet.create({
 
   // ── Add address CTA ──
   addCardBtn: {
-    flexDirection:   "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:      "center",
     gap:             14,
     padding:         16,

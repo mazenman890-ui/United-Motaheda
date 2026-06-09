@@ -19,6 +19,7 @@ import { useTranslation } from "react-i18next";
 import { fetchCatalogStats } from "@/services/productsApi";
 import type { CatalogStats } from "@/services/productsApi";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -237,7 +238,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingVertical: 14,
     paddingHorizontal: 8,
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     ...theme.shadow.lg,
     borderWidth: 1,
     borderColor: theme.colors.slate[100],
@@ -295,7 +296,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
@@ -306,6 +307,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: theme.fonts.semibold,
     color: theme.colors.amber[700],
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
   },
 });

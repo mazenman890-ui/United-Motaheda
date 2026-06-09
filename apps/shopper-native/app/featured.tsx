@@ -43,6 +43,7 @@ import type { NativeProduct } from "@/features/products";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 // ─── Glass palette ─────────────────────────────────────────────────────────────
 const G = {
@@ -272,7 +273,7 @@ export default function FeaturedScreen(): React.ReactElement {
             onChangeText={setQuery}
             returnKeyType="search"
             autoCorrect={false}
-            textAlign="right"
+            textAlign={textAlignStart(isRtl()) as "left" | "right"}
             selectionColor={theme.colors.brand[600]}
           />
           {query.length > 0 && (
@@ -451,7 +452,7 @@ const f = StyleSheet.create({
     backgroundColor: "rgba(251,191,36,0.08)",
   },
   topBar: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           theme.spacing.md,
   },
@@ -470,7 +471,7 @@ const f = StyleSheet.create({
     fontSize:      10,
     color:         G.w45,
     letterSpacing: 0.6,
-    textAlign:     "right",
+    textAlign: textAlignStart(isRtl()),
     marginBottom:  2,
   },
   heroTitle: {
@@ -478,7 +479,7 @@ const f = StyleSheet.create({
     fontSize:      26,
     color:         theme.colors.surface,
     letterSpacing: -0.5,
-    textAlign:     "right",
+    textAlign: textAlignStart(isRtl()),
     lineHeight:    32,
   },
   starTile: {
@@ -498,7 +499,7 @@ const f = StyleSheet.create({
     justifyContent: "flex-end",
   },
   stat: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "center",
     gap:               6,
     paddingHorizontal: 10,
@@ -525,7 +526,7 @@ const f = StyleSheet.create({
     borderBottomColor: theme.colors.border.hairline,
   },
   searchBar: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "center",
     gap:               10,
     backgroundColor:   theme.colors.surfaceSunken,
@@ -540,7 +541,7 @@ const f = StyleSheet.create({
     fontSize:   14,
     fontFamily: theme.fonts.semibold,
     color:      theme.colors.text.primary,
-    textAlign:  "right",
+    textAlign: textAlignStart(isRtl()),
     paddingVertical: 0,
   },
   searchClear: {
@@ -552,11 +553,11 @@ const f = StyleSheet.create({
     paddingHorizontal: theme.layout.pagePaddingH,
     paddingVertical:   10,
     gap:               8,
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     backgroundColor:   theme.colors.surface,
   },
   tab: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "center",
     gap:               6,
     paddingHorizontal: 14,
@@ -576,7 +577,7 @@ const f = StyleSheet.create({
     paddingHorizontal: theme.layout.pagePaddingH,
     paddingVertical:   10,
     gap:               8,
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     backgroundColor:   theme.colors.surface,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: theme.colors.border.hairline,
@@ -604,7 +605,7 @@ const f = StyleSheet.create({
 
   // Skeleton
   skeletonGrid: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     flexWrap:      "wrap",
     padding:       theme.spacing.md,
     gap:           theme.spacing.md,

@@ -14,6 +14,7 @@ import { BranchCard } from "./BranchCard";
 import { useBranches } from "../branches/useBranches";
 import { sortBranchesByDistance, type Coordinates } from "../geofencing";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import type { Branch } from "../branches/types";
 
 interface BranchSelectorProps {
@@ -123,7 +124,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.slate[100],
   },
   emptyCard: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     gap: 10,
     padding: 14,
@@ -138,6 +139,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: theme.fonts.semibold,
     color: theme.colors.slate[500],
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
   },
 });

@@ -20,6 +20,7 @@ import { type CheckoutFormSchema } from "../schema";
 import { type CheckoutPaymentMethod } from "../constants";
 import { SectionCard } from "./SectionCard";
 import { PaymentMethodCards } from "./PaymentMethodCards";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 interface DetailsStepProps {
   control:               Control<CheckoutFormSchema>;
@@ -343,7 +344,7 @@ export const DetailsStep = React.memo(function DetailsStep({
 const s = StyleSheet.create({
   // Sign-in banner
   signInBanner: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               12,
     backgroundColor:   theme.colors.brand[50],
@@ -378,11 +379,11 @@ const s = StyleSheet.create({
     fontSize:     11,
     fontFamily:   theme.fonts.regular,
     color:        theme.colors.slate[500],
-    textAlign:    "right",
+    textAlign:    textAlignStart(isRtl()),
     marginBottom: 4,
   },
   warning: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "flex-start",
     gap:               8,
     padding:           10,
@@ -397,20 +398,20 @@ const s = StyleSheet.create({
     fontSize:   11,
     fontFamily: theme.fonts.semibold,
     color:      theme.colors.amber[800],
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     lineHeight: 16,
   },
 
   // Profile/address toggle row
   toggleRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     gap:           10,
     marginBottom:  14,
   },
 
   // Profile meta rows
   metaRow: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     justifyContent:    "space-between",
     gap:               10,
     paddingVertical:   6,
@@ -421,13 +422,13 @@ const s = StyleSheet.create({
     fontSize:   11,
     fontFamily: theme.fonts.semibold,
     color:      theme.colors.slate[500],
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
   metaValue: {
     fontSize:   12,
     fontFamily: theme.fonts.black,
     color:      theme.colors.text.primary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     flex:       1,
   },
   savedHelp: {
@@ -435,7 +436,7 @@ const s = StyleSheet.create({
     fontSize:   11,
     fontFamily: theme.fonts.regular,
     color:      theme.colors.slate[500],
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     lineHeight: 18,
   },
 
@@ -452,14 +453,14 @@ const s = StyleSheet.create({
     fontSize:     12,
     fontFamily:   theme.fonts.bold,
     color:        theme.colors.text.primary,
-    textAlign:    "right",
+    textAlign:    textAlignStart(isRtl()),
     marginBottom: 4,
   },
   savedAddressHint: {
     fontSize:     11,
     fontFamily:   theme.fonts.regular,
     color:        theme.colors.slate[500],
-    textAlign:    "right",
+    textAlign:    textAlignStart(isRtl()),
     lineHeight:   18,
     marginBottom: 10,
   },
@@ -467,7 +468,7 @@ const s = StyleSheet.create({
     fontSize:     12,
     fontFamily:   theme.fonts.semibold,
     color:        theme.colors.text.primary,
-    textAlign:    "right",
+    textAlign:    textAlignStart(isRtl()),
     marginBottom: 12,
   },
 
@@ -479,7 +480,7 @@ const s = StyleSheet.create({
     borderWidth:     1,
     borderColor:     theme.colors.brand[100],
   },
-  cityHead:   { flexDirection: "row-reverse", alignItems: "center", gap: 10 },
+  cityHead:   { flexDirection: flexRow(isRtl()), alignItems: "center", gap: 10 },
   cityIcon: {
     width:           30,
     height:          30,
@@ -492,13 +493,13 @@ const s = StyleSheet.create({
     fontSize:   10,
     fontFamily: theme.fonts.semibold,
     color:      theme.colors.slate[500],
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
   cityValue: {
     fontSize:   13,
     fontFamily: theme.fonts.black,
     color:      theme.colors.text.primary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
   cityBadge: {
     backgroundColor:   theme.colors.amber[100],
@@ -512,5 +513,5 @@ const s = StyleSheet.create({
     color:      theme.colors.amber[800],
   },
 
-  row3: { flexDirection: "row-reverse", gap: 8 },
+  row3: { flexDirection: flexRow(isRtl()), gap: 8 },
 });

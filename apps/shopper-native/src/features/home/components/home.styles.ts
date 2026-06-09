@@ -4,6 +4,7 @@
  */
 import { StyleSheet } from "react-native";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 // ─── Section containers ────────────────────────────────────────────────────────
 export const sectionStyles = StyleSheet.create({
@@ -21,13 +22,13 @@ export const sectionStyles = StyleSheet.create({
 // ─── Section header (shared across all home sections) ─────────────────────────
 export const shStyles = StyleSheet.create({
   row: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     justifyContent:    "space-between",
     paddingHorizontal: theme.layout.pagePaddingH,
   },
   left: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           12,
   },
@@ -42,7 +43,7 @@ export const shStyles = StyleSheet.create({
   },
   title: { letterSpacing: -0.3 },
   moreBtn: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               4,
     paddingHorizontal: 4,
@@ -52,7 +53,7 @@ export const shStyles = StyleSheet.create({
 // ─── Quick-action row ──────────────────────────────────────────────────────────
 export const quickStyles = StyleSheet.create({
   row: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     gap:               10,
     paddingHorizontal: theme.layout.pagePaddingH,
   },
@@ -189,7 +190,7 @@ export const supportStyles = StyleSheet.create({
     fontSize:      18,
     fontFamily:    theme.fonts.black,
     letterSpacing: -0.3,
-    textAlign:     "right",
+    textAlign:     textAlignStart(isRtl()),
     marginTop:     theme.spacing[0.5],
   },
   sub: {
@@ -197,7 +198,7 @@ export const supportStyles = StyleSheet.create({
     fontSize:   12,
     fontFamily: theme.fonts.regular,
     lineHeight: 18,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     marginTop:  theme.spacing[0.5],
   },
   // CTA: WhatsApp icon + text on left; chevron pinned to right via space-between

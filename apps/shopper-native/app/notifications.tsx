@@ -20,6 +20,7 @@ import { useAuth } from "@/features/auth";
 import { useNotifications, type AppNotification, type NotifType } from "@/features/notifications";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -280,7 +281,7 @@ const styles = StyleSheet.create({
   // Header
   header: { paddingHorizontal: 16, paddingBottom: 14, gap: 12 },
   headerTopRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     gap: 12,
   },
@@ -299,7 +300,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: theme.fonts.black,
     color: "#fff",
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
   },
   headerBadge: {
     backgroundColor: "rgba(255,255,255,0.15)",
@@ -311,11 +312,11 @@ const styles = StyleSheet.create({
   },
   headerBadgeText: { fontSize: 10, fontFamily: theme.fonts.black, color: "#fff" },
   headerActions: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     justifyContent: "space-between",
   },
-  filterRow: { flexDirection: "row-reverse", gap: 5 },
+  filterRow: { flexDirection: flexRow(isRtl()), gap: 5 },
   filterChip: {
     paddingHorizontal: 11,
     paddingVertical: 6,
@@ -338,7 +339,7 @@ const styles = StyleSheet.create({
 
   // Row
   notifRow: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "flex-start",
     gap:               14,
     paddingHorizontal: 18,
@@ -368,7 +369,7 @@ const styles = StyleSheet.create({
   },
   notifContent: { flex: 1, gap: 4 },
   notifTitleRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     justifyContent: "space-between",
     gap: 8,
@@ -378,7 +379,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: theme.fonts.bold,
     color: theme.colors.slate[700],
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
   },
   notifTitleUnread: { fontFamily: theme.fonts.black, color: theme.colors.slate[900] },
   notifTime: { fontSize: 10, fontFamily: theme.fonts.semibold, color: theme.colors.slate[400] },
@@ -386,7 +387,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: theme.fonts.regular,
     color: theme.colors.slate[500],
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
     lineHeight: 18,
   },
   notifTypePill: {

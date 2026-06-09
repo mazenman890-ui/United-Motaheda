@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/Button";
 import { Text } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { authStyles } from "@/features/auth/styles/auth.styles";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 export default function ForgotPasswordScreen() {
   const { t, i18n } = useTranslation();
@@ -159,7 +160,7 @@ export default function ForgotPasswordScreen() {
               </Text>
               <View style={styles.tipBox}>
                 <Ionicons name="information-circle-outline" size={16} color={theme.colors.brand.base} />
-                <Text variant="caption" color="secondary" style={{ flex: 1, textAlign: "right" }}>
+                <Text variant="caption" color="secondary" style={{ flex: 1, textAlign: textAlignStart(isRtl()) }}>
                   {t("forgotPassword.spamTip")}
                 </Text>
               </View>
@@ -227,7 +228,7 @@ const styles = StyleSheet.create({
     maxWidth:   300,
   },
   tipBox: {
-    flexDirection:   "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:      "flex-start",
     gap:             8,
     backgroundColor: theme.colors.brand.lighter,

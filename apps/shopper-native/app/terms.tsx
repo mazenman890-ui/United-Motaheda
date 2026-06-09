@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 interface SectionProps {
   title:    string;
@@ -135,17 +136,17 @@ export default function TermsScreen() {
 
 const styles = StyleSheet.create({
   screen:        { flex: 1, backgroundColor: theme.colors.bg },
-  header:        { flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between", paddingHorizontal: theme.layout.pagePaddingH, paddingVertical: 14, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border.default, ...theme.shadow.xs },
+  header:        { flexDirection: flexRow(isRtl()), alignItems: "center", justifyContent: "space-between", paddingHorizontal: theme.layout.pagePaddingH, paddingVertical: 14, backgroundColor: theme.colors.surface, borderBottomWidth: 1, borderBottomColor: theme.colors.border.default, ...theme.shadow.xs },
   backBtn:       { width: 38, height: 38, borderRadius: 12, backgroundColor: theme.colors.subtle, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: theme.colors.border.default },
   title:         { fontSize: theme.fontSize["2xl"], fontFamily: theme.fonts.black, color: theme.colors.text.primary },
   content:       { padding: theme.layout.pagePaddingH, gap: 0 },
   updatedBanner: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 6, marginBottom: 14 },
   updatedText:   { fontSize: theme.fontSize.sm, fontFamily: theme.fonts.semibold, color: theme.colors.brand[700] },
-  warningBanner: { flexDirection: "row-reverse", alignItems: "flex-start", gap: 10, backgroundColor: theme.colors.warning.bg, borderRadius: theme.radius.xl, padding: 16, borderWidth: 1, borderColor: theme.colors.warning.light, marginBottom: 20 },
-  warningText:   { flex: 1, fontSize: theme.fontSize.base, fontFamily: theme.fonts.semibold, color: theme.colors.text.primary, textAlign: "right", lineHeight: 22 },
+  warningBanner: { flexDirection: flexRow(isRtl()), alignItems: "flex-start", gap: 10, backgroundColor: theme.colors.warning.bg, borderRadius: theme.radius.xl, padding: 16, borderWidth: 1, borderColor: theme.colors.warning.light, marginBottom: 20 },
+  warningText:   { flex: 1, fontSize: theme.fontSize.base, fontFamily: theme.fonts.semibold, color: theme.colors.text.primary, textAlign: textAlignStart(isRtl()), lineHeight: 22 },
   section:       { marginBottom: 28 },
   sectionHeader: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           10,
     marginBottom:  12,
@@ -169,7 +170,7 @@ const styles = StyleSheet.create({
     fontFamily:    theme.fonts.black,
     color:         theme.colors.text.primary,
     flex:          1,
-    textAlign:     "right",
+    textAlign: textAlignStart(isRtl()),
     letterSpacing: -0.3,
   },
   // Body text: generous line-height, no card box, clean reading flow
@@ -177,7 +178,7 @@ const styles = StyleSheet.create({
     fontSize:   theme.fontSize.base,
     fontFamily: theme.fonts.regular,
     color:      theme.colors.text.secondary,
-    textAlign:  "right",
+    textAlign: textAlignStart(isRtl()),
     lineHeight: 28,   // generous editorial rhythm
   },
   footer: { fontSize: 11, color: theme.colors.text.disabled, textAlign: "center", paddingTop: 16 },

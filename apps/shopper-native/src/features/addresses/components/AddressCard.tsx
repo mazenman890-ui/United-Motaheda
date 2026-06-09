@@ -9,6 +9,7 @@ import { AddressMapPlaceholder } from "./AddressMapPlaceholder";
 import { ADDRESS_LABELS } from "../types";
 import type { Address } from "../types";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -112,12 +113,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   topRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     justifyContent: "space-between",
   },
   labelPill: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     gap: 5,
     backgroundColor: theme.colors.brand[50],
@@ -131,7 +132,7 @@ const styles = StyleSheet.create({
     color: theme.colors.brand[700],
   },
   defaultBadge: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     gap: 4,
     backgroundColor: theme.colors.green[50],
@@ -148,17 +149,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: theme.fonts.black,
     color: theme.colors.text.primary,
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
   },
   addressText: {
     fontSize: 12,
     fontFamily: theme.fonts.regular,
     color: theme.colors.slate[500],
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
     lineHeight: 18,
   },
   phoneRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     gap: 5,
   },
@@ -168,7 +169,7 @@ const styles = StyleSheet.create({
     color: theme.colors.slate[400],
   },
   actions: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     gap: 6,
     marginTop: 4,
@@ -177,7 +178,7 @@ const styles = StyleSheet.create({
     borderTopColor: theme.colors.slate[100],
   },
   actionBtn: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     gap: 4,
     paddingHorizontal: 10,

@@ -19,6 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import { theme } from "@/shared/theme";
 import { useScreenTrace } from "@/features/observability";
 import { SubScreenHeader } from "../components/SubScreenHeader";
@@ -312,7 +313,7 @@ const styles = StyleSheet.create({
     fontFamily:    theme.fonts.black,
     fontSize:      14,
     color:         theme.colors.text.primary,
-    textAlign:     "right",
+    textAlign: textAlignStart(isRtl()),
     letterSpacing: -0.2,
   },
 
@@ -332,7 +333,7 @@ const styles = StyleSheet.create({
     minHeight:       110,
   },
   cardTop: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     gap:           12,
     alignItems:    "flex-start",
   },
@@ -344,7 +345,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cardTitleRow: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
     gap:            8,
@@ -367,16 +368,16 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.regular,
     fontSize:   11,
     color:      theme.colors.text.tertiary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
   expiryText: {
     fontFamily: theme.fonts.bold,
     fontSize:   11,
     color:      theme.colors.amber[700],
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
   trackingRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           4,
   },
@@ -390,12 +391,12 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.regular,
     fontSize:   11,
     color:      theme.colors.text.tertiary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     fontStyle:  "italic",
   },
 
   cancelBtn: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "center",
     gap:               6,
     paddingHorizontal: 12,
@@ -440,7 +441,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   primaryBtn: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "center",
     gap:               8,
     backgroundColor:   theme.colors.brand[600],

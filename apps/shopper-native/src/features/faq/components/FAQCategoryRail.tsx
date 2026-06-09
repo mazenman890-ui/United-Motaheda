@@ -7,6 +7,7 @@ import Animated, { FadeIn } from "react-native-reanimated";
 import { FAQ_CATEGORIES } from "../data";
 import type { FAQCategory } from "../data";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl } from "@/utils/layout";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -88,7 +89,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   chip: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 12,

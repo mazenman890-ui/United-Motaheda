@@ -9,6 +9,7 @@
 import { StyleSheet, TextInput } from "react-native";
 import Animated from "react-native-reanimated";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 // ─── Gradient / overlay constants ─────────────────────────────────────────────
 /** Deep navy gradient for hero cards and tour modal. */
@@ -49,12 +50,12 @@ export const heroStyles = StyleSheet.create({
     overflow:     "hidden",
   },
   topRow: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
   },
   tierBadge: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               5,
     paddingHorizontal: 10,
@@ -90,7 +91,7 @@ export const heroStyles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   balanceRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "baseline",
     gap:           theme.spacing.sm,  // 8
   },
@@ -110,7 +111,7 @@ export const heroStyles = StyleSheet.create({
     color:      OVERLAY.white80,
   },
   statsRow: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     backgroundColor: OVERLAY.white08,
     borderRadius:    16,
@@ -141,7 +142,7 @@ export const heroStyles = StyleSheet.create({
     gap: theme.spacing.sm,  // 8
   },
   progressLabelRow: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
   },
@@ -150,7 +151,7 @@ export const heroStyles = StyleSheet.create({
     fontSize:   11,
     color:      OVERLAY.white70,
     flex:       1,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
   progressPct: {
     fontFamily:  theme.fonts.black,
@@ -179,7 +180,7 @@ export const quickStyles = StyleSheet.create({
     gap:               theme.spacing.sm,   // 8
   },
   row: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     gap:           theme.spacing.sm,       // 8
   },
   tileOuter: { flex: 1 },
@@ -215,7 +216,7 @@ export const quickStyles = StyleSheet.create({
 // ─── Section header ────────────────────────────────────────────────────────────
 export const sectionHeaderStyles = StyleSheet.create({
   row: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     justifyContent:    "space-between",
     paddingHorizontal: theme.spacing.lg,   // 16
@@ -223,7 +224,7 @@ export const sectionHeaderStyles = StyleSheet.create({
     paddingBottom:     theme.spacing.sm,   // 8
   },
   titleWrap: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           6,
   },
@@ -231,7 +232,7 @@ export const sectionHeaderStyles = StyleSheet.create({
     fontFamily:    theme.fonts.black,
     fontSize:      15,
     color:         theme.colors.text.primary,
-    textAlign:     "right",
+    textAlign:     textAlignStart(isRtl()),
     letterSpacing: -0.2,
   },
   seeAll: {
@@ -248,7 +249,7 @@ export const cardStyles = StyleSheet.create({
     gap:               theme.spacing.sm,  // 8
   },
   couponCard: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     gap:             10,
     backgroundColor: theme.colors.surface,
@@ -274,17 +275,17 @@ export const cardStyles = StyleSheet.create({
     fontSize:      17,
     color:         theme.colors.text.primary,
     letterSpacing: 1.2,
-    textAlign:     "right",
+    textAlign:     textAlignStart(isRtl()),
   },
   couponExpiry: {
     fontFamily: theme.fonts.regular,
     fontSize:   11,
     color:      theme.colors.text.tertiary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     marginTop:  theme.spacing.xs,  // 4
   },
   activeBadge: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               3,
     paddingHorizontal: 7,
@@ -312,7 +313,7 @@ export const cardStyles = StyleSheet.create({
     borderColor:     theme.colors.brand[600],
   },
   showMoreBtn: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     justifyContent:  "center",
     gap:             6,
@@ -329,7 +330,7 @@ export const cardStyles = StyleSheet.create({
     color:      theme.colors.brand[700],
   },
   redemptionCard: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     gap:             theme.spacing.md,   // 12
     backgroundColor: theme.colors.surface,
@@ -352,14 +353,14 @@ export const cardStyles = StyleSheet.create({
     fontFamily:    theme.fonts.black,
     fontSize:      15,
     color:         theme.colors.text.primary,
-    textAlign:     "right",
+    textAlign:     textAlignStart(isRtl()),
     letterSpacing: -0.2,
   },
   redemptionState: {
     fontFamily: theme.fonts.regular,
     fontSize:   12,
     color:      theme.colors.text.tertiary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     marginTop:  theme.spacing.xs,  // 4
   },
   stateChip: {
@@ -385,7 +386,7 @@ export const cardStyles = StyleSheet.create({
 // ─── Empty / error atoms ───────────────────────────────────────────────────────
 export const feedbackStyles = StyleSheet.create({
   frozenBanner: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               theme.spacing.sm,   // 8
     marginHorizontal:  theme.spacing.lg,   // 16
@@ -402,11 +403,11 @@ export const feedbackStyles = StyleSheet.create({
     fontFamily: theme.fonts.bold,
     fontSize:   12,
     color:      theme.colors.rose[700],
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     lineHeight: 17,
   },
   emptyRow: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               10,
     marginHorizontal:  theme.spacing.lg,   // 16
@@ -421,7 +422,7 @@ export const feedbackStyles = StyleSheet.create({
     fontSize:   13,
     color:      theme.colors.text.secondary,
     flex:       1,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
   emptyCard: {
     marginHorizontal: theme.spacing.lg,    // 16
@@ -459,7 +460,7 @@ export const feedbackStyles = StyleSheet.create({
     maxWidth:   280,
   },
   emptyCardCta: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               5,
     paddingHorizontal: 14,
@@ -476,7 +477,7 @@ export const feedbackStyles = StyleSheet.create({
     color:      theme.colors.brand[700],
   },
   errorRow: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     justifyContent:    "space-between",
     marginHorizontal:  theme.spacing.lg,   // 16
@@ -490,10 +491,10 @@ export const feedbackStyles = StyleSheet.create({
     fontFamily: theme.fonts.bold,
     fontSize:   13,
     color:      theme.colors.text.secondary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
   retryBtn: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               5,
     paddingHorizontal: theme.spacing.md,   // 12
@@ -513,7 +514,7 @@ export const feedbackStyles = StyleSheet.create({
 // ─── Skeleton ──────────────────────────────────────────────────────────────────
 export const skeletonStyles = StyleSheet.create({
   hero:    { height: 200, borderRadius: 24, backgroundColor: theme.colors.surfaceSunken },
-  actions: { flexDirection: "row-reverse", gap: theme.spacing.sm },
+  actions: { flexDirection: flexRow(isRtl()), gap: theme.spacing.sm },
   tile:    { flex: 1, height: 78, borderRadius: 16, backgroundColor: theme.colors.surfaceSunken },
   row: {
     height:           60,
@@ -549,7 +550,7 @@ export const fullPanelStyles = StyleSheet.create({
   },
   btn:     { marginTop: theme.spacing.sm, borderRadius: 14, overflow: "hidden" },
   btnGrad: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               theme.spacing.sm,   // 8
     paddingHorizontal: theme.spacing[3],   // 24
@@ -598,7 +599,7 @@ export const tourStyles = StyleSheet.create({
   dot:     { width: 7, height: 7, borderRadius: 4, backgroundColor: theme.colors.border.default },
   dotActive: { width: 20, backgroundColor: theme.colors.brand[600] },
   actions: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           10,
     width:         "100%",
@@ -617,7 +618,7 @@ export const tourStyles = StyleSheet.create({
   },
   nextBtn:    { flex: 1, borderRadius: 14, overflow: "hidden" },
   nextGrad: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "center",
     gap:            6,

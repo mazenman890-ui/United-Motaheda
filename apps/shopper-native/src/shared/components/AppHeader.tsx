@@ -21,6 +21,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import { useCartStore } from "@/stores/cart";
 import { theme } from "@/shared/theme";
 
@@ -133,7 +134,7 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.colors.border.default,
   },
   row: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     justifyContent:    "space-between",
     height:            theme.layout.headerHeight,
@@ -148,13 +149,13 @@ const styles = StyleSheet.create({
   },
   title: {
     flex:          1,
-    textAlign:     "right",
+    textAlign:     textAlignStart(isRtl()),
     fontSize:      theme.fontSize["2xl"],
     letterSpacing: -0.4,
     marginHorizontal: theme.spacing[1],
   },
   rightCluster: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           theme.spacing[0.5],
   },

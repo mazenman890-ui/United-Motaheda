@@ -19,6 +19,7 @@ import { theme } from "@/shared/theme";
 import { Card, Text } from "@/shared/ui";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 export type InteractionSeverity = "mild" | "moderate" | "severe";
 
@@ -117,7 +118,7 @@ export function InteractionBanner({
     <Card padding={0} radius={theme.layout.cardRadius} style={{ overflow: "hidden" }}>
       {/* Banner strip */}
       <View style={{
-        flexDirection:     "row-reverse",
+        flexDirection: flexRow(isRtl()),
         alignItems:        "center",
         gap:               theme.spacing[1],
         paddingHorizontal: theme.spacing[2],
@@ -145,7 +146,7 @@ export function InteractionBanner({
       <View style={{ padding: theme.spacing[2] }}>
         {/* Drug-pair visual */}
         <View style={{
-          flexDirection:  "row-reverse",
+          flexDirection: flexRow(isRtl()),
           alignItems:     "center",
           gap:            theme.spacing[1.5],
           marginBottom:   theme.spacing[2],
@@ -168,7 +169,7 @@ export function InteractionBanner({
               {t("interaction.watchFor")}
             </Text>
             {watchFor.map((w) => (
-              <View key={w} style={{ flexDirection: "row-reverse", alignItems: "center", gap: theme.spacing[1] }}>
+              <View key={w} style={{ flexDirection: flexRow(isRtl()), alignItems: "center", gap: theme.spacing[1] }}>
                 <Ionicons name="ellipse" size={6} color={cfg.accent} />
                 <Text variant="body-sm" align="right" style={{ flex: 1 }}>{w}</Text>
               </View>
@@ -187,7 +188,7 @@ export function InteractionBanner({
                 {t("interaction.askPharmacist")}
               </Button>
             )}
-            <View style={{ flexDirection: "row-reverse", gap: theme.spacing[1] }}>
+            <View style={{ flexDirection: flexRow(isRtl()), gap: theme.spacing[1] }}>
               {onCancel && (
                 <View style={{ flex: 1 }}>
                   <Button variant="outline" fullWidth onPress={onCancel}>{t("interaction.cancel")}</Button>

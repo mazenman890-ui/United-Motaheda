@@ -3,6 +3,7 @@
  * All spacing uses theme.spacing tokens; all colours use theme.colors.
  */
 import { StyleSheet } from "react-native";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import { theme } from "@/shared/theme";
 
 export const styles = StyleSheet.create({
@@ -15,7 +16,7 @@ export const styles = StyleSheet.create({
     backgroundColor: theme.colors.bg,
   },
   header: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               theme.spacing.md,
     paddingHorizontal: theme.spacing.lg,
@@ -48,13 +49,13 @@ export const styles = StyleSheet.create({
 
   // Meta chips
   metaRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     flexWrap:      "wrap",
     gap:           theme.spacing.sm,
     marginBottom:  2,
   },
   metaChip: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               5,
     backgroundColor:   theme.colors.slate[50],
@@ -72,7 +73,7 @@ export const styles = StyleSheet.create({
     ...theme.shadow.card,
   },
   sectionHeader: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               10,
     paddingHorizontal: theme.spacing.lg,
@@ -101,7 +102,7 @@ export const styles = StyleSheet.create({
 
   // Timeline
   timelineRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "flex-start",
     marginBottom:  theme.spacing.xs,
   },
@@ -136,14 +137,14 @@ export const styles = StyleSheet.create({
     backgroundColor: theme.colors.brand[300],
   },
   timelineText: {
-    textAlign:   "right",
+    textAlign:   textAlignStart(isRtl()),
     flex:        1,
     marginRight: theme.spacing.md,
   },
 
   // Item cards
   itemCard: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     gap:             theme.spacing.md,
     backgroundColor: theme.colors.surfaceSunken,
@@ -162,7 +163,7 @@ export const styles = StyleSheet.create({
     justifyContent:  "center",
   },
   itemMeta: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     justifyContent: "space-between",
     marginTop:      theme.spacing.xs,
   },
@@ -177,18 +178,18 @@ export const styles = StyleSheet.create({
     borderColor:     theme.colors.border.hairline,
   },
   addressRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           10,
   },
   addressText: {
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
     flex:      1,
   },
 
   // Payment
   paymentCard: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           theme.spacing.md,
     borderRadius:  14,
@@ -203,13 +204,13 @@ export const styles = StyleSheet.create({
     ...theme.shadow.card,
   },
   paymentStatusRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           theme.spacing.xs,
     marginTop:     theme.spacing.xs,
   },
   transferRow: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     justifyContent:    "space-between",
     alignItems:        "center",
     paddingVertical:   10,
@@ -232,7 +233,7 @@ export const styles = StyleSheet.create({
 
   // Price
   infoRow: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     justifyContent: "space-between",
     alignItems:     "center",
     paddingVertical: 3,
@@ -248,7 +249,7 @@ export const styles = StyleSheet.create({
     marginVertical:  theme.spacing.md,
   },
   totalRow: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     justifyContent: "space-between",
     alignItems:     "baseline",
   },

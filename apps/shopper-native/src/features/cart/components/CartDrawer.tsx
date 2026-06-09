@@ -24,6 +24,7 @@ import { useDeliveryContext } from "@/features/delivery";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { formatPrice } from "@/utils/format";
+import { flexRow, isRtl } from "@/utils/layout";
 import type { CartItem } from "@/stores/cart";
 
 export interface CartDrawerRef {
@@ -297,7 +298,7 @@ const styles = StyleSheet.create({
 
   // ── Header ───────────────────────────────────────────────────────
   header: {
-    flexDirection:    "row-reverse",
+    flexDirection:    flexRow(isRtl()),
     alignItems:       "center",
     justifyContent:   "space-between",
     paddingHorizontal: 20,
@@ -307,7 +308,7 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.colors.border.hairline,
   },
   headerLeft: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           12,
   },
@@ -348,7 +349,7 @@ const styles = StyleSheet.create({
 
   // ── Row — premium card matching cart screen ──
   row: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     gap:             14,
     padding:         14,
     backgroundColor: theme.colors.surface,
@@ -379,13 +380,13 @@ const styles = StyleSheet.create({
     marginTop:     2,
   },
   qtyRow: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
     marginTop:      4,
   },
   qtyControl: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     gap:             4,
     backgroundColor: theme.colors.brand.lighter,
@@ -426,7 +427,7 @@ const styles = StyleSheet.create({
     backgroundColor:   theme.colors.surface,
   },
   totalsRow: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     justifyContent: "space-between",
     alignItems:     "center",
     paddingVertical: 4,
@@ -437,7 +438,7 @@ const styles = StyleSheet.create({
     marginVertical:  10,
   },
   grandTotalRow: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     justifyContent: "space-between",
     alignItems:     "center",
   },
@@ -452,7 +453,7 @@ const styles = StyleSheet.create({
 
   // ── Action buttons ──
   actions: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     gap:           10,
     marginTop:     16,
   },
@@ -471,7 +472,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius:    14,
     backgroundColor: theme.colors.brand[700],
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     justifyContent:  "center",
     gap:             8,

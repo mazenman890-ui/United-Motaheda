@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 // shared/components/index → PharmacyBootstrap → features/prescriptions → here.
 import { AppHeader } from "@/shared/components/AppHeader";
 import { Text } from "@/shared/ui";
+import { flexRow, isRtl } from "@/utils/layout";
 import { theme } from "@/shared/theme";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
@@ -150,7 +151,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.bg,
   },
   card: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               theme.spacing[1.5],
     paddingHorizontal: theme.spacing[2],
@@ -173,7 +174,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   infoCallout: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "flex-start",
     gap:               theme.spacing[1],
     padding:           theme.spacing[1.5],

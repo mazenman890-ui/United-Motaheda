@@ -12,6 +12,7 @@ import { ManualPaymentPanel } from "@/features/payment";
 import { BranchCard, type useDeliveryContext } from "@/features/delivery";
 import { isManualWalletPayment } from "@/features/checkout";
 import { formatPrice } from "@/utils/format";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 import { type CheckoutFormSchema } from "../schema";
 import { type CheckoutPaymentMethod, PAYMENT_METHOD_CONFIGS } from "../constants";
@@ -289,14 +290,14 @@ const s = StyleSheet.create({
     fontSize:   13,
     fontFamily: theme.fonts.bold,
     color:      theme.colors.slate[800],
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     lineHeight: 20,
   },
   reviewSub: {
     fontSize:   11,
     fontFamily: theme.fonts.regular,
     color:      theme.colors.slate[500],
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
   reviewDivider: {
     height:          StyleSheet.hairlineWidth,
@@ -306,7 +307,7 @@ const s = StyleSheet.create({
 
   // ETA pill inline (branch card)
   etaPillInline: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     alignSelf:         "flex-end",
     gap:               5,
@@ -324,7 +325,7 @@ const s = StyleSheet.create({
 
   // Payment options (compact radio list)
   payOption: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     gap:            10,
     padding:        12,
@@ -354,18 +355,18 @@ const s = StyleSheet.create({
     fontSize:   12,
     fontFamily: theme.fonts.bold,
     color:      theme.colors.text.primary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
   paySub: {
     fontSize:   10,
     fontFamily: theme.fonts.regular,
     color:      theme.colors.slate[400],
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
 
   // POS toggle
   posToggle: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     gap:            10,
     padding:        12,
@@ -397,12 +398,12 @@ const s = StyleSheet.create({
     fontSize:   12,
     fontFamily: theme.fonts.bold,
     color:      theme.colors.slate[700],
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
 
   // Coming-soon payment placeholder
   comingSoon: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     gap:            10,
     padding:        12,
@@ -415,7 +416,7 @@ const s = StyleSheet.create({
 
   // Promo
   promoRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "flex-end",
     gap:           8,
   },
@@ -432,7 +433,7 @@ const s = StyleSheet.create({
   promoBtnText:    { fontSize: 12, fontFamily: theme.fonts.black, color: "#fff" },
   promoBtnTextApplied: { color: theme.colors.slate[500] },
   promoSuccess: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               6,
     backgroundColor:   theme.colors.green[50],

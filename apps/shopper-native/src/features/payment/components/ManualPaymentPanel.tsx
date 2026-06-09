@@ -16,6 +16,7 @@ import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import { Input } from "@/components/ui/Input";
 import { theme } from "@/shared/theme";
 import { MANUAL_PAYMENT_WALLET_NUMBER } from "../constants";
@@ -108,7 +109,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: theme.fonts.semibold,
     color: theme.colors.slate[600],
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
     lineHeight: 18,
   },
   numberBlock: {
@@ -129,7 +130,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   copyBtn: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 16,
@@ -146,7 +147,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: theme.fonts.bold,
     color: theme.colors.text.secondary,
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
   },
   uploadBox: {
     minHeight: 160,
@@ -182,6 +183,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: theme.fonts.semibold,
     color: theme.colors.error.strong,
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
   },
 });

@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import { PaymentMethodSelector, usePaymentStore, hydratePaymentStore } from "@/features/payment";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 const TRUST_ITEMS: {
   icon:     React.ComponentProps<typeof Ionicons>["name"];
@@ -141,7 +142,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.03)",
   },
   headerTopRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           12,
   },
@@ -166,7 +167,7 @@ const styles = StyleSheet.create({
     borderColor:     "rgba(255,255,255,0.10)",
   },
   activeBadge: {
-    flexDirection:   "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:      "center",
     gap:             6,
     alignSelf:       "flex-end",
@@ -199,7 +200,7 @@ const styles = StyleSheet.create({
     borderRadius:      18,
     paddingVertical:   16,
     paddingHorizontal: 4,
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     ...theme.shadow.card,
   },
   trustItem: {
@@ -232,19 +233,19 @@ const styles = StyleSheet.create({
     fontSize:        12,
     fontFamily:      theme.fonts.bold,
     color:           theme.colors.text.primary,
-    textAlign:       "right",
+    textAlign: textAlignStart(isRtl()),
     marginBottom:    6,
   },
   savedPaymentText: {
     fontSize:   11,
     fontFamily: theme.fonts.regular,
     color:      theme.colors.slate[500],
-    textAlign:  "right",
+    textAlign: textAlignStart(isRtl()),
     lineHeight: 18,
   },
 
   infoNote: {
-    flexDirection:   "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:      "flex-start",
     gap:             12,
     padding:         14,

@@ -37,6 +37,9 @@ import type { Address, AddressFormData } from "../types";
 import { SUPPORTED_GOVERNORATE } from "@/features/delivery/constants";
 import { theme } from "@/shared/theme";
 import { showConfirmSheet } from "@/shared/store/appSheetStore";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
+
+const _isRtl = isRtl();
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -891,7 +894,7 @@ function FloatingLabelInput({
           placeholderTextColor={theme.colors.slate[300]}
           keyboardType={keyboardType ?? "default"}
           style={fieldStyles.input}
-          textAlign="right"
+          textAlign={textAlignStart(_isRtl) as "left" | "right"}
           maxLength={maxLength}
           textContentType={
             keyboardType === "phone-pad" ? "telephoneNumber" : "name"
@@ -930,7 +933,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.bg,
   },
   header: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "flex-start",
     justifyContent: "space-between",
     paddingHorizontal: theme.spacing[2.5],
@@ -968,14 +971,14 @@ const styles = StyleSheet.create({
 
   // Step pills
   stepIndicatorRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: 10,
     gap: theme.spacing.sm,
     justifyContent: "center",
   },
   stepPill: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -1012,7 +1015,7 @@ const styles = StyleSheet.create({
 
   // Progress bar
   progressWrapper: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     gap: theme.spacing.sm,
     paddingHorizontal: theme.spacing[2.5],
@@ -1062,12 +1065,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: theme.fonts.black,
     color: theme.colors.text.primary,
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
     marginBottom: -4,
   },
 
   mapHint: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     gap: 6,
     marginTop: theme.spacing.sm,
@@ -1083,7 +1086,7 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   row: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     gap: 10,
     flexWrap: "wrap",
     alignItems: "flex-start",
@@ -1098,12 +1101,12 @@ const styles = StyleSheet.create({
   },
 
   labelGrid: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     flexWrap: "wrap",
     gap: 10,
   },
   labelChip: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 14,
@@ -1135,7 +1138,7 @@ const styles = StyleSheet.create({
   },
 
   toggleCard: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     gap: theme.spacing.md,
     padding: theme.spacing.lg,
@@ -1153,13 +1156,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: theme.fonts.bold,
     color: theme.colors.text.primary,
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
   },
   toggleDesc: {
     fontSize: 10,
     fontFamily: theme.fonts.regular,
     color: theme.colors.slate[400],
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
     marginTop: 2,
   },
 
@@ -1167,7 +1170,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   summaryRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 6,
@@ -1183,13 +1186,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: theme.fonts.semibold,
     color: theme.colors.text.primary,
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
     flex: 1,
     marginLeft: theme.spacing.md,
   },
 
   bottomNav: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     paddingHorizontal: theme.spacing[2.5],
     paddingTop: 10,
@@ -1198,7 +1201,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.md,
   },
   navBtn: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     gap: theme.spacing.xs,
     paddingHorizontal: theme.spacing.lg,
@@ -1214,7 +1217,7 @@ const styles = StyleSheet.create({
     color: theme.colors.slate[600],
   },
   navBtnPrimary: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     gap: theme.spacing.xs,
     paddingHorizontal: theme.spacing[3],
@@ -1234,7 +1237,7 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   submitBtn: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     justifyContent: "center",
     gap: theme.spacing.sm,
@@ -1271,7 +1274,7 @@ const fieldStyles = StyleSheet.create({
     fontSize: 11,
     fontFamily: theme.fonts.bold,
     color: theme.colors.slate[500],
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
     paddingRight: theme.spacing.xs,
     opacity: 0,
     transform: [{ translateY: 18 }, { scale: 0.9 }],
@@ -1286,11 +1289,11 @@ const fieldStyles = StyleSheet.create({
     fontSize: 11,
     fontFamily: theme.fonts.bold,
     color: theme.colors.slate[500],
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
     paddingRight: 2,
   },
   inputContainer: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     backgroundColor: theme.colors.surface,
     borderRadius: 16,
@@ -1308,7 +1311,7 @@ const fieldStyles = StyleSheet.create({
     backgroundColor: theme.colors.red[50],
   },
   inputWrap: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     backgroundColor: theme.colors.surface,
     borderRadius: 16,
@@ -1332,7 +1335,7 @@ const fieldStyles = StyleSheet.create({
     fontSize: 10,
     fontFamily: theme.fonts.bold,
     color: theme.colors.red[500],
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
     paddingRight: theme.spacing.xs,
     marginTop: 2,
   },

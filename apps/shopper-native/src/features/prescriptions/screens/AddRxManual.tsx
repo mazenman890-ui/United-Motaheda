@@ -27,11 +27,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppHeader } from "@/shared/components/AppHeader";
 import { RxCard }    from "@/shared/components/RxCard";
 import { Text } from "@/shared/ui";
+import { flexRow, isRtl } from "@/utils/layout";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/features/auth";
 import { usePrescriptionsStore, type Prescription } from "@/stores/prescriptionsStore";
 import { mockLookup, type RxLookupResult } from "../lib/manualLookup";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl } from "@/utils/layout";
 
 const MIN_BOXES   = 7;
 const MAX_DIGITS  = 10;
@@ -321,7 +323,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.bg,
   },
   digitsRow: {
-    flexDirection:    "row-reverse",
+    flexDirection:    flexRow(isRtl()),
     justifyContent:   "center",
     gap:              theme.spacing[1],
     paddingVertical:  theme.spacing[2],
@@ -341,14 +343,14 @@ const styles = StyleSheet.create({
     backgroundColor:  theme.colors.brand.lighter,
   },
   lookupRow: {
-    flexDirection:    "row-reverse",
+    flexDirection:    flexRow(isRtl()),
     alignItems:       "center",
     justifyContent:   "center",
     gap:              theme.spacing[1],
     paddingVertical:  theme.spacing[1],
   },
   callout: {
-    flexDirection:    "row-reverse",
+    flexDirection:    flexRow(isRtl()),
     alignItems:       "flex-start",
     gap:              theme.spacing[1],
     padding:          theme.spacing[1.5],

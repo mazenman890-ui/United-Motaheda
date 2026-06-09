@@ -14,6 +14,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "react-i18next";
+import { isRtl, textAlignStart } from "@/utils/layout";
 import { useBannerStore } from "../banner-store";
 import { theme } from "@/shared/theme";
 
@@ -201,9 +202,9 @@ const styles = StyleSheet.create({
     ...theme.shadow.sm,
   },
   textCol:     { flex: 1, gap: 1.5, marginEnd: 4 },
-  bannerLabel: { fontSize: 9, fontFamily: theme.fonts.extrabold, letterSpacing: 0.8, textAlign: "right" },
-  bannerTitle: { fontSize: theme.fontSize.md, fontFamily: theme.fonts.black, color: theme.colors.text.primary, textAlign: "right" },
-  bannerBody:  { fontSize: theme.fontSize.sm, fontFamily: theme.fonts.regular, color: theme.colors.text.secondary, textAlign: "right" },
+  bannerLabel: { fontSize: 9, fontFamily: theme.fonts.extrabold, letterSpacing: 0.8, textAlign: textAlignStart(isRtl()) },
+  bannerTitle: { fontSize: theme.fontSize.md, fontFamily: theme.fonts.black, color: theme.colors.text.primary, textAlign: textAlignStart(isRtl()) },
+  bannerBody:  { fontSize: theme.fontSize.sm, fontFamily: theme.fonts.regular, color: theme.colors.text.secondary, textAlign: textAlignStart(isRtl()) },
   closeBtn: {
     width:           26,
     height:          26,

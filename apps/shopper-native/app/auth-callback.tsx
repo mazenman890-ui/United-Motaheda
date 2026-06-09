@@ -38,6 +38,7 @@ import { PHONE_VERIFICATION_ENABLED } from "@/features/auth";
 import { Text } from "@/shared/ui";
 import { Button } from "@/components/ui/Button";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl } from "@/utils/layout";
 
 export default function AuthCallbackScreen() {
   const { t } = useTranslation();
@@ -190,7 +191,7 @@ const styles = StyleSheet.create({
     bottom:        56,
     left:          0,
     right:         0,
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     justifyContent:"center",
     gap:           6,

@@ -33,6 +33,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { captureError } from "@/lib/crashReporter";
+import { flexRow, isRtl } from "@/utils/layout";
 
 interface Props {
   children: React.ReactNode;
@@ -169,7 +170,7 @@ const styles = StyleSheet.create({
     color: "#334155",           // slate[700] — hardcoded per zero-dependency rule
   },
   btn: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     gap: 8,
     backgroundColor: "#0891B2", // brand[600] — hardcoded per zero-dependency rule

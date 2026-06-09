@@ -5,6 +5,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import { PAYMENT_METHOD_CONFIGS } from "../constants";
 import type { CheckoutPaymentMethod } from "../constants";
 
@@ -93,16 +94,16 @@ const s = StyleSheet.create({
     overflow:        "hidden",
   },
   badge: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               4,
     paddingHorizontal: 10,
     paddingVertical:   5,
     borderBottomWidth: 1,
   },
-  badgeText: { fontSize: 9, fontFamily: theme.fonts.black, letterSpacing: 0.4, textAlign: "right" },
+  badgeText: { fontSize: 9, fontFamily: theme.fonts.black, letterSpacing: 0.4, textAlign: textAlignStart(isRtl()) },
   row: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               12,
     paddingHorizontal: 14,
@@ -110,7 +111,7 @@ const s = StyleSheet.create({
   },
   meta: {
     flex:          1,
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           12,
   },
@@ -122,8 +123,8 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   textBlock: { flex: 1, gap: 2 },
-  title: { fontSize: 13, fontFamily: theme.fonts.bold,    color: theme.colors.text.primary,    textAlign: "right" },
-  sub:   { fontSize: 11, fontFamily: theme.fonts.regular, color: theme.colors.slate[400], textAlign: "right" },
+  title: { fontSize: 13, fontFamily: theme.fonts.bold,    color: theme.colors.text.primary,    textAlign: textAlignStart(isRtl()) },
+  sub:   { fontSize: 11, fontFamily: theme.fonts.regular, color: theme.colors.slate[400], textAlign: textAlignStart(isRtl()) },
   check: {
     width:           22,
     height:          22,

@@ -21,6 +21,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 interface SubScreenHeaderProps {
   title:         string;
@@ -77,7 +78,7 @@ export function SubScreenHeader({
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     paddingHorizontal: 12,
     paddingVertical:   10,
@@ -93,14 +94,14 @@ const styles = StyleSheet.create({
     fontFamily:    theme.fonts.black,
     fontSize:      20,
     color:         theme.colors.text.primary,
-    textAlign:     "right",
+    textAlign:     textAlignStart(isRtl()),
     letterSpacing: -0.4,
   },
   subtitle: {
     fontFamily: theme.fonts.regular,
     fontSize:   11,
     color:      theme.colors.text.tertiary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
 
   rightSlot: {

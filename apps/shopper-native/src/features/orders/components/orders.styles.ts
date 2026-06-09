@@ -211,7 +211,7 @@ export const authS = StyleSheet.create({
     textAlign:  textAlignStart(isRtl()),
   },
   privacyRow: {
-    flexDirection:  "row",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "center",
     gap:            5,
@@ -278,7 +278,7 @@ export const emptyS = StyleSheet.create({
     width:        240,
   },
   ctaGrad: {
-    flexDirection:     "row",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     justifyContent:    "center",
     gap:               theme.spacing.sm,
@@ -297,13 +297,13 @@ export const emptyS = StyleSheet.create({
     marginTop:  theme.spacing.sm,
   },
   catRow: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     gap:            10,
     flexWrap:       "wrap",
     justifyContent: "center",
   },
   catChip: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               7,
     paddingHorizontal: 14,
@@ -384,7 +384,7 @@ export const listS = StyleSheet.create({
     height: 0,  // effectively removed — TrackingTimeline replaces this
   },
   cardHeader: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
     marginTop:      6,
@@ -406,7 +406,7 @@ export const listS = StyleSheet.create({
     fontFamily:         theme.fonts.black,
     fontSize:           13.5,
     color:              theme.colors.text.primary,
-    textAlign:          "right",
+    textAlign:          textAlignStart(isRtl()),
     letterSpacing:      -0.2,
     includeFontPadding: false,
   },
@@ -414,7 +414,7 @@ export const listS = StyleSheet.create({
     fontFamily:         theme.fonts.regular,
     fontSize:           11,
     color:              theme.colors.text.tertiary,
-    textAlign:          "right",
+    textAlign:          textAlignStart(isRtl()),
     marginTop:          1,
     includeFontPadding: false,
     lineHeight:         16,
@@ -429,7 +429,7 @@ export const listS = StyleSheet.create({
     borderRadius: 4,
   },
   itemsRow: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     gap:             theme.spacing.md,
     backgroundColor: theme.colors.surfaceSunken,
@@ -449,7 +449,7 @@ export const listS = StyleSheet.create({
     justifyContent:  "center",
   },
   cardFooter: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
     paddingTop:     10,
@@ -461,7 +461,7 @@ export const listS = StyleSheet.create({
     fontSize:           17,
     color:              theme.colors.brand[700],
     letterSpacing:      -0.4,
-    textAlign:          "right",
+    textAlign:          textAlignStart(isRtl()),
     includeFontPadding: false,
     lineHeight:         22,
   },
@@ -472,7 +472,7 @@ export const listS = StyleSheet.create({
     marginTop:     theme.spacing.xs,
   },
   skeletonItems: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     gap:             theme.spacing.md,
     backgroundColor: theme.colors.surfaceSunken,
@@ -480,7 +480,7 @@ export const listS = StyleSheet.create({
     padding:         theme.spacing.md,
   },
   skeletonFooter: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
     paddingTop:     10,

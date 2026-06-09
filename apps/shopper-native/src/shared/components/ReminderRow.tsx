@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import { theme } from "@/shared/theme";
 import { Text } from "@/shared/ui";
 import { Button } from "@/components/ui/Button";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 export interface Reminder {
   id:             string;
@@ -45,7 +46,7 @@ export function ReminderRow({
   return (
     <View
       style={{
-        flexDirection:    "row-reverse",
+        flexDirection: flexRow(isRtl()),
         alignItems:       "center",
         gap:              theme.spacing[1.5],
         paddingVertical:  14,
@@ -91,7 +92,7 @@ export function ReminderRow({
       </View>
 
       {showAction && !r.taken && (
-        <View style={{ flexDirection: "row-reverse", gap: theme.spacing[0.5] }}>
+        <View style={{ flexDirection: flexRow(isRtl()), gap: theme.spacing[0.5] }}>
           {onSnooze && (
             <Button size="sm" variant="outline" onPress={() => onSnooze(r.id)}>
               {t("reminder.snooze")}

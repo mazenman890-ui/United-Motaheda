@@ -35,6 +35,9 @@ import { Text as UIText } from "@/shared/ui";
 import { useCartStore } from "@/stores/cart";
 import { useWishlistStore } from "@/stores/wishlist";
 import type { NativeProduct } from "@/services/productsApi";
+import { flexRow, isRtl } from "@/utils/layout";
+
+const _isRtl = isRtl();
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,7 +54,7 @@ interface ProductCardProps {
 
 function Stars({ value, count, size = 11 }: { value: number; count?: number | null; size?: number }) {
   return (
-    <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 3 }}>
+    <View style={{ flexDirection: flexRow(_isRtl), alignItems: "center", gap: 3 }}>
       <Ionicons name="star" size={size} color={theme.colors.amber[500]} />
       <UIText
         style={{
@@ -772,7 +775,7 @@ const styles = StyleSheet.create({
     fontSize:   13.5,
   },
   starsRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(_isRtl),
     alignItems:    "center",
     gap:           5,
     marginTop:     1,
@@ -783,7 +786,7 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.regular,
   },
   priceRow: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(_isRtl),
     alignItems:     "flex-end",
     justifyContent: "space-between",
     marginTop:      theme.spacing.sm,
@@ -796,7 +799,7 @@ const styles = StyleSheet.create({
   },
   // priceAmountRow: single row for the number + currency label
   priceAmountRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(_isRtl),
     alignItems:    "baseline",
     gap:           3,
   },
@@ -850,7 +853,7 @@ const styles = StyleSheet.create({
 
   // ── Row variant ────────────────────────────────────────────────────────────
   rowCard: {
-    flexDirection:    "row-reverse",
+    flexDirection:    flexRow(_isRtl),
     alignItems:       "center",
     gap:              14,
     backgroundColor:  theme.colors.surface,
@@ -891,7 +894,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   rowPriceRow: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(_isRtl),
     alignItems:     "center",
     justifyContent: "space-between",
     marginTop:      6,

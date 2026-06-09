@@ -4,6 +4,7 @@ import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import { PaymentMethodCard } from "./PaymentMethodCard";
 import { usePaymentStore } from "../store";
 import { theme } from "@/shared/theme";
@@ -59,7 +60,7 @@ export function PaymentMethodSelector({ compact }: Props) {
 const styles = StyleSheet.create({
   container: { gap: 14 },
   header: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     gap: 10,
   },
@@ -75,17 +76,17 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: theme.fonts.black,
     color: theme.colors.text.primary,
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
   },
   headerDesc: {
     fontSize: 11,
     fontFamily: theme.fonts.regular,
     color: theme.colors.slate[400],
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
   },
   list: { gap: 10 },
   trustRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems: "center",
     justifyContent: "center",
     gap: 6,

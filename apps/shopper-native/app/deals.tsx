@@ -49,6 +49,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 // ─── Glass palette ─────────────────────────────────────────────────────────────
 const G = {
@@ -277,7 +278,7 @@ export default function DealsScreen(): React.ReactElement {
             onChangeText={setQuery}
             returnKeyType="search"
             autoCorrect={false}
-            textAlign="right"
+            textAlign={textAlignStart(isRtl()) as "left" | "right"}
             selectionColor={theme.colors.red[500]}
           />
           {query.length > 0 && (
@@ -436,7 +437,7 @@ const d = StyleSheet.create({
     backgroundColor: G.w05,
   },
   topBar: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           theme.spacing.md,
   },
@@ -451,7 +452,7 @@ const d = StyleSheet.create({
     borderColor:     G.w20,
   },
   eyebrowRow: {
-    flexDirection:  "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:     "center",
     gap:            6,
     marginBottom:   3,
@@ -473,7 +474,7 @@ const d = StyleSheet.create({
     fontSize:      26,
     color:         theme.colors.surface,
     letterSpacing: -0.5,
-    textAlign:     "right",
+    textAlign: textAlignStart(isRtl()),
     lineHeight:    32,
   },
   flameTile: {
@@ -488,7 +489,7 @@ const d = StyleSheet.create({
   },
 
   timerRow: {
-    flexDirection:  "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
   },
@@ -531,7 +532,7 @@ const d = StyleSheet.create({
   },
 
   countBadge: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "center",
     gap:               6,
     alignSelf:         "flex-end",
@@ -561,7 +562,7 @@ const d = StyleSheet.create({
   },
   searchBar: {
     flex:              1,
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "center",
     gap:               10,
     backgroundColor:   theme.colors.surfaceSunken,
@@ -576,7 +577,7 @@ const d = StyleSheet.create({
     fontSize:   14,
     fontFamily: theme.fonts.semibold,
     color:      theme.colors.text.primary,
-    textAlign:  "right",
+    textAlign: textAlignStart(isRtl()),
     paddingVertical: 0,
   },
   sortBtn: {
@@ -595,7 +596,7 @@ const d = StyleSheet.create({
     paddingHorizontal: theme.layout.pagePaddingH,
     paddingVertical:   10,
     gap:               8,
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     backgroundColor:   theme.colors.surface,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: theme.colors.border.hairline,
@@ -614,7 +615,7 @@ const d = StyleSheet.create({
   chipTextActive:    { color: theme.colors.surface, fontFamily: theme.fonts.black },
 
   sectionRow: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "center",
     gap:               6,
     paddingHorizontal: theme.layout.pagePaddingH,
@@ -634,7 +635,7 @@ const d = StyleSheet.create({
   },
 
   skeletonGrid: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     flexWrap:      "wrap",
     padding:       theme.spacing.md,
     gap:           theme.spacing.md,

@@ -4,11 +4,12 @@
  */
 import { StyleSheet } from "react-native";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 // ─── Header ──────────────────────────────────────────────────────────────────
 export const headerStyles = StyleSheet.create({
   root: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               12,
     paddingHorizontal: theme.spacing[4],
@@ -26,7 +27,7 @@ export const headerStyles = StyleSheet.create({
     justifyContent:  "center",
   },
   badge: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               5,
     paddingHorizontal: 10,
@@ -41,7 +42,7 @@ export const headerStyles = StyleSheet.create({
 // ─── Step bar ─────────────────────────────────────────────────────────────────
 export const stepBarStyles = StyleSheet.create({
   root: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               10,
     paddingHorizontal: theme.spacing[4],
@@ -51,7 +52,7 @@ export const stepBarStyles = StyleSheet.create({
     borderBottomColor: theme.colors.border.hairline,
   },
   pill: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               7,
     paddingHorizontal: 12,
@@ -88,7 +89,7 @@ export const sectionStyles = StyleSheet.create({
     ...theme.shadow.card,
   },
   head: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     justifyContent:    "space-between",
     paddingHorizontal: theme.spacing[4],
@@ -96,7 +97,7 @@ export const sectionStyles = StyleSheet.create({
     paddingBottom:     6,
   },
   titleWrap: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           10,
   },
@@ -111,7 +112,7 @@ export const sectionStyles = StyleSheet.create({
     justifyContent:  "center",
   },
   actionWrap: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           2,
   },
@@ -143,12 +144,12 @@ export const ctaStyles = StyleSheet.create({
     elevation:         8,
   },
   totals: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
   },
   countBadge: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               6,
     backgroundColor:   theme.colors.brand.lighter,
@@ -158,7 +159,7 @@ export const ctaStyles = StyleSheet.create({
     paddingVertical:   7,
     borderRadius:      999,
   },
-  btnInner: { flexDirection: "row-reverse", alignItems: "center", gap: 6 },
+  btnInner: { flexDirection: flexRow(isRtl()), alignItems: "center", gap: 6 },
   btnText:  { fontSize: 15, fontFamily: theme.fonts.black, color: "#fff", letterSpacing: -0.2 },
   totalValue: {
     color:         theme.colors.brand[700],
@@ -170,7 +171,7 @@ export const ctaStyles = StyleSheet.create({
 // ─── Summary row ─────────────────────────────────────────────────────────────
 export const summaryStyles = StyleSheet.create({
   row: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     justifyContent: "space-between",
     paddingVertical: 5,
   },
@@ -180,7 +181,7 @@ export const summaryStyles = StyleSheet.create({
     marginVertical:  10,
   },
   totalRow: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     justifyContent: "space-between",
     alignItems:     "baseline",
   },
@@ -198,7 +199,7 @@ export const summaryStyles = StyleSheet.create({
   },
   etaPill: {
     alignSelf:         "flex-end",
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               5,
     backgroundColor:   theme.colors.brand[50],
@@ -222,7 +223,7 @@ export const freeBannerStyles = StyleSheet.create({
     borderColor:     "rgba(245,158,11,0.18)",
   },
   head: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           10,
   },
@@ -255,7 +256,7 @@ export const freeBannerStyles = StyleSheet.create({
 // ─── Error box ───────────────────────────────────────────────────────────────
 export const errorStyles = StyleSheet.create({
   box: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "flex-start",
     gap:               8,
     padding:           12,
@@ -269,7 +270,7 @@ export const errorStyles = StyleSheet.create({
     fontSize:   11,
     fontFamily: theme.fonts.semibold,
     color:      theme.colors.red[700],
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     lineHeight: 18,
   },
 });

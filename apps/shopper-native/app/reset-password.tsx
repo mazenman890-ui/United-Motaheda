@@ -39,6 +39,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Text } from "@/shared/ui";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl } from "@/utils/layout";
 
 type Phase = "exchanging" | "form" | "success" | "expired";
 
@@ -483,7 +484,7 @@ const styles = StyleSheet.create({
     ...theme.shadow.brandGlow,
   },
   errorBox: {
-    flexDirection:   "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:      "center",
     gap:             10,
     backgroundColor: theme.colors.error.bg,
@@ -503,14 +504,14 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.semibold,
   },
   strengthWrap: {
-    flexDirection:  "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:     "center",
     gap:            8,
     paddingHorizontal: 4,
   },
   strengthBarRow: {
     flex:          1,
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     gap:           4,
   },
   strengthSegment: {
@@ -520,7 +521,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.border.default,
   },
   matchRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           6,
     paddingHorizontal: 4,

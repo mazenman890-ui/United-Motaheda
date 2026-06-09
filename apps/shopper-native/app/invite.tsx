@@ -26,6 +26,7 @@ import { theme } from "@/shared/theme";
 import { useAuth } from "@/features/auth/context";
 import { SubScreenHeader } from "@/features/loyalty/components/SubScreenHeader";
 import { useReferralCode, useReferralRewards } from "@/features/loyalty/hooks/useReferralCode";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 // ─── Palette constants ────────────────────────────────────────────────────────
 // Intentional loyalty/invite purple palette — no theme token for these values.
@@ -336,14 +337,14 @@ const styles = StyleSheet.create({
     fontFamily:    theme.fonts.black,
     fontSize:      20,
     color:         theme.colors.surface,
-    textAlign:     "right",
+    textAlign: textAlignStart(isRtl()),
     letterSpacing: -0.3,
   },
   heroSub: {
     fontFamily: theme.fonts.regular,
     fontSize:   13,
     color:      IG.w75,
-    textAlign:  "right",
+    textAlign: textAlignStart(isRtl()),
     lineHeight: 20,
   },
   deco: {
@@ -353,7 +354,7 @@ const styles = StyleSheet.create({
   },
 
   statsRow: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     marginHorizontal:  theme.spacing.lg,
     marginTop:         theme.spacing.md,
     backgroundColor:   theme.colors.surface,
@@ -414,11 +415,11 @@ const styles = StyleSheet.create({
     fontFamily:    theme.fonts.bold,
     fontSize:      12,
     color:         theme.colors.text.tertiary,
-    textAlign:     "right",
+    textAlign: textAlignStart(isRtl()),
     textTransform: "none",
   },
   codeBox: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "center",
     justifyContent:    "space-between",
     backgroundColor:   theme.colors.surfaceSunken,
@@ -434,10 +435,10 @@ const styles = StyleSheet.create({
     fontSize:      26,
     color:         theme.colors.brand[700],
     letterSpacing: 4,
-    textAlign:     "right",
+    textAlign: textAlignStart(isRtl()),
   },
   copyBtn: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "center",
     gap:               5,
     backgroundColor:   theme.colors.surface,
@@ -453,7 +454,7 @@ const styles = StyleSheet.create({
     color:      theme.colors.text.secondary,
   },
   copiedBanner: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "center",
     gap:               6,
     backgroundColor:   theme.colors.brand.lighter,
@@ -467,11 +468,11 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.bold,
     fontSize:   12,
     color:      theme.colors.brand[700],
-    textAlign:  "right",
+    textAlign: textAlignStart(isRtl()),
   },
   shareBtn: { borderRadius: 14, overflow: "hidden" },
   shareBtnGrad: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "center",
     justifyContent:    "center",
     gap:               10,
@@ -484,7 +485,7 @@ const styles = StyleSheet.create({
     color:      theme.colors.surface,
   },
   waBtn: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "center",
     justifyContent:    "center",
     gap:               theme.spacing.sm,
@@ -518,7 +519,7 @@ const styles = StyleSheet.create({
     fontFamily:    theme.fonts.black,
     fontSize:      16,
     color:         theme.colors.text.primary,
-    textAlign:     "right",
+    textAlign: textAlignStart(isRtl()),
     letterSpacing: -0.2,
   },
   howList: {
@@ -531,7 +532,7 @@ const styles = StyleSheet.create({
     ...theme.shadow.hairline,
   },
   howStep: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "flex-start",
     gap:           14,
   },
@@ -549,14 +550,14 @@ const styles = StyleSheet.create({
     fontFamily:    theme.fonts.black,
     fontSize:      13,
     color:         theme.colors.text.primary,
-    textAlign:     "right",
+    textAlign: textAlignStart(isRtl()),
     letterSpacing: -0.1,
   },
   howStepBody: {
     fontFamily: theme.fonts.regular,
     fontSize:   12,
     color:      theme.colors.text.secondary,
-    textAlign:  "right",
+    textAlign: textAlignStart(isRtl()),
     lineHeight: 18,
   },
 
@@ -569,7 +570,7 @@ const styles = StyleSheet.create({
     fontFamily:    theme.fonts.black,
     fontSize:      16,
     color:         theme.colors.text.primary,
-    textAlign:     "right",
+    textAlign: textAlignStart(isRtl()),
     letterSpacing: -0.2,
   },
   histList: {
@@ -581,7 +582,7 @@ const styles = StyleSheet.create({
     ...theme.shadow.hairline,
   },
   histRow: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "center",
     gap:               10,
     paddingHorizontal: 14,
@@ -602,7 +603,7 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.regular,
     fontSize:   13,
     color:      theme.colors.text.secondary,
-    textAlign:  "right",
+    textAlign: textAlignStart(isRtl()),
   },
   histPts: {
     fontFamily:    theme.fonts.black,

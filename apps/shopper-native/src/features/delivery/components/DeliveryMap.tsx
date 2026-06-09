@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View, ViewStyle } from "react-native";
 import { Text as UIText } from "@/shared/ui";
 import { WebView, WebViewMessageEvent } from "react-native-webview";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 export interface DeliveryMapCoordinates {
   latitude: number;
@@ -125,7 +126,7 @@ const styles = StyleSheet.create({
     ...theme.shadow.lg,
   },
   infoRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 10,
@@ -134,7 +135,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text.inverse,
     fontSize: 13,
     fontFamily: theme.fonts.bold,
-    textAlign: "right",
+    textAlign: textAlignStart(isRtl()),
   },
   coordinates: {
     color: theme.colors.info.light,

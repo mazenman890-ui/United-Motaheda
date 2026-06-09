@@ -16,6 +16,7 @@ import { Text as UIText } from "@/shared/ui";
 import { useCartStore } from "@/stores/cart";
 import { useMountTiming } from "@/lib/devTiming";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import { useTranslation } from "react-i18next";
 
 // ─── Featured product card width (matches Home screen) ────────────────────────
@@ -272,12 +273,12 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.colors.border.hairline,
   },
   headerRow: {
-    flexDirection:  "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
   },
   headerLeft: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           12,
     flex:          1,
@@ -340,7 +341,7 @@ const styles = StyleSheet.create({
 
   // ── Search prompt — light field
   searchPrompt: {
-    flexDirection:    "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:       "center",
     gap:              12,
     backgroundColor:  theme.colors.surfaceSunken,
@@ -369,7 +370,7 @@ const styles = StyleSheet.create({
 
   // ── Section header (unified) ─────────────────────────────────────────────────
   sectionHeader: {
-    flexDirection:  "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
@@ -377,7 +378,7 @@ const styles = StyleSheet.create({
     marginTop:       24,
   },
   sectionTitleWrap: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           12,
   },
@@ -401,7 +402,7 @@ const styles = StyleSheet.create({
     marginTop:     1,
   },
   moreBtn: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "center",
     gap:               3,
     backgroundColor:   theme.colors.brand.lighter,
@@ -422,7 +423,7 @@ const styles = StyleSheet.create({
 // ─── Category grid — 2-column pastel layout ────────────────────────────────────
 const catGrid = StyleSheet.create({
   grid: {
-    flexDirection:  "row-reverse",
+    flexDirection: flexRow(isRtl()),
     flexWrap:       "wrap",
     gap:            12,
     paddingHorizontal: 20,

@@ -4,6 +4,7 @@
  */
 import { StyleSheet } from "react-native";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 // ─── Screen shell ─────────────────────────────────────────────────────────────
 export const screenStyles = StyleSheet.create({
@@ -14,14 +15,14 @@ export const screenStyles = StyleSheet.create({
 export const sectionStyles = StyleSheet.create({
   wrap: { marginTop: 16 },
   header: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     justifyContent:    "space-between",
     paddingHorizontal: theme.spacing[4],
     marginBottom:      10,
   },
   titleRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           7,
   },
@@ -36,7 +37,7 @@ export const sectionStyles = StyleSheet.create({
     fontFamily:    theme.fonts.black,
     fontSize:      15,
     color:         theme.colors.text.primary,
-    textAlign:     "right",
+    textAlign:     textAlignStart(isRtl()),
     letterSpacing: -0.2,
   },
   cta: {
@@ -60,7 +61,7 @@ export const heroStyles = StyleSheet.create({
     ...theme.shadow.lg,
   },
   topRow: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
   },
@@ -69,13 +70,13 @@ export const heroStyles = StyleSheet.create({
     fontFamily: theme.fonts.regular,
     fontSize:   13,
     color:      "rgba(255,255,255,0.55)",
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
   name: {
     fontFamily:    theme.fonts.black,
     fontSize:      20,
     color:         "#fff",
-    textAlign:     "right",
+    textAlign:     textAlignStart(isRtl()),
     letterSpacing: -0.3,
     maxWidth:      200,
   },
@@ -99,12 +100,12 @@ export const heroStyles = StyleSheet.create({
     fontSize:   16,
   },
   badgeRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           8,
   },
   tierBadge: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               5,
     paddingHorizontal: 10,
@@ -137,7 +138,7 @@ export const heroStyles = StyleSheet.create({
     letterSpacing: 1,
   },
   balanceRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "baseline",
     gap:           8,
   },
@@ -158,7 +159,7 @@ export const heroStyles = StyleSheet.create({
     color:      "rgba(255,255,255,0.75)",
   },
   statsRow: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     backgroundColor:   "rgba(255,255,255,0.09)",
     borderRadius:      16,
     paddingVertical:   12,
@@ -176,7 +177,7 @@ export const heroStyles = StyleSheet.create({
   },
   progressWrap: { gap: 7 },
   progressMeta: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
   },
@@ -185,7 +186,7 @@ export const heroStyles = StyleSheet.create({
     fontSize:   11,
     color:      "rgba(255,255,255,0.65)",
     flex:       1,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
   progressPct: { fontFamily: theme.fonts.black, fontSize: 12, color: "#fff", marginStart: 8 },
   progressTrack: {
@@ -252,7 +253,7 @@ export const campaignStyles = StyleSheet.create({
     backgroundColor: theme.colors.surfaceSunken,
   },
   multiplierRow: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "baseline",
     gap:               3,
     alignSelf:         "flex-end",
@@ -263,11 +264,11 @@ export const campaignStyles = StyleSheet.create({
   },
   multiplierNum:  { fontFamily: theme.fonts.black,  fontSize: 18, color: "#fff" },
   multiplierUnit: { fontFamily: theme.fonts.bold,   fontSize: 11, color: "rgba(255,255,255,0.75)" },
-  name:   { fontFamily: theme.fonts.black,   fontSize: 14, color: "#fff", textAlign: "right", letterSpacing: -0.2 },
-  desc:   { fontFamily: theme.fonts.regular, fontSize: 11, color: "rgba(255,255,255,0.65)", textAlign: "right", lineHeight: 16 },
-  minSpendRow: { flexDirection: "row-reverse", alignItems: "center", gap: 4 },
+  name:   { fontFamily: theme.fonts.black,   fontSize: 14, color: "#fff", textAlign: textAlignStart(isRtl()), letterSpacing: -0.2 },
+  desc:   { fontFamily: theme.fonts.regular, fontSize: 11, color: "rgba(255,255,255,0.65)", textAlign: textAlignStart(isRtl()), lineHeight: 16 },
+  minSpendRow: { flexDirection: flexRow(isRtl()), alignItems: "center", gap: 4 },
   minSpendText: { fontFamily: theme.fonts.bold, fontSize: 10, color: "rgba(255,255,255,0.65)" },
-  expiryRow: { flexDirection: "row-reverse", alignItems: "center", gap: 4, alignSelf: "flex-end", marginTop: 4 },
+  expiryRow: { flexDirection: flexRow(isRtl()), alignItems: "center", gap: 4, alignSelf: "flex-end", marginTop: 4 },
   expiryText:        { fontFamily: theme.fonts.bold, fontSize: 10, color: "rgba(255,255,255,0.55)" },
   expiryTextUrgent:  { color: theme.colors.amber[100] },
 });
@@ -276,7 +277,7 @@ export const campaignStyles = StyleSheet.create({
 export const destStyles = StyleSheet.create({
   grid:     { paddingHorizontal: theme.spacing[4], gap: 8 },
   card: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     gap:             12,
     backgroundColor: theme.colors.surface,
@@ -288,15 +289,15 @@ export const destStyles = StyleSheet.create({
   },
   iconGrad: { width: 44, height: 44, borderRadius: 13, alignItems: "center", justifyContent: "center" },
   textWrap: { flex: 1, gap: 2 },
-  label:    { fontFamily: theme.fonts.black,   fontSize: 14, color: theme.colors.text.primary,   textAlign: "right", letterSpacing: -0.2 },
-  sub:      { fontFamily: theme.fonts.regular, fontSize: 12, color: theme.colors.text.tertiary,  textAlign: "right" },
+  label:    { fontFamily: theme.fonts.black,   fontSize: 14, color: theme.colors.text.primary,   textAlign: textAlignStart(isRtl()), letterSpacing: -0.2 },
+  sub:      { fontFamily: theme.fonts.regular, fontSize: 12, color: theme.colors.text.tertiary,  textAlign: textAlignStart(isRtl()) },
 });
 
 // ─── Recent activity ──────────────────────────────────────────────────────────
 export const activityStyles = StyleSheet.create({
   list:     { paddingHorizontal: theme.spacing[4], gap: 6 },
   row: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     gap:             10,
     backgroundColor: theme.colors.surface,
@@ -308,9 +309,9 @@ export const activityStyles = StyleSheet.create({
   },
   iconBox: { width: 38, height: 38, borderRadius: 11, alignItems: "center", justifyContent: "center" },
   meta:    { flex: 1, gap: 2 },
-  source:  { fontFamily: theme.fonts.bold,    fontSize: 13, color: theme.colors.text.primary,   textAlign: "right" },
-  date:    { fontFamily: theme.fonts.regular, fontSize: 11, color: theme.colors.text.tertiary,  textAlign: "right" },
-  deltaWrap: { flexDirection: "row-reverse", alignItems: "baseline", gap: 2 },
+  source:  { fontFamily: theme.fonts.bold,    fontSize: 13, color: theme.colors.text.primary,   textAlign: textAlignStart(isRtl()) },
+  date:    { fontFamily: theme.fonts.regular, fontSize: 11, color: theme.colors.text.tertiary,  textAlign: textAlignStart(isRtl()) },
+  deltaWrap: { flexDirection: flexRow(isRtl()), alignItems: "baseline", gap: 2 },
   delta:   { fontFamily: theme.fonts.black, fontSize: 16, letterSpacing: -0.5 },
   unit:    { fontFamily: theme.fonts.bold,  fontSize: 11, color: theme.colors.text.tertiary },
   skeleton: { height: 56, borderRadius: 14, backgroundColor: theme.colors.surfaceSunken, marginBottom: 6 },
@@ -318,7 +319,7 @@ export const activityStyles = StyleSheet.create({
   emptyText: { fontFamily: theme.fonts.bold,    fontSize: 14, color: theme.colors.text.secondary, textAlign: "center" },
   emptySub:  { fontFamily: theme.fonts.regular, fontSize: 12, color: theme.colors.text.tertiary,  textAlign: "center" },
   inlineError: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     justifyContent:  "space-between",
     marginHorizontal: theme.spacing[4],
@@ -328,7 +329,7 @@ export const activityStyles = StyleSheet.create({
   },
   inlineErrorText: { fontFamily: theme.fonts.bold, fontSize: 13, color: theme.colors.text.secondary },
   retryBtn: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               4,
     paddingHorizontal: 10,
@@ -345,7 +346,7 @@ export const activityStyles = StyleSheet.create({
 export const earnStyles = StyleSheet.create({
   list: { paddingHorizontal: theme.spacing[4], gap: 8 },
   card: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     gap:             12,
     backgroundColor: theme.colors.surface,
@@ -358,9 +359,9 @@ export const earnStyles = StyleSheet.create({
   cardTappable: { borderColor: theme.colors.border.default },
   iconBox: { width: 44, height: 44, borderRadius: 13, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   textWrap: { flex: 1, gap: 3 },
-  title:    { fontFamily: theme.fonts.black,   fontSize: 14, color: theme.colors.text.primary,   textAlign: "right", letterSpacing: -0.2 },
-  body:     { fontFamily: theme.fonts.regular, fontSize: 12, color: theme.colors.text.secondary, textAlign: "right", lineHeight: 18 },
-  ctaChip: { flexDirection: "row-reverse", alignItems: "center", gap: 3, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 9, borderWidth: 1, flexShrink: 0 },
+  title:    { fontFamily: theme.fonts.black,   fontSize: 14, color: theme.colors.text.primary,   textAlign: textAlignStart(isRtl()), letterSpacing: -0.2 },
+  body:     { fontFamily: theme.fonts.regular, fontSize: 12, color: theme.colors.text.secondary, textAlign: textAlignStart(isRtl()), lineHeight: 18 },
+  ctaChip: { flexDirection: flexRow(isRtl()), alignItems: "center", gap: 3, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 9, borderWidth: 1, flexShrink: 0 },
   ctaText:  { fontFamily: theme.fonts.black, fontSize: 11 },
 });
 
@@ -379,7 +380,7 @@ export const panelStyles = StyleSheet.create({
   title: { fontFamily: theme.fonts.black,   fontSize: 17, color: theme.colors.text.primary,   textAlign: "center", letterSpacing: -0.3 },
   body:  { fontFamily: theme.fonts.regular, fontSize: 14, color: theme.colors.text.secondary, textAlign: "center", lineHeight: 22, maxWidth: 280 },
   retryBtn: { marginTop: 12, borderRadius: 14, overflow: "hidden" },
-  retryGrad: { flexDirection: "row-reverse", alignItems: "center", gap: 8, paddingHorizontal: 24, paddingVertical: 13 },
+  retryGrad: { flexDirection: flexRow(isRtl()), alignItems: "center", gap: 8, paddingHorizontal: 24, paddingVertical: 13 },
   retryText: { fontFamily: theme.fonts.black, fontSize: 14, color: "#fff" },
   skeletonHero: { height: 220, marginHorizontal: theme.spacing[4], borderRadius: 24, backgroundColor: theme.colors.surfaceSunken },
   skeletonRow:  { height: 56,  borderRadius: 14, backgroundColor: theme.colors.surfaceSunken },

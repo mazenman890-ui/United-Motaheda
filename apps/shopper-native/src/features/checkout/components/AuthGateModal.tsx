@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { Modal, Pressable, StyleSheet, View } from "react-native";
 import { Text as UIText } from "@/shared/ui";
 import Animated, {
+  cancelAnimation,
   FadeInDown, FadeInUp,
   useAnimatedStyle, useSharedValue,
   withRepeat, withSequence, withSpring, withTiming,
@@ -31,7 +32,13 @@ export const AuthGateModal = React.memo(function AuthGateModal({
   const ring2Op  = useSharedValue(0.3);
 
   useEffect(() => {
-    if (!visible) return;
+    if (!visible) {
+      cancelAnimation(ring1);
+      cancelAnimation(ring1Op);
+      cancelAnimation(ring2);
+      cancelAnimation(ring2Op);
+      return;
+    }
     ring1.value = withRepeat(
       withSequence(withTiming(1.35, { duration: 1600 }), withTiming(1, { duration: 1200 })),
       -1, false,

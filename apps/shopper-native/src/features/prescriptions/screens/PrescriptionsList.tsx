@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppHeader } from "@/shared/components/AppHeader";
 import { RxCard }    from "@/shared/components/RxCard";
 import { Text } from "@/shared/ui";
+import { flexRow, isRtl } from "@/utils/layout";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/features/auth";
@@ -34,6 +35,7 @@ import { usePrescriptions } from "../hooks/usePrescriptions";
 import { usePrescriptionsQuery } from "../hooks/usePrescriptionsQuery";
 import { sortActiveByStatus } from "../lib/statusSort";
 import type { Prescription } from "@/stores/prescriptionsStore";
+import { flexRow, isRtl } from "@/utils/layout";
 
 interface Row {
   kind:    "rx";
@@ -87,7 +89,7 @@ export function PrescriptionsList(): React.ReactElement {
           accessibilityState={{ expanded: item.open }}
           accessibilityLabel={`عرض المنتهية (${item.count})`}
           style={styles.disclosureRow}>
-          <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: theme.spacing[1] }}>
+          <View style={{ flexDirection: flexRow(isRtl()), alignItems: "center", gap: theme.spacing[1] }}>
             <Ionicons
               name={item.open ? "chevron-down" : "chevron-back"}
               size={16}
@@ -174,7 +176,7 @@ const styles = StyleSheet.create({
   disclosureRow: {
     paddingVertical:   theme.spacing[1.5],
     paddingHorizontal: theme.spacing[2],
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     justifyContent:    "flex-start",
   },

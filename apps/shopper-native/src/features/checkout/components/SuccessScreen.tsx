@@ -8,6 +8,7 @@ import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { formatPrice } from "@/utils/format";
 import { ctaStyles } from "./checkout.styles";
+import { flexRow, isRtl } from "@/utils/layout";
 
 interface SuccessScreenProps {
   orderId:      string;
@@ -139,7 +140,7 @@ const s = StyleSheet.create({
     ...theme.shadow.card,
   },
   cardRow: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     justifyContent: "space-between",
     alignItems:     "center",
   },
@@ -149,7 +150,7 @@ const s = StyleSheet.create({
     marginVertical:  12,
   },
   etaPill: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               6,
     backgroundColor:   theme.colors.brand.lighter,
@@ -160,7 +161,7 @@ const s = StyleSheet.create({
     borderRadius:      999,
   },
   statusPill: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               6,
     backgroundColor:   theme.colors.success.bg,
@@ -177,7 +178,7 @@ const s = StyleSheet.create({
     backgroundColor: theme.colors.success.base,
   },
   trustRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           6,
     marginTop:     16,

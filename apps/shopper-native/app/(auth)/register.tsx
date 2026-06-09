@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/Button";
 import { Text } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { authStyles } from "@/features/auth/styles/auth.styles";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 export default function RegisterScreen() {
   const { t, i18n } = useTranslation();
@@ -310,7 +311,7 @@ const styles = StyleSheet.create({
   },
   // Skip-phone toggle — refined "premium checkbox"
   skipRow: {
-    flexDirection:     "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:        "center",
     gap:               8,
     marginTop:         8,

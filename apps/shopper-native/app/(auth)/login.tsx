@@ -35,6 +35,7 @@ import { Button } from "@/components/ui/Button";
 import { Text } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { authStyles } from "@/features/auth/styles/auth.styles";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 export default function LoginScreen() {
   const { t, i18n } = useTranslation();
@@ -205,7 +206,7 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   forgotRow: {
-    flexDirection:  "row-reverse",
+    flexDirection: flexRow(isRtl()),
     justifyContent: "flex-start",
     marginTop:      -2,
   },

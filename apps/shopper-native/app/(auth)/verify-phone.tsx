@@ -27,6 +27,7 @@ import { PhoneVerifyModal, sendPhoneOtp } from "@/features/auth";
 import { Text } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { authStyles } from "@/features/auth/styles/auth.styles";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 export default function VerifyPhoneScreen() {
   const { t } = useTranslation();
@@ -154,7 +155,7 @@ const styles = StyleSheet.create({
     bottom:        56,
     left:          0,
     right:         0,
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     justifyContent:"center",
     gap:           6,

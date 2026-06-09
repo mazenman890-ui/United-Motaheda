@@ -45,6 +45,7 @@ import {
   verifyPhoneOtp,
   type OtpError,
 } from "../phoneOtp";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 const DIGIT_COUNT = 6;
 
@@ -481,7 +482,7 @@ function EditStep({
             keyboardType="phone-pad"
             placeholder="01XXXXXXXXX"
             placeholderTextColor={theme.colors.text.tertiary}
-            textAlign="right"
+            textAlign={textAlignStart(isRtl()) as "left" | "right"}
             maxLength={14}
             style={styles.phoneInput}
             accessibilityLabel={t("phoneVerify.phoneA11y")}
@@ -565,7 +566,7 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
   boxesRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     justifyContent: "center",
     gap: theme.spacing[1],
     marginTop:    theme.spacing[1],
@@ -593,13 +594,13 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.error.bg,
   },
   errorRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           theme.spacing[1],
     paddingHorizontal: theme.spacing[1],
   },
   timerRow: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
     paddingHorizontal: theme.spacing[1],
@@ -610,7 +611,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing[0.5],
   },
   phoneInputBox: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               theme.spacing[1],
     paddingHorizontal: theme.spacing[2],

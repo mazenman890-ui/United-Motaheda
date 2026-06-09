@@ -1,5 +1,6 @@
 import { StyleSheet } from "react-native";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl } from "@/utils/layout";
 
 const { colors, layout, radius, spacing, shadow, fonts } = theme;
 
@@ -79,7 +80,7 @@ export const authStyles = StyleSheet.create({
 
   // ── Inline error banner ──────────────────────────────────────────────────────
   errorBox: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     gap:             10,
     backgroundColor: colors.error.bg,
@@ -116,7 +117,7 @@ export const authStyles = StyleSheet.create({
 
   // ── Footer link row ──────────────────────────────────────────────────────────
   footer: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "center",
     gap:            6,

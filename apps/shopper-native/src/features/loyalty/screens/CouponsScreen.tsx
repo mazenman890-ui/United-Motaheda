@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import { useScreenTrace } from "@/features/observability";
 import { SubScreenHeader } from "../components/SubScreenHeader";
 import { useCouponBatches } from "../hooks/useCouponBatches";
@@ -383,7 +384,7 @@ const styles = StyleSheet.create({
   },
 
   balanceChip: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               6,
     alignSelf:         "flex-end",
@@ -409,13 +410,13 @@ const styles = StyleSheet.create({
     fontFamily:    theme.fonts.black,
     fontSize:      15,
     color:         theme.colors.text.primary,
-    textAlign:     "right",
+    textAlign:     textAlignStart(isRtl()),
     letterSpacing: -0.2,
   },
 
   // ── Issued coupon row ──
   couponRow: {
-    flexDirection:   "row-reverse",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     gap:             theme.spacing.md,
     backgroundColor: theme.colors.surface,
@@ -443,13 +444,13 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.bold,
     fontSize:   13,
     color:      theme.colors.text.primary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
   },
   couponMeta: {
     fontFamily: theme.fonts.regular,
     fontSize:   11,
     color:      theme.colors.text.tertiary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     marginTop:  2,
   },
   statusPill: {
@@ -476,7 +477,7 @@ const styles = StyleSheet.create({
     ...theme.shadow.card,
   },
   batchHead: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "flex-start",
   },
   discountBadge: {
@@ -497,32 +498,32 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.black,
     fontSize:   14,
     color:      theme.colors.text.primary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     lineHeight: 20,
   },
   batchMeta: {
     fontFamily: theme.fonts.regular,
     fontSize:   11,
     color:      theme.colors.text.tertiary,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     marginTop:  4,
   },
   lowStockText: {
     fontFamily: theme.fonts.bold,
     fontSize:   11,
     color:      theme.colors.amber[700],
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     marginTop:  4,
   },
   soldOutText: {
     fontFamily: theme.fonts.bold,
     fontSize:   11,
     color:      theme.colors.slate[500],
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     marginTop:  4,
   },
   batchFoot: {
-    flexDirection:  "row-reverse",
+    flexDirection:  flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
     paddingTop:     theme.spacing.md,
@@ -530,7 +531,7 @@ const styles = StyleSheet.create({
     borderTopColor: theme.colors.border.hairline,
   },
   costWrap: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           5,
   },
@@ -572,7 +573,7 @@ const styles = StyleSheet.create({
     minHeight:       120,
   },
   emptyRow: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               10,
     paddingVertical:   18,
@@ -586,11 +587,11 @@ const styles = StyleSheet.create({
     fontSize:   12,
     color:      theme.colors.text.secondary,
     flex:       1,
-    textAlign:  "right",
+    textAlign:  textAlignStart(isRtl()),
     lineHeight: 18,
   },
   errorRow: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     justifyContent:    "space-between",
     paddingVertical:   14,
@@ -605,7 +606,7 @@ const styles = StyleSheet.create({
     color:      theme.colors.text.secondary,
   },
   errorBtn: {
-    flexDirection:     "row-reverse",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               5,
     paddingHorizontal: theme.spacing.md,

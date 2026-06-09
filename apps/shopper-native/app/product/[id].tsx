@@ -36,6 +36,7 @@ import { useCartStore } from "@/stores/cart";
 import { useWishlistStore } from "@/stores/wishlist";
 import { theme } from "@/shared/theme";
 import { formatPrice } from "@/utils/format";
+import { flexRow, isRtl } from "@/utils/layout";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -49,7 +50,7 @@ function deterministicRating(id: string): { value: number; count: number } {
 
 function Stars({ value, size = 14 }: { value: number; size?: number }) {
   return (
-    <View style={{ flexDirection: "row-reverse", gap: 2 }}>
+    <View style={{ flexDirection: flexRow(isRtl()), gap: 2 }}>
       {[1, 2, 3, 4, 5].map((s) => (
         <Ionicons
           key={s}
@@ -184,7 +185,7 @@ export default function ProductDetailScreen() {
           borderBottomWidth: StyleSheet.hairlineWidth,
           borderBottomColor: theme.colors.border.hairline,
         }]}>
-        <View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 12 }}>
+        <View style={{ flexDirection: flexRow(isRtl()), alignItems: "center", gap: 12 }}>
           <Pressable
             onPress={() => router.back()}
             style={{
@@ -332,7 +333,7 @@ export default function ProductDetailScreen() {
                   <UIText variant="eyebrow" color="tertiary" align="right">
                     {t("product.priceLabel")}
                   </UIText>
-                  <View style={{ flexDirection: "row-reverse", alignItems: "baseline", gap: 6 }}>
+                  <View style={{ flexDirection: flexRow(isRtl()), alignItems: "baseline", gap: 6 }}>
                     <UIText variant="metric" align="right" style={pdStyles.priceMetric}>
                       {formatPrice(product.price * qty)}
                     </UIText>
@@ -546,12 +547,12 @@ const fab = StyleSheet.create({
 const pdStyles = StyleSheet.create({
   // ── Category + stock row ─────────────────────────────────────────
   metaRow: {
-    flexDirection:  "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
   },
   categoryStrip: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           8,
   },
@@ -576,14 +577,14 @@ const pdStyles = StyleSheet.create({
 
   // ── Rating ───────────────────────────────────────────────────────
   ratingRow: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           8,
   },
 
   // ── Price + Stepper ─────────────────────────────────────────────
   priceRow: {
-    flexDirection:  "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "space-between",
     gap:            16,
@@ -593,7 +594,7 @@ const pdStyles = StyleSheet.create({
     letterSpacing: -0.8,
   },
   stepperWrap: {
-    flexDirection:   "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:      "center",
     backgroundColor: theme.colors.surface,
     borderRadius:    14,
@@ -621,7 +622,7 @@ const pdStyles = StyleSheet.create({
 
   // ── Trust row ────────────────────────────────────────────────────
   trustRow: {
-    flexDirection:    "row-reverse",
+    flexDirection: flexRow(isRtl()),
     backgroundColor:  theme.colors.surface,
     borderRadius:     18,
     paddingVertical:  16,
@@ -673,7 +674,7 @@ const pdStyles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   detailRow: {
-    flexDirection:    "row-reverse",
+    flexDirection: flexRow(isRtl()),
     justifyContent:   "space-between",
     alignItems:       "center",
     paddingVertical:  13,
@@ -686,7 +687,7 @@ const pdStyles = StyleSheet.create({
 
   // ── Section header for "Related" ────────────────────────────────
   sectionHeader: {
-    flexDirection: "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           12,
   },
@@ -724,7 +725,7 @@ const pdStyles = StyleSheet.create({
     elevation:       8,
   },
   viewCartLink: {
-    flexDirection:  "row-reverse",
+    flexDirection: flexRow(isRtl()),
     alignItems:     "center",
     justifyContent: "center",
     gap:            6,

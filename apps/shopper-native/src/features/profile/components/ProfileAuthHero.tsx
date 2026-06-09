@@ -9,6 +9,11 @@
  *   - QuickActionTile extracted as memo'd component so each tile owns its
  *     useSharedValue — parent re-renders never recreate the animation state
  *   - All onPress handlers: useCallback at component level, passed as stable refs
+ *
+ * Visual upgrades (2026):
+ *   - avatarRing: subtle white hairline ring behind the tier-colour glow
+ *   - quickCardIcon: LinearGradient fill instead of flat brand.lighter surface
+ *   - heroDecor4: new fourth decorative orb added via profile.styles.ts
  */
 import React, { memo, useCallback } from "react";
 import { Platform, Pressable, StyleSheet, View } from "react-native";
@@ -24,6 +29,7 @@ import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import { styles, HERO_GLASS, PROFILE } from "./profile.styles";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
@@ -144,7 +150,7 @@ const QuickActionTile = memo(function QuickActionTile({
           end={{ x: 1, y: 1 }}
           style={styles.quickGridIconWrap}>
           <View style={styles.quickGridShine} />
-          <Ionicons name={icon} size={20} color={HERO_GLASS.w95} />
+          <Ionicons name={icon} size={22} color={HERO_GLASS.w95} />
         </LinearGradient>
       </Animated.View>
       <UIText variant="caption" weight="bold" align="center" color="secondary">
@@ -220,9 +226,12 @@ export const ProfileAuthHero = memo(function ProfileAuthHero({
         end={{ x: 0.7, y: 1 }}
         style={[styles.hero, { paddingTop: insetsTop + 14 }]}>
 
+        {/* Four layered decorative orbs + stripe for depth */}
         <View style={styles.heroDecor1} />
         <View style={styles.heroDecor2} />
         <View style={styles.heroDecor3} />
+        <View style={styles.heroDecor4} />
+        <View style={styles.heroDecorStripe} />
 
         {/* Top bar — title + cart + settings */}
         <View style={styles.heroTopBar}>
@@ -254,9 +263,16 @@ export const ProfileAuthHero = memo(function ProfileAuthHero({
           </View>
         </View>
 
-        {/* Avatar + identity */}
+        {/* Avatar + identity — asymmetric horizontal layout */}
         <View style={styles.heroIdentity}>
+          {/* Avatar column */}
           <View style={styles.avatarContainer}>
+            {/*
+              avatarRing: subtle white hairline ring rendered behind the tier
+              glow — adds perceived depth without competing with the tier colour.
+              Must be first child so it sits behind the gradient glow.
+            */}
+            <View style={styles.avatarRing} />
             <LinearGradient
               colors={tier.ring}
               start={{ x: 0, y: 0 }}
@@ -269,33 +285,36 @@ export const ProfileAuthHero = memo(function ProfileAuthHero({
               </UIText>
             </View>
             <View style={[styles.tierBadge, { backgroundColor: tier.color }]}>
-              <Ionicons name={tier.icon} size={10} color={theme.colors.surface} />
+              <Ionicons name={tier.icon} size={11} color={theme.colors.surface} />
             </View>
           </View>
 
-          <View style={styles.heroTextGroup}>
-            <UIText variant="sheet-title" color="inverse" numberOfLines={1} style={styles.userNameNew}>
-              {user.name ?? t("profile.userFallback")}
-            </UIText>
-            <UIText variant="body-sm" color="inverse-muted" numberOfLines={1}>
-              {user.email}
-            </UIText>
-          </View>
-
-          <Pressable onPress={goLoyalty} style={styles.tierChip}>
-            <Ionicons name={tier.icon} size={12} color={tier.color} />
-            <UIText variant="caption" weight="bold" style={styles.tierChipLabelNew}>
-              {t("profile.memberTier", { tier: t(tier.nameKey) })}
-            </UIText>
-            <View style={styles.pointsChip}>
-              <UIText variant="caption" weight="black" style={styles.pointsChipTextNew}>
-                {loyaltyPoints}
+          {/* Identity column — name, email, tier chip stacked beside avatar */}
+          <View style={styles.heroIdentityCol}>
+            <View style={styles.heroTextGroup}>
+              <UIText variant="sheet-title" color="inverse" numberOfLines={1} style={styles.userNameNew}>
+                {user.name ?? t("profile.userFallback")}
               </UIText>
-              <UIText variant="eyebrow" style={styles.pointsChipUnitNew}>
-                {t("profile.pointsUnit")}
+              <UIText variant="body-sm" color="inverse-muted" numberOfLines={1}>
+                {user.email}
               </UIText>
             </View>
-          </Pressable>
+
+            <Pressable onPress={goLoyalty} style={styles.tierChip}>
+              <Ionicons name={tier.icon} size={12} color={tier.color} />
+              <UIText variant="caption" weight="bold" style={styles.tierChipLabelNew}>
+                {t("profile.memberTier", { tier: t(tier.nameKey) })}
+              </UIText>
+              <View style={styles.pointsChip}>
+                <UIText variant="caption" weight="black" style={styles.pointsChipTextNew}>
+                  {loyaltyPoints}
+                </UIText>
+                <UIText variant="eyebrow" style={styles.pointsChipUnitNew}>
+                  {t("profile.pointsUnit")}
+                </UIText>
+              </View>
+            </Pressable>
+          </View>
         </View>
       </LinearGradient>
 
@@ -340,9 +359,17 @@ export const ProfileAuthHero = memo(function ProfileAuthHero({
           <Pressable
             onPress={goOrders}
             style={({ pressed }) => [styles.quickCard, pressed && { opacity: 0.88 }]}>
-            <View style={styles.quickCardIcon}>
+            {/*
+              quickCardIcon: LinearGradient background instead of flat brand.lighter
+              — adds more visual depth and premium feel to the icon container.
+            */}
+            <LinearGradient
+              colors={[theme.colors.teal[50], theme.colors.brand.lighter]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.quickCardIcon}>
               <Ionicons name="bag-handle" size={17} color={theme.colors.brand[600]} />
-            </View>
+            </LinearGradient>
             <View style={lo.info}>
               <View style={lo.nameRow}>
                 <UIText variant="body-sm" weight="bold" align="right">
@@ -394,23 +421,23 @@ const sp = StyleSheet.create({
 // so the gradient tile can clip its corners independently.
 const qt = StyleSheet.create({
   iconWrap: {
-    borderRadius:  16,
+    borderRadius:  20,
     shadowColor:   PROFILE.shadowDark,
-    shadowOffset:  { width: 0, height: 3 },
-    shadowOpacity: 0.20,
-    shadowRadius:  8,
-    elevation:     4,
+    shadowOffset:  { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius:  10,
+    elevation:     5,
   },
 });
 
 // Top-bar flex rows
 const tb = StyleSheet.create({
-  left:  { flexDirection: "row-reverse", alignItems: "center", gap: 8 },
-  right: { flexDirection: "row-reverse", alignItems: "center", gap: 8 },
+  left:  { flexDirection: flexRow(isRtl()), alignItems: "center", gap: 8 },
+  right: { flexDirection: flexRow(isRtl()), alignItems: "center", gap: 8 },
 });
 
 // Last-order info block
 const lo = StyleSheet.create({
   info:    { flex: 1 },
-  nameRow: { flexDirection: "row-reverse", alignItems: "center", gap: 6 },
+  nameRow: { flexDirection: flexRow(isRtl()), alignItems: "center", gap: 6 },
 });
