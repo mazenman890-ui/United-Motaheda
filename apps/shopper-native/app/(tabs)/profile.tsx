@@ -285,6 +285,8 @@ export default function ProfileScreen() {
   // One useCallback per destination so MenuRow memo never re-renders on
   // unrelated state changes (e.g. signingOut toggling).
   const goLoyalty       = useCallback(() => router.push("/loyalty"),              [router]);
+  const goEditProfile   = useCallback(() => router.push("/edit-profile"),         [router]);
+  const goSecurity      = useCallback(() => router.push("/change-password"),      [router]);
   const goNotifications = useCallback(() => router.push("/notifications"),        [router]);
   const goAddresses     = useCallback(() => router.push("/addresses"),            [router]);
   const goPayment       = useCallback(() => router.push("/payment"),              [router]);
@@ -346,6 +348,15 @@ export default function ProfileScreen() {
             accent={theme.colors.brand[700]}
           />
           <View style={s.card}>
+            {user && (
+              <MenuRow
+                icon="create-outline"
+                color={theme.colors.brand[600]}
+                label={t("profile.menuEditProfile")}
+                subtitle={t("profile.menuEditProfileSubtitle")}
+                onPress={goEditProfile}
+              />
+            )}
             <MenuRow
               icon="language-outline"
               color="#2563EB"
@@ -360,6 +371,15 @@ export default function ProfileScreen() {
               subtitle={t("profile.notificationsSubtitle")}
               onPress={goNotifications}
             />
+            {user && (
+              <MenuRow
+                icon="lock-closed-outline"
+                color={theme.colors.slate[600]}
+                label={t("profile.menuSecurity")}
+                subtitle={t("profile.menuSecuritySubtitle")}
+                onPress={goSecurity}
+              />
+            )}
             <MenuRow
               icon="location-outline"
               color={theme.colors.success.strong}

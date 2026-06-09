@@ -343,8 +343,40 @@
                     "terms":  "الشروط والأحكام",
                     "footerName":  "صيدليات المتحدة",
                     "userFallback":  "المستخدم",
-                    "notificationsSubtitle":  "تنبيهات الطلبات والعروض"
+                    "notificationsSubtitle":  "تنبيهات الطلبات والعروض",
+                    "menuEditProfile":  "تعديل الملف الشخصي",
+                    "menuEditProfileSubtitle":  "الاسم ورقم الهاتف",
+                    "menuSecurity":  "الأمان",
+                    "menuSecuritySubtitle":  "تغيير كلمة المرور"
                 },
+    "editProfile":  {
+                        "title":  "تعديل الملف الشخصي",
+                        "nameLabel":  "الاسم الكامل",
+                        "namePlaceholder":  "أدخل اسمك الكامل",
+                        "phoneLabel":  "رقم الهاتف",
+                        "phonePlaceholder":  "01xxxxxxxxx",
+                        "emailLabel":  "البريد الإلكتروني",
+                        "emailHint":  "لا يمكن تغيير البريد الإلكتروني من هنا",
+                        "saveBtn":  "حفظ التغييرات",
+                        "saving":  "جارٍ الحفظ...",
+                        "saved":  "تم الحفظ",
+                        "errorRequired":  "يرجى إدخال الاسم الكامل",
+                        "errorGeneric":  "حدث خطأ، يرجى المحاولة مجدداً"
+                    },
+    "changePassword":  {
+                           "title":  "تغيير كلمة المرور",
+                           "newLabel":  "كلمة المرور الجديدة",
+                           "newPlaceholder":  "8 أحرف على الأقل",
+                           "confirmLabel":  "تأكيد كلمة المرور",
+                           "confirmPlaceholder":  "أعد إدخال كلمة المرور",
+                           "saveBtn":  "تغيير كلمة المرور",
+                           "saving":  "جارٍ التغيير...",
+                           "errorMismatch":  "كلمتا المرور غير متطابقتين",
+                           "errorShort":  "يجب أن تكون كلمة المرور 8 أحرف على الأقل",
+                           "errorGeneric":  "فشل تغيير كلمة المرور، يرجى المحاولة مجدداً",
+                           "successTitle":  "تم التغيير",
+                           "successBody":  "تم تغيير كلمة مرورك بنجاح"
+                       },
     "checkout":  {
                      "title":  "إتمام الطلب",
                      "titleStep1":  "خطوة 1 من 2  •  تفاصيل التوصيل",

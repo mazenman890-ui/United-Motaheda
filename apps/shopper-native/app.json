@@ -30,7 +30,8 @@
       "package": "com.unitedpharmacy.app",
       "jsEngine": "hermes",
       "permissions": [
-        "android.permission.CAMERA"
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -84,13 +85,10 @@
         "origin": false
       },
       "eas": {
-        "projectId": "1f6bee7a-6298-40a9-bf47-23e2254814ab"
+        "projectId": "fa2c9eec-4491-41f9-92bb-892a56bcc578"
       }
     },
     "runtimeVersion": "1.0.0",
-    "owner": "united-baqy",
-    "updates": {
-      "url": "https://u.expo.dev/1f6bee7a-6298-40a9-bf47-23e2254814ab"
-    }
+    "owner": "mazenmohamed"
   }
 }

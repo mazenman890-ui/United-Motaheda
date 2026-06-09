@@ -494,9 +494,9 @@ const f = StyleSheet.create({
   },
 
   statsRow: {
-    flexDirection:  "row",
+    flexDirection:  flexRow(isRtl()),
     gap:            10,
-    justifyContent: "flex-end",
+    justifyContent: isRtl() ? "flex-start" : "flex-end",
   },
   stat: {
     flexDirection: flexRow(isRtl()),

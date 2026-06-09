@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
   backBtn:       { width: 38, height: 38, borderRadius: 12, backgroundColor: theme.colors.subtle, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: theme.colors.border.default },
   title:         { fontSize: theme.fontSize["2xl"], fontFamily: theme.fonts.black, color: theme.colors.text.primary },
   content:       { padding: theme.layout.pagePaddingH, gap: 0 },
-  updatedBanner: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 6, marginBottom: 14 },
+  updatedBanner: { flexDirection: flexRow(isRtl()), alignItems: "center", justifyContent: isRtl() ? "flex-start" : "flex-end", gap: 6, marginBottom: 14 },
   updatedText:   { fontSize: theme.fontSize.sm, fontFamily: theme.fonts.semibold, color: theme.colors.brand[700] },
   introBanner:   { flexDirection: flexRow(isRtl()), alignItems: "flex-start", gap: 10, backgroundColor: theme.colors.brand[50], borderRadius: theme.radius.xl, padding: 16, borderWidth: 1, borderColor: theme.colors.brand[100], marginBottom: 20 },
   introText:     { flex: 1, fontSize: theme.fontSize.base, fontFamily: theme.fonts.semibold, color: theme.colors.text.primary, textAlign: textAlignStart(isRtl()), lineHeight: 22 },

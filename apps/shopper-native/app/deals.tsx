@@ -551,7 +551,7 @@ const d = StyleSheet.create({
 
   // Search
   searchWrap: {
-    flexDirection:     "row",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               10,
     paddingHorizontal: theme.layout.pagePaddingH,

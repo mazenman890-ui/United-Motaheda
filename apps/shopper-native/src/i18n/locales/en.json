@@ -780,7 +780,39 @@
         "terms": "Terms & Conditions",
         "footerName": "United Pharmacy",
         "userFallback": "User",
-        "notificationsSubtitle": "Order and offer alerts"
+        "notificationsSubtitle": "Order and offer alerts",
+        "menuEditProfile": "Edit Profile",
+        "menuEditProfileSubtitle": "Name and phone number",
+        "menuSecurity": "Security",
+        "menuSecuritySubtitle": "Change password"
+    },
+    "editProfile": {
+        "title": "Edit Profile",
+        "nameLabel": "Full Name",
+        "namePlaceholder": "Enter your full name",
+        "phoneLabel": "Phone Number",
+        "phonePlaceholder": "01xxxxxxxxx",
+        "emailLabel": "Email Address",
+        "emailHint": "Email cannot be changed here",
+        "saveBtn": "Save Changes",
+        "saving": "Saving...",
+        "saved": "Saved",
+        "errorRequired": "Full name is required",
+        "errorGeneric": "Something went wrong, please try again"
+    },
+    "changePassword": {
+        "title": "Change Password",
+        "newLabel": "New Password",
+        "newPlaceholder": "At least 8 characters",
+        "confirmLabel": "Confirm Password",
+        "confirmPlaceholder": "Re-enter new password",
+        "saveBtn": "Change Password",
+        "saving": "Changing...",
+        "errorMismatch": "Passwords don't match",
+        "errorShort": "Password must be at least 8 characters",
+        "errorGeneric": "Failed to change password, please try again",
+        "successTitle": "Password Changed",
+        "successBody": "Your password has been changed successfully"
     },
     "reminder": {
         "title": "Reminders",

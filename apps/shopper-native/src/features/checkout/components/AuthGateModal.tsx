@@ -11,6 +11,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl } from "@/utils/layout";
 
 interface AuthGateModalProps {
   visible:   boolean;
@@ -234,7 +235,7 @@ const s = StyleSheet.create({
     maxWidth:   280,
   },
   pillsRow: {
-    flexDirection: "row",
+    flexDirection: flexRow(isRtl()),
     gap:           8,
     marginTop:     16,
     marginBottom:  4,
@@ -252,7 +253,7 @@ const s = StyleSheet.create({
   actions:    { width: "100%", gap: 10, marginTop: 20 },
   signInBtn:  { borderRadius: 16, overflow: "hidden" },
   signInGrad: {
-    flexDirection:   "row",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     justifyContent:  "center",
     gap:             10,

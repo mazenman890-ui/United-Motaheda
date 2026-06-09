@@ -99,10 +99,50 @@ export async function requestPasswordReset(email: string): Promise<void> {
 /**
  * Sets a new password for the currently-authenticated recovery session.
  * Must be called after `exchangeCodeForSession` has succeeded.
+ * Also callable from the in-app Change Password screen for an authenticated user.
  */
 export async function updatePassword(newPassword: string): Promise<void> {
   const { error } = await supabase.auth.updateUser({ password: newPassword });
   if (error) throw error;
+}
+
+/**
+ * Updates the authenticated user's display name and/or phone number.
+ *
+ * Writes to two places:
+ *   1. `auth.users.user_metadata` — picked up by `onAuthStateChange` so the
+ *      auth context (and profile hero) refresh automatically with no extra call.
+ *   2. `public.profiles` — keeps the profiles table in sync for checkout
+ *      and other server-side reads.
+ */
+export async function updateProfile(params: {
+  name?:  string;
+  phone?: string;
+}): Promise<void> {
+  const { data: { user }, error: getError } = await supabase.auth.getUser();
+  if (getError) throw getError;
+  if (!user) throw new Error("Not authenticated");
+
+  const meta: Record<string, string> = {};
+  if (params.name  !== undefined) meta.name  = params.name.trim();
+  if (params.phone !== undefined) meta.phone = params.phone.replace(/\D/g, "").slice(0, 11);
+
+  if (Object.keys(meta).length > 0) {
+    const { error: authError } = await supabase.auth.updateUser({ data: meta });
+    if (authError) throw authError;
+  }
+
+  const cols: Record<string, string | null> = {};
+  if (params.name  !== undefined) cols.full_name = params.name.trim();
+  if (params.phone !== undefined) cols.phone     = params.phone.replace(/\D/g, "").slice(0, 11) || null;
+
+  if (Object.keys(cols).length > 0) {
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update(cols)
+      .eq("id", user.id);
+    if (profileError) throw profileError;
+  }
 }
 
 export async function getSession(): Promise<AuthUser | null> {

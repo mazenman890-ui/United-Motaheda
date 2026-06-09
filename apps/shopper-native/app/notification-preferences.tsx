@@ -311,11 +311,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: theme.colors.border.hairline,
   },
-  // Circular pastel icon bubble — matches Profile MenuRow style
+  // Rounded-square icon tile — matches Profile MenuRow and app design language
   rowIcon: {
     width:          38,
     height:         38,
-    borderRadius:   99,
+    borderRadius:   12,
     alignItems:     "center",
     justifyContent: "center",
     flexShrink:     0,

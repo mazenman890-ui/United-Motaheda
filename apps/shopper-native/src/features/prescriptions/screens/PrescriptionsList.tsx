@@ -3,9 +3,9 @@
  *
  * Header: AppHeader title="وصفاتي" (cart badge stays).
  * Body:
- *   - Active section: RxCards sorted expiring → ready → active.
- *   - Expired section: collapsed behind a disclosure row.
- *   - Empty state when no active rxs.
+ * - Active section: RxCards sorted expiring → ready → active.
+ * - Expired section: collapsed behind a disclosure row.
+ * - Empty state when no active rxs.
  * Sticky CTA: "إضافة وصفة" → /prescriptions/add.
  * Pull-to-refresh: usePrescriptionsQuery().refetch().
  */
@@ -35,7 +35,6 @@ import { usePrescriptions } from "../hooks/usePrescriptions";
 import { usePrescriptionsQuery } from "../hooks/usePrescriptionsQuery";
 import { sortActiveByStatus } from "../lib/statusSort";
 import type { Prescription } from "@/stores/prescriptionsStore";
-import { flexRow, isRtl } from "@/utils/layout";
 
 interface Row {
   kind:    "rx";
