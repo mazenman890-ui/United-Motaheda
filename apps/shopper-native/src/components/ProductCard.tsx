@@ -645,8 +645,8 @@ const styles = StyleSheet.create({
   lowStockBadge: {
     position:          "absolute",
     bottom:            10,
-    left:              10,
-    flexDirection:     "row",
+    start:             10,
+    flexDirection:     flexRow(_isRtl),
     alignItems:        "center",
     gap:               theme.spacing.xs,
     backgroundColor:   CARD.lowStockBg,
@@ -665,7 +665,7 @@ const styles = StyleSheet.create({
   cartChip: {
     position:          "absolute",
     top:               10,
-    left:              10,
+    start:             10,
     backgroundColor:   theme.colors.brand[600],
     borderRadius:      999,
     minWidth:          24,
@@ -690,7 +690,7 @@ const styles = StyleSheet.create({
   featureBadge: {
     position:          "absolute",
     top:               10,
-    left:              10,
+    start:             10,
     borderRadius:      8,
     paddingHorizontal: 9,
     paddingVertical:   theme.spacing.xs,

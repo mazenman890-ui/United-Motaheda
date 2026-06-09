@@ -23,6 +23,7 @@ import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl } from "@/utils/layout";
 import { ProductCard } from "@/components/ProductCard";
 import { HomeSectionHeader } from "./HomeSectionHeader";
 import { flashStyles as fs, cntStyles as cs } from "./home.styles";
@@ -98,7 +99,7 @@ const va = StyleSheet.create({
     overflow:     "hidden",
   },
   grad: {
-    flexDirection:   "row",
+    flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     justifyContent:  "center",
     gap:             8,

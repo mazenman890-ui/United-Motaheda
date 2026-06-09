@@ -41,7 +41,7 @@ export function EmptyState({
         style={{
           width:           compact ? 64 : 80,
           height:          compact ? 64 : 80,
-          borderRadius:    compact ? 32 : 40,
+          borderRadius:    compact ? 20 : 24,
           backgroundColor: theme.colors.brand[50],
           alignItems:      "center",
           justifyContent:  "center",

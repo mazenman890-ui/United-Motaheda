@@ -81,13 +81,15 @@ const NotificationRow = React.memo(function NotificationRow({
       style={({ pressed }) => [
         styles.notifRow,
         !item.isRead && styles.notifRowUnread,
+        item.isRead && styles.notifRowRead,
         pressed && { backgroundColor: theme.colors.slate[50] },
       ]}>
-      {/* Unread dot */}
-      {!item.isRead && <View style={styles.unreadDot} />}
 
       {/* Type icon */}
-      <View style={[styles.notifIcon, { backgroundColor: cfg.bg }]}>
+      <View style={[
+        styles.notifIcon,
+        { backgroundColor: cfg.bg, borderColor: cfg.bg === theme.colors.brand[50] ? theme.colors.border.brandSoft : "rgba(0,0,0,0.04)" }
+      ]}>
         <Ionicons name={cfg.icon} size={17} color={cfg.color} />
       </View>
 
@@ -104,7 +106,8 @@ const NotificationRow = React.memo(function NotificationRow({
         <UIText style={styles.notifBody} numberOfLines={2}>
           {item.body}
         </UIText>
-        <View style={styles.notifTypePill}>
+        <View style={[styles.notifTypePill, { backgroundColor: cfg.bg }]}>
+          <View style={[styles.notifTypeDot, { backgroundColor: cfg.color }]} />
           <UIText style={[styles.notifTypeText, { color: cfg.color }]}>{t(cfg.labelKey)}</UIText>
         </View>
       </View>
@@ -318,9 +321,9 @@ const styles = StyleSheet.create({
   },
   filterRow: { flexDirection: flexRow(isRtl()), gap: 5 },
   filterChip: {
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-    borderRadius: 999,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: 12,
     backgroundColor: "rgba(255,255,255,0.10)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.10)",
@@ -331,7 +334,7 @@ const styles = StyleSheet.create({
   },
   filterChipText: { fontSize: 10.5, fontFamily: theme.fonts.bold, color: "rgba(255,255,255,0.65)" },
   filterChipTextActive: { color: theme.colors.heroMid, fontFamily: theme.fonts.black },
-  markAllText: { fontSize: 11, fontFamily: theme.fonts.bold, color: "rgba(255,255,255,0.65)" },
+  markAllText: { fontSize: 11, fontFamily: theme.fonts.bold, color: theme.colors.teal[200] },
 
   // Loading
   loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
@@ -339,7 +342,7 @@ const styles = StyleSheet.create({
 
   // Row
   notifRow: {
-    flexDirection: flexRow(isRtl()),
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "flex-start",
     gap:               14,
     paddingHorizontal: 18,
@@ -347,27 +350,25 @@ const styles = StyleSheet.create({
     backgroundColor:   "#fff",
     position:          "relative",
   },
-  // Unread: brand.lightest (#F0FDFB) — clear subtle teal tint, read = pure white
-  notifRowUnread: { backgroundColor: theme.colors.brand.lightest },
-  unreadDot: {
-    position:        "absolute",
-    top:             20,
-    right:           8,
-    width:           8,
-    height:          8,
-    borderRadius:    4,
-    backgroundColor: theme.colors.brand[500],
+  // Unread: brand.lightest tint + brand left-border accent
+  notifRowUnread: {
+    backgroundColor:  theme.colors.brand.lightest,
+    borderStartWidth: 3,
+    borderStartColor: theme.colors.brand[500],
   },
+  // Read: explicit pure white surface
+  notifRowRead: { backgroundColor: theme.colors.surface },
   notifIcon: {
-    width:          44,
-    height:         44,
-    borderRadius:   99,   // circular pastel bubble
+    width:          46,
+    height:         46,
+    borderRadius:   14,
     alignItems:     "center",
     justifyContent: "center",
-    marginTop:      2,
+    marginTop:      1,
     flexShrink:     0,
+    borderWidth:    1,
   },
-  notifContent: { flex: 1, gap: 4 },
+  notifContent: { flex: 1, gap: 5 },
   notifTitleRow: {
     flexDirection: flexRow(isRtl()),
     alignItems: "center",
@@ -376,7 +377,7 @@ const styles = StyleSheet.create({
   },
   notifTitle: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 13.5,
     fontFamily: theme.fonts.bold,
     color: theme.colors.slate[700],
     textAlign: textAlignStart(isRtl()),
@@ -384,20 +385,25 @@ const styles = StyleSheet.create({
   notifTitleUnread: { fontFamily: theme.fonts.black, color: theme.colors.slate[900] },
   notifTime: { fontSize: 10, fontFamily: theme.fonts.semibold, color: theme.colors.slate[400] },
   notifBody: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontFamily: theme.fonts.regular,
     color: theme.colors.slate[500],
     textAlign: textAlignStart(isRtl()),
-    lineHeight: 18,
+    lineHeight: 19,
   },
   notifTypePill: {
-    alignSelf: "flex-end",
-    backgroundColor: theme.colors.slate[50],
-    borderRadius: 999,
+    alignSelf:         "flex-start",
+    flexDirection:     flexRow(isRtl()),
+    alignItems:        "center",
+    gap:               4,
+    borderRadius:      8,
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    marginTop: 2,
+    paddingVertical:   3,
+    marginTop:         3,
+    borderWidth:       1,
+    borderColor:       "rgba(0,0,0,0.04)",
   },
+  notifTypeDot: { width: 6, height: 6, borderRadius: 3, opacity: 0.8 },
   notifTypeText: { fontSize: 9, fontFamily: theme.fonts.bold },
-  sep: { height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.slate[100], marginHorizontal: 16 },
+  sep: { height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.border.hairline, marginHorizontal: 0 },
 });

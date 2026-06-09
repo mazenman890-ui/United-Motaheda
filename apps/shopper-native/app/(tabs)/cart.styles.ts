@@ -129,7 +129,7 @@ export const s = StyleSheet.create({
     marginTop:     1,
   },
   headerActions: {
-    flexDirection: "row",
+    flexDirection: flexRow(isRtl()),
     alignItems:    "center",
     gap:           10,
   },
@@ -147,7 +147,7 @@ export const s = StyleSheet.create({
     color:      COUNT_TEXT_COLOR,
   },
   clearBtn: {
-    flexDirection:     "row",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               5,
     paddingHorizontal: 10,
@@ -318,8 +318,8 @@ export const s = StyleSheet.create({
     paddingHorizontal: theme.spacing.xs,
   },
   trustDivider: {
-    borderRightWidth: StyleSheet.hairlineWidth,
-    borderRightColor: DARK_OVERLAY.d08,
+    borderEndWidth: StyleSheet.hairlineWidth,
+    borderEndColor: DARK_OVERLAY.d08,
   },
   trustIconBox: {
     width:          30,

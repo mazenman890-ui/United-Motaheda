@@ -14,7 +14,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "react-i18next";
-import { isRtl, textAlignStart } from "@/utils/layout";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import { useBannerStore } from "../banner-store";
 import { theme } from "@/shared/theme";
 
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     zIndex:   1000,
   },
   card: {
-    flexDirection:     "row",
+    flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               10,
     backgroundColor:   theme.colors.surface,

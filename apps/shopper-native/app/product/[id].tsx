@@ -168,7 +168,7 @@ export default function ProductDetailScreen() {
   }, [product, inWishlist, hrtScale, toggleWishlist]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#fff" }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
 
       {/* ── Sticky mini-header — refined hairline divider ── */}
       <Animated.View
@@ -178,7 +178,8 @@ export default function ProductDetailScreen() {
           left:              0,
           right:             0,
           zIndex:            50,
-          backgroundColor:   "rgba(255,255,255,0.97)",
+          backgroundColor:   theme.colors.surface,
+          backdropFilter:    "blur(16px)" as any,
           paddingTop:        insets.top,
           paddingHorizontal: 16,
           paddingBottom:     12,
@@ -192,6 +193,8 @@ export default function ProductDetailScreen() {
               width: 38, height: 38, borderRadius: 12,
               backgroundColor: theme.colors.surfaceSunken,
               alignItems: "center", justifyContent: "center",
+              borderWidth: 1,
+              borderColor: theme.colors.border.default,
             }}>
             <Ionicons name="arrow-forward" size={17} color={theme.colors.slate[700]} />
           </Pressable>
@@ -241,7 +244,7 @@ export default function ProductDetailScreen() {
         contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}>
 
         {/* ── Hero image (taller, with gradient overlay) ── */}
-        <View style={{ height: 370, backgroundColor: theme.colors.slate[50] }}>
+        <View style={{ height: 370, backgroundColor: theme.colors.surfaceSunken }}>
           {isLoading ? (
             <Skeleton height={370} radius={0} />
           ) : product?.imageUrl ? (
@@ -254,13 +257,13 @@ export default function ProductDetailScreen() {
               />
               {/* Bottom gradient — blends into white content area */}
               <LinearGradient
-                colors={["transparent", "rgba(255,255,255,0.70)", "#ffffff"]}
-                style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 100, pointerEvents: "none" }}
+                colors={["transparent", "rgba(255,255,255,0.30)", "rgba(255,255,255,0.75)", "#ffffff"]}
+                style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 140, pointerEvents: "none" }}
               />
             </>
           ) : (
             <LinearGradient
-              colors={["#ecfeff", "#cffafe", "#a5f3fc"]}
+              colors={theme.gradients.heroPrimary as any}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 10 }}>
@@ -273,8 +276,8 @@ export default function ProductDetailScreen() {
                 <MaterialCommunityIcons name="pill" size={56} color={theme.colors.brand[400]} />
               </View>
               <LinearGradient
-                colors={["transparent", "rgba(255,255,255,0.70)", "#ffffff"]}
-                style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 90, pointerEvents: "none" }}
+                colors={["transparent", "rgba(255,255,255,0.30)", "rgba(255,255,255,0.75)", "#ffffff"]}
+                style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 140, pointerEvents: "none" }}
               />
             </LinearGradient>
           )}
@@ -358,8 +361,14 @@ export default function ProductDetailScreen() {
                         setQty((q) => Math.min(q + 1, maxQty));
                       }}
                       disabled={qty >= maxQty}
-                      style={[pdStyles.stepperBtn, pdStyles.stepperBtnInc, qty >= maxQty && { opacity: 0.45 }]}>
-                      <Ionicons name="add" size={20} color="#fff" />
+                      style={[pdStyles.stepperBtn, qty >= maxQty && { opacity: 0.45 }]}>
+                      <LinearGradient
+                        colors={[theme.colors.teal[500], theme.colors.brand[600]]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={pdStyles.stepperBtnIncGradient}>
+                        <Ionicons name="add" size={20} color="#fff" />
+                      </LinearGradient>
                     </Pressable>
                     <View style={pdStyles.stepperValueWrap}>
                       <UIText variant="card-title" weight="black" style={pdStyles.stepperValue}>
@@ -397,9 +406,16 @@ export default function ProductDetailScreen() {
                       i < arr.length - 1 && pdStyles.trustCellDivider,
                     ]}>
                     <View style={pdStyles.trustIcon}>
-                      <Ionicons name={b.icon} size={18} color={theme.colors.brand[700]} />
+                      <Ionicons name={b.icon} size={18} color={theme.colors.teal[500]} />
                     </View>
-                    <UIText variant="eyebrow" color="secondary" align="center" style={pdStyles.trustLabel}>
+                    <UIText
+                      align="center"
+                      style={[pdStyles.trustLabel, {
+                        fontSize: 10,
+                        fontFamily: theme.fonts.bold,
+                        color: theme.colors.text.secondary,
+                        lineHeight: 13,
+                      }]}>
                       {t(b.labelKey)}
                     </UIText>
                   </View>
@@ -409,12 +425,17 @@ export default function ProductDetailScreen() {
               {/* ── Details card — editorial layout ── */}
               <View style={pdStyles.detailsCard}>
                 <View style={pdStyles.detailsHeader}>
-                  <UIText variant="eyebrow" color="tertiary" align="right">
-                    {t("product.detailsEyebrow")}
-                  </UIText>
-                  <UIText variant="card-title" align="right" style={pdStyles.detailsTitle}>
-                    {t("product.details")}
-                  </UIText>
+                  <View style={pdStyles.detailsHeaderIcon}>
+                    <Ionicons name="cube-outline" size={16} color={theme.colors.teal[500]} />
+                  </View>
+                  <View style={{ gap: 2, flex: 1 }}>
+                    <UIText variant="eyebrow" align="right" style={{ color: theme.colors.teal[500] }}>
+                      {t("product.detailsEyebrow")}
+                    </UIText>
+                    <UIText variant="card-title" align="right" style={pdStyles.detailsTitle}>
+                      {t("product.details")}
+                    </UIText>
+                  </View>
                 </View>
                 <View style={pdStyles.detailsBody}>
                   <DetailRow label={t("product.code")}        value={product.code    ?? "-"} />
@@ -429,7 +450,7 @@ export default function ProductDetailScreen() {
                 <View style={{ gap: 14 }}>
                   <View style={pdStyles.sectionHeader}>
                     <View style={pdStyles.sectionIcon}>
-                      <Ionicons name="grid-outline" size={14} color={theme.colors.brand[700]} />
+                      <Ionicons name="grid-outline" size={14} color={theme.colors.teal[500]} />
                     </View>
                     <View>
                       <UIText variant="eyebrow" color="tertiary" align="right">
@@ -437,6 +458,9 @@ export default function ProductDetailScreen() {
                       </UIText>
                       <UIText variant="card-title" align="right" style={pdStyles.sectionTitle}>
                         {t("product.relatedTitle")}
+                      </UIText>
+                      <UIText variant="eyebrow" align="right" style={{ color: theme.colors.teal[500], marginTop: 2 }}>
+                        {relatedProducts.length} منتجات
                       </UIText>
                     </View>
                   </View>
@@ -463,7 +487,12 @@ export default function ProductDetailScreen() {
 
       {/* ── Sticky CTA — premium anchor with metric typography ── */}
       {product && (
-        <View style={[pdStyles.cta, { paddingBottom: insets.bottom + 14 }]}>
+        <View style={[pdStyles.ctaOuter, { paddingBottom: insets.bottom + 14 }]}>
+          <LinearGradient
+            colors={["rgba(255,255,255,0)", theme.colors.surface, theme.colors.surface]}
+            style={pdStyles.ctaFade}
+            pointerEvents="none"
+          />
           {inCart && (
             <Pressable
               onPress={() => router.push("/(tabs)/cart")}
@@ -552,15 +581,19 @@ const pdStyles = StyleSheet.create({
     justifyContent: "space-between",
   },
   categoryStrip: {
-    flexDirection: flexRow(isRtl()),
-    alignItems:    "center",
-    gap:           8,
+    flexDirection:   flexRow(isRtl()),
+    alignItems:      "center",
+    gap:             8,
+    backgroundColor: theme.colors.teal[50],
+    borderRadius:    8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
   categoryBar: {
     width:           3,
     height:          16,
     borderRadius:    2,
-    backgroundColor: theme.colors.brand[600],
+    backgroundColor: theme.colors.teal[500],
   },
 
   // ── Name ─────────────────────────────────────────────────────────
@@ -596,7 +629,7 @@ const pdStyles = StyleSheet.create({
   stepperWrap: {
     flexDirection: flexRow(isRtl()),
     alignItems:      "center",
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.colors.surfaceSunken,
     borderRadius:    14,
     borderWidth:     1,
     borderColor:     theme.colors.border.brandSoft,
@@ -609,7 +642,13 @@ const pdStyles = StyleSheet.create({
     justifyContent:  "center",
   },
   stepperBtnInc: {
-    backgroundColor: theme.colors.brand[700],
+    backgroundColor: "transparent",
+  },
+  stepperBtnIncGradient: {
+    width:          44,
+    height:         44,
+    alignItems:     "center",
+    justifyContent: "center",
   },
   stepperValueWrap: {
     minWidth:        44,
@@ -627,6 +666,8 @@ const pdStyles = StyleSheet.create({
     borderRadius:     18,
     paddingVertical:  16,
     paddingHorizontal: 4,
+    borderWidth:      1,
+    borderColor:      theme.colors.border.hairline,
     ...theme.shadow.card,
   },
   trustCell: {
@@ -643,7 +684,7 @@ const pdStyles = StyleSheet.create({
     width:           42,
     height:          42,
     borderRadius:    13,
-    backgroundColor: theme.colors.brand.lighter,
+    backgroundColor: theme.colors.teal[50],
     borderWidth:     1,
     borderColor:     theme.colors.border.brandSoft,
     alignItems:      "center",
@@ -658,14 +699,28 @@ const pdStyles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderRadius:    18,
     overflow:        "hidden",
+    borderWidth:     1,
+    borderColor:     theme.colors.border.hairline,
     ...theme.shadow.card,
   },
   detailsHeader: {
+    flexDirection:     flexRow(isRtl()),
+    alignItems:        "center",
     paddingHorizontal: 18,
     paddingVertical:   14,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: theme.colors.border.hairline,
-    gap:               2,
+    gap:               12,
+  },
+  detailsHeaderIcon: {
+    width:           32,
+    height:          32,
+    borderRadius:    10,
+    backgroundColor: theme.colors.teal[50],
+    alignItems:      "center",
+    justifyContent:  "center",
+    borderWidth:     1,
+    borderColor:     theme.colors.teal[100],
   },
   detailsTitle: {
     letterSpacing: -0.2,
@@ -695,7 +750,7 @@ const pdStyles = StyleSheet.create({
     width:           34,
     height:          34,
     borderRadius:    11,
-    backgroundColor: theme.colors.brand.lighter,
+    backgroundColor: theme.colors.teal[50],
     borderWidth:     1,
     borderColor:     theme.colors.border.brandSoft,
     alignItems:      "center",
@@ -707,7 +762,7 @@ const pdStyles = StyleSheet.create({
   },
 
   // ── Sticky CTA ──────────────────────────────────────────────────
-  cta: {
+  ctaOuter: {
     position:        "absolute",
     bottom:          0,
     left:            0,
@@ -720,9 +775,16 @@ const pdStyles = StyleSheet.create({
     borderTopColor:  theme.colors.border.hairline,
     shadowColor:     "#0C2240",
     shadowOffset:    { width: 0, height: -4 },
-    shadowOpacity:   0.06,
-    shadowRadius:    12,
+    shadowOpacity:   0.10,
+    shadowRadius:    18,
     elevation:       8,
+  },
+  ctaFade: {
+    position:       "absolute",
+    top:            -40,
+    left:           0,
+    right:          0,
+    height:         40,
   },
   viewCartLink: {
     flexDirection: flexRow(isRtl()),

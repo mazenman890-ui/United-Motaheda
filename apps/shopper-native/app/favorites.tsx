@@ -1,4 +1,4 @@
-﻿import React, { memo, useCallback } from "react";
+import React, { memo, useCallback } from "react";
 import {
   Platform,
   Pressable,
@@ -9,6 +9,7 @@ import { showConfirmSheet } from "@/shared/store/appSheetStore";
 import { FlashList } from "@shopify/flash-list";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -55,7 +56,13 @@ const FavoriteCard = memo(function FavoriteCard({ product, index }: { product: N
           {product.imageUrl ? (
             <Image source={{ uri: product.imageUrl }} style={{ width: "100%", height: "100%" }} contentFit="contain" transition={180} />
           ) : (
-            <Ionicons name="medkit-outline" size={28} color={theme.colors.slate[300]} />
+            <>
+              <LinearGradient
+                colors={["rgba(2,29,46,0.06)", "rgba(13,184,168,0.10)"]}
+                style={StyleSheet.absoluteFill}
+              />
+              <Ionicons name="medkit-outline" size={28} color={theme.colors.slate[300]} />
+            </>
           )}
           {!product.inStock && (
             <View style={styles.outOfStockOverlay}>
@@ -153,36 +160,55 @@ export default function FavoritesScreen() {
   }, [clear, userId, t]);
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          style={styles.backBtn}
-          hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel={t("common.back")}>
-          <Ionicons name="arrow-forward" size={18} color={theme.colors.text.primary} />
-        </Pressable>
-        <View style={{ flex: 1, alignItems: "center" }}>
-          <UIText variant="eyebrow" color="tertiary">{t("wishlist.yourWishlist")}</UIText>
-          <UIText variant="card-title" align="center" style={styles.titleNew}>{t("wishlist.title")}</UIText>
-        </View>
-        {items.length > 0 ? (
+    <View style={[styles.screen, { paddingTop: 0 }]}>
+      {/* ── Hero header ──────────────────────────────────────── */}
+      <LinearGradient
+        colors={theme.gradients.heroPrimary as [string, string, string]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.7, y: 1 }}
+        style={[styles.hero, { paddingTop: insets.top + 14 }]}>
+
+        {/* Decorative orbs */}
+        <View style={styles.heroOrb1} />
+        <View style={styles.heroOrb2} />
+
+        {/* Top row */}
+        <View style={styles.heroTopRow}>
           <Pressable
-            onPress={handleClearAll}
-            hitSlop={8}
-            style={{ minWidth: 60, alignItems: "flex-start" }}
-            accessibilityRole="button"
-            accessibilityLabel={t("wishlist.clearAllLabel")}>
-            <UIText variant="caption" weight="bold" style={{ color: theme.colors.error.base }}>
-              {t("cart.clearAll")}
-            </UIText>
+            onPress={() => router.back()}
+            style={styles.heroBtn}
+            hitSlop={10}
+            accessibilityRole="button">
+            <Ionicons name="arrow-forward" size={18} color="rgba(255,255,255,0.85)" />
           </Pressable>
-        ) : (
-          <View style={{ width: 60 }} />
+          <View style={{ flex: 1, alignItems: "center" }}>
+            <UIText style={styles.heroEyebrow}>{t("wishlist.yourWishlist")}</UIText>
+            <UIText style={styles.heroTitle}>{t("wishlist.title")}</UIText>
+          </View>
+          {items.length > 0 ? (
+            <Pressable
+              onPress={handleClearAll}
+              hitSlop={8}
+              style={styles.heroClearBtn}
+              accessibilityRole="button"
+              accessibilityLabel={t("wishlist.clearAllLabel")}>
+              <Ionicons name="trash-outline" size={15} color="rgba(255,89,89,0.90)" />
+            </Pressable>
+          ) : (
+            <View style={{ width: 40 }} />
+          )}
+        </View>
+
+        {/* Stats pill row */}
+        {items.length > 0 && (
+          <View style={styles.heroStats}>
+            <View style={styles.heroStatPill}>
+              <Ionicons name="heart" size={11} color={theme.colors.rose[400]} />
+              <UIText style={styles.heroStatText}>{t("products.items", { count: items.length })}</UIText>
+            </View>
+          </View>
         )}
-      </View>
+      </LinearGradient>
 
       {!isHydrated ? null : items.length === 0 ? (
         <EmptyState
@@ -225,55 +251,117 @@ const favoriteItemType     = () => "favorite-card";
 
 const styles = StyleSheet.create({
   screen: {
-    flex: 1,
+    flex:            1,
     backgroundColor: theme.colors.bg,
   },
   cardWrap: {
     paddingBottom: 12,
   },
-  header: {
-    flexDirection: flexRow(isRtl()),
-    alignItems:        "center",
-    justifyContent:    "space-between",
-    paddingHorizontal: theme.layout.pagePaddingH,
-    paddingVertical:   14,
-    backgroundColor:   theme.colors.surface,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.border.hairline,
+  // ── Hero header
+  hero: {
+    paddingHorizontal: 20,
+    paddingBottom:     18,
+    overflow:          "hidden",
   },
-  backBtn: {
+  heroOrb1: {
+    position:        "absolute",
+    right:           -40,
+    top:             -40,
+    width:           150,
+    height:          150,
+    borderRadius:    75,
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+  heroOrb2: {
+    position:        "absolute",
+    left:            -30,
+    bottom:          -30,
+    width:           100,
+    height:          100,
+    borderRadius:    50,
+    backgroundColor: "rgba(13,184,168,0.08)",
+  },
+  heroTopRow: {
+    flexDirection: flexRow(isRtl()) as "row" | "row-reverse",
+    alignItems:    "center",
+    gap:           12,
+  },
+  heroBtn: {
     width:           40,
     height:          40,
-    borderRadius:    12,
-    backgroundColor: theme.colors.surfaceSunken,
+    borderRadius:    13,
+    backgroundColor: "rgba(255,255,255,0.12)",
     alignItems:      "center",
     justifyContent:  "center",
+    borderWidth:     1,
+    borderColor:     "rgba(255,255,255,0.16)",
   },
-  titleNew: {
-    letterSpacing: -0.2,
+  heroEyebrow: {
+    fontSize:      10.5,
+    fontFamily:    theme.fonts.bold,
+    color:         "rgba(255,255,255,0.55)",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+  },
+  heroTitle: {
+    fontSize:      22,
+    fontFamily:    theme.fonts.black,
+    color:         "#fff",
+    letterSpacing: -0.3,
     marginTop:     1,
   },
-  list: {
-    padding: theme.layout.pagePaddingH,
-    gap:     12,
+  heroClearBtn: {
+    width:           40,
+    height:          40,
+    borderRadius:    13,
+    backgroundColor: "rgba(255,50,50,0.14)",
+    alignItems:      "center",
+    justifyContent:  "center",
+    borderWidth:     1,
+    borderColor:     "rgba(255,50,50,0.18)",
   },
+  heroStats: {
+    flexDirection: flexRow(isRtl()) as "row" | "row-reverse",
+    gap:           8,
+    marginTop:     14,
+  },
+  heroStatPill: {
+    flexDirection:     flexRow(isRtl()) as "row" | "row-reverse",
+    alignItems:        "center",
+    gap:               5,
+    backgroundColor:   "rgba(255,255,255,0.12)",
+    borderRadius:      999,
+    paddingHorizontal: 12,
+    paddingVertical:   5,
+    borderWidth:       1,
+    borderColor:       "rgba(255,255,255,0.14)",
+  },
+  heroStatText: {
+    fontSize:   11,
+    fontFamily: theme.fonts.bold,
+    color:      "rgba(255,255,255,0.85)",
+  },
+  // ── List
   listHeader: {
-    flexDirection: flexRow(isRtl()),
-    marginBottom:  6,
+    flexDirection: flexRow(isRtl()) as "row" | "row-reverse",
+    marginBottom:  12,
   },
+  // ── Card
   card: {
-    flexDirection: flexRow(isRtl()),
+    flexDirection:   flexRow(isRtl()) as "row" | "row-reverse",
     alignItems:      "center",
     gap:             14,
     backgroundColor: theme.colors.surface,
     borderRadius:    16,
     padding:         14,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.hairline,
     ...theme.shadow.card,
   },
   imgBox: {
-    width:           76,
-    height:          76,
-    borderRadius:    theme.radius.lg,
+    width:           82,
+    height:          82,
+    borderRadius:    14,
     backgroundColor: theme.colors.surfaceSunken,
     alignItems:      "center",
     justifyContent:  "center",
@@ -298,9 +386,9 @@ const styles = StyleSheet.create({
     gap:        10,
   },
   removeBtn: {
-    width:           38,
-    height:          38,
-    borderRadius:    11,
+    width:           40,
+    height:          40,
+    borderRadius:    13,
     backgroundColor: theme.colors.rose[50],
     borderWidth:     1,
     borderColor:     theme.colors.rose[100],
@@ -308,14 +396,19 @@ const styles = StyleSheet.create({
     justifyContent:  "center",
   },
   cartBtn: {
-    width:           38,
-    height:          38,
-    borderRadius:    11,
+    width:           40,
+    height:          40,
+    borderRadius:    13,
     backgroundColor: theme.colors.brand.lighter,
     borderWidth:     1,
     borderColor:     theme.colors.border.brandSoft,
     alignItems:      "center",
     justifyContent:  "center",
+    elevation:       3,
+    shadowColor:     theme.colors.hero,
+    shadowOffset:    { width: 0, height: 2 },
+    shadowOpacity:   0.08,
+    shadowRadius:    6,
   },
   cartBtnActive: {
     backgroundColor: theme.colors.brand[700],

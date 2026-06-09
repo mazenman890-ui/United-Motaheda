@@ -2,6 +2,7 @@
 import { View } from "react-native";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
+import { flexRow, isRtl } from "@/utils/layout";
 
 type Variant = "brand" | "success" | "warning" | "error" | "neutral" | "purple" | "info";
 type Size    = "sm" | "md";
@@ -35,7 +36,7 @@ export function Badge({ children, variant = "neutral", size = "sm", dot = false 
   return (
     <View
       style={{
-        flexDirection:     "row",
+        flexDirection:     flexRow(isRtl()) as "row" | "row-reverse",
         alignItems:        "center",
         alignSelf:         "flex-start",
         gap:               dot ? 5 : 0,
