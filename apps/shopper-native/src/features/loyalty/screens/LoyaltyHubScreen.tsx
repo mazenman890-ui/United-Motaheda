@@ -31,7 +31,6 @@ import { Text } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { useScreenTrace } from "@/features/observability";
 import { useAuth } from "@/features/auth/context";
-import { flexRow, isRtl } from "@/utils/layout";
 
 import { useLoyaltyBalance }  from "../hooks/useLoyaltyBalance";
 import { useRewardTiers }     from "../hooks/useRewardTiers";

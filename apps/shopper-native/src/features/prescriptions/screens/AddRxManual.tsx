@@ -33,7 +33,6 @@ import { useAuth } from "@/features/auth";
 import { usePrescriptionsStore, type Prescription } from "@/stores/prescriptionsStore";
 import { mockLookup, type RxLookupResult } from "../lib/manualLookup";
 import { theme } from "@/shared/theme";
-import { flexRow, isRtl } from "@/utils/layout";
 
 const MIN_BOXES   = 7;
 const MAX_DIGITS  = 10;

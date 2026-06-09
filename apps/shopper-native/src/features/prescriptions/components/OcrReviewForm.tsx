@@ -20,7 +20,6 @@ import { Text } from "@/shared/ui";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { theme } from "@/shared/theme";
-import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import type { RxStatus } from "@/stores/prescriptionsStore";
 import type { ParsedRx } from "../lib/parseRxText";
 

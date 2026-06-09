@@ -32,7 +32,6 @@ import { theme } from "@/shared/theme";
 import { formatPrice } from "@/utils/format";
 import type { Order, OrderStatus } from "@/stores/orders";
 import { listS, INDIGO_DOT, EMERALD_DOT } from "./orders.styles";
-import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 // ─── Status metadata (unchanged — used by Badge and dot colors) ───────────────
 
