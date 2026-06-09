@@ -7,32 +7,47 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "channel": "development"
+      "channel": "development",
+      "env": {
+        "CMAKE_VERSION": "3.22.1"
+      }
     },
     "preview": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
       },
-      "channel": "preview"
+      "channel": "preview",
+      "env": {
+        "CMAKE_VERSION": "3.22.1"
+      }
     },
     "production-apk": {
       "autoIncrement": true,
       "android": {
         "buildType": "apk"
       },
-      "channel": "production-apk"
+      "channel": "production-apk",
+      "env": {
+        "CMAKE_VERSION": "3.22.1"
+      }
     },
     "verify": {
       "autoIncrement": true,
       "android": {
         "buildType": "apk"
       },
-      "channel": "verify"
+      "channel": "verify",
+      "env": {
+        "CMAKE_VERSION": "3.22.1"
+      }
     },
     "production": {
       "autoIncrement": true,
-      "channel": "production"
+      "channel": "production",
+      "env": {
+        "CMAKE_VERSION": "3.22.1"
+      }
     }
   },
   "submit": {
