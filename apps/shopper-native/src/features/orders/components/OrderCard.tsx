@@ -24,7 +24,7 @@ import Animated, {
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
-import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
+import { flexRow, isRtl, textAlignStart, FORWARD_CHEVRON } from "@/utils/layout";
 import { useAppLanguage } from "@/i18n/LanguageProvider";
 import { Badge } from "@/components/ui/Badge";
 import { Text as UIText } from "@/shared/ui";
@@ -268,7 +268,7 @@ export const OrderCard = memo(function OrderCard({
               </UIText>
             )}
           </View>
-          <Ionicons name="chevron-back" size={14} color={theme.colors.slate[300]} />
+          <Ionicons name={FORWARD_CHEVRON} size={14} color={theme.colors.slate[300]} />
         </View>
 
         {/* ── FOOTER: Total price ────────────────────────── */}

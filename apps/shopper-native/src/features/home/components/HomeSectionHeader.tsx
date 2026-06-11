@@ -14,7 +14,7 @@ import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { shStyles as base } from "./home.styles";
-import { flexRow, isRtl } from "@/utils/layout";
+import { flexRow, isRtl, FORWARD_CHEVRON } from "@/utils/layout";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -63,7 +63,7 @@ export const HomeSectionHeader = memo(function HomeSectionHeader({
       {rightSlot ?? (onMore && (
         <Pressable onPress={onMore} style={sh.pill} hitSlop={10}>
           <UIText style={sh.pillText}>{t("home.viewAll")}</UIText>
-          <Ionicons name="chevron-back" size={12} color={theme.colors.brand[600]} />
+          <Ionicons name={FORWARD_CHEVRON} size={12} color={theme.colors.brand[600]} />
         </Pressable>
       ))}
     </View>

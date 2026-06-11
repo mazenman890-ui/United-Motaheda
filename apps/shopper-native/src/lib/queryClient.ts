@@ -12,9 +12,12 @@
  */
 
 import { QueryClient, type DefaultOptions } from "@tanstack/react-query";
+import { classifyError, isRetryable } from "@/lib/supabaseRequest";
 
 /** Errors a PostgREST 4xx response throws — terminal, don't retry. */
 function isTerminalError(error: unknown): boolean {
+  const kind = classifyError(error);
+  if (kind === "terminal" || kind === "aborted") return true;
   if (!error || typeof error !== "object") return false;
   const e = error as { status?: number; code?: string };
   if (typeof e.status === "number" && e.status >= 400 && e.status < 500) {
@@ -36,6 +39,7 @@ const defaultOptions: DefaultOptions = {
     networkMode:          "online",
     retry: (failureCount, error) => {
       if (isTerminalError(error)) return false;
+      if (!isRetryable(error)) return false;
       return failureCount < 2;
     },
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
@@ -44,6 +48,7 @@ const defaultOptions: DefaultOptions = {
     networkMode: "offlineFirst",
     retry: (failureCount, error) => {
       if (isTerminalError(error)) return false;
+      if (!isRetryable(error)) return false;
       return failureCount < 1;
     },
   },

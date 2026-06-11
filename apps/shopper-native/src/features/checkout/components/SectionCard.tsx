@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { sectionStyles as s } from "./checkout.styles";
+import { FORWARD_CHEVRON } from "@/utils/layout";
 import type { IoniconsName } from "../constants";
 
 interface SectionCardProps {
@@ -38,7 +39,7 @@ export const SectionCard = React.memo(function SectionCard({
             <UIText variant="caption" color="brand" weight="bold">
               {action.label}
             </UIText>
-            <Ionicons name="chevron-back" size={12} color={theme.colors.brand[700]} />
+            <Ionicons name={FORWARD_CHEVRON} size={12} color={theme.colors.brand[700]} />
           </Pressable>
         )}
       </View>

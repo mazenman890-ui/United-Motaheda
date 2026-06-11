@@ -229,11 +229,6 @@ export default function SearchScreen() {
     () => (debouncedQ.length >= 2 ? resolveSmartQuery(debouncedQ) : null),
     [debouncedQ],
   );
-  const inputLang = useMemo(
-    () => (query.trim().length > 0 ? detectSearchLang(query.trim()) : null),
-    [query],
-  );
-
   const translationHintText = useMemo(() => {
     const raw = searchResolution?.displayHint;
     if (!raw) return null;
@@ -295,13 +290,17 @@ export default function SearchScreen() {
   // Popular searches from analytics — falls back to hardcoded TRENDING if unavailable
   const { data: popularData } = useQuery({
     queryKey: ["popularSearches"],
-    queryFn:  () => supabase.rpc("get_popular_searches", { p_limit: 6, p_days: 7 }),
+    queryFn:  async () => {
+      const { data, error } = await supabase.rpc("get_popular_searches", { p_limit: 6, p_days: 7 });
+      if (error) throw error;
+      return data ?? [];
+    },
     staleTime: 10 * 60_000,
     gcTime:    30 * 60_000,
   });
-  const popularSearches: string[] = (popularData?.data as Array<{ query: string }> | null)
-    ?.map((r) => r.query)
-    .filter(Boolean) ?? [];
+  const popularSearches: string[] = Array.isArray(popularData)
+    ? (popularData as Array<{ query: string }>).map((r) => r.query).filter(Boolean)
+    : [];
 
   // Load persisted recents on mount
   useEffect(() => {
@@ -355,16 +354,18 @@ export default function SearchScreen() {
         return next;
       });
       // Fire-and-forget analytics event; never throws to caller
-      supabase
-        .rpc("log_search_event", {
-          p_query:        submitted,
-          p_result_count: totalCount,
-          p_source:       "native",
-        })
-        .then(({ error }) => {
+      void (async () => {
+        try {
+          const { error } = await supabase.rpc("log_search_event", {
+            p_query:        submitted,
+            p_result_count: totalCount,
+            p_source:       "native",
+          });
           if (error && __DEV__) console.warn("[search] analytics:", error.message);
-        })
-        .catch(() => {});
+        } catch {
+          // Best-effort analytics only.
+        }
+      })();
     }
   }, [submitted, results.length, totalCount]);
 
@@ -476,102 +477,104 @@ export default function SearchScreen() {
               )}
             </View>
 
-            {/* Language badge — AR / MIX indicator */}
-            {inputLang && inputLang !== 'english' && (
-              <View style={[s.langBadge, inputLang === 'arabic' ? s.langBadgeAr : s.langBadgeMix]}>
-                <UIText variant="eyebrow" style={{ color: inputLang === 'arabic' ? theme.colors.brand[700] : theme.colors.amber[700], fontSize: 9 }}>
-                  {inputLang === 'arabic' ? 'AR' : 'MIX'}
-                </UIText>
-              </View>
-            )}
-
-            <TextInput
-              ref={inputRef}
-              style={s.barInput}
-              placeholder={t("search.placeholder")}
-              placeholderTextColor={theme.colors.text.tertiary}
-              value={query}
-              onChangeText={(v) => { setQuery(v); setSelectedIdx(-1); }}
-              onFocus={() => {
-                setFocused(true);
-                barGlow.value  = withTiming(1, { duration: 280 });
-                barScale.value = withSpring(1.008, { damping: 20, stiffness: 400 });
-              }}
-              onBlur={() => {
-                setTimeout(() => setFocused(false), 160);
-                barGlow.value  = withTiming(0, { duration: 240 });
-                barScale.value = withSpring(1, { damping: 20, stiffness: 400 });
-              }}
-              onSubmitEditing={() => {
-                if (selectedIdx >= 0 && suggestions[selectedIdx]) {
-                  tapSugg(suggestions[selectedIdx]);
-                } else {
-                  submit();
-                }
-              }}
-              onKeyPress={({ nativeEvent }) => {
-                if (!showSugg || suggestions.length === 0) return;
-                if (nativeEvent.key === "ArrowDown") {
-                  setSelectedIdx((i) => Math.min(i + 1, suggestions.length - 1));
-                } else if (nativeEvent.key === "ArrowUp") {
-                  setSelectedIdx((i) => Math.max(i - 1, -1));
-                } else if (nativeEvent.key === "Escape") {
-                  setFocused(false);
-                  setSelectedIdx(-1);
-                  Keyboard.dismiss();
-                }
-              }}
-              returnKeyType="search"
-              autoCorrect={false}
-              textAlign={INPUT_ALIGN}
-              selectionColor={theme.colors.brand[600]}
-            />
-
-            {query.length > 0 && (
-              <Pressable onPress={clear} hitSlop={10} style={s.barClear}>
-                <Ionicons name="close" size={13} color={theme.colors.slate[500]} />
-              </Pressable>
-            )}
-
-            <View style={s.barDivider} />
-
-            {/* Filter button — 40×40, teal glow when active */}
-            <Pressable
-              onPress={() => {
-                if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
-                setShowFilters((v) => !v);
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={t("search.filterLabel")}
-              style={[s.barFilterBtn, (showFilters || filterCount > 0) && s.barFilterBtnActive]}>
-              <Ionicons
-                name="options-outline"
-                size={15}
-                color={(showFilters || filterCount > 0) ? theme.colors.surface : theme.colors.slate[500]}
+            <View style={s.barInputShell}>
+              <TextInput
+                ref={inputRef}
+                style={s.barInput}
+                placeholder={t("search.placeholder")}
+                placeholderTextColor={theme.colors.text.tertiary}
+                value={query}
+                onChangeText={(v) => { setQuery(v); setSelectedIdx(-1); }}
+                onFocus={() => {
+                  setFocused(true);
+                  barGlow.value  = withTiming(1, { duration: 280 });
+                  barScale.value = withSpring(1.008, { damping: 20, stiffness: 400 });
+                }}
+                onBlur={() => {
+                  setTimeout(() => setFocused(false), 160);
+                  barGlow.value  = withTiming(0, { duration: 240 });
+                  barScale.value = withSpring(1, { damping: 20, stiffness: 400 });
+                }}
+                onSubmitEditing={() => {
+                  if (selectedIdx >= 0 && suggestions[selectedIdx]) {
+                    tapSugg(suggestions[selectedIdx]);
+                  } else {
+                    submit();
+                  }
+                }}
+                onKeyPress={({ nativeEvent }) => {
+                  if (!showSugg || suggestions.length === 0) return;
+                  if (nativeEvent.key === "ArrowDown") {
+                    setSelectedIdx((i) => Math.min(i + 1, suggestions.length - 1));
+                  } else if (nativeEvent.key === "ArrowUp") {
+                    setSelectedIdx((i) => Math.max(i - 1, -1));
+                  } else if (nativeEvent.key === "Escape") {
+                    setFocused(false);
+                    setSelectedIdx(-1);
+                    Keyboard.dismiss();
+                  }
+                }}
+                returnKeyType="search"
+                autoCorrect={false}
+                textAlign={INPUT_ALIGN}
+                selectionColor={theme.colors.brand[600]}
               />
-              {filterCount > 0 && !showFilters && (
-                <View style={s.filterBadge}>
-                  <UIText variant="eyebrow" color="inverse">{filterCount}</UIText>
-                </View>
-              )}
-            </Pressable>
 
-            {/* Submit button — teal LinearGradient when query.length >= 2 */}
-            {query.length >= 2 && (
+              {query.length > 0 && (
+                <Pressable onPress={clear} hitSlop={10} style={s.barClear}>
+                  <Ionicons name="close" size={13} color={theme.colors.slate[500]} />
+                </Pressable>
+              )}
+            </View>
+
+            <View style={s.barActions}>
+              {/* Filter button — 40×40, teal glow when active */}
+              <Pressable
+                onPress={() => {
+                  if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
+                  setShowFilters((v) => !v);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={t("search.filterLabel")}
+                style={[s.barFilterBtn, (showFilters || filterCount > 0) && s.barFilterBtnActive]}>
+                <Ionicons
+                  name="options-outline"
+                  size={15}
+                  color={(showFilters || filterCount > 0) ? theme.colors.surface : theme.colors.slate[500]}
+                />
+                {filterCount > 0 && !showFilters && (
+                  <View style={s.filterBadge}>
+                    <UIText variant="eyebrow" color="inverse">{filterCount}</UIText>
+                  </View>
+                )}
+              </Pressable>
+
+              {/* Submit button — reserved slot so the bar never overflows */}
               <Pressable
                 onPress={() => submit()}
                 accessibilityRole="button"
                 accessibilityLabel={t("search.searchBtn")}
-                style={({ pressed }) => [s.barSubmitWrap, pressed && { opacity: 0.85 }]}>
+                disabled={query.length < 2}
+                style={({ pressed }) => [
+                  s.barSubmitWrap,
+                  query.length < 2 && s.barSubmitWrapDisabled,
+                  pressed && query.length >= 2 && { opacity: 0.85 },
+                ]}>
                 <LinearGradient
-                  colors={[theme.colors.teal[500], theme.colors.teal[400]]}
+                  colors={query.length >= 2
+                    ? [theme.colors.teal[500], theme.colors.teal[400]]
+                    : [theme.colors.slate[200], theme.colors.slate[200]]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={s.barSubmitGrad}>
-                  <Ionicons name="return-down-back" size={14} color={theme.colors.surface} />
+                  <Ionicons
+                    name="return-down-back"
+                    size={14}
+                    color={query.length >= 2 ? theme.colors.surface : theme.colors.slate[400]}
+                  />
                 </LinearGradient>
               </Pressable>
-            )}
+            </View>
           </Animated.View>
         </View>
 
@@ -1084,7 +1087,7 @@ const s = StyleSheet.create({
     transform:       [{ scale: 1.04 }],
   },
   bar: {
-    flexDirection:     "row",
+    flexDirection:     flexRow(IS_RTL),
     alignItems:        "center",
     backgroundColor:   "rgba(255,255,255,0.94)",
     borderRadius:      22,
@@ -1095,7 +1098,7 @@ const s = StyleSheet.create({
     // Subtle inner shadow at the top
     borderTopColor:    "rgba(0,0,0,0.04)",
     borderTopWidth:    1,
-    gap:               2,
+    gap:               8,
     ...theme.shadow.lg,
   },
   barFocused: {
@@ -1111,8 +1114,16 @@ const s = StyleSheet.create({
     alignItems:      "center",
     justifyContent:  "center",
   },
+  barInputShell: {
+    flex:            1,
+    minWidth:        0,
+    flexDirection:   "row",
+    alignItems:      "center",
+  },
   barInput: {
     flex:              1,
+    minWidth:          0,
+    paddingRight:      6,
     fontSize:          14.5,
     fontFamily:        theme.fonts.semibold,
     color:             theme.colors.text.primary,
@@ -1132,6 +1143,12 @@ const s = StyleSheet.create({
     height:           24,
     backgroundColor:  theme.colors.border.default,
     marginHorizontal: theme.spacing.xs,
+  },
+  barActions: {
+    flexDirection: "row",
+    alignItems:    "center",
+    gap:           6,
+    flexShrink:    0,
   },
   // Filter button — 40×40, borderRadius 13, teal glow when active
   barFilterBtn: {
@@ -1167,8 +1184,12 @@ const s = StyleSheet.create({
     height:       40,
     borderRadius: 13,
     overflow:     "hidden",
-    marginLeft:   2,
+    marginStart:  2,
     ...theme.shadow.teal,
+  },
+  barSubmitWrapDisabled: {
+    shadowOpacity: 0,
+    elevation:     0,
   },
   barSubmitGrad: {
     flex:            1,
@@ -1305,25 +1326,6 @@ const s = StyleSheet.create({
     justifyContent:  "center",
     gap:             theme.spacing.sm,
     paddingVertical: 14,
-  },
-
-  // ── Language badge
-  langBadge: {
-    height:            20,
-    borderRadius:      6,
-    paddingHorizontal: 6,
-    alignItems:        "center",
-    justifyContent:    "center",
-    marginLeft:        2,
-    borderWidth:       1,
-  },
-  langBadgeAr: {
-    backgroundColor: theme.colors.brand.lighter,
-    borderColor:     theme.colors.border.brandSoft,
-  },
-  langBadgeMix: {
-    backgroundColor: theme.colors.amber[50],
-    borderColor:     `${theme.colors.amber[600]}30`,
   },
 
   // ── Filter panel

@@ -18,6 +18,7 @@ import { theme } from "@/shared/theme";
 
 import { SectionHeader } from "./SectionHeader";
 import { sectionStyles, earnStyles as es } from "./hub.styles";
+import { FORWARD_CHEVRON } from "@/utils/layout";
 import type { IoniconsName } from "./HubHelpers";
 
 interface WaysToEarnProps {
@@ -117,7 +118,7 @@ const EarnCard = React.memo(function EarnCard({
         {onPress && (
           <View style={[es.ctaChip, { backgroundColor: color + "14", borderColor: color + "30" }]}>
             <Text style={[es.ctaText, { color }]}>{cta}</Text>
-            <Ionicons name="chevron-back" size={11} color={color} />
+            <Ionicons name={FORWARD_CHEVRON} size={11} color={color} />
           </View>
         )}
       </Pressable>

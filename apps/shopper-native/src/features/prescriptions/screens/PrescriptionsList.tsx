@@ -1,7 +1,7 @@
 ﻿/**
  * PrescriptionsList — the user's prescription roster.
  *
- * Header: AppHeader title="وصفاتي" (cart badge stays).
+ * Header: AppHeader title="الوصفات الطبية" (cart badge stays).
  * Body:
  * - Active section: RxCards sorted expiring → ready → active.
  * - Expired section: collapsed behind a disclosure row.
@@ -12,6 +12,7 @@
 
 import React, { useCallback, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Pressable,
   RefreshControl,
@@ -26,7 +27,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppHeader } from "@/shared/components/AppHeader";
 import { RxCard }    from "@/shared/components/RxCard";
 import { Text } from "@/shared/ui";
-import { flexRow, isRtl } from "@/utils/layout";
+import { flexRow, isRtl, FORWARD_CHEVRON } from "@/utils/layout";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/features/auth";
@@ -52,7 +53,7 @@ export function PrescriptionsList(): React.ReactElement {
   const insets        = useSafeAreaInsets();
   const { user }      = useAuth();
   const all           = usePrescriptions();
-  const { refetch, isRefetching } = usePrescriptionsQuery(user?.id);
+  const { refetch, isRefetching, isLoading, isError } = usePrescriptionsQuery(user?.id);
 
   const [showExpired, setShowExpired] = useState(false);
 
@@ -90,7 +91,7 @@ export function PrescriptionsList(): React.ReactElement {
           style={styles.disclosureRow}>
           <View style={{ flexDirection: flexRow(isRtl()), alignItems: "center", gap: theme.spacing[1] }}>
             <Ionicons
-              name={item.open ? "chevron-down" : "chevron-back"}
+              name={item.open ? "chevron-down" : FORWARD_CHEVRON}
               size={16}
               color={theme.colors.text.tertiary}
             />
@@ -118,13 +119,25 @@ export function PrescriptionsList(): React.ReactElement {
 
   return (
     <View style={styles.screen}>
-      <AppHeader title="وصفاتي" showBack />
+      <AppHeader title="الوصفات الطبية" showBack />
 
-      {active.length === 0 && expired.length === 0 ? (
+      {isLoading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={theme.colors.brand.base} />
+        </View>
+      ) : isError && active.length === 0 && expired.length === 0 ? (
+        <EmptyState
+          icon="cloud-offline-outline"
+          title="تعذّر تحميل الوصفات"
+          description="حدث خطأ أثناء جلب وصفاتك الطبية. تحقق من اتصالك بالإنترنت وأعد المحاولة."
+          actionLabel="إعادة المحاولة"
+          onAction={refetch}
+        />
+      ) : active.length === 0 && expired.length === 0 ? (
         <EmptyState
           icon="medkit-outline"
-          title="لا توجد وصفات حالياً"
-          description="أضف وصفتك الأولى — يمكنك مسحها بالكاميرا، أو نقلها من صيدلية أخرى"
+          title="لا توجد وصفات طبية بعد"
+          description="أرسل وصفتك عبر واتساب وسيضيفها فريق الصيدلية إلى حسابك، أو أضفها برقم الوصفة"
           actionLabel="إضافة وصفة"
           onAction={goToAdd}
         />
@@ -171,6 +184,11 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: theme.colors.bg,
+  },
+  centered: {
+    flex:           1,
+    alignItems:     "center",
+    justifyContent: "center",
   },
   disclosureRow: {
     paddingVertical:   theme.spacing[1.5],

@@ -27,7 +27,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
-import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
+import { flexRow, isRtl, textAlignStart, BACK_CHEVRON } from "@/utils/layout";
 import { HERO_GRAD, AUTH_TEAL, ORDER_DARK } from "./orders.styles";
 
 // ─── Feature rows — distinct colour per semantic intent ──────────────────────
@@ -116,7 +116,7 @@ export function UnauthenticatedState({ showBack }: { showBack: boolean }): React
                 style={s.backBtn}
                 accessibilityRole="button"
                 accessibilityLabel={t("common.back")}>
-                <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.80)" />
+                <Ionicons name={BACK_CHEVRON} size={18} color="rgba(255,255,255,0.80)" />
               </Pressable>
             ) : (
               /* Transparent spacer — keeps title centred without showing a ghost button */

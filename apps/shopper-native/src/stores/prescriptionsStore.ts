@@ -151,7 +151,21 @@ export const usePrescriptionsStore = create<PrescriptionsState>()(
     {
       name:    "up.prescriptions",
       storage: createJSONStorage(() => AsyncStorage),
-      version: 1,
+      version: 2,
+      // v1 → v2: purge dev mock-seed records (ids prefixed "seed-") that were
+      // persisted by the removed PharmacyBootstrap dev seeding. Fake medical
+      // records must never survive into user-visible state.
+      migrate: (persisted: unknown, fromVersion: number) => {
+        const state = persisted as Pick<PrescriptionsState, "prescriptions" | "refills">;
+        if (fromVersion < 2 && state) {
+          return {
+            ...state,
+            prescriptions: (state.prescriptions ?? []).filter((p) => !p.id.startsWith("seed-")),
+            refills:       (state.refills ?? []).filter((r) => !r.id.startsWith("seed-")),
+          };
+        }
+        return state;
+      },
       // Persist only data — never functions or transient loading flags.
       partialize: (state) => ({
         prescriptions: state.prescriptions,

@@ -17,7 +17,7 @@ import { FAQAccordion, FAQCategoryRail } from "@/features/faq";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FAQ_DATA, FAQ_CATEGORIES, type FAQCategory, type FAQItem } from "@/features/faq";
 import { theme } from "@/shared/theme";
-import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
+import { flexRow, isRtl, textAlignStart, BACK_CHEVRON } from "@/utils/layout";
 
 export default function FAQScreen() {
   const router  = useRouter();
@@ -79,7 +79,7 @@ export default function FAQScreen() {
             style={styles.backBtn}
             accessibilityRole="button"
             accessibilityLabel={t("common.back")}>
-            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.8)" />
+            <Ionicons name={BACK_CHEVRON} size={18} color="rgba(255,255,255,0.8)" />
           </Pressable>
           <View style={{ flex: 1 }}>
             <UIText style={styles.headerTitle}>{t("faq.title")}</UIText>

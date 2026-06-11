@@ -1,19 +1,27 @@
-﻿/**
- * AddRxManual — manual Rx-number entry + mock lookup + create.
+/**
+ * AddRxManual — manual Rx-number entry + debounced lookup + create.
  *
- * State machine (derived from rxNumber.length + lookup result):
+ * State machine (derived from rxNumber.length + lookup state):
  *   idle        — empty input
- *   typing      — 1–7 or 9–10 digits (lookup not fired)
- *   looking_up  — exactly 8 digits, awaiting mockLookup()
- *   found       — exactly 8 digits, match returned
- *   not_found   — exactly 8 digits, no match
+ *   typing      — 1–(MIN_DIGITS-1) digits, minimum not yet reached
+ *   looking_up  — MIN_DIGITS+ digits, debounce pending OR lookup in-flight;
+ *                 pendingFor is set immediately so the spinner appears
+ *                 during the quiet period as well
+ *   found       — lookup returned a match
+ *   not_found   — lookup returned null (no match at this length)
  *
- * Any keystroke during found/not_found returns to typing (the effect just
- * re-runs against the new digit string).
+ * Lookup fires DEBOUNCE_MS after the last keystroke for any rxNumber length
+ * in [MIN_DIGITS, MAX_DIGITS].  Each edit restarts the debounce and cancels
+ * any in-flight request via a cancellation flag.
+ *
+ * NOTE: until the pharmacy lookup API ships, lookupRxNumber() always resolves
+ * null — the not-found callout guides the user to WhatsApp support, which is
+ * the real operational channel for adding prescriptions today.
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -31,26 +39,34 @@ import { flexRow, isRtl } from "@/utils/layout";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/features/auth";
 import { usePrescriptionsStore, type Prescription } from "@/stores/prescriptionsStore";
-import { mockLookup, type RxLookupResult } from "../lib/manualLookup";
+import { lookupRxNumber, type RxLookupResult } from "../lib/manualLookup";
 import { theme } from "@/shared/theme";
 
-const MIN_BOXES   = 7;
+/** Minimum valid prescription number length; also drives initial box count. */
+const MIN_DIGITS  = 7;
+/** Maximum valid prescription number length. */
 const MAX_DIGITS  = 10;
-const LOOKUP_AT   = 8;
+/** Quiet-typing window before firing a lookup (ms). */
+const DEBOUNCE_MS = 500;
 
 type ScreenState = "idle" | "typing" | "looking_up" | "found" | "not_found";
 
 // ── Digit display ─────────────────────────────────────────────────────────
 
 function DigitDisplay({ rxNumber }: { rxNumber: string }): React.ReactElement {
-  const boxCount = Math.min(MAX_DIGITS, Math.max(MIN_BOXES, rxNumber.length));
+  // Box count starts at MIN_DIGITS and grows one-for-one with each additional digit.
+  const boxCount = Math.min(MAX_DIGITS, Math.max(MIN_DIGITS, rxNumber.length));
   const boxes    = Array.from({ length: boxCount }, (_, i) => rxNumber[i] ?? "");
 
   return (
     <View
       accessible
       accessibilityLiveRegion="polite"
-      accessibilityLabel={rxNumber.length === 0 ? "لم يتم إدخال أرقام" : `الأرقام المدخلة: ${rxNumber.split("").join(" ")}`}
+      accessibilityLabel={
+        rxNumber.length === 0
+          ? "لم يتم إدخال أرقام"
+          : `الأرقام المدخلة: ${rxNumber.split("").join(" ")}`
+      }
       style={styles.digitsRow}>
       {boxes.map((d, i) => (
         <View
@@ -63,9 +79,8 @@ function DigitDisplay({ rxNumber }: { rxNumber: string }): React.ReactElement {
             variant="screen-title"
             align="center"
             style={{
-              color: d !== "" ? theme.colors.text.primary : theme.colors.text.disabled,
+              color:      d !== "" ? theme.colors.text.primary : theme.colors.text.disabled,
               fontFamily: theme.fonts.extrabold,
-              // Monospace-ish feel: rely on Cairo's tabular figures (default).
             }}>
             {d || "·"}
           </Text>
@@ -131,7 +146,7 @@ function Keypad({ onDigit, onBackspace, disabled }: KeypadProps): React.ReactEle
   );
 }
 
-// ── Result callouts ───────────────────────────────────────────────────────
+// ── Callouts ──────────────────────────────────────────────────────────────
 
 function PrivacyCallout(): React.ReactElement {
   return (
@@ -155,21 +170,34 @@ function FoundCallout(): React.ReactElement {
   );
 }
 
-function NotFoundRow(): React.ReactElement {
+const WHATSAPP_RX_URL =
+  `https://wa.me/201112343212?text=${encodeURIComponent("مرحباً، أريد إضافة وصفة طبية إلى حسابي.")}`;
+
+function NotFoundCallout(): React.ReactElement {
   return (
-    <View style={[styles.callout, { backgroundColor: theme.colors.error.bg, borderColor: theme.colors.error.light }]}>
-      <Ionicons name="alert-circle" size={18} color={theme.colors.error.base} />
-      <Text variant="caption" align="right" style={{ flex: 1, color: theme.colors.error.text, lineHeight: 18 }}>
-        لم نتمكن من العثور على هذه الوصفة. تحقق من الرقم وحاول مرة أخرى.
-      </Text>
+    <View style={[styles.notFoundCallout, { backgroundColor: theme.colors.error.bg, borderColor: theme.colors.error.light }]}>
+      <View style={styles.notFoundRow}>
+        <Ionicons name="alert-circle" size={18} color={theme.colors.error.base} />
+        <Text variant="caption" align="right" style={{ flex: 1, color: theme.colors.error.text, lineHeight: 18 }}>
+          لم نعثر على وصفة بهذا الرقم. تأكد من الرقم، أو أرسل صورة الوصفة عبر واتساب وسيضيفها فريق الصيدلية إلى حسابك.
+        </Text>
+      </View>
+      <Button
+        variant="secondary"
+        size="sm"
+        fullWidth
+        onPress={() => { void Linking.openURL(WHATSAPP_RX_URL).catch(() => {}); }}
+        leftIcon={<Ionicons name="logo-whatsapp" size={15} color={theme.colors.success.strong} />}>
+        إرسال الوصفة عبر واتساب
+      </Button>
     </View>
   );
 }
 
 // ── Match preview card ────────────────────────────────────────────────────
-// We build a mock Prescription for RxCard to render in read-only mode. The
-// id ("preview-match") is irrelevant — the real id is generated by
-// addPrescription() at submit time.
+// Builds a temporary Prescription for RxCard to render in read-only mode.
+// The id ("preview-match") is discarded — addPrescription() generates the
+// real id at submit time.
 
 function buildPreviewRx(match: RxLookupResult, userId: string): Prescription {
   const stamp = new Date().toISOString();
@@ -198,38 +226,55 @@ export function AddRxManual(): React.ReactElement {
   const addPrescription   = usePrescriptionsStore((s) => s.addPrescription);
 
   const [rxNumber, setRxNumber] = useState("");
-  /** undefined = no lookup attempted; null = looked up, no match; object = match */
+  /** undefined = lookup not yet resolved; null = looked up, no match; object = match */
   const [lookup, setLookup]     = useState<RxLookupResult | null | undefined>(undefined);
+  /**
+   * The rxNumber value currently being looked up (set before the debounce fires
+   * so the UI enters "looking_up" immediately, not just when the request lands).
+   */
   const [pendingFor, setPendingFor] = useState<string | null>(null);
 
   const screenState: ScreenState = useMemo(() => {
-    if (rxNumber.length === 0)                                  return "idle";
-    if (rxNumber.length !== LOOKUP_AT)                          return "typing";
-    if (pendingFor === rxNumber)                                return "looking_up";
-    if (lookup === undefined)                                   return "looking_up";
-    if (lookup === null)                                        return "not_found";
-    return "found";
+    if (rxNumber.length === 0)         return "idle";
+    if (rxNumber.length < MIN_DIGITS)  return "typing";
+    if (pendingFor === rxNumber)       return "looking_up";
+    if (lookup === null)               return "not_found";
+    if (lookup !== undefined)          return "found";
+    // pendingFor cleared but lookup still undefined — transient; treat as looking_up
+    return "looking_up";
   }, [rxNumber, lookup, pendingFor]);
 
-  // Lookup effect — fires whenever rxNumber settles on exactly LOOKUP_AT digits.
+  // Debounced lookup: fires DEBOUNCE_MS after the last keystroke, for any
+  // length in [MIN_DIGITS, MAX_DIGITS].
   useEffect(() => {
-    if (rxNumber.length !== LOOKUP_AT) {
+    if (rxNumber.length < MIN_DIGITS || rxNumber.length > MAX_DIGITS) {
       setLookup(undefined);
       setPendingFor(null);
       return;
     }
-    let cancelled = false;
+
+    // Mark pending immediately — spinner shows during debounce window too.
     setPendingFor(rxNumber);
-    mockLookup(rxNumber).then((result) => {
+    setLookup(undefined);
+
+    let cancelled = false;
+    const timer = setTimeout(() => {
       if (cancelled) return;
-      setLookup(result);
-      setPendingFor(null);
-    });
-    return () => { cancelled = true; };
+      lookupRxNumber(rxNumber).then((result) => {
+        if (cancelled) return;
+        setLookup(result);
+        setPendingFor(null);
+      });
+    }, DEBOUNCE_MS);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [rxNumber]);
 
   const onDigit = useCallback((d: string) => {
-    setRxNumber((prev) => (prev.length >= MAX_DIGITS ? prev : prev + d));
+    setRxNumber((prev) => prev.length >= MAX_DIGITS ? prev : prev + d);
   }, []);
 
   const onBackspace = useCallback(() => {
@@ -237,18 +282,18 @@ export function AddRxManual(): React.ReactElement {
   }, []);
 
   const onSubmit = useCallback(() => {
-    if (screenState !== "found" || !lookup) return;
+    if (screenState !== "found" || !lookup || !user?.id) return;
     const created = addPrescription({
       ...lookup,
-      userId:   user?.id ?? "dev-user",
+      userId:   user.id,
       rxNumber,
       status:   "active",
     });
     router.replace(`/prescriptions/${created.id}` as never);
   }, [addPrescription, lookup, rxNumber, router, screenState, user?.id]);
 
-  const previewRx = lookup && screenState === "found"
-    ? buildPreviewRx(lookup, user?.id ?? "dev-user")
+  const previewRx = lookup && screenState === "found" && user?.id
+    ? buildPreviewRx(lookup, user.id)
     : null;
 
   return (
@@ -265,7 +310,7 @@ export function AddRxManual(): React.ReactElement {
         keyboardShouldPersistTaps="handled">
 
         <Text variant="caption" color="secondary" align="right">
-          رقم مكوّن من 7 إلى 10 أرقام، تجده على ملصق الزجاجة
+          رقم مكوّن من {MIN_DIGITS} إلى {MAX_DIGITS} أرقام، تجده على ملصق الزجاجة
         </Text>
 
         <DigitDisplay rxNumber={rxNumber} />
@@ -284,7 +329,7 @@ export function AddRxManual(): React.ReactElement {
           </View>
         )}
 
-        {screenState === "not_found" && <NotFoundRow />}
+        {screenState === "not_found" && <NotFoundCallout />}
 
         {(screenState === "idle" || screenState === "typing") && <PrivacyCallout />}
 
@@ -300,8 +345,8 @@ export function AddRxManual(): React.ReactElement {
           style={[
             styles.ctaBar,
             { paddingBottom: Math.max(insets.bottom, theme.spacing[1.5]) },
-              , { pointerEvents: "box-none" } ]}
-          >
+          ]}
+          pointerEvents="box-none">
           <Button
             variant="primary"
             fullWidth
@@ -318,70 +363,88 @@ export function AddRxManual(): React.ReactElement {
 
 const styles = StyleSheet.create({
   screen: {
-    flex: 1,
-    backgroundColor: theme.colors.bg,
+    flex:             1,
+    backgroundColor:  theme.colors.bg,
   },
+
   digitsRow: {
-    flexDirection:    flexRow(isRtl()),
-    justifyContent:   "center",
-    gap:              theme.spacing[1],
-    paddingVertical:  theme.spacing[2],
+    flexDirection:   flexRow(isRtl()),
+    justifyContent:  "center",
+    gap:             theme.spacing[1],
+    paddingVertical: theme.spacing[2],
   },
   digitBox: {
-    width:            36,
-    height:           48,
-    borderRadius:     theme.radius.md,
-    backgroundColor:  theme.colors.surface,
-    borderWidth:      1,
-    borderColor:      theme.colors.border.default,
-    alignItems:       "center",
-    justifyContent:   "center",
+    width:           36,
+    height:          48,
+    borderRadius:    theme.radius.md,
+    backgroundColor: theme.colors.surface,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.default,
+    alignItems:      "center",
+    justifyContent:  "center",
   },
   digitBoxFilled: {
-    borderColor:      theme.colors.brand.base,
-    backgroundColor:  theme.colors.brand.lighter,
+    borderColor:     theme.colors.brand.base,
+    backgroundColor: theme.colors.brand.lighter,
   },
+
   lookupRow: {
-    flexDirection:    flexRow(isRtl()),
-    alignItems:       "center",
-    justifyContent:   "center",
-    gap:              theme.spacing[1],
-    paddingVertical:  theme.spacing[1],
+    flexDirection:   flexRow(isRtl()),
+    alignItems:      "center",
+    justifyContent:  "center",
+    gap:             theme.spacing[1],
+    paddingVertical: theme.spacing[1],
   },
+
   callout: {
-    flexDirection:    flexRow(isRtl()),
-    alignItems:       "flex-start",
-    gap:              theme.spacing[1],
-    padding:          theme.spacing[1.5],
-    borderRadius:     theme.layout.cardRadius,
-    borderWidth:      1,
+    flexDirection: flexRow(isRtl()),
+    alignItems:    "flex-start",
+    gap:           theme.spacing[1],
+    padding:       theme.spacing[1.5],
+    borderRadius:  theme.layout.cardRadius,
+    borderWidth:   1,
   },
+
+  // NotFoundCallout has a different shape (icon+text row, then full-width button below)
+  notFoundCallout: {
+    gap:          theme.spacing[1.5],
+    padding:      theme.spacing[1.5],
+    borderRadius: theme.layout.cardRadius,
+    borderWidth:  1,
+  },
+  notFoundRow: {
+    flexDirection: flexRow(isRtl()),
+    alignItems:    "flex-start",
+    gap:           theme.spacing[1],
+  },
+
   keypad: {
-    gap:              theme.spacing[1],
-    marginTop:        theme.spacing[1.5],
+    gap:       theme.spacing[1],
+    marginTop: theme.spacing[1.5],
   },
   keypadRow: {
-    flexDirection:    "row",
-    gap:              theme.spacing[1],
-    justifyContent:   "center",
+    flexDirection:  "row",
+    gap:            theme.spacing[1],
+    justifyContent: "center",
   },
   key: {
-    flex:             1,
-    height:           60,
-    maxWidth:         110,
-    borderRadius:     theme.radius.lg,
-    backgroundColor:  theme.colors.surface,
-    borderWidth:      1,
-    borderColor:      theme.colors.border.default,
-    alignItems:       "center",
-    justifyContent:   "center",
+    flex:            1,
+    height:          60,
+    maxWidth:        110,
+    borderRadius:    theme.radius.lg,
+    backgroundColor: theme.colors.surface,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.default,
+    alignItems:      "center",
+    justifyContent:  "center",
     ...theme.shadow.xs,
   },
   keyBlank: {
-    flex:             1,
-    height:           60,
-    maxWidth:         110,
+    flex:     1,
+    height:   60,
+    maxWidth: 110,
   },
+
   ctaBar: {
     position:          "absolute",
     left:              0,

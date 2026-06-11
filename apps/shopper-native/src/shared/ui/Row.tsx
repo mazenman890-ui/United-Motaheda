@@ -1,11 +1,9 @@
 /**
  * Row / Stack — flexbox layout primitives with built-in gap.
  *
- * Replaces `<View style={{ flexDirection: "row-reverse", alignItems: "center", gap: 8 }}>`
- * patterns scattered across screens.
- *
- * `Row` defaults to the app's current direction (RTL → "row-reverse", LTR → "row").
- * Pass `ltr` to force left-to-right regardless of language setting.
+ * `Row` defaults to the app's current direction via flexRow() — in Arabic
+ * (forceRTL active) this is "row" and the system handles RTL flow automatically.
+ * Pass `ltr` to force left-to-right regardless of language (uses flexRow(false)).
  */
 
 import React from "react";
@@ -42,7 +40,7 @@ interface CommonProps {
 }
 
 interface RowProps extends CommonProps {
-  /** Force LTR direction (default is row-reverse for RTL). */
+  /** Force LTR direction regardless of language (uses flexRow(false)). */
   ltr?: boolean;
 }
 
@@ -59,7 +57,7 @@ export function Row({
     <View
       style={[
         {
-          flexDirection: ltr ? "row" : flexRow(),
+          flexDirection: ltr ? flexRow(false) : flexRow(),
           alignItems: ALIGN_MAP[align],
           justifyContent: JUSTIFY_MAP[justify],
           flexWrap: wrap ? "wrap" : "nowrap",

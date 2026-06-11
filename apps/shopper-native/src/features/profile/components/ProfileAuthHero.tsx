@@ -29,7 +29,7 @@ import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
-import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
+import { flexRow, isRtl, textAlignStart, FORWARD_CHEVRON } from "@/utils/layout";
 import { styles, HERO_GLASS, PROFILE } from "./profile.styles";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
@@ -383,7 +383,7 @@ export const ProfileAuthHero = memo(function ProfileAuthHero({
                 {lastOrder.total.toFixed(0)} {t("common.currency")}
               </UIText>
             </View>
-            <Ionicons name="chevron-back" size={14} color={theme.colors.slate[300]} />
+            <Ionicons name={FORWARD_CHEVRON} size={14} color={theme.colors.slate[300]} />
           </Pressable>
         </View>
       )}

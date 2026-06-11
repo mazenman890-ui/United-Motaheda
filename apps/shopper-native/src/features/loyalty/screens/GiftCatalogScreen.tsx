@@ -1,4 +1,4 @@
-﻿/**
+/**
  * GiftCatalogScreen — browse and redeem inventory-backed gifts.
  *
  * Each row shows: thumbnail (or placeholder), name, points cost, and a
@@ -19,11 +19,13 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { Text as UIText } from "@/shared/ui";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
@@ -48,6 +50,7 @@ export function GiftCatalogScreen() {
   useScreenTrace("loyalty-gifts");
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const { width } = useWindowDimensions();
 
   const balance = useLoyaltyBalance();
   const gifts   = useGiftCatalog();
@@ -60,6 +63,7 @@ export function GiftCatalogScreen() {
   const refreshing =
     (balance.isFetching && !balance.isLoading) ||
     (gifts.isFetching && !gifts.isLoading);
+  const cardWidth = Math.max(150, Math.floor((width - 44) / 2));
 
   const onRefresh = useCallback(() => {
     if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
@@ -148,6 +152,12 @@ export function GiftCatalogScreen() {
   }
 
   const list = gifts.data ?? [];
+  const availableCount = list.filter((gift) => {
+    if (!gift.inventory) return true;
+    const remaining = gift.inventory.total_stock - gift.inventory.reserved - gift.inventory.fulfilled;
+    return remaining > 0;
+  }).length;
+  const lowestCost = list.length ? Math.min(...list.map((gift) => gift.points_cost)) : null;
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
@@ -164,15 +174,47 @@ export function GiftCatalogScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        {balance.data && (
-          <View style={styles.balanceChip} accessibilityRole="text"
-                accessibilityLabel={t("loyalty.balanceA11y", { n: balance.data.balance })}>
-            <Ionicons name="star" size={14} color={theme.colors.brand[700]} />
-            <UIText style={styles.balanceText} maxFontSizeMultiplier={1.3}>
-              {t("loyalty.balanceChipText", { n: balance.data.balance.toLocaleString("ar-EG") })}
-            </UIText>
+        <LinearGradient
+          colors={["#071C37", "#0A315A", "#115E75"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroCard}
+        >
+          <View style={styles.heroOrbLarge} />
+          <View style={styles.heroOrbSmall} />
+          <View style={styles.heroHeader}>
+            <View style={styles.heroText}>
+              <UIText style={styles.heroEyebrow}>هدايا مختارة بعناية</UIText>
+              <UIText style={styles.heroTitle}>{t("loyalty.giftCatalogTitle")}</UIText>
+              <UIText style={styles.heroSub}>{t("loyalty.giftCatalogSubtitle")}</UIText>
+            </View>
+            <View style={styles.heroBadge}>
+              <Ionicons name="gift-outline" size={24} color="#FDE68A" />
+            </View>
           </View>
-        )}
+
+          {balance.data && (
+            <View style={styles.heroBalanceCard} accessibilityRole="text"
+                  accessibilityLabel={t("loyalty.balanceA11y", { n: balance.data.balance })}>
+              <UIText style={styles.heroBalanceLabel}>رصيد الاستبدال</UIText>
+              <View style={styles.heroBalanceRow}>
+                <UIText style={styles.heroBalanceValue}>
+                  {balance.data.balance.toLocaleString("ar-EG")}
+                </UIText>
+                <UIText style={styles.heroBalanceUnit}>نقطة</UIText>
+              </View>
+            </View>
+          )}
+
+          <View style={styles.heroStats}>
+            <StatChip icon="sparkles-outline" label="هدايا متاحة" value={availableCount.toLocaleString("ar-EG")} />
+            <StatChip
+              icon="pricetag-outline"
+              label="تبدأ من"
+              value={lowestCost !== null ? `${lowestCost.toLocaleString("ar-EG")} نقطة` : "—"}
+            />
+          </View>
+        </LinearGradient>
 
         {list.length === 0 ? (
           <View style={{ paddingTop: 60 }}>
@@ -182,15 +224,18 @@ export function GiftCatalogScreen() {
             />
           </View>
         ) : (
-          list.map((gift) => (
-            <GiftRow
-              key={gift.id}
-              gift={gift}
-              currentBalance={balance.data?.balance ?? 0}
-              isRedeeming={redeemingGiftId === gift.id && redeem.isPending}
-              onRedeem={() => handleRedeem(gift)}
-            />
-          ))
+          <View style={styles.grid}>
+            {list.map((gift) => (
+              <GiftCard
+                key={gift.id}
+                gift={gift}
+                width={cardWidth}
+                currentBalance={balance.data?.balance ?? 0}
+                isRedeeming={redeemingGiftId === gift.id && redeem.isPending}
+                onRedeem={() => handleRedeem(gift)}
+              />
+            ))}
+          </View>
         )}
       </ScrollView>
 
@@ -208,14 +253,15 @@ export function GiftCatalogScreen() {
 
 // ─── Gift row ───────────────────────────────────────────────────────────────
 
-interface GiftRowProps {
+interface GiftCardProps {
   gift:           CatalogEntry;
+  width:          number;
   currentBalance: number;
   isRedeeming:    boolean;
   onRedeem:       () => void;
 }
 
-function GiftRow({ gift, currentBalance, isRedeeming, onRedeem }: GiftRowProps) {
+function GiftCard({ gift, width, currentBalance, isRedeeming, onRedeem }: GiftCardProps) {
   const { t } = useTranslation();
   const available =
     gift.inventory
@@ -225,9 +271,19 @@ function GiftRow({ gift, currentBalance, isRedeeming, onRedeem }: GiftRowProps) 
   const lowStock = available !== null && available > 0 && available <= 3;
   const canAfford = currentBalance >= gift.points_cost;
   const disabled  = isRedeeming || soldOut;
+  const statusTone = soldOut
+    ? styles.stockToneSoldOut
+    : lowStock
+    ? styles.stockToneLow
+    : styles.stockToneAvailable;
+  const statusLabel = soldOut
+    ? t("loyalty.giftSoldOutPill")
+    : lowStock
+    ? t("loyalty.giftStockRemaining", { n: available })
+    : "متاح الآن";
 
   return (
-    <View style={styles.giftCard} accessibilityRole="text"
+    <View style={[styles.giftCard, { width }]} accessibilityRole="text"
           accessibilityLabel={t("loyalty.giftA11y", { name: gift.name, points: gift.points_cost.toLocaleString("ar-EG") })}>
       <View style={styles.giftThumb}>
         {gift.image_url ? (
@@ -240,13 +296,11 @@ function GiftRow({ gift, currentBalance, isRedeeming, onRedeem }: GiftRowProps) 
         ) : (
           <Ionicons name="gift" size={28} color={theme.colors.brand[400]} />
         )}
-        {lowStock && (
-          <View style={styles.stockPill}>
-            <UIText style={styles.stockPillText} maxFontSizeMultiplier={1.2}>
-              {t("loyalty.giftStockRemaining", { n: available })}
-            </UIText>
-          </View>
-        )}
+        <View style={[styles.stockPill, statusTone]}>
+          <UIText style={[styles.stockPillText, soldOut && styles.stockPillTextLight]} maxFontSizeMultiplier={1.2}>
+            {statusLabel}
+          </UIText>
+        </View>
         {soldOut && (
           <View style={styles.oosOverlay}>
             <UIText style={styles.oosText} maxFontSizeMultiplier={1.2}>{t("loyalty.giftSoldOutPill")}</UIText>
@@ -263,13 +317,21 @@ function GiftRow({ gift, currentBalance, isRedeeming, onRedeem }: GiftRowProps) 
             {gift.description}
           </UIText>
         )}
-        <View style={styles.giftFoot}>
+        <View style={styles.giftMeta}>
           <View style={styles.costWrap}>
             <Ionicons name="star" size={14} color={theme.colors.amber[600]} />
             <UIText style={styles.costText} maxFontSizeMultiplier={1.3}>
               {gift.points_cost.toLocaleString("ar-EG")}
             </UIText>
+            <UIText style={styles.costUnit}>نقطة</UIText>
           </View>
+          {!soldOut && available !== null && (
+            <UIText style={styles.stockInlineText} maxFontSizeMultiplier={1.2}>
+              {available.toLocaleString("ar-EG")} متاحة
+            </UIText>
+          )}
+        </View>
+        <View style={styles.giftFoot}>
           <Pressable
             onPress={onRedeem}
             disabled={disabled}
@@ -301,6 +363,24 @@ function GiftRow({ gift, currentBalance, isRedeeming, onRedeem }: GiftRowProps) 
             </UIText>
           </Pressable>
         </View>
+      </View>
+    </View>
+  );
+}
+
+function StatChip({ icon, label, value }: {
+  icon: React.ComponentProps<typeof Ionicons>["name"];
+  label: string;
+  value: string;
+}) {
+  return (
+    <View style={styles.statChip}>
+      <View style={styles.statChipIcon}>
+        <Ionicons name={icon} size={14} color="#D1FAE5" />
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <UIText style={styles.statChipLabel}>{label}</UIText>
+        <UIText style={styles.statChipValue}>{value}</UIText>
       </View>
     </View>
   );
@@ -367,42 +447,162 @@ const styles = StyleSheet.create({
     flex:            1,
     backgroundColor: theme.colors.bg,
   },
-
-  balanceChip: {
-    flexDirection:    flexRow(isRtl()),
-    alignItems:       "center",
-    gap:              6,
-    alignSelf:        "flex-end",
-    backgroundColor:  theme.colors.brand.lighter,
-    borderWidth:      1,
-    borderColor:      theme.colors.border.brandSoft,
-    borderRadius:     999,
-    paddingHorizontal: 12,
-    paddingVertical:   6,
-    marginBottom:     14,
+  heroCard: {
+    borderRadius:    24,
+    padding:         18,
+    marginBottom:    18,
+    overflow:        "hidden",
+    gap:             14,
+    ...theme.shadow.lg,
   },
-  balanceText: {
+  heroOrbLarge: {
+    position:        "absolute",
+    top:             -70,
+    right:           -40,
+    width:           190,
+    height:          190,
+    borderRadius:    95,
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  heroOrbSmall: {
+    position:        "absolute",
+    bottom:          -36,
+    left:            -24,
+    width:           120,
+    height:          120,
+    borderRadius:    60,
+    backgroundColor: "rgba(45,212,191,0.12)",
+  },
+  heroHeader: {
+    flexDirection:  "row-reverse",
+    alignItems:     "flex-start",
+    justifyContent: "space-between",
+    gap:            16,
+  },
+  heroText: {
+    flex: 1,
+    gap:  4,
+  },
+  heroEyebrow: {
     fontFamily: theme.fonts.bold,
-    fontSize:   12,
-    color:      theme.colors.brand[700],
+    fontSize:   11,
+    color:      "#A7F3D0",
+    textAlign:  textAlignStart(isRtl()),
+    letterSpacing: 0.4,
+  },
+  heroTitle: {
+    fontFamily: theme.fonts.black,
+    fontSize:   24,
+    color:      "#FFFFFF",
+    textAlign:  textAlignStart(isRtl()),
+    letterSpacing: -0.6,
+  },
+  heroSub: {
+    fontFamily: theme.fonts.regular,
+    fontSize:   13,
+    color:      "rgba(255,255,255,0.72)",
+    lineHeight: 20,
+    textAlign:  textAlignStart(isRtl()),
+  },
+  heroBadge: {
+    width:           52,
+    height:          52,
+    borderRadius:    16,
+    alignItems:      "center",
+    justifyContent:  "center",
+    backgroundColor: "rgba(255,255,255,0.10)",
+    borderWidth:     1,
+    borderColor:     "rgba(255,255,255,0.14)",
+  },
+  heroBalanceCard: {
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius:    18,
+    padding:         14,
+    gap:             4,
+    borderWidth:     1,
+    borderColor:     "rgba(255,255,255,0.10)",
+  },
+  heroBalanceLabel: {
+    fontFamily: theme.fonts.bold,
+    fontSize:   11,
+    color:      "rgba(255,255,255,0.62)",
+    textAlign:  textAlignStart(isRtl()),
+  },
+  heroBalanceRow: {
+    flexDirection: "row",
+    alignItems:    "baseline",
+    gap:           6,
+  },
+  heroBalanceValue: {
+    fontFamily: theme.fonts.black,
+    fontSize:   30,
+    color:      "#FFFFFF",
+    letterSpacing: -1,
+  },
+  heroBalanceUnit: {
+    fontFamily: theme.fonts.bold,
+    fontSize:   13,
+    color:      "rgba(255,255,255,0.74)",
+  },
+  heroStats: {
+    flexDirection: "row",
+    gap:           10,
+  },
+  statChip: {
+    flex:            1,
+    flexDirection:   "row-reverse",
+    alignItems:      "center",
+    gap:             10,
+    padding:         12,
+    borderRadius:    16,
+    backgroundColor: "rgba(2,6,23,0.22)",
+    borderWidth:     1,
+    borderColor:     "rgba(255,255,255,0.08)",
+  },
+  statChipIcon: {
+    width:           34,
+    height:          34,
+    borderRadius:    12,
+    alignItems:      "center",
+    justifyContent:  "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  statChipLabel: {
+    fontFamily: theme.fonts.semibold,
+    fontSize:   10,
+    color:      "rgba(255,255,255,0.62)",
+    textAlign:  textAlignStart(isRtl()),
+  },
+  statChipValue: {
+    fontFamily: theme.fonts.black,
+    fontSize:   13,
+    color:      "#FFFFFF",
+    textAlign:  textAlignStart(isRtl()),
+  },
+
+  grid: {
+    flexDirection:   "row",
+    flexWrap:        "wrap",
+    justifyContent:  "space-between",
+    rowGap:          12,
   },
 
   // Gift card
   giftCard: {
-    flexDirection:   flexRow(isRtl()),
     alignItems:      "stretch",
     gap:             12,
     backgroundColor: theme.colors.surface,
-    borderRadius:    16,
+    borderRadius:    20,
     padding:         12,
-    marginBottom:    10,
+    borderWidth:     1,
+    borderColor:     theme.colors.border.hairline,
     ...theme.shadow.card,
   },
   giftThumb: {
-    width:           88,
-    height:          88,
-    borderRadius:    12,
-    backgroundColor: theme.colors.surfaceSunken,
+    width:           "100%",
+    aspectRatio:     1.08,
+    borderRadius:    18,
+    backgroundColor: "#F3F7FB",
     alignItems:      "center",
     justifyContent:  "center",
     overflow:        "hidden",
@@ -410,19 +610,32 @@ const styles = StyleSheet.create({
   },
   stockPill: {
     position:          "absolute",
-    bottom:            4,
-    insetInlineStart:  4,
-    paddingHorizontal: 6,
-    paddingVertical:   2,
-    borderRadius:      6,
-    backgroundColor:   theme.colors.amber[50],
-    borderWidth:       1,
-    borderColor:       theme.colors.amber[100],
+    top:               8,
+    insetInlineStart:  8,
+    paddingHorizontal: 8,
+    paddingVertical:   4,
+    borderRadius:      999,
   },
   stockPillText: {
     fontFamily: theme.fonts.bold,
-    fontSize:   9,
+    fontSize:   10,
     color:      theme.colors.amber[700],
+  },
+  stockPillTextLight: {
+    color: "#FFFFFF",
+  },
+  stockToneAvailable: {
+    backgroundColor: "rgba(34,197,94,0.12)",
+    borderWidth:     1,
+    borderColor:     "rgba(34,197,94,0.16)",
+  },
+  stockToneLow: {
+    backgroundColor: theme.colors.amber[50],
+    borderWidth:     1,
+    borderColor:     theme.colors.amber[100],
+  },
+  stockToneSoldOut: {
+    backgroundColor: "rgba(15,23,42,0.68)",
   },
   oosOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -439,10 +652,11 @@ const styles = StyleSheet.create({
   giftBody: {
     flex: 1,
     justifyContent: "space-between",
+    gap: 8,
   },
   giftName: {
     fontFamily: theme.fonts.black,
-    fontSize:   14,
+    fontSize:   15,
     color:      theme.colors.text.primary,
     textAlign:  textAlignStart(isRtl()),
     lineHeight: 19,
@@ -455,11 +669,11 @@ const styles = StyleSheet.create({
     marginTop:  3,
     lineHeight: 15,
   },
+  giftMeta: {
+    gap: 4,
+  },
   giftFoot: {
-    flexDirection:  flexRow(isRtl()),
-    alignItems:     "center",
-    justifyContent: "space-between",
-    marginTop:      8,
+    marginTop: 2,
   },
   costWrap: {
     flexDirection: flexRow(isRtl()),
@@ -471,10 +685,23 @@ const styles = StyleSheet.create({
     fontSize:   14,
     color:      theme.colors.text.primary,
   },
+  costUnit: {
+    fontFamily: theme.fonts.bold,
+    fontSize:   11,
+    color:      theme.colors.text.tertiary,
+  },
+  stockInlineText: {
+    fontFamily: theme.fonts.semibold,
+    fontSize:   11,
+    color:      theme.colors.text.tertiary,
+    textAlign:  textAlignStart(isRtl()),
+  },
   redeemBtn: {
+    alignItems:        "center",
+    justifyContent:    "center",
     paddingHorizontal: 14,
-    paddingVertical:   8,
-    borderRadius:      10,
+    paddingVertical:   11,
+    borderRadius:      14,
     backgroundColor:   theme.colors.brand[600],
   },
   redeemBtnInsufficient: {

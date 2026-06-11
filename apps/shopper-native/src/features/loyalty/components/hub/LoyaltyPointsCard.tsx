@@ -29,6 +29,10 @@ import type { LoyaltyBalance, RewardTier } from "../../types";
 import { getTierColor, getTierIcon, type IoniconsName } from "./HubHelpers";
 import { heroStyles as s, tierStyles as ts } from "./hub.styles";
 
+function formatMetric(value: number): string {
+  return Math.round(value).toLocaleString("en-US");
+}
+
 // AnimatedTextInput used for the balance counter — its `value` prop is driven
 // on the UI thread via useAnimatedProps, eliminating the JS-thread listener
 // that the old RNAnimated.Value approach required.
@@ -80,7 +84,7 @@ export const LoyaltyPointsCard = React.memo(function LoyaltyPointsCard({
   // prop that Reanimated CAN animate but whose types aren't declared.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const balanceAnimatedProps = useAnimatedProps((): any => ({
-    text: Math.round(animatedBalance.value).toLocaleString("ar-EG"),
+    text: formatMetric(animatedBalance.value),
   }));
 
   // ── Progress toward next tier ─────────────────────────────────────────────
@@ -143,7 +147,7 @@ export const LoyaltyPointsCard = React.memo(function LoyaltyPointsCard({
             editable={false}
             underlineColorAndroid="transparent"
             style={s.balanceValue}
-            defaultValue={balance.balance.toLocaleString("ar-EG")}
+            defaultValue={formatMetric(balance.balance)}
           />
           <Text style={s.balanceUnit}>{t("loyalty.pointsUnit")}</Text>
         </View>
@@ -164,7 +168,7 @@ export const LoyaltyPointsCard = React.memo(function LoyaltyPointsCard({
           <View style={s.progressMeta}>
             <Text style={s.progressLabel}>
               {pointsToNext && pointsToNext > 0
-                ? t("loyalty.progressLabel",   { n: pointsToNext.toLocaleString("ar-EG"), name: nextTier.name })
+                ? t("loyalty.progressLabel",   { n: formatMetric(pointsToNext), name: nextTier.name })
                 : t("loyalty.progressCongrats", { name: nextTier.name })}
             </Text>
             <Text style={s.progressPct}>{Math.round(progress * 100)}%</Text>
@@ -191,7 +195,7 @@ const StatPill = React.memo(function StatPill({
   return (
     <View style={s.statPill}>
       <Text style={[s.statValue, highlight && s.statValueHL]}>
-        {value.toLocaleString("ar-EG")}
+        {formatMetric(value)}
       </Text>
       <Text style={s.statLabel}>{label}</Text>
     </View>
@@ -273,7 +277,7 @@ export const TierNode = React.memo(function TierNode({
 
       <Text style={ts.nodePts}>
         {tier.min_lifetime_points > 0
-          ? `${tier.min_lifetime_points.toLocaleString("ar-EG")} ${t("loyalty.pointsUnit")}`
+          ? `${formatMetric(tier.min_lifetime_points)} ${t("loyalty.pointsUnit")}`
           : t("loyalty.tierFreeLabel")}
       </Text>
     </Animated.View>

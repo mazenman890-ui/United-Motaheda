@@ -79,7 +79,7 @@ import { AppLogo } from "@/shared/components/AppLogo";
 import { Text } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { ONBOARDING_KEY } from "@/lib/onboardingKey";
-import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
+import { flexRow, isRtl, textAlignStart, FORWARD_CHEVRON } from "@/utils/layout";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -89,7 +89,6 @@ const IS_RTL      = isRtl();
 const START_ALIGN = textAlignStart(IS_RTL);
 /** Sign multiplier for directional translateX outputs (mirrors parallax in RTL). */
 const DIR = IS_RTL ? -1 : 1;
-const FORWARD_ICON: IoniconsName = IS_RTL ? "chevron-back" : "chevron-forward";
 
 // ─── Slide data ───────────────────────────────────────────────────────────────
 
@@ -840,7 +839,7 @@ export default function OnboardingScreen() {
                   {t("onboarding.next")}
                 </Text>
                 <View style={foot.ctaIconChip}>
-                  <Ionicons name={FORWARD_ICON} size={17} color={theme.colors.surface} />
+                  <Ionicons name={FORWARD_CHEVRON} size={17} color={theme.colors.surface} />
                 </View>
               </Animated.View>
 

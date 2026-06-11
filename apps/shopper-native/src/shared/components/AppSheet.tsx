@@ -33,6 +33,7 @@ import {
   type AppSheetAction,
   type AppSheetType,
 } from "@/shared/store/appSheetStore";
+import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 
 const { height: SCREEN_H } = Dimensions.get("window");

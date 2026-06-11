@@ -21,7 +21,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { theme } from "@/shared/theme";
-import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
+import { flexRow, isRtl, textAlignStart, BACK_CHEVRON } from "@/utils/layout";
 
 interface SubScreenHeaderProps {
   title:         string;
@@ -69,8 +69,7 @@ export function SubScreenHeader({
           pressed && styles.backBtnPressed,
         ]}
       >
-        {/* chevron-forward (→) = "back" in RTL navigation */}
-        <Ionicons name="chevron-forward" size={22} color={theme.colors.text.primary} />
+        <Ionicons name={BACK_CHEVRON} size={22} color={theme.colors.text.primary} />
       </Pressable>
     </View>
   );

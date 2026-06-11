@@ -5,7 +5,7 @@
  * each occupying flex:1 of a row. No negative margin, no overlap shadow.
  *
  * Layout: flexRow(isRtl) ensures logical leading-to-trailing order in
- * both Arabic (row-reverse) and English (row).
+ * both Arabic and English (forceRTL active: "row" flows RTL automatically).
  *
  * Animation: Reanimated withSpring(0.96) per-card press scale — UI thread only.
  * Icons: LinearGradient 56×56 tile + Ionicons.

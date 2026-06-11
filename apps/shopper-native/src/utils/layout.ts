@@ -1,21 +1,22 @@
 /**
  * layout.ts — RTL-aware layout utilities.
  *
- * All functions read `I18nManager.isRTL` which is set SYNCHRONOUSLY at boot
- * by the i18n init module (before any React render). This means the values
- * are stable for the lifetime of the app — no need for a reactive hook.
+ * i18n/index.ts calls I18nManager.forceRTL(true) for Arabic at boot.
+ * With forceRTL active, React Native's flex engine treats START as the
+ * physical RIGHT edge — so flexDirection:"row" ALREADY flows right-to-left.
+ * Returning "row-reverse" in RTL would double-mirror back to LTR.
  *
- * Usage:
- *   import { flexRow, textAlignStart } from "@/utils/layout";
+ * flexRow() therefore maps:
+ *   forceRTL active   (AR, _isRTL=true):  rtl=true  → "row"         (RTL via system)
+ *                                          rtl=false → "row-reverse" (explicit LTR override)
+ *   no forceRTL       (EN, _isRTL=false): rtl=true  → "row-reverse" (manual RTL)
+ *                                          rtl=false → "row"         (standard LTR)
  *
- *   const s = StyleSheet.create({
- *     row: { flexDirection: flexRow() },   // "row-reverse" in AR, "row" in EN
- *   });
+ * All other helpers are unaffected — text alignment uses physical "right"/"left"
+ * which are correct regardless of forceRTL state.
  *
- * Note: functions are called at StyleSheet.create time (module load), not per
- * render — values are frozen for the current language session. A language
- * switch triggers a full app reload (via Updates.reloadAsync), so the module
- * is re-evaluated with the new RTL flag on every language change.
+ * Values are frozen at module load; a language switch triggers a full app
+ * reload (Updates.reloadAsync / DevSettings.reload) so they refresh correctly.
  */
 
 import { I18nManager, type TextStyle, type ViewStyle } from "react-native";
@@ -32,13 +33,19 @@ export function isRtl(): boolean {
 // ─── flexDirection ────────────────────────────────────────────────────────────
 
 /**
- * RTL-aware flex row direction.
- * AR → "row-reverse"   (children flow right → left, logical start = right)
- * EN → "row"           (children flow left  → right, logical start = left)
+ * RTL-aware flex row direction, accounting for I18nManager.forceRTL.
+ *
+ * When forceRTL is active (_isRTL=true), "row" already flows RTL.
+ * When not active (_isRTL=false), "row-reverse" produces RTL flow.
  *
  * @param rtl  Override (defaults to app RTL flag). Pass false to force LTR.
  */
 export function flexRow(rtl = _isRTL): ViewStyle["flexDirection"] {
+  if (_isRTL) {
+    // forceRTL active: "row" = RTL, "row-reverse" = explicit LTR override
+    return rtl ? "row" : "row-reverse";
+  }
+  // No forceRTL: "row-reverse" = RTL, "row" = LTR
   return rtl ? "row-reverse" : "row";
 }
 
@@ -81,6 +88,21 @@ export function edgeStart(rtl = _isRTL): "left" | "right" {
 export function edgeEnd(rtl = _isRTL): "left" | "right" {
   return rtl ? "left" : "right";
 }
+
+// ─── Directional chevron icons ───────────────────────────────────────────────
+//
+// Ionicons glyphs are NOT auto-mirrored by I18nManager.forceRTL — they are
+// plain font characters.  Use these named constants everywhere a directional
+// chevron is needed so the correct glyph is chosen per language at module load.
+//
+// Back  (→ Arabic, ← English): previous screen is to the RIGHT in RTL navigation.
+// Fwd   (← Arabic, → English): deeper content is to the LEFT in RTL reading.
+
+/** Chevron icon for "go back / return to previous screen". */
+export const BACK_CHEVRON    = (_isRTL ? "chevron-forward" : "chevron-back")    as "chevron-forward" | "chevron-back";
+
+/** Chevron icon for "go forward / see more / expand". */
+export const FORWARD_CHEVRON = (_isRTL ? "chevron-back"    : "chevron-forward") as "chevron-forward" | "chevron-back";
 
 // ─── justifyContent helpers ───────────────────────────────────────────────────
 

@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 import { PaymentMethodSelector, usePaymentStore, hydratePaymentStore } from "@/features/payment";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
-import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
+import { flexRow, isRtl, textAlignStart, BACK_CHEVRON } from "@/utils/layout";
 
 const TRUST_ITEMS: {
   icon:     React.ComponentProps<typeof Ionicons>["name"];
@@ -52,7 +52,7 @@ export default function PaymentScreen() {
             style={styles.backBtn}
             accessibilityRole="button"
             accessibilityLabel={t("common.back")}>
-            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.8)" />
+            <Ionicons name={BACK_CHEVRON} size={18} color="rgba(255,255,255,0.8)" />
           </Pressable>
           <View style={{ flex: 1 }}>
             <UIText variant="eyebrow" align="right" style={styles.headerEyebrowNew}>

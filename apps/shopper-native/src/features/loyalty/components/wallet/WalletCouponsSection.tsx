@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Text } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import type { Coupon } from "../../types";
+import { FORWARD_CHEVRON } from "@/utils/layout";
 import {
   cardStyles as cs,
   sectionHeaderStyles as sh,
@@ -64,7 +65,7 @@ export const WalletCouponsSection = memo(function WalletCouponsSection({
           <Text style={cs.showMoreText}>
             {t("loyalty.walletMoreCoupons", { n: active.length - 3 })}
           </Text>
-          <Ionicons name="chevron-back" size={14} color={theme.colors.brand[600]} />
+          <Ionicons name={FORWARD_CHEVRON} size={14} color={theme.colors.brand[600]} />
         </Pressable>
       )}
     </View>

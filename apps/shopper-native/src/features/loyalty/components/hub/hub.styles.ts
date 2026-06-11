@@ -147,6 +147,8 @@ export const heroStyles = StyleSheet.create({
     fontSize:      52,
     color:         "#fff",
     letterSpacing: -2,
+    writingDirection: "ltr",
+    fontVariant:   ["tabular-nums"],
     // TextInput reset
     padding:       0,
     margin:        0,
@@ -166,7 +168,7 @@ export const heroStyles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   statPill:        { flex: 1, alignItems: "center", gap: 2 },
-  statValue:       { fontFamily: theme.fonts.black, fontSize: 15, color: "rgba(255,255,255,0.75)" },
+  statValue:       { fontFamily: theme.fonts.black, fontSize: 16, color: "rgba(255,255,255,0.82)", writingDirection: "ltr", fontVariant: ["tabular-nums"] },
   statValueHL:     { color: "#fff", fontSize: 17 },
   statLabel:       { fontFamily: theme.fonts.regular, fontSize: 10, color: "rgba(255,255,255,0.45)" },
   statsDiv: {
@@ -188,7 +190,7 @@ export const heroStyles = StyleSheet.create({
     flex:       1,
     textAlign:  textAlignStart(isRtl()),
   },
-  progressPct: { fontFamily: theme.fonts.black, fontSize: 12, color: "#fff", marginStart: 8 },
+  progressPct: { fontFamily: theme.fonts.black, fontSize: 12, color: "#fff", marginStart: 8, writingDirection: "ltr", fontVariant: ["tabular-nums"] },
   progressTrack: {
     height:          6,
     backgroundColor: "rgba(255,255,255,0.18)",
@@ -205,13 +207,13 @@ export const heroStyles = StyleSheet.create({
 // ─── Tier journey ─────────────────────────────────────────────────────────────
 export const tierStyles = StyleSheet.create({
   rail:        { marginHorizontal: -2 },
-  railContent: { paddingHorizontal: theme.spacing[4], paddingVertical: 4, alignItems: "center", gap: 0 },
-  nodeWrap:    { alignItems: "center", width: 80, gap: 5 },
+  railContent: { paddingHorizontal: theme.spacing[4], paddingVertical: 8, alignItems: "center", gap: 0 },
+  nodeWrap:    { alignItems: "center", width: 96, gap: 7 },
   nodeRing: {
-    width:          52,
-    height:         52,
-    borderRadius:   26,
-    borderWidth:    1.5,
+    width:          62,
+    height:         62,
+    borderRadius:   31,
+    borderWidth:    2,
     borderColor:    theme.colors.border.default,
     alignItems:     "center",
     justifyContent: "center",
@@ -219,21 +221,21 @@ export const tierStyles = StyleSheet.create({
   },
   nodeRingDim:  { borderColor: theme.colors.border.hairline },
   nodeIcon: {
-    width:          44,
-    height:         44,
-    borderRadius:   22,
+    width:          52,
+    height:         52,
+    borderRadius:   26,
     alignItems:     "center",
     justifyContent: "center",
   },
-  connector:     { width: 32, height: 2, backgroundColor: theme.colors.border.default, borderRadius: 1, marginBottom: 24 },
+  connector:     { width: 40, height: 3, backgroundColor: theme.colors.border.default, borderRadius: 999, marginBottom: 32 },
   connectorDone: { backgroundColor: theme.colors.brand[400] },
-  nodeName:        { fontFamily: theme.fonts.bold,  fontSize: 11, color: theme.colors.text.disabled, textAlign: "center" },
+  nodeName:        { fontFamily: theme.fonts.bold,  fontSize: 12, color: theme.colors.text.disabled, textAlign: "center" },
   nodeNameCurrent: { fontFamily: theme.fonts.black },
-  currentChip: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, borderWidth: 1 },
+  currentChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, borderWidth: 1 },
   currentChipText: { fontFamily: theme.fonts.black, fontSize: 9, letterSpacing: 0.2 },
-  nextChip:     { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, backgroundColor: theme.colors.subtle },
+  nextChip:     { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: theme.colors.subtle },
   nextChipText: { fontFamily: theme.fonts.bold, fontSize: 9, color: theme.colors.text.tertiary },
-  nodePts:      { fontFamily: theme.fonts.regular, fontSize: 10, color: theme.colors.text.disabled, textAlign: "center" },
+  nodePts:      { fontFamily: theme.fonts.regular, fontSize: 11, color: theme.colors.text.disabled, textAlign: "center", writingDirection: "ltr", fontVariant: ["tabular-nums"], lineHeight: 16 },
 });
 
 // ─── Campaigns banner ─────────────────────────────────────────────────────────

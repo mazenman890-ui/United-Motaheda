@@ -33,7 +33,7 @@ import {
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
-import { flexRow, isRtl } from "@/utils/layout";
+import { flexRow, isRtl, BACK_CHEVRON, FORWARD_CHEVRON } from "@/utils/layout";
 
 // ─── Skeleton shimmer component ──────────────────────────────────────────────
 function ShimmerCard() {
@@ -216,7 +216,7 @@ export default function AddressesScreen() {
             accessibilityRole="button"
             accessibilityLabel={t("common.back")}
           >
-            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.8)" />
+            <Ionicons name={BACK_CHEVRON} size={18} color="rgba(255,255,255,0.8)" />
           </Pressable>
 
           <View style={{ flex: 1 }}>
@@ -337,7 +337,7 @@ export default function AddressesScreen() {
                     {t("addresses.addNewDesc")}
                   </UIText>
                 </View>
-                <Ionicons name="chevron-back" size={14} color={theme.colors.brand[700]} />
+                <Ionicons name={FORWARD_CHEVRON} size={14} color={theme.colors.brand[700]} />
               </Pressable>
             </Animated.View>
           }

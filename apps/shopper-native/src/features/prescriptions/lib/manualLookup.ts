@@ -1,16 +1,17 @@
 /**
- * Manual Rx-number lookup — MOCK.
+ * Manual Rx-number lookup.
  *
- * Returns a pharmacy-side record stub matching what a real API would yield
- * (everything except the local-store fields `id`, `userId`, `addedAt`,
- * `updatedAt`, which are stamped at insert time).
+ * There is no pharmacy lookup API yet — until the server-side contract is
+ * signed off, every lookup resolves to "not found" and the screen guides the
+ * user to the pharmacy's real support channel instead.
  *
- * Stable interface: when a real Supabase RPC / external pharmacy API lands,
- * swap the body of `mockLookup` only — call sites stay untouched.
+ * Stable interface: when the real Supabase RPC / external pharmacy API lands,
+ * swap the body of `lookupRxNumber` only — call sites stay untouched.
  *
- * // HANDOFF: deviated — single hard-coded match for now (47820094 →
- * // ميتفورمين). Real lookup wires to a server-side function in a future
- * // ticket once the pharmacy API contract is signed off.
+ * History: this used to return a hard-coded fake prescription (metformin,
+ * fictional doctor) for one magic number. Removed — a production medical app
+ * must never fabricate prescription records, and the fake match could be
+ * saved into the user's real prescription list.
  */
 
 import type { Prescription } from "@/stores/prescriptionsStore";
@@ -23,18 +24,7 @@ export type RxLookupResult = Pick<
 
 const LOOKUP_DELAY_MS = 400;
 
-export async function mockLookup(rxNumber: string): Promise<RxLookupResult | null> {
+export async function lookupRxNumber(_rxNumber: string): Promise<RxLookupResult | null> {
   await new Promise<void>((resolve) => setTimeout(resolve, LOOKUP_DELAY_MS));
-
-  if (rxNumber === "47820094") {
-    return {
-      name:       "ميتفورمين 500 ملغ",
-      dose:       "قرص واحد · مرتين يومياً",
-      refills:    2,
-      nextRefill: "خلال 4 أيام",
-      doctor:     "د. ب. تشين",
-      status:     "active",
-    };
-  }
   return null;
 }

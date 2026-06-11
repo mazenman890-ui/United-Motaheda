@@ -8,6 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
+import { BACK_CHEVRON } from "@/utils/layout";
 import type { Order, OrderStatus } from "@/stores/orders";
 import { styles } from "./order-detail.styles";
 
@@ -170,7 +171,7 @@ export function InfoRow({
 export function HeaderBackButton({ onPress }: { onPress: () => void }): React.ReactElement {
   return (
     <Pressable onPress={onPress} style={styles.backBtn} hitSlop={8} accessibilityRole="button">
-      <Ionicons name="chevron-forward" size={18} color={theme.colors.slate[700]} />
+      <Ionicons name={BACK_CHEVRON} size={18} color={theme.colors.slate[700]} />
     </Pressable>
   );
 }

@@ -36,6 +36,7 @@ import { Text as UIText } from "@/shared/ui";
 import { Badge } from "@/components/ui/Badge";
 import { theme } from "@/shared/theme";
 import { formatPrice } from "@/utils/format";
+import { FORWARD_CHEVRON } from "@/utils/layout";
 import { useAppLanguage } from "@/i18n/LanguageProvider";
 import type { Order } from "@/stores/orders";
 import {
@@ -229,7 +230,7 @@ export default function OrderDetailScreen(): React.ReactElement {
                     </UIText>
                   </View>
                 </View>
-                <Ionicons name="chevron-back" size={14} color={theme.colors.slate[300]} />
+                <Ionicons name={FORWARD_CHEVRON} size={14} color={theme.colors.slate[300]} />
               </Pressable>
             ))}
           </DetailSection>

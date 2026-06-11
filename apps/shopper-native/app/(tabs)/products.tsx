@@ -16,7 +16,7 @@ import { Text as UIText } from "@/shared/ui";
 import { useCartStore } from "@/stores/cart";
 import { useMountTiming } from "@/lib/devTiming";
 import { theme } from "@/shared/theme";
-import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
+import { flexRow, isRtl, textAlignStart, FORWARD_CHEVRON } from "@/utils/layout";
 import { useTranslation } from "react-i18next";
 
 // ─── Featured product card width (matches Home screen) ────────────────────────
@@ -238,7 +238,7 @@ export default function ProductsScreen() {
                   </View>
                   <Pressable onPress={goFeatured} style={styles.moreBtn} hitSlop={6}>
                     <UIText variant="caption" weight="bold" color="brand">{t("home.viewAll")}</UIText>
-                    <Ionicons name="chevron-back" size={13} color={theme.colors.brand[700]} />
+                    <Ionicons name={FORWARD_CHEVRON} size={13} color={theme.colors.brand[700]} />
                   </Pressable>
                 </View>
 

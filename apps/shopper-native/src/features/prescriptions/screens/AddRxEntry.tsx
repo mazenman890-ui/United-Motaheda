@@ -3,19 +3,20 @@
  *
  * Spec: HANDOFF.md §9.3 (organisms) → screens-rx.jsx > AddRxEntry.
  *
- * Four options stacked vertically:
- *   1. Scan the label (camera)        → /prescriptions/scan
- *   2. Transfer from another pharmacy → /prescriptions/transfer
- *   3. Enter the Rx number manually   → /prescriptions/manual
- *   4. Ask your doctor to send it     → "قريباً" alert (no route yet)
+ * Options stacked vertically (working paths first):
+ *   1. Send via WhatsApp              → wa.me link (live operational channel)
+ *   2. Enter the Rx number manually   → /prescriptions/manual
+ *   3. Scan the label (camera)        → /prescriptions/scan   (coming soon)
+ *   4. Transfer from another pharmacy → /prescriptions/transfer (coming soon)
  *
- * Closes with a bottom info callout about controlled substances
- * (DEA Schedule II — must be in-person, e-prescription only).
+ * History: a fifth "ask your doctor to e-send it" option was removed — no
+ * backing flow existed, and its copy promised a printable form that was
+ * never built. Descriptions for the coming-soon paths no longer promise
+ * SLAs ("ready in 4 hours") that nothing delivers.
  */
 
-import React, { useCallback } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { showSuccessSheet } from "@/shared/store/appSheetStore";
+import React from "react";
+import { Linking, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -23,7 +24,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 // shared/components/index → PharmacyBootstrap → features/prescriptions → here.
 import { AppHeader } from "@/shared/components/AppHeader";
 import { Text } from "@/shared/ui";
-import { flexRow, isRtl } from "@/utils/layout";
+import { flexRow, isRtl, FORWARD_CHEVRON } from "@/utils/layout";
 import { theme } from "@/shared/theme";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
@@ -59,7 +60,7 @@ function EntryCard({ option }: { option: EntryOption }): React.ReactElement {
         </Text>
       </View>
       <Ionicons
-        name="chevron-back"
+        name={FORWARD_CHEVRON}
         size={18}
         color={theme.colors.text.tertiary}
       />
@@ -67,30 +68,21 @@ function EntryCard({ option }: { option: EntryOption }): React.ReactElement {
   );
 }
 
+const WHATSAPP_RX_URL =
+  `https://wa.me/201112343212?text=${encodeURIComponent("مرحباً، أريد إضافة وصفة طبية إلى حسابي.")}`;
+
 export function AddRxEntry(): React.ReactElement {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const showComingSoon = useCallback((title: string) => {
-    showSuccessSheet(title, "هذه الميزة قادمة قريباً. ترقّب التحديثات!");
-  }, []);
-
   const options: EntryOption[] = [
     {
-      icon:        "scan-outline",
-      tint:        theme.colors.brand.base,
-      bg:          theme.colors.brand.lighter,
-      title:       "مسح ملصق الوصفة",
-      description: "استخدم الكاميرا — الأسرع إذا كانت الزجاجة بيدك",
-      onPress:     () => router.push("/prescriptions/scan" as never),
-    },
-    {
-      icon:        "swap-horizontal-outline",
-      tint:        "#7C3AED",
-      bg:          theme.colors.purple[50],
-      title:       "نقل من صيدلية أخرى",
-      description: "نتولى المكالمة. عادةً جاهز خلال 4 ساعات",
-      onPress:     () => router.push("/prescriptions/transfer" as never),
+      icon:        "logo-whatsapp",
+      tint:        "#25D366",
+      bg:          theme.colors.success.bg,
+      title:       "إرسال الوصفة عبر واتساب",
+      description: "أرسل صورة الوصفة وسيضيفها فريق الصيدلية إلى حسابك",
+      onPress:     () => { void Linking.openURL(WHATSAPP_RX_URL).catch(() => {}); },
     },
     {
       icon:        "keypad-outline",
@@ -101,12 +93,20 @@ export function AddRxEntry(): React.ReactElement {
       onPress:     () => router.push("/prescriptions/manual" as never),
     },
     {
-      icon:        "mail-outline",
-      tint:        theme.colors.info.base,
-      bg:          theme.colors.info.bg,
-      title:       "اطلب من طبيبك إرسالها إلكترونياً",
-      description: "سنشاركك نموذجاً قابلاً للطباعة لمزوّد الرعاية",
-      onPress:     () => showComingSoon("اطلب من طبيبك إرسالها إلكترونياً"),
+      icon:        "scan-outline",
+      tint:        theme.colors.brand.base,
+      bg:          theme.colors.brand.lighter,
+      title:       "مسح ملصق الوصفة",
+      description: "قريباً — مسح الوصفة بالكاميرا مباشرةً",
+      onPress:     () => router.push("/prescriptions/scan" as never),
+    },
+    {
+      icon:        "swap-horizontal-outline",
+      tint:        "#7C3AED",
+      bg:          theme.colors.purple[50],
+      title:       "نقل من صيدلية أخرى",
+      description: "قريباً — انقل وصفاتك من صيدلية أخرى بسهولة",
+      onPress:     () => router.push("/prescriptions/transfer" as never),
     },
   ];
 
@@ -137,7 +137,7 @@ export function AddRxEntry(): React.ReactElement {
             <Ionicons name="information-circle" size={18} color={theme.colors.info.base} />
           </View>
           <Text variant="caption" align="right" style={{ flex: 1, color: theme.colors.info.text, lineHeight: 18 }}>
-            المواد الخاضعة للرقابة (الجدول الثاني) تتطلب تسليماً شخصياً ونسخة إلكترونية من الطبيب. لا يمكن قبولها بصورة.
+            الأدوية الخاضعة للرقابة تتطلب وصفة طبية ورقية أصلية تُسلَّم للصيدلية، وفقاً للوائح وزارة الصحة المصرية.
           </Text>
         </View>
       </ScrollView>

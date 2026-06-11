@@ -20,6 +20,7 @@ import { theme } from "@/shared/theme";
 
 import { SectionHeader } from "./SectionHeader";
 import { sectionStyles, destStyles as ds } from "./hub.styles";
+import { FORWARD_CHEVRON } from "@/utils/layout";
 import type { IoniconsName } from "./HubHelpers";
 
 interface QuickDestinationsProps {
@@ -112,7 +113,7 @@ const DestCard = React.memo(function DestCard({
           <Text style={ds.label} numberOfLines={1}>{label}</Text>
           <Text style={ds.sub}   numberOfLines={1}>{sub}</Text>
         </View>
-        <Ionicons name="chevron-back" size={14} color={theme.colors.text.disabled} />
+        <Ionicons name={FORWARD_CHEVRON} size={14} color={theme.colors.text.disabled} />
       </Pressable>
     </Animated.View>
   );

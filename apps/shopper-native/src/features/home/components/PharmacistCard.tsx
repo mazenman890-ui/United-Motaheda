@@ -88,27 +88,48 @@ export const PharmacistCard = memo(function PharmacistCard() {
         <View style={s.glowLarge} />
         <View style={s.glowSmall} />
         <View style={s.glowRing} />
+        <View style={s.glowMesh} />
 
-        {/* Text stack — eyebrow → title → subtitle, all right-aligned RTL */}
-        <View style={s.textStack}>
-          {/* "Available now" badge with pulsing ring */}
-          <View style={s.availableRow}>
-            {/* Pulse ring (larger, fades out) */}
-            <Animated.View style={[s.pulseDot, pulseStyle]} />
-            {/* Solid dot (always visible) */}
-            <View style={s.solidDot} />
-            <UIText style={s.availableText}>{t("home.pharmacistAvailable")}</UIText>
+        <View style={s.heroRow}>
+          {/* Text stack — eyebrow → title → subtitle, all right-aligned RTL */}
+          <View style={s.textStack}>
+            {/* "Available now" badge with pulsing ring */}
+            <View style={s.availableRow}>
+              {/* Pulse ring (larger, fades out) */}
+              <Animated.View style={[s.pulseDot, pulseStyle]} />
+              {/* Solid dot (always visible) */}
+              <View style={s.solidDot} />
+              <UIText style={s.availableText}>{t("home.pharmacistAvailable")}</UIText>
+            </View>
+
+            <UIText variant="eyebrow" style={s.eyebrow}>
+              {t("home.pharmacistCard")}
+            </UIText>
+            <UIText variant="section-head" style={s.title}>
+              {t("home.needAdvice")}
+            </UIText>
+            <UIText variant="body-sm" style={s.sub}>
+              {t("home.pharmacistReply")}
+            </UIText>
           </View>
 
-          <UIText variant="eyebrow" style={s.eyebrow}>
-            {t("home.pharmacistCard")}
-          </UIText>
-          <UIText variant="section-head" style={s.title}>
-            {t("home.needAdvice")}
-          </UIText>
-          <UIText variant="body-sm" style={s.sub}>
-            {t("home.pharmacistReply")}
-          </UIText>
+          <View style={s.heroBadge}>
+            <View style={s.heroBadgeInner}>
+              <Ionicons name="medkit-outline" size={28} color="#7DD3FC" />
+            </View>
+            <UIText style={s.heroBadgeText}>24/7</UIText>
+          </View>
+        </View>
+
+        <View style={s.infoRail}>
+          <View style={s.infoPill}>
+            <Ionicons name="time-outline" size={14} color="#A7F3D0" />
+            <UIText style={s.infoLabel}>رد سريع</UIText>
+          </View>
+          <View style={s.infoPill}>
+            <Ionicons name="shield-checkmark-outline" size={14} color="#BAE6FD" />
+            <UIText style={s.infoLabel}>دعم موثوق</UIText>
+          </View>
         </View>
 
         {/* WhatsApp pill CTA — full-width, Reanimated spring scale (0.97 → 1.0) */}
@@ -124,10 +145,16 @@ export const PharmacistCard = memo(function PharmacistCard() {
             style={s.ctaBtn}
             accessibilityRole="button"
             accessibilityLabel={t("home.chatWhatsapp")}>
-            <Ionicons name="logo-whatsapp" size={20} color="#25D366" />
-            <UIText variant="body-sm" weight="black" style={s.ctaLabel}>
-              {t("home.chatWhatsapp")}
-            </UIText>
+            <View style={s.ctaIconWrap}>
+              <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
+            </View>
+            <View style={s.ctaCopy}>
+              <UIText variant="body-sm" weight="black" style={s.ctaLabel}>
+                {t("home.chatWhatsapp")}
+              </UIText>
+              <UIText style={s.ctaSubLabel}>ابدأ المحادثة الآن</UIText>
+            </View>
+            <Ionicons name={isRtl() ? "arrow-back" : "arrow-forward"} size={18} color={theme.colors.slate[700]} />
           </Pressable>
         </Animated.View>
 
@@ -144,8 +171,8 @@ const s = StyleSheet.create({
   },
   card: {
     borderRadius: 20,
-    padding:      theme.spacing.lg,  // 16 — uniform padding per mandate
-    gap:          12,                // 12px vertical gap standard
+    padding:      18,
+    gap:          14,
     overflow:     "hidden",
     ...theme.shadow.lg,
   },
@@ -179,8 +206,24 @@ const s = StyleSheet.create({
     borderWidth:  1,
     borderColor:  "rgba(13,184,168,0.20)",
   },
+  glowMesh: {
+    position:     "absolute",
+    bottom:       -50,
+    right:        40,
+    width:        180,
+    height:       180,
+    borderRadius: 90,
+    borderWidth:  1,
+    borderColor:  "rgba(125,211,252,0.08)",
+  },
 
   // ── "Available now" pill ────────────────────────────────────────────────────
+  heroRow: {
+    flexDirection:  "row-reverse",
+    alignItems:     "flex-start",
+    justifyContent: "space-between",
+    gap:            12,
+  },
   availableRow: {
     flexDirection:  "row",
     alignItems:     "center",
@@ -212,7 +255,7 @@ const s = StyleSheet.create({
   },
 
   // ── Text stack ──────────────────────────────────────────────────────────────
-  textStack: { gap: 4 },
+  textStack: { gap: 5, flex: 1 },
   eyebrow: {
     color:         "#5EEAD4",
     letterSpacing: 0.5,
@@ -222,27 +265,91 @@ const s = StyleSheet.create({
     color:         "#FFFFFF",
     textAlign:     textAlignStart(isRtl()),
     letterSpacing: -0.3,
+    lineHeight:    38,
   },
   sub: {
-    color:      "rgba(255,255,255,0.55)",
-    lineHeight: 18,
+    color:      "rgba(255,255,255,0.70)",
+    lineHeight: 21,
     textAlign:  textAlignStart(isRtl()),
+  },
+  heroBadge: {
+    width:           72,
+    alignItems:      "center",
+    justifyContent:  "center",
+    gap:             8,
+    paddingTop:      2,
+  },
+  heroBadgeInner: {
+    width:           72,
+    height:          72,
+    borderRadius:    22,
+    alignItems:      "center",
+    justifyContent:  "center",
+    backgroundColor: "rgba(255,255,255,0.10)",
+    borderWidth:     1,
+    borderColor:     "rgba(125,211,252,0.24)",
+  },
+  heroBadgeText: {
+    fontFamily: theme.fonts.black,
+    fontSize:   12,
+    color:      "#CFFAFE",
+  },
+  infoRail: {
+    flexDirection:  "row",
+    alignItems:     "center",
+    gap:            10,
+    flexWrap:       "wrap",
+  },
+  infoPill: {
+    flexDirection:     "row-reverse",
+    alignItems:        "center",
+    gap:               6,
+    paddingHorizontal: 12,
+    paddingVertical:   8,
+    borderRadius:      999,
+    backgroundColor:   "rgba(255,255,255,0.08)",
+    borderWidth:       1,
+    borderColor:       "rgba(255,255,255,0.10)",
+  },
+  infoLabel: {
+    fontFamily: theme.fonts.bold,
+    fontSize:   12,
+    color:      "rgba(255,255,255,0.86)",
   },
 
   // ── WhatsApp pill CTA ───────────────────────────────────────────────────────
   ctaBtn: {
     flexDirection:     "row",
     alignItems:        "center",
-    justifyContent:    "center",
-    gap:               8,
+    justifyContent:    "space-between",
+    gap:               10,
     backgroundColor:   "#FFFFFF",
-    borderRadius:      999,           // pill
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical:   13,
+    borderRadius:      22,
+    paddingHorizontal: 14,
+    paddingVertical:   12,
     ...theme.shadow.sm,
+  },
+  ctaIconWrap: {
+    width:           42,
+    height:          42,
+    borderRadius:    14,
+    alignItems:      "center",
+    justifyContent:  "center",
+    backgroundColor: "#ECFDF3",
+  },
+  ctaCopy: {
+    flex: 1,
+    gap:  2,
   },
   ctaLabel: {
     color:    theme.colors.slate[800],
-    fontSize: 13,
+    fontSize: 14,
+    textAlign: textAlignStart(isRtl()),
+  },
+  ctaSubLabel: {
+    fontFamily: theme.fonts.semibold,
+    fontSize:   11,
+    color:      theme.colors.slate[500],
+    textAlign:  textAlignStart(isRtl()),
   },
 });

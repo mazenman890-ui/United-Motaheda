@@ -164,7 +164,27 @@ export const useHealthProfileStore = create<HealthProfileState>()(
     {
       name:    "up.healthProfile",
       storage: createJSONStorage(() => AsyncStorage),
-      version: 1,
+      version: 2,
+      // v1 → v2: purge dev mock-seed records (ids prefixed "seed-") persisted
+      // by the removed PharmacyBootstrap dev seeding. Fake allergies/conditions
+      // are medically dangerous if mistaken for real user data.
+      migrate: (persisted: unknown, fromVersion: number) => {
+        const state = persisted as Pick<
+          HealthProfileState, "allergies" | "conditions" | "dependents" | "insurance"
+        >;
+        if (fromVersion < 2 && state) {
+          const noSeed = <T extends { id: string }>(arr: T[] | undefined): T[] =>
+            (arr ?? []).filter((x) => !x.id.startsWith("seed-"));
+          return {
+            ...state,
+            allergies:  noSeed(state.allergies),
+            conditions: noSeed(state.conditions),
+            dependents: noSeed(state.dependents),
+            insurance:  noSeed(state.insurance),
+          };
+        }
+        return state;
+      },
       // Persist data only; functions are reattached on rehydrate.
       partialize: (state) => ({
         allergies:  state.allergies,

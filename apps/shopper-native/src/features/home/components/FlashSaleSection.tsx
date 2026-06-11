@@ -23,7 +23,7 @@ import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
-import { flexRow, isRtl } from "@/utils/layout";
+import { flexRow, isRtl, FORWARD_CHEVRON } from "@/utils/layout";
 import { ProductCard } from "@/components/ProductCard";
 import { HomeSectionHeader } from "./HomeSectionHeader";
 import { flashStyles as fs, cntStyles as cs } from "./home.styles";
@@ -182,7 +182,7 @@ export const FlashSaleSection = memo(function FlashSaleSection({
               style={va.grad}>
               <Ionicons name="flame" size={15} color={theme.colors.surface} />
               <UIText style={va.text}>{t("home.viewAll")}</UIText>
-              <Ionicons name="chevron-back" size={15} color={theme.colors.surface} />
+              <Ionicons name={FORWARD_CHEVRON} size={15} color={theme.colors.surface} />
             </LinearGradient>
           </Pressable>
         </View>

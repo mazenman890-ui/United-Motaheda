@@ -19,7 +19,7 @@ import { theme } from "@/shared/theme";
 import { AppLogo } from "@/shared/components/AppLogo";
 import { BranchAddressList } from "@/components/BranchAddressCard";
 import { useAppLanguage } from "@/i18n/LanguageProvider";
-import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
+import { flexRow, isRtl, textAlignStart, FORWARD_CHEVRON } from "@/utils/layout";
 
 const APP_VERSION = "1.0.0";
 const APP_BUILD   = "100";
@@ -59,7 +59,7 @@ function ContactRow({ icon, label, value, color, onPress }: ContactRowProps) {
           <UIText style={styles.contactValue}>{value}</UIText>
         </View>
       </View>
-      <Ionicons name="chevron-back" size={16} color={theme.colors.text.tertiary} />
+      <Ionicons name={FORWARD_CHEVRON} size={16} color={theme.colors.text.tertiary} />
     </Pressable>
   );
 }

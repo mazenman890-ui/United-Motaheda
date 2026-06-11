@@ -7,6 +7,7 @@ import { theme } from "@/shared/theme";
 import type { GiftRedemption } from "../../types";
 import { cardStyles as cs } from "./wallet.styles";
 import { EmptyCard, ErrorRow, ListSkeleton } from "./WalletCouponsSection";
+import { FORWARD_CHEVRON } from "@/utils/layout";
 
 interface WalletRedemptionsSectionProps {
   isLoading:   boolean;
@@ -52,7 +53,7 @@ export const WalletRedemptionsSection = memo(function WalletRedemptionsSection({
           <Text style={cs.showMoreText}>
             {t("loyalty.walletMoreOrders", { n: active.length - 3 })}
           </Text>
-          <Ionicons name="chevron-back" size={14} color={theme.colors.brand[600]} />
+          <Ionicons name={FORWARD_CHEVRON} size={14} color={theme.colors.brand[600]} />
         </Pressable>
       )}
     </View>

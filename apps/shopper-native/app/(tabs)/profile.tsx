@@ -40,11 +40,10 @@ import { useAppLanguage } from "@/i18n/LanguageProvider";
 import { ProfileAuthHero } from "@/features/profile/components/ProfileAuthHero";
 import { ProfileGuestHero } from "@/features/profile/components/ProfileGuestHero";
 import { PROFILE } from "@/features/profile/components/profile.styles";
-import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
+import { flexRow, isRtl, textAlignStart, FORWARD_CHEVRON } from "@/utils/layout";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 const startAlign = textAlignStart(isRtl());
-const forwardChevron: IoniconsName = isRtl() ? "chevron-back" : "chevron-forward";
 
 // ─── Helpers (module-level — no re-allocation) ────────────────────────────────
 
@@ -163,7 +162,7 @@ const MenuRow = memo(function MenuRow({
         )}
 
         {/* Chevron — logical left in RTL */}
-        <Ionicons name={forwardChevron} size={15} color={theme.colors.slate[300]} />
+        <Ionicons name={FORWARD_CHEVRON} size={15} color={theme.colors.slate[300]} />
       </Animated.View>
     </Pressable>
   );
@@ -248,7 +247,7 @@ const LoyaltySummaryCard = memo(function LoyaltySummaryCard({
             </UIText>
           </View>
 
-          <Ionicons name={forwardChevron} size={14} color={theme.colors.slate[300]} />
+          <Ionicons name={FORWARD_CHEVRON} size={14} color={theme.colors.slate[300]} />
         </Animated.View>
       </Pressable>
     </View>
@@ -478,7 +477,7 @@ export default function ProfileScreen() {
                 style={s.dangerLabel}>
                 {signingOut ? t("common.loading") : t("profile.logout")}
               </UIText>
-              <Ionicons name={forwardChevron} size={15} color={theme.colors.error.light} />
+              <Ionicons name={FORWARD_CHEVRON} size={15} color={theme.colors.error.light} />
             </Pressable>
           </View>
         )}

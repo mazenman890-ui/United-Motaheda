@@ -2,8 +2,8 @@
  * Prescriptions feature — barrel.
  *
  * Public surface: bootstrap component, read hooks, mutation hooks, interaction
- * stub. Screens import from here; internals (rowMappers, mockSeed) are
- * deep-imported only where genuinely needed.
+ * stub. Screens import from here; internals (rowMappers) are deep-imported
+ * only where genuinely needed.
  */
 
 // Day 4 introduced PharmacyBootstrap in src/shared/components. The old
@@ -35,7 +35,7 @@ export { PrescriptionsList }            from "./screens/PrescriptionsList";
 export { AddRxEntry }                   from "./screens/AddRxEntry";
 export { AddRxManual }                  from "./screens/AddRxManual";
 export { sortActiveByStatus }           from "./lib/statusSort";
-export { mockLookup }                   from "./lib/manualLookup";
+export { lookupRxNumber }               from "./lib/manualLookup";
 export type { RxLookupResult }          from "./lib/manualLookup";
 
 export { parseRxText }                  from "./lib/parseRxText";

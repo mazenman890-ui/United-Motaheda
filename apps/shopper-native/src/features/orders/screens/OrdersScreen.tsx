@@ -22,7 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
-import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
+import { flexRow, isRtl, textAlignStart, BACK_CHEVRON } from "@/utils/layout";
 import { useAuth } from "@/features/auth";
 import type { Order } from "@/stores/orders";
 import { useOrders } from "../hooks/useOrders";
@@ -60,7 +60,7 @@ function OrdersHeader({
       <View style={h.topRow}>
         {showBack ? (
           <Pressable onPress={onBack} style={h.backBtn} accessibilityRole="button">
-            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.80)" />
+            <Ionicons name={BACK_CHEVRON} size={18} color="rgba(255,255,255,0.80)" />
           </Pressable>
         ) : (
           <View style={h.backBtnSpacer} />

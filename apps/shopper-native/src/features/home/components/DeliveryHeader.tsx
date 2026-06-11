@@ -21,6 +21,7 @@ import React, { memo, useMemo } from "react";
 import {
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   View,
 } from "react-native";
@@ -89,7 +90,7 @@ export const DeliveryHeader = memo(function DeliveryHeader({
       {/* ── Top bar: logo  ←→  cart ─────────────────────────────────────── */}
       <View style={s.topBar}>
         <View style={s.logoWrap}>
-          <AppLogo size="sm" />
+          <AppLogo size={44} />
         </View>
         <View style={s.topBarRight}>
           <Pressable
@@ -155,17 +156,18 @@ export const DeliveryHeader = memo(function DeliveryHeader({
       </Pressable>
 
       {/* ── Quick-access chips — Deals + Featured + All ──────────────────── */}
-      {/*
-        Square-ish corners (borderRadius 14) — more modern than full pill;
-        increased paddingHorizontal and fontSize for stronger visual weight.
-      */}
-      <View style={s.chipRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={s.chipScroll}
+        contentContainerStyle={s.chipRow}>
+
         <Pressable
           onPress={() => router.push("/deals")}
           style={s.dealChip}
           accessibilityRole="button">
           <Ionicons name="flame" size={12} color="#FCA5A5" />
-          <UIText style={s.dealChipText}>{t("home.flashTitle")}</UIText>
+          <UIText numberOfLines={1} style={s.dealChipText}>{t("home.flashTitle")}</UIText>
         </Pressable>
 
         <Pressable
@@ -173,7 +175,7 @@ export const DeliveryHeader = memo(function DeliveryHeader({
           style={s.featChip}
           accessibilityRole="button">
           <Ionicons name="star" size={12} color={theme.colors.amber[300]} />
-          <UIText style={s.featChipText}>{t("home.featuredTitle")}</UIText>
+          <UIText numberOfLines={1} style={s.featChipText}>{t("home.featuredTitle")}</UIText>
         </Pressable>
 
         <Pressable
@@ -181,9 +183,9 @@ export const DeliveryHeader = memo(function DeliveryHeader({
           style={s.allChip}
           accessibilityRole="button">
           <Ionicons name="grid-outline" size={12} color="rgba(255,255,255,0.60)" />
-          <UIText style={s.allChipText}>{t("products.allProducts")}</UIText>
+          <UIText numberOfLines={1} style={s.allChipText}>{t("products.allProducts")}</UIText>
         </Pressable>
-      </View>
+      </ScrollView>
     </LinearGradient>
   );
 });
@@ -259,23 +261,22 @@ const s = StyleSheet.create({
     gap:           10,
   },
 
-  // Dark-glass logo tile — blends into the gradient, no tinted-light contrast break
-  // Slightly larger (54×54) with heavier shadow for more visual presence
+  // Balanced tile size so the mark feels premium without dominating the top bar.
   logoWrap: {
-    width:           54,
-    height:          54,
-    borderRadius:    18,
-    backgroundColor: "rgba(255,255,255,0.10)",
+    width:           60,
+    height:          60,
+    borderRadius:    20,
+    backgroundColor: "rgba(255,255,255,0.12)",
     borderWidth:     1,
-    borderColor:     "rgba(255,255,255,0.18)",
+    borderColor:     "rgba(255,255,255,0.20)",
     alignItems:      "center",
     justifyContent:  "center",
     overflow:        "hidden",
     shadowColor:     "#000",
-    shadowOffset:    { width: 0, height: 3 },
-    shadowOpacity:   0.30,
-    shadowRadius:    8,
-    elevation:       5,
+    shadowOffset:    { width: 0, height: 6 },
+    shadowOpacity:   0.18,
+    shadowRadius:    12,
+    elevation:       6,
   },
 
   // Slightly larger touch target (44×44) with tighter radius
@@ -421,28 +422,31 @@ const s = StyleSheet.create({
   },
 
   // ── Quick-access chip row ──────────────────────────────────────────────────
+  chipScroll: {
+    marginTop: 14,
+  },
   chipRow: {
-    flexDirection:  flexRow(isRtl()),
-    justifyContent: "flex-start",
-    gap:            8,
-    marginTop:      14,
+    flexDirection: flexRow(isRtl()),
+    alignItems:    "center",
+    gap:           8,
   },
 
-  // 🔥 Deals chip — vivid red bloom; square-ish borderRadius 14 (more modern)
+  // 🔥 Deals chip — vivid red bloom; square-ish borderRadius 14
   dealChip: {
     flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
+    justifyContent:    "center",
     gap:               6,
     backgroundColor:   "rgba(239,68,68,0.16)",
     borderRadius:      14,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical:   9,
     borderWidth:       1,
     borderColor:       "rgba(252,165,165,0.25)",
   },
   dealChipText: {
     fontFamily: theme.fonts.bold,
-    fontSize:   13,
+    fontSize:   12,
     color:      "#FCA5A5",
   },
 
@@ -450,17 +454,18 @@ const s = StyleSheet.create({
   featChip: {
     flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
+    justifyContent:    "center",
     gap:               6,
     backgroundColor:   "rgba(245,158,11,0.14)",
     borderRadius:      14,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical:   9,
     borderWidth:       1,
     borderColor:       "rgba(251,191,36,0.22)",
   },
   featChipText: {
     fontFamily: theme.fonts.bold,
-    fontSize:   13,
+    fontSize:   12,
     color:      theme.colors.amber[300],
   },
 
@@ -468,17 +473,18 @@ const s = StyleSheet.create({
   allChip: {
     flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
+    justifyContent:    "center",
     gap:               6,
     backgroundColor:   "rgba(255,255,255,0.07)",
     borderRadius:      14,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical:   9,
     borderWidth:       1,
     borderColor:       "rgba(255,255,255,0.12)",
   },
   allChipText: {
     fontFamily: theme.fonts.bold,
-    fontSize:   13,
+    fontSize:   12,
     color:      "rgba(255,255,255,0.62)",
   },
 });

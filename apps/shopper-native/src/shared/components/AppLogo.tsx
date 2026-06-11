@@ -1,9 +1,20 @@
 /**
  * AppLogo — reusable brand-mark renderer.
  *
- * Renders the bare square "UP" mark from assets/brand-mark.png.
- * Container background: brand.lightest (light teal) — prevents the blank
- * white flash that appeared while the PNG decoded on first launch.
+ * Renders the "UP" mark from assets/brand-mark.png as a self-contained app
+ * tile: white background, proportional squircle radius, glyph inset.
+ *
+ * Geometry rationale (do not "simplify"):
+ *   - brand-mark.png is a fully opaque 196×196 RGB square (no alpha) whose
+ *     glyph bleeds to the image edges. Rendering it edge-to-edge inside a
+ *     rounded container clips the glyph and exposes square white edges —
+ *     the component must own clipping and inset the art itself.
+ *   - GLYPH_INSET scales the image to 76% so the mark clears the rounded
+ *     corners at every size.
+ *   - The container background is white to match the art's baked background,
+ *     so the inset region blends seamlessly (also removes the decode flash).
+ *   - Call sites may still wrap with their own radius; the white tile
+ *     composes cleanly under any outer clip.
  *
  * expo-image with no transition/cachePolicy: this is a bundled local asset,
  * it loads synchronously from the metro bundle — no disk I/O needed.
@@ -15,7 +26,7 @@
  *   - inline copy / list rows: size="xs"
  */
 
-import React from "react";
+import React, { useState } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -34,58 +45,61 @@ const ICON_SIZE: Record<keyof typeof SIZE, number> = {
   xs: 13, sm: 22, md: 35, lg: 52, xl: 76,
 };
 
+/** Image occupies this fraction of the tile so corners never clip the glyph. */
+const GLYPH_INSET = 0.82;
+
+/** Squircle-ish corner ratio (iOS app-icon ≈ 0.2237). */
+const RADIUS_RATIO = 0.24;
+
 // Bundled local asset — referenced at module level so metro never loses the path
 const BRAND_MARK = require("../../../assets/brand-mark.png");
 
 export type AppLogoSize = keyof typeof SIZE;
 
 export interface AppLogoProps {
-  size?:  AppLogoSize;
+  /** Token size, or an exact pixel size for slots the tokens don't cover. */
+  size?:  AppLogoSize | number;
   style?: StyleProp<ViewStyle>;
 }
 
 export function AppLogo({ size = "md", style }: AppLogoProps): React.ReactElement {
-  const px   = SIZE[size];
-  const icon = ICON_SIZE[size];
+  const px   = typeof size === "number" ? size : SIZE[size];
+  const icon = typeof size === "number" ? Math.round(size * 0.55) : ICON_SIZE[size];
+  const [failed, setFailed] = useState(false);
 
   return (
     <View
-      style={[s.container, { width: px, height: px }, style]}
+      style={[
+        s.container,
+        { width: px, height: px, borderRadius: Math.round(px * RADIUS_RATIO) },
+        style,
+      ]}
       accessibilityIgnoresInvertColors>
 
-      {/* Primary render — local bundled PNG via expo-image */}
-      <Image
-        source={BRAND_MARK}
-        style={s.image}
-        contentFit="contain"
-        accessibilityLabel="United Pharmacy"
-        accessibilityIgnoresInvertColors
-      />
-
-      {/* Emergency fallback — shown only if the PNG asset fails to decode.
-          Positioned absolutely so it never affects layout of sibling elements. */}
-      <View style={s.fallback} pointerEvents="none">
+      {failed ? (
+        // Shown only if the bundled PNG fails to decode (effectively never).
         <Ionicons name="medkit" size={icon} color={theme.colors.brand[700]} />
-      </View>
+      ) : (
+        <Image
+          source={BRAND_MARK}
+          style={{ width: px * GLYPH_INSET, height: px * GLYPH_INSET }}
+          contentFit="contain"
+          onError={() => setFailed(true)}
+          accessibilityLabel="United Pharmacy"
+          accessibilityIgnoresInvertColors
+        />
+      )}
     </View>
   );
 }
 
 const s = StyleSheet.create({
   container: {
-    // brand.lightest (#F0FDFB) shows before the PNG decodes —
-    // eliminates the plain-white flash seen on cold launch.
-    backgroundColor: theme.colors.brand.lightest,
+    // White matches the art's baked background — the inset blends seamlessly
+    // and no flash is visible while the PNG decodes.
+    backgroundColor: "#FFFFFF",
     overflow:        "hidden",
-  },
-  image: {
-    width:  "100%",
-    height: "100%",
-  },
-  fallback: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems:     "center",
-    justifyContent: "center",
-    opacity:        0,   // invisible normally; renders only if expo-image is absent
+    alignItems:      "center",
+    justifyContent:  "center",
   },
 });

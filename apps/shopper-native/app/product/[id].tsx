@@ -36,7 +36,7 @@ import { useCartStore } from "@/stores/cart";
 import { useWishlistStore } from "@/stores/wishlist";
 import { theme } from "@/shared/theme";
 import { formatPrice } from "@/utils/format";
-import { flexRow, isRtl } from "@/utils/layout";
+import { flexRow, isRtl, FORWARD_CHEVRON } from "@/utils/layout";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -501,7 +501,7 @@ export default function ProductDetailScreen() {
               <UIText variant="caption" weight="bold" color="brand">
                 {t("product.viewCart")}
               </UIText>
-              <Ionicons name="chevron-back" size={12} color={theme.colors.brand[700]} />
+              <Ionicons name={FORWARD_CHEVRON} size={12} color={theme.colors.brand[700]} />
             </Pressable>
           )}
           <Animated.View style={btnAnim}>

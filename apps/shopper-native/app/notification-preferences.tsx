@@ -25,7 +25,7 @@ import {
   type NotificationChannelPrefs,
 } from "@/features/notifications";
 import { theme } from "@/shared/theme";
-import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
+import { flexRow, isRtl, textAlignStart, BACK_CHEVRON } from "@/utils/layout";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -155,7 +155,7 @@ export default function NotificationPreferencesScreen() {
             style={styles.backBtn}
             accessibilityRole="button"
             accessibilityLabel={t("common.back")}>
-            <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.8)" />
+            <Ionicons name={BACK_CHEVRON} size={18} color="rgba(255,255,255,0.8)" />
           </Pressable>
           <View style={{ flex: 1 }}>
             <UIText style={styles.headerTitle}>{t("notifications.prefTitle")}</UIText>

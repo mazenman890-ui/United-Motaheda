@@ -27,6 +27,7 @@ import { Text as UIText } from "@/shared/ui";
 import { Button } from "@/components/ui/Button";
 import { theme } from "@/shared/theme";
 import { isManualWalletPayment } from "@/features/checkout";
+import { BACK_CHEVRON } from "@/utils/layout";
 import { PhoneVerifyModal } from "@/features/auth";
 
 import { useCheckoutFlow } from "@/features/checkout/hooks/useCheckoutFlow";
@@ -120,7 +121,7 @@ function CheckoutScreen() {
       <View style={[hs.root, { paddingTop: insets.top + 10 }]}>
         <View style={hs.backBtn}>
           <Ionicons
-            name="chevron-forward"
+            name={BACK_CHEVRON}
             size={18}
             color={theme.colors.slate[700]}
             onPress={() => router.back()}

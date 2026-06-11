@@ -11,7 +11,7 @@ import {
   skeletonStyles as sk,
   TOUR_GRADIENT,
 } from "./wallet.styles";
-import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
+import { flexRow, isRtl, textAlignStart, BACK_CHEVRON } from "@/utils/layout";
 
 // ─── ScreenHeader ─────────────────────────────────────────────────────────────
 
@@ -51,7 +51,7 @@ export const ScreenHeader = memo(function ScreenHeader({
           headerStyles.backBtn,
           pressed && headerStyles.backBtnPressed,
         ]}>
-        <Ionicons name="chevron-forward" size={22} color={theme.colors.text.primary} />
+        <Ionicons name={BACK_CHEVRON} size={22} color={theme.colors.text.primary} />
       </Pressable>
     </View>
   );
