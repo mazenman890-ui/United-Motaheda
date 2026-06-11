@@ -1,77 +1,58 @@
 /**
- * Onboarding — flagship scroll-driven experience (2026 redesign).
+ * Onboarding — light, premium, robust (2026 rebuild).
  *
- * Architecture
- * ────────────
- * One continuous "living" background (deep-navy gradient + two SVG radial
- * aurora glows) sits behind a transparent Animated.FlatList. Slides carry
- * content only — during a swipe the whole world morphs instead of pages
- * sliding past each other.
+ * Why this is a from-scratch rebuild
+ * ──────────────────────────────────
+ * The previous scroll-offset-driven parallax onboarding was fragile on Fabric
+ * RTL: Android inverts the horizontal scroll-offset origin, so interpolating
+ * `offset/width` put the progress dots, CTA, and parallax one-to-one out of
+ * sync with the visible slide (first slide showed the last slide's indicator).
  *
- * Motion system — single source of truth
- *   `scrollX` (shared value, useAnimatedScrollHandler) drives EVERYTHING
- *   on the UI thread via interpolation around each slide index:
- *     - Aurora glows crossfade between slide palettes
- *     - Hero card: counter-parallax (lags the page), scale, tilt, fade
- *     - Satellite chips: lead-parallax (faster than the page) → real depth
- *     - Copy rows: staggered fade windows (eyebrow → title → body)
- *     - Pagination dots: width + color morph continuous with the finger
- *     - CTA label: "Next" ⇄ "Start now" crossfade near the last slide
- *   No per-swipe re-renders: slides never depend on the active index.
+ * This version removes that whole class of bug:
+ *   • The active index comes from `onViewableItemsChanged` — layout-based and
+ *     immune to the offset-sign inversion. It drives the dots, the CTA label,
+ *     and each slide's entrance.
+ *   • Slide CONTENT is always rendered at full opacity — there is no opacity
+ *     gating that can ever leave a page blank. Motion is additive only (a
+ *     gentle scale/rise on the active slide), so a missed animation can never
+ *     hide content.
+ *   • Dot-tap navigation uses `pagerOffset` (the one place the confirmed RTL
+ *     offset inversion still matters) via `scrollToOffset`.
  *
- * Mount choreography (first paint only)
- *   brand row → hero card → eyebrow → title → body → footer, staggered
- *   via withDelay; composed multiplicatively with the scroll-driven styles.
- *
- * Ambient layer
- *   Satellites + auroras run slow float loops (withRepeat, yoyo) with
- *   `ReduceMotion.System` so OS-level reduced-motion disables them.
- *
- * RTL
- *   Layout via flexRow + start/end style keys (auto-mirrored by RN from
- *   I18nManager, same flag the layout utils read). Directional translateX
- *   outputs are multiplied by DIR (−1 in RTL). Scroll offsets are
- *   index-consistent in both directions (offset 0 = first slide), matching
- *   getItemLayout — the same contract the previous implementation relied
- *   on in production.
+ * Design: light theme, one centred hero per slide — a gradient icon medallion
+ * with the slide's headline metric — eyebrow pill, title, body. Fixed brand
+ * row + skip on top; animated progress + a single full-width CTA on the bottom.
+ * Fully RTL (centred copy reads identically), reduced-motion aware, responsive
+ * (content column capped for tablets), and accessible.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
   FlatList,
-  ListRenderItemInfo,
+  type ListRenderItemInfo,
   Platform,
-  Pressable,
   StyleSheet,
   useWindowDimensions,
   View,
+  type ViewToken,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   Easing,
-  Extrapolation,
   FadeIn,
   FadeInDown,
   FadeInUp,
   FadeOut,
-  interpolate,
-  interpolateColor,
-  ReduceMotion,
-  runOnJS,
-  useAnimatedReaction,
-  useAnimatedScrollHandler,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
-  withDelay,
-  withRepeat,
+  withSpring,
   withTiming,
-  type SharedValue,
 } from "react-native-reanimated";
-import Svg, { Circle, Defs, RadialGradient, Stop } from "react-native-svg";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useTranslation } from "react-i18next";
@@ -79,35 +60,22 @@ import { AppLogo } from "@/shared/components/AppLogo";
 import { Text } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { ONBOARDING_KEY } from "@/lib/onboardingKey";
-import { flexRow, isRtl, textAlignStart, FORWARD_CHEVRON } from "@/utils/layout";
-import { pagerProgress, pagerOffset, RTL_ANDROID, PressableScale } from "@/shared/motion";
+import { flexRow, isRtl, FORWARD_CHEVRON } from "@/utils/layout";
+import { pagerOffset, PressableScale } from "@/shared/motion";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
-// ─── Direction constants ──────────────────────────────────────────────────────
+const IS_RTL = isRtl();
 
-const IS_RTL      = isRtl();
-const START_ALIGN = textAlignStart(IS_RTL);
-/** Sign multiplier for directional translateX outputs (mirrors parallax in RTL). */
-const DIR = IS_RTL ? -1 : 1;
+// ─── Light palette ────────────────────────────────────────────────────────────
+const INK        = "#0B1F33";   // primary heading ink
+const INK_SOFT   = "#5A6B7B";   // body / muted
+const INK_FAINT  = "#9AA7B4";   // inactive dots / hints
+const SURFACE    = "#FFFFFF";
+const BG_TOP     = "#F4F9FB";   // page wash (top)
+const BG_BOTTOM  = "#EAF2F6";   // page wash (bottom)
 
-// RTL-aware pager math (pagerProgress / pagerOffset / RTL_ANDROID) is shared
-// from @/shared/motion so every carousel in the app uses one correct source.
-// `pagerProgress(offset, width, LAST_INDEX)` → logical progress (0 = first slide).
-
-// ─── Slide data ───────────────────────────────────────────────────────────────
-
-interface SatelliteSpec {
-  icon:     IoniconsName;
-  labelKey: string;
-  /** Absolute offsets inside the hero zone (logical start/end keys). */
-  pos:      { top?: number; bottom?: number; start?: number; end?: number };
-  /** Ambient float loop config. */
-  float:    { amp: number; dur: number; delay: number };
-  /** Parallax depth multiplier (1 = chip baseline, higher = closer to viewer). */
-  depth:    number;
-}
-
+// ─── Slide model ────────────────────────────────────────────────────────────
 interface Slide {
   id:             number;
   eyebrowKey:     string;
@@ -116,698 +84,260 @@ interface Slide {
   metricValue:    string;
   metricLabelKey: string;
   icon:           IoniconsName;
-  accent:         string;
-  accentSoft:     string;
-  /** Aurora glow colors for this slide (top orb / bottom orb). */
-  auroraA:        string;
-  auroraB:        string;
-  showLogo?:      boolean;
-  satellites:     [SatelliteSpec, SatelliteSpec];
+  grad:           readonly [string, string];  // medallion gradient
+  accent:         string;                      // eyebrow text / dot
+  tint:           string;                      // eyebrow pill bg
+  glow:           string;                      // ambient halo behind hero
 }
 
 const SLIDES: Slide[] = [
   {
     id: 1,
-    eyebrowKey:     "onboarding.slide1Eyebrow",
-    titleKey:       "onboarding.slide1Title",
-    bodyKey:        "onboarding.slide1Body",
-    metricValue:    "52k+",
+    eyebrowKey: "onboarding.slide1Eyebrow",
+    titleKey:   "onboarding.slide1Title",
+    bodyKey:    "onboarding.slide1Body",
+    metricValue: "52k+",
     metricLabelKey: "onboarding.metricProducts",
-    icon:           "medkit-outline",
-    accent:         theme.colors.teal[300],
-    accentSoft:     "rgba(92,224,210,0.16)",
-    auroraA:        theme.colors.teal[500],
-    auroraB:        theme.colors.brand[600],
-    showLogo:       true,
-    satellites: [
-      {
-        icon: "shield-checkmark-outline", labelKey: "onboarding.featureGenuine",
-        pos: { top: 4, start: 2 },  float: { amp: 10, dur: 3000, delay: 200 }, depth: 1.3,
-      },
-      {
-        icon: "chatbubble-ellipses-outline", labelKey: "onboarding.featureSupport",
-        pos: { bottom: 12, end: 4 }, float: { amp: 12, dur: 3600, delay: 800 }, depth: 1.0,
-      },
-    ],
+    icon:  "medkit",
+    grad:  ["#2DD4BF", "#0E9F94"],
+    accent: "#0D9488",
+    tint:  "rgba(13,148,136,0.10)",
+    glow:  "rgba(45,212,191,0.20)",
   },
   {
     id: 2,
-    eyebrowKey:     "onboarding.slide2Eyebrow",
-    titleKey:       "onboarding.slide2Title",
-    bodyKey:        "onboarding.slide2Body",
-    metricValue:    "30-60",
+    eyebrowKey: "onboarding.slide2Eyebrow",
+    titleKey:   "onboarding.slide2Title",
+    bodyKey:    "onboarding.slide2Body",
+    metricValue: "30-60",
     metricLabelKey: "onboarding.metricDelivery",
-    icon:           "flash-outline",
-    accent:         theme.colors.brand[300],
-    accentSoft:     "rgba(103,232,249,0.16)",
-    auroraA:        theme.colors.brand[400],
-    auroraB:        theme.colors.navy[400],
-    satellites: [
-      {
-        icon: "bicycle-outline", labelKey: "onboarding.featureFastDelivery",
-        pos: { top: 12, end: 2 },   float: { amp: 11, dur: 3200, delay: 400 }, depth: 1.3,
-      },
-      {
-        icon: "card-outline", labelKey: "onboarding.featureEasyPayment",
-        pos: { bottom: 8, start: 4 }, float: { amp: 9, dur: 2800, delay: 0 },  depth: 1.0,
-      },
-    ],
+    icon:  "flash",
+    grad:  ["#38BDF8", "#0284C7"],
+    accent: "#0284C7",
+    tint:  "rgba(2,132,199,0.10)",
+    glow:  "rgba(56,189,248,0.18)",
   },
   {
     id: 3,
-    eyebrowKey:     "onboarding.slide3Eyebrow",
-    titleKey:       "onboarding.slide3Title",
-    bodyKey:        "onboarding.slide3Body",
-    metricValue:    "100%",
+    eyebrowKey: "onboarding.slide3Eyebrow",
+    titleKey:   "onboarding.slide3Title",
+    bodyKey:    "onboarding.slide3Body",
+    metricValue: "100%",
     metricLabelKey: "onboarding.metricQuality",
-    icon:           "shield-checkmark-outline",
-    accent:         theme.colors.green[400],
-    accentSoft:     "rgba(74,222,128,0.15)",
-    auroraA:        theme.colors.green[500],
-    auroraB:        theme.colors.teal[500],
-    satellites: [
-      {
-        icon: "lock-closed-outline", labelKey: "onboarding.featureSecureOrders",
-        pos: { top: 4, start: 4 },   float: { amp: 10, dur: 3400, delay: 600 }, depth: 1.3,
-      },
-      {
-        icon: "reload-outline", labelKey: "onboarding.featureEasyReorder",
-        pos: { bottom: 14, end: 2 }, float: { amp: 12, dur: 3000, delay: 250 }, depth: 1.0,
-      },
-    ],
+    icon:  "shield-checkmark",
+    grad:  ["#4ADE80", "#16A34A"],
+    accent: "#15A34A",
+    tint:  "rgba(22,163,74,0.10)",
+    glow:  "rgba(74,222,128,0.18)",
   },
 ];
 
 const SLIDE_COUNT = SLIDES.length;
 const LAST_INDEX  = SLIDE_COUNT - 1;
+const ENTER_EASING = Easing.bezier(0.16, 1, 0.3, 1);
 
-// Shared loop / entrance configs
-const FLOAT_EASING = Easing.inOut(Easing.sin);
-const ENTER_EASING = Easing.bezier(0.16, 1, 0.3, 1); // theme "emphasize" curve
-
-// ─── AuroraOrb — soft radial glow (SVG) ──────────────────────────────────────
-
-const AuroraOrb = React.memo(function AuroraOrb({
-  id,
-  size,
-  color,
-}: {
-  id:    string;
-  size:  number;
-  color: string;
-}) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 100 100">
-      <Defs>
-        <RadialGradient id={id} cx="50%" cy="50%" r="50%">
-          <Stop offset="0%"   stopColor={color} stopOpacity={0.42} />
-          <Stop offset="55%"  stopColor={color} stopOpacity={0.18} />
-          <Stop offset="100%" stopColor={color} stopOpacity={0} />
-        </RadialGradient>
-      </Defs>
-      <Circle cx="50" cy="50" r="50" fill={`url(#${id})`} />
-    </Svg>
-  );
-});
-
-// ─── FadeOrb — crossfades a child in around one slide index ──────────────────
-
-const FadeOrb = React.memo(function FadeOrb({
-  index,
-  scrollX,
-  width,
-  children,
-}: {
-  index:    number;
-  scrollX:  SharedValue<number>;
-  width:    number;
-  children: React.ReactNode;
-}) {
-  const style = useAnimatedStyle(() => {
-    const p = pagerProgress(scrollX.value, width, LAST_INDEX);
-    return { opacity: interpolate(p, [index - 1, index, index + 1], [0, 1, 0], Extrapolation.CLAMP) };
-  });
-  return <Animated.View style={[StyleSheet.absoluteFill, style]}>{children}</Animated.View>;
-});
-
-// ─── AuroraLayer — two glow stacks that crossfade per slide + drift ──────────
-
-const AuroraLayer = React.memo(function AuroraLayer({
-  scrollX,
-  width,
-  reduced,
-}: {
-  scrollX: SharedValue<number>;
-  width:   number;
-  reduced: boolean;
-}) {
-  // Slow ambient drift — decorative, disabled by OS reduced-motion.
-  const floatA = useSharedValue(0);
-  const floatB = useSharedValue(0);
-
-  useEffect(() => {
-    floatA.value = withRepeat(
-      withTiming(1, { duration: 5200, easing: FLOAT_EASING, reduceMotion: ReduceMotion.System }),
-      -1, true,
-    );
-    floatB.value = withDelay(
-      900,
-      withRepeat(
-        withTiming(1, { duration: 6400, easing: FLOAT_EASING, reduceMotion: ReduceMotion.System }),
-        -1, true,
-      ),
-    );
-  }, [floatA, floatB]);
-
-  const stackAStyle = useAnimatedStyle(() => {
-    const p = pagerProgress(scrollX.value, width, LAST_INDEX);
-    return {
-      transform: [
-        { translateY: interpolate(floatA.value, [0, 1], [-12, 12]) },
-        { translateX: reduced ? 0 : interpolate(p, [0, LAST_INDEX], [0, -46], Extrapolation.CLAMP) * DIR },
-      ],
-    };
-  });
-
-  const stackBStyle = useAnimatedStyle(() => {
-    const p = pagerProgress(scrollX.value, width, LAST_INDEX);
-    return {
-      transform: [
-        { translateY: interpolate(floatB.value, [0, 1], [10, -10]) },
-        { translateX: reduced ? 0 : interpolate(p, [0, LAST_INDEX], [0, 38], Extrapolation.CLAMP) * DIR },
-      ],
-    };
-  });
-
-  return (
-    <View
-      style={StyleSheet.absoluteFill}
-      pointerEvents="none"
-      importantForAccessibility="no-hide-descendants"
-      accessibilityElementsHidden>
-      <Animated.View style={[bg.auroraA, stackAStyle]}>
-        <View style={bg.sizeA} />
-        {SLIDES.map((s, i) => (
-          <FadeOrb key={s.id} index={i} scrollX={scrollX} width={width}>
-            <AuroraOrb id={`aurora-a-${i}`} size={420} color={s.auroraA} />
-          </FadeOrb>
-        ))}
-      </Animated.View>
-
-      <Animated.View style={[bg.auroraB, stackBStyle]}>
-        <View style={bg.sizeB} />
-        {SLIDES.map((s, i) => (
-          <FadeOrb key={s.id} index={i} scrollX={scrollX} width={width}>
-            <AuroraOrb id={`aurora-b-${i}`} size={340} color={s.auroraB} />
-          </FadeOrb>
-        ))}
-      </Animated.View>
-    </View>
-  );
-});
-
-// ─── SatelliteChip — floating glass chip with lead-parallax ──────────────────
-
-const SatelliteChip = React.memo(function SatelliteChip({
-  spec,
-  accent,
-  accentSoft,
-  index,
-  scrollX,
-  width,
-  reduced,
-}: {
-  spec:       SatelliteSpec;
-  accent:     string;
-  accentSoft: string;
-  index:      number;
-  scrollX:    SharedValue<number>;
-  width:      number;
-  reduced:    boolean;
-}) {
-  const { t } = useTranslation();
-  const float = useSharedValue(0);
-
-  useEffect(() => {
-    float.value = withDelay(
-      spec.float.delay,
-      withRepeat(
-        withTiming(1, {
-          duration: spec.float.dur,
-          easing: FLOAT_EASING,
-          reduceMotion: ReduceMotion.System,
-        }),
-        -1, true,
-      ),
-    );
-  }, [float, spec.float.delay, spec.float.dur]);
-
-  const chipStyle = useAnimatedStyle(() => {
-    const p = pagerProgress(scrollX.value, width, LAST_INDEX);
-    return {
-      opacity: interpolate(p, [index - 0.7, index, index + 0.7], [0, 1, 0], Extrapolation.CLAMP),
-      transform: [
-        // Lead-parallax: chips travel faster than the page → foreground depth
-        {
-          translateX: reduced
-            ? 0
-            : interpolate(p, [index - 1, index, index + 1], [56, 0, -56], Extrapolation.CLAMP) *
-              spec.depth * DIR,
-        },
-        { translateY: interpolate(float.value, [0, 1], [-spec.float.amp / 2, spec.float.amp / 2]) },
-      ],
-    };
-  });
-
-  return (
-    <Animated.View style={[sat.chip, spec.pos, chipStyle]}>
-      <View style={[sat.icon, { backgroundColor: accentSoft }]}>
-        <Ionicons name={spec.icon} size={13} color={accent} />
-      </View>
-      <Text variant="caption" weight="bold" style={sat.label} numberOfLines={1}>
-        {t(spec.labelKey)}
-      </Text>
-    </Animated.View>
-  );
-});
-
-// ─── HeroCard — gradient-bordered glass focal panel ──────────────────────────
-
-const HeroCard = React.memo(function HeroCard({
+// ─── SlidePage — content is always visible; motion is additive only ──────────
+const SlidePage = memo(function SlidePage({
   slide,
-  compact,
-  cardWidth,
-}: {
-  slide:     Slide;
-  compact:   boolean;
-  cardWidth: number;
-}) {
-  const { t } = useTranslation();
-  const orbSize  = compact ? 92 : 112;
-  const tileSize = compact ? 68 : 82;
-
-  return (
-    <LinearGradient
-      colors={["rgba(255,255,255,0.34)", "rgba(255,255,255,0.05)"]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={hero.borderWrap}>
-      <View style={[hero.card, { width: cardWidth }, compact && hero.cardCompact]}>
-        {/* Diagonal sheen */}
-        <View style={hero.sheen} pointerEvents="none" />
-
-        {/* Icon orb — double ring */}
-        <View
-          style={[
-            hero.orb,
-            {
-              width: orbSize, height: orbSize, borderRadius: orbSize * 0.32,
-              backgroundColor: slide.accentSoft,
-            },
-          ]}>
-          <View
-            pointerEvents="none"
-            style={[hero.orbRing, { borderColor: `${slide.accent}38`, borderRadius: orbSize * 0.32 - 4 }]}
-          />
-          {slide.showLogo ? (
-            <View style={[hero.logoTile, { width: tileSize, height: tileSize, borderRadius: tileSize * 0.3 }]}>
-              <AppLogo size="md" />
-            </View>
-          ) : (
-            <Ionicons name={slide.icon} size={compact ? 40 : 48} color={slide.accent} />
-          )}
-        </View>
-
-        {/* Billboard metric */}
-        <Text style={[hero.metricNum, compact && hero.metricNumCompact]}>
-          {slide.metricValue}
-        </Text>
-        <Text variant="caption" style={hero.metricLabel} numberOfLines={2}>
-          {t(slide.metricLabelKey)}
-        </Text>
-      </View>
-    </LinearGradient>
-  );
-});
-
-// ─── SlidePage — transparent content layer, fully scroll-driven ──────────────
-
-const SlidePage = React.memo(function SlidePage({
-  slide,
-  index,
   width,
-  height,
   compact,
   reduced,
+  isActive,
   topPad,
   bottomPad,
-  scrollX,
 }: {
   slide:     Slide;
-  index:     number;
   width:     number;
-  height:    number;
   compact:   boolean;
   reduced:   boolean;
+  isActive:  boolean;
   topPad:    number;
   bottomPad: number;
-  scrollX:   SharedValue<number>;
 }) {
   const { t } = useTranslation();
-  // Cap the content column so copy never spans an unreadable width on tablets /
-  // large foldables; on phones this resolves to the full available width.
-  const contentMaxWidth = Math.min(width - theme.layout.pagePaddingH * 2, 520);
-  const cardWidth = Math.min(300, contentMaxWidth - 36);
+  const contentMaxWidth = Math.min(width - 48, 460);
 
-  // ── Mount entrance (plays once; off-screen slides finish invisibly) ──
-  const eHero    = useSharedValue(0);
-  const eEyebrow = useSharedValue(0);
-  const eTitle   = useSharedValue(0);
-  const eBody    = useSharedValue(0);
+  // Additive entrance: scale + rise that settles when the slide is active.
+  // Opacity is NEVER animated, so content can't be hidden by a missed tween.
+  const appear = useSharedValue(reduced || isActive ? 1 : 0);
 
   useEffect(() => {
-    const timing = { duration: 520, easing: ENTER_EASING, reduceMotion: ReduceMotion.System };
-    eHero.value    = withDelay(140, withTiming(1, timing));
-    eEyebrow.value = withDelay(300, withTiming(1, timing));
-    eTitle.value   = withDelay(400, withTiming(1, timing));
-    eBody.value    = withDelay(500, withTiming(1, timing));
-  }, [eHero, eEyebrow, eTitle, eBody]);
+    if (reduced) { appear.value = 1; return; }
+    appear.value = isActive
+      ? withSpring(1, { damping: 18, stiffness: 140, mass: 0.9 })
+      : withTiming(0.92, { duration: 260, easing: ENTER_EASING });
+  }, [isActive, reduced, appear]);
 
-  // ── Scroll-driven styles (composed with entrance) ──
-  const heroStyle = useAnimatedStyle(() => {
-    const p = pagerProgress(scrollX.value, width, LAST_INDEX);
-    const sOp = interpolate(p, [index - 1, index, index + 1], [0.2, 1, 0.2], Extrapolation.CLAMP);
-    // Reduced motion: keep the opacity crossfade (essential page feedback) but
-    // drop parallax travel, scale, and tilt.
-    if (reduced) {
-      return { opacity: sOp * eHero.value, transform: [{ translateY: (1 - eHero.value) * 26 }] };
-    }
-    const tilt = interpolate(p, [index - 1, index, index + 1], [2.6, 0, -2.6], Extrapolation.CLAMP) * DIR;
-    return {
-      opacity: sOp * eHero.value,
-      transform: [
-        // Counter-parallax: card lags the page → background depth
-        { translateX: interpolate(p, [index - 1, index, index + 1], [-44, 0, 44], Extrapolation.CLAMP) * DIR },
-        { translateY: (1 - eHero.value) * 26 },
-        { scale: interpolate(p, [index - 1, index, index + 1], [0.9, 1, 0.9], Extrapolation.CLAMP) * (0.94 + eHero.value * 0.06) },
-        { rotateZ: `${tilt}deg` },
-      ],
-    };
-  });
+  const heroAnim = useAnimatedStyle(() => ({
+    transform: [
+      { scale: 0.94 + appear.value * 0.06 },
+      { translateY: (1 - appear.value) * 14 },
+    ],
+  }));
+  const copyAnim = useAnimatedStyle(() => ({
+    transform: [{ translateY: (1 - appear.value) * 18 }],
+  }));
 
-  const glowStyle = useAnimatedStyle(() => {
-    const p = pagerProgress(scrollX.value, width, LAST_INDEX);
-    return {
-      opacity: interpolate(p, [index - 0.6, index, index + 0.6], [0, 1, 0], Extrapolation.CLAMP) * eHero.value,
-    };
-  });
-
-  const eyebrowStyle = useAnimatedStyle(() => {
-    const p = pagerProgress(scrollX.value, width, LAST_INDEX);
-    return {
-      opacity: interpolate(p, [index - 0.8, index, index + 0.8], [0, 1, 0], Extrapolation.CLAMP) * eEyebrow.value,
-      transform: [
-        { translateX: reduced ? 0 : interpolate(p, [index - 1, index, index + 1], [-14, 0, 14], Extrapolation.CLAMP) * DIR },
-        { translateY: (1 - eEyebrow.value) * 16 },
-      ],
-    };
-  });
-
-  const titleStyle = useAnimatedStyle(() => {
-    const p = pagerProgress(scrollX.value, width, LAST_INDEX);
-    return {
-      opacity: interpolate(p, [index - 0.65, index, index + 0.65], [0, 1, 0], Extrapolation.CLAMP) * eTitle.value,
-      transform: [
-        { translateX: reduced ? 0 : interpolate(p, [index - 1, index, index + 1], [-22, 0, 22], Extrapolation.CLAMP) * DIR },
-        { translateY: (1 - eTitle.value) * 18 },
-      ],
-    };
-  });
-
-  const bodyStyle = useAnimatedStyle(() => {
-    const p = pagerProgress(scrollX.value, width, LAST_INDEX);
-    return {
-      opacity: interpolate(p, [index - 0.5, index, index + 0.5], [0, 1, 0], Extrapolation.CLAMP) * eBody.value,
-      transform: [
-        { translateX: reduced ? 0 : interpolate(p, [index - 1, index, index + 1], [-30, 0, 30], Extrapolation.CLAMP) * DIR },
-        { translateY: (1 - eBody.value) * 18 },
-      ],
-    };
-  });
+  const medallion = compact ? 104 : 124;
+  const iconSize  = compact ? 44 : 52;
 
   return (
-    <View style={[page.root, { width, height, paddingTop: topPad, paddingBottom: bottomPad }]}>
-      {/* Centered content column — capped width keeps tablets/foldables readable. */}
-      <View style={[page.content, { maxWidth: contentMaxWidth }]}>
-        {/* ── Hero zone: glow + card + floating satellites ── */}
-        <View style={[page.heroZone, compact && page.heroZoneCompact]}>
-          <Animated.View
-            pointerEvents="none"
-            style={[page.glow, { backgroundColor: slide.accentSoft }, glowStyle]}
-          />
-          <Animated.View style={heroStyle}>
-            <HeroCard slide={slide} compact={compact} cardWidth={cardWidth} />
-          </Animated.View>
+    <View style={[page.root, { width, paddingTop: topPad, paddingBottom: bottomPad }]}>
+      <View style={[page.col, { maxWidth: contentMaxWidth }]}>
+        {/* Hero medallion + metric */}
+        <Animated.View style={[page.hero, heroAnim]}>
+          <View style={[page.glow, { backgroundColor: slide.glow }]} pointerEvents="none" />
+          <LinearGradient
+            colors={slide.grad}
+            start={{ x: 0.1, y: 0 }}
+            end={{ x: 0.9, y: 1 }}
+            style={[page.medallion, { width: medallion, height: medallion, borderRadius: medallion * 0.34 }]}>
+            <Ionicons name={slide.icon} size={iconSize} color="#FFFFFF" />
+          </LinearGradient>
 
-          {slide.satellites.map((spec) => (
-            <SatelliteChip
-              key={spec.labelKey}
-              spec={spec}
-              accent={slide.accent}
-              accentSoft={slide.accentSoft}
-              index={index}
-              scrollX={scrollX}
-              width={width}
-              reduced={reduced}
-            />
-          ))}
-        </View>
+          <View style={page.metricWrap}>
+            <Text style={[page.metric, compact && page.metricCompact]}>{slide.metricValue}</Text>
+            <Text style={page.metricLabel}>{t(slide.metricLabelKey)}</Text>
+          </View>
+        </Animated.View>
 
-        {/* ── Copy block — staggered fade windows during swipe ── */}
-        <View style={page.copy}>
-          <Animated.View style={eyebrowStyle}>
-            <View style={[page.eyebrowPill, { backgroundColor: slide.accentSoft }]}>
-              <Ionicons name={slide.icon} size={13} color={slide.accent} />
-              <Text variant="caption" weight="black" style={[page.eyebrowText, { color: slide.accent }]}>
-                {t(slide.eyebrowKey)}
-              </Text>
-            </View>
-          </Animated.View>
-
-          <Animated.View style={titleStyle}>
-            <Text style={[page.title, compact && page.titleCompact]}>
-              {t(slide.titleKey)}
+        {/* Copy */}
+        <Animated.View style={[page.copy, copyAnim]}>
+          <View style={[page.eyebrow, { backgroundColor: slide.tint }]}>
+            <Ionicons name={slide.icon} size={13} color={slide.accent} />
+            <Text weight="black" style={[page.eyebrowText, { color: slide.accent }]}>
+              {t(slide.eyebrowKey)}
             </Text>
-          </Animated.View>
+          </View>
 
-          <Animated.View style={bodyStyle}>
-            <Text variant="body" style={page.body}>
-              {t(slide.bodyKey)}
-            </Text>
-          </Animated.View>
-        </View>
+          <Text style={[page.title, compact && page.titleCompact]}>{t(slide.titleKey)}</Text>
+          <Text style={page.body}>{t(slide.bodyKey)}</Text>
+        </Animated.View>
       </View>
     </View>
   );
 });
 
-// ─── PageDot — morphing scroll-driven indicator ───────────────────────────────
-
-const PageDot = React.memo(function PageDot({
-  index,
+// ─── ProgressDot — width/colour driven by the (sign-independent) active index ─
+const ProgressDot = memo(function ProgressDot({
+  active,
   accent,
-  scrollX,
-  width,
-  onPress,
-  label,
+  reduced,
 }: {
-  index:   number;
+  active:  boolean;
   accent:  string;
-  scrollX: SharedValue<number>;
-  width:   number;
-  onPress: () => void;
-  label:   string;
+  reduced: boolean;
 }) {
-  const dotStyle = useAnimatedStyle(() => {
-    const p = pagerProgress(scrollX.value, width, LAST_INDEX);
-    // 1 at this index, falling to 0 one slide away — continuous with the finger
-    const t = 1 - Math.min(Math.abs(p - index), 1);
-    return {
-      width:           8 + 24 * t,
-      backgroundColor: interpolateColor(t, [0, 1], ["rgba(255,255,255,0.22)", accent]),
-      borderColor:     interpolateColor(t, [0, 1], ["rgba(255,255,255,0)", "rgba(255,255,255,0.32)"]),
-    };
-  });
-
-  return (
-    <Pressable onPress={onPress} hitSlop={16} accessibilityRole="button" accessibilityLabel={label}>
-      <Animated.View style={[foot.dot, dotStyle]} />
-    </Pressable>
-  );
+  const w = useSharedValue(active ? 24 : 7);
+  useEffect(() => {
+    w.value = reduced
+      ? (active ? 24 : 7)
+      : withSpring(active ? 24 : 7, { damping: 18, stiffness: 200 });
+  }, [active, reduced, w]);
+  const style = useAnimatedStyle(() => ({ width: w.value }));
+  return <Animated.View style={[foot.dot, { backgroundColor: active ? accent : INK_FAINT }, style]} />;
 });
 
 // ─── OnboardingScreen ─────────────────────────────────────────────────────────
-
 export default function OnboardingScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
+  const reduced = useReducedMotion();
   const listRef = useRef<FlatList<Slide>>(null);
 
-  const [current, setCurrent] = useState(0);
+  const [index, setIndex] = useState(0);
   const finishingRef = useRef(false);
-
-  const reduced = useReducedMotion();
-  const scrollX = useSharedValue(0);
+  const prevIndexRef = useRef(0);
 
   const compact   = height < 720;
-  const topPad    = insets.top + 74;                                      // clears fixed brand row
-  const bottomPad = Math.max(insets.bottom, 8) + (compact ? 138 : 152);   // clears footer
+  const topPad    = insets.top + 76;                                   // clears brand row
+  const bottomPad = Math.max(insets.bottom, 12) + (compact ? 150 : 168); // clears footer
 
-  const scrollHandler = useAnimatedScrollHandler((e) => {
-    scrollX.value = e.contentOffset.x;
-  });
-
-  // Track active index on the UI thread; sync to JS only when it changes.
-  const handleIndexChange = useCallback((idx: number) => {
-    setCurrent(idx);
-    if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
-  }, []);
-
-  useAnimatedReaction(
-    () => {
-      const idx = Math.round(pagerProgress(scrollX.value, width, LAST_INDEX));
-      return Math.min(Math.max(idx, 0), LAST_INDEX);
-    },
-    (idx, prev) => {
-      if (prev !== null && idx !== prev) runOnJS(handleIndexChange)(idx);
-    },
-    [width, handleIndexChange],
-  );
-
-  // Belt-and-suspenders for the Android-RTL origin: the `contentOffset` prop
-  // covers most devices, but some OEM builds ignore it on first layout, so we
-  // re-assert the first-slide offset once after mount (non-animated → no flash).
-  useEffect(() => {
-    if (!RTL_ANDROID) return;
-    const id = requestAnimationFrame(() => {
-      listRef.current?.scrollToOffset({ offset: pagerOffset(0, width, LAST_INDEX), animated: false });
-    });
-    return () => cancelAnimationFrame(id);
-  }, [width]);
+  // Active index from viewability — immune to the RTL offset-sign inversion.
+  const viewConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
+  const onViewRef = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    const i = viewableItems[0]?.index;
+    if (i == null) return;
+    setIndex(i);
+    if (i !== prevIndexRef.current) {
+      prevIndexRef.current = i;
+      if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
+    }
+  }).current;
 
   const finish = useCallback(async () => {
     if (finishingRef.current) return;
     finishingRef.current = true;
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     await AsyncStorage.setItem(ONBOARDING_KEY, "1");
     router.replace("/(tabs)");
   }, [router]);
 
-  // scrollToOffset (not scrollToIndex) so the Android-RTL offset inversion is
-  // handled explicitly via pagerOffset — tapping a dot lands on the right
-  // slide on every platform.
-  const goTo = useCallback((idx: number) => {
-    if (idx < 0 || idx >= SLIDE_COUNT) return;
+  const goTo = useCallback((i: number) => {
+    if (i < 0 || i >= SLIDE_COUNT) return;
     if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
-    listRef.current?.scrollToOffset({ offset: pagerOffset(idx, width, LAST_INDEX), animated: true });
+    listRef.current?.scrollToOffset({ offset: pagerOffset(i, width, LAST_INDEX), animated: true });
   }, [width]);
 
   const goNext = useCallback(() => {
-    if (current < LAST_INDEX) {
-      goTo(current + 1);
-      return;
-    }
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    }
-    void finish();
-  }, [current, finish, goTo]);
+    if (index < LAST_INDEX) goTo(index + 1);
+    else void finish();
+  }, [index, goTo, finish]);
 
   const renderItem = useCallback(
-    ({ item, index }: ListRenderItemInfo<Slide>) => (
+    ({ item, index: i }: ListRenderItemInfo<Slide>) => (
       <SlidePage
         slide={item}
-        index={index}
         width={width}
-        height={height}
         compact={compact}
         reduced={reduced}
+        isActive={i === index}
         topPad={topPad}
         bottomPad={bottomPad}
-        scrollX={scrollX}
       />
     ),
-    [width, height, compact, reduced, topPad, bottomPad, scrollX],
+    [width, compact, reduced, index, topPad, bottomPad],
   );
 
   const getItemLayout = useCallback(
-    (_: unknown, index: number) => ({ length: width, offset: width * index, index }),
+    (_: unknown, i: number) => ({ length: width, offset: width * i, index: i }),
     [width],
   );
 
-  // ── CTA label crossfade (Next ⇄ Start now) — UI thread ──
-  const nextLabelStyle = useAnimatedStyle(() => {
-    const p = pagerProgress(scrollX.value, width, LAST_INDEX);
-    return {
-      opacity: interpolate(p, [LAST_INDEX - 1, LAST_INDEX], [1, 0], Extrapolation.CLAMP),
-      transform: [{ translateY: interpolate(p, [LAST_INDEX - 1, LAST_INDEX], [0, -10], Extrapolation.CLAMP) }],
-    };
-  });
-  const startLabelStyle = useAnimatedStyle(() => {
-    const p = pagerProgress(scrollX.value, width, LAST_INDEX);
-    return {
-      opacity: interpolate(p, [LAST_INDEX - 1, LAST_INDEX], [0, 1], Extrapolation.CLAMP),
-      transform: [{ translateY: interpolate(p, [LAST_INDEX - 1, LAST_INDEX], [10, 0], Extrapolation.CLAMP) }],
-    };
-  });
-
-  const isLast = current === LAST_INDEX;
+  const isLast      = index === LAST_INDEX;
+  const activeAccent = SLIDES[index]?.accent ?? theme.colors.brand[600];
 
   return (
     <View style={chrome.root}>
-      {/* ── Living background: base gradient + aurora glows ── */}
-      <LinearGradient
-        colors={[theme.colors.hero, theme.colors.navy[800], theme.colors.navy[900]]}
-        start={{ x: 0.2, y: 0 }}
-        end={{ x: 0.8, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <AuroraLayer scrollX={scrollX} width={width} reduced={reduced} />
+      <StatusBar style="dark" />
 
-      {/* ── Slides (transparent content layer) ── */}
-      <Animated.FlatList
-        ref={listRef as never}
+      {/* Light page wash */}
+      <LinearGradient colors={[BG_TOP, BG_BOTTOM]} style={StyleSheet.absoluteFill} />
+
+      {/* Slides */}
+      <FlatList
+        ref={listRef}
         data={SLIDES}
-        keyExtractor={(slide) => String(slide.id)}
+        keyExtractor={(s) => String(s.id)}
         renderItem={renderItem}
         getItemLayout={getItemLayout}
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
         horizontal
         pagingEnabled
         bounces={false}
         showsHorizontalScrollIndicator={false}
         decelerationRate="fast"
+        onViewableItemsChanged={onViewRef}
+        viewabilityConfig={viewConfig}
         windowSize={SLIDE_COUNT}
-        maxToRenderPerBatch={SLIDE_COUNT}
         initialNumToRender={SLIDE_COUNT}
-        // Android RTL opens at raw offset 0 (= last slide). Seed the initial
-        // offset at the first logical slide; the effect below re-asserts it.
-        contentOffset={RTL_ANDROID ? { x: pagerOffset(0, width, LAST_INDEX), y: 0 } : undefined}
-        style={chrome.list}
+        maxToRenderPerBatch={SLIDE_COUNT}
       />
 
-      {/* ── Bottom scrim — guarantees CTA contrast over any content ── */}
-      <LinearGradient
-        colors={["rgba(3,12,24,0)", "rgba(3,12,24,0.62)", "rgba(3,12,24,0.94)"]}
-        style={chrome.scrim}
-        pointerEvents="none"
-      />
-
-      {/* ── Fixed chrome: brand row (top-start) ── */}
+      {/* ── Top chrome: brand + skip ── */}
       <Animated.View
-        entering={FadeInDown.duration(420).delay(80)}
+        entering={reduced ? undefined : FadeInDown.duration(420).delay(80)}
         style={[chrome.brandRow, { top: insets.top + 12 }]}>
         <View style={chrome.brandMark}>
           <AppLogo size="sm" />
@@ -815,11 +345,10 @@ export default function OnboardingScreen() {
         <Text weight="black" style={chrome.brandName}>United Pharmacy</Text>
       </Animated.View>
 
-      {/* ── Skip (top-end; hidden on last slide) ── */}
       {!isLast && (
         <Animated.View
-          entering={FadeIn.duration(280).delay(260)}
-          exiting={FadeOut.duration(180)}
+          entering={reduced ? undefined : FadeIn.duration(260).delay(220)}
+          exiting={reduced ? undefined : FadeOut.duration(160)}
           style={[chrome.skipWrap, { top: insets.top + 14 }]}>
           <PressableScale
             onPress={() => void finish()}
@@ -827,69 +356,42 @@ export default function OnboardingScreen() {
             style={chrome.skipBtn}
             accessibilityRole="button"
             accessibilityLabel={t("onboarding.skipLabel")}>
-            <Text variant="caption" weight="black" style={chrome.skipText}>
-              {t("onboarding.skip")}
-            </Text>
+            <Text weight="bold" style={chrome.skipText}>{t("onboarding.skip")}</Text>
           </PressableScale>
         </Animated.View>
       )}
 
-      {/* ── Footer: morphing dots + CTA ── */}
+      {/* ── Bottom chrome: progress + CTA ── */}
       <Animated.View
-        entering={FadeInUp.duration(460).delay(560)}
-        style={[foot.wrap, { paddingBottom: Math.max(insets.bottom, 8) + 14 }]}>
-
+        entering={reduced ? undefined : FadeInUp.duration(460).delay(360)}
+        style={[foot.wrap, { paddingBottom: Math.max(insets.bottom, 12) + 16 }]}>
         <View
-          style={foot.dotsRow}
+          style={foot.dots}
           accessibilityRole="progressbar"
-          accessibilityLabel={t("onboarding.slideProgress", { n: current + 1, total: SLIDE_COUNT })}
-          accessibilityValue={{ min: 0, max: LAST_INDEX, now: current }}>
-          {SLIDES.map((slide, index) => (
-            <PageDot
-              key={slide.id}
-              index={index}
-              accent={slide.accent}
-              scrollX={scrollX}
-              width={width}
-              onPress={() => goTo(index)}
-              label={t("onboarding.slideProgress", { n: index + 1, total: SLIDE_COUNT })}
-            />
+          accessibilityValue={{ min: 1, max: SLIDE_COUNT, now: index + 1 }}
+          accessibilityLabel={t("onboarding.slideProgress", { n: index + 1, total: SLIDE_COUNT })}>
+          {SLIDES.map((s, i) => (
+            <ProgressDot key={s.id} active={i === index} accent={s.accent} reduced={reduced} />
           ))}
         </View>
 
         <PressableScale
           onPress={goNext}
           scaleTo={0.97}
+          style={foot.cta}
           accessibilityRole="button"
-          accessibilityState={{ disabled: false }}
-          accessibilityLabel={isLast ? t("onboarding.start") : t("onboarding.next")}
-          accessibilityHint={isLast ? t("onboarding.skipLabel") : undefined}
-          style={foot.cta}>
+          accessibilityLabel={isLast ? t("onboarding.start") : t("onboarding.next")}>
           <LinearGradient
-            colors={[theme.colors.teal[400], theme.colors.brand[600]]}
+            colors={[activeAccent, INK]}
             start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={foot.ctaGradient}>
-
-            {/* "Next" face */}
-            <Animated.View style={[foot.ctaFace, nextLabelStyle]}>
-              <Text variant="body" weight="black" style={foot.ctaText}>
-                {t("onboarding.next")}
-              </Text>
-              <View style={foot.ctaIconChip}>
-                <Ionicons name={FORWARD_CHEVRON} size={17} color={theme.colors.surface} />
-              </View>
-            </Animated.View>
-
-            {/* "Start now" face */}
-            <Animated.View style={[foot.ctaFace, foot.ctaFaceOverlay, startLabelStyle]}>
-              <Text variant="body" weight="black" style={foot.ctaText}>
-                {t("onboarding.start")}
-              </Text>
-              <View style={foot.ctaIconChip}>
-                <Ionicons name="checkmark" size={17} color={theme.colors.surface} />
-              </View>
-            </Animated.View>
+            end={{ x: 1, y: 1 }}
+            style={foot.ctaGrad}>
+            <Text weight="black" style={foot.ctaText}>
+              {isLast ? t("onboarding.start") : t("onboarding.next")}
+            </Text>
+            <View style={foot.ctaIcon}>
+              <Ionicons name={isLast ? "checkmark" : FORWARD_CHEVRON} size={17} color="#FFFFFF" />
+            </View>
           </LinearGradient>
         </PressableScale>
       </Animated.View>
@@ -898,328 +400,110 @@ export default function OnboardingScreen() {
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
-
-// Fixed chrome (root, list, scrim, brand, skip)
 const chrome = StyleSheet.create({
-  root: {
-    flex:            1,
-    backgroundColor: theme.colors.navy[900],
-  },
-  list: {
-    flex:            1,
-    backgroundColor: "transparent",
-  },
-  scrim: {
-    position: "absolute",
-    left:     0,
-    right:    0,
-    bottom:   0,
-    height:   216,
-  },
+  root: { flex: 1, backgroundColor: BG_TOP },
+
   brandRow: {
     position:      "absolute",
     zIndex:        theme.zIndex.sticky,
-    start:         theme.layout.pagePaddingH,
+    start:         20,
     flexDirection: flexRow(IS_RTL),
     alignItems:    "center",
-    gap:           theme.spacing.md,
+    gap:           10,
   },
   brandMark: {
-    width:        40,
-    height:       40,
-    borderRadius: 14,
-    overflow:     "hidden",
-    borderWidth:  1,
-    borderColor:  "rgba(255,255,255,0.22)",
+    width: 38, height: 38, borderRadius: 13, overflow: "hidden",
+    borderWidth: 1, borderColor: "rgba(11,31,51,0.08)",
+    backgroundColor: SURFACE,
   },
   brandName: {
-    color:              theme.colors.surface,
-    fontSize:           14,
-    lineHeight:         20,
-    fontFamily:         theme.fonts.black,
-    includeFontPadding: false,
-    textAlignVertical:  "center",
+    color: INK, fontSize: 14, lineHeight: 20,
+    fontFamily: theme.fonts.black, includeFontPadding: false, textAlignVertical: "center",
   },
-  // Positioning wrapper (absolute placement); carries the enter/exit animation.
-  skipWrap: {
-    position: "absolute",
-    zIndex:   theme.zIndex.toast,
-    end:      theme.layout.pagePaddingH,
-  },
-  // Visual pill — handed to PressableScale so its inner animated view is styled.
+
+  skipWrap: { position: "absolute", zIndex: theme.zIndex.toast, end: 16 },
   skipBtn: {
-    minHeight:         40,
-    minWidth:          64,
-    paddingHorizontal: 18,
-    paddingVertical:   10,
-    borderRadius:      theme.radius.pill,
-    alignItems:        "center",
-    justifyContent:    "center",
-    backgroundColor:   "rgba(2,9,20,0.50)",
-    borderWidth:       1,
-    borderColor:       "rgba(255,255,255,0.20)",
+    minHeight: 40, minWidth: 64,
+    paddingHorizontal: 16, paddingVertical: 9,
+    borderRadius: theme.radius.pill,
+    alignItems: "center", justifyContent: "center",
+    backgroundColor: "rgba(11,31,51,0.05)",
+    borderWidth: 1, borderColor: "rgba(11,31,51,0.08)",
   },
-  // paddingHorizontal + no letterSpacing → Android never clips the trailing
-  // Arabic glyph of "تخطّي"; lineHeight gives descenders headroom.
   skipText: {
-    color:              theme.colors.surface,
-    fontSize:           13,
-    lineHeight:         20,
-    paddingHorizontal:  2,
-    includeFontPadding: false,
-    textAlign:          "center",
-    textAlignVertical:  "center",
+    color: INK_SOFT, fontSize: 13, lineHeight: 20,
+    paddingHorizontal: 2, includeFontPadding: false, textAlign: "center",
   },
 });
 
-// Background aurora positions (logical start/end keys — auto-mirrored)
-const bg = StyleSheet.create({
-  auroraA: {
-    position: "absolute",
-    top:      -90,
-    end:      -120,
-  },
-  auroraB: {
-    position: "absolute",
-    bottom:   "16%",
-    start:    -130,
-  },
-  sizeA: { width: 420, height: 420 },
-  sizeB: { width: 340, height: 340 },
-});
-
-// Slide content
 const page = StyleSheet.create({
-  root: {
-    paddingHorizontal: theme.layout.pagePaddingH,
-    justifyContent:    "center",
-  },
-  // Centered, width-capped column (full width on phones, capped on tablets).
-  content: {
-    width:      "100%",
-    alignSelf:  "center",
-    gap:        theme.spacing["3xl"],
-  },
-  heroZone: {
-    alignItems:      "center",
-    justifyContent:  "center",
-    paddingVertical: 30,
-  },
-  heroZoneCompact: {
-    paddingVertical: 20,
-  },
-  // Soft accent halo behind the hero card
+  root: { paddingHorizontal: 24, justifyContent: "center" },
+  col:  { width: "100%", alignSelf: "center", alignItems: "center", gap: 36 },
+
+  hero: { alignItems: "center", gap: 18 },
   glow: {
-    position:     "absolute",
-    width:        300,
-    height:       300,
-    borderRadius: 150,
+    position: "absolute", top: -28, width: 240, height: 240, borderRadius: 120,
   },
-  copy: {
-    gap: theme.spacing.md,
+  medallion: {
+    alignItems: "center", justifyContent: "center",
+    shadowColor: "#0B1F33", shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.18, shadowRadius: 26, elevation: 12,
   },
-  eyebrowPill: {
-    alignSelf:         IS_RTL ? "flex-end" : "flex-start",
-    flexDirection:     flexRow(IS_RTL),
-    alignItems:        "center",
-    gap:               theme.spacing.xs,
-    minHeight:         36,
-    paddingHorizontal: theme.spacing.md,
-    borderRadius:      theme.radius.pill,
-    borderWidth:       1,
-    borderColor:       "rgba(255,255,255,0.12)",
+  metricWrap: { alignItems: "center", gap: 2 },
+  metric: {
+    fontFamily: theme.fonts.black, fontSize: 46, lineHeight: 54,
+    color: INK, letterSpacing: -1.5, includeFontPadding: false, textAlignVertical: "center",
   },
-  eyebrowText: {
-    fontSize:           11,
-    lineHeight:         18,
-    includeFontPadding: false,
-    textAlignVertical:  "center",
-  },
-  title: {
-    fontFamily:         theme.fonts.black,
-    fontSize:           42,
-    lineHeight:         54,
-    color:              theme.colors.surface,
-    textAlign:          START_ALIGN,
-    letterSpacing:      -1.0,
-    includeFontPadding: false,
-    textAlignVertical:  "center",
-  },
-  titleCompact: {
-    fontSize:   34,
-    lineHeight: 44,
-  },
-  body: {
-    color:              "rgba(255,255,255,0.74)",
-    textAlign:          START_ALIGN,
-    lineHeight:         26,
-    includeFontPadding: false,
-    textAlignVertical:  "center",
-  },
-});
-
-// Hero card
-const hero = StyleSheet.create({
-  // 1.5px gradient border via padded LinearGradient wrapper
-  borderWrap: {
-    borderRadius: 33.5,
-    padding:      1.5,
-    ...theme.shadow.float,
-  },
-  card: {
-    borderRadius:    32,
-    paddingVertical: 30,
-    alignItems:      "center",
-    gap:             6,
-    backgroundColor: "rgba(9,24,44,0.66)",
-    overflow:        "hidden",
-  },
-  cardCompact: {
-    paddingVertical: 22,
-  },
-  // Diagonal light sheen across the top of the glass
-  sheen: {
-    position:        "absolute",
-    top:             -70,
-    left:            -40,
-    right:           -40,
-    height:          130,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    transform:       [{ rotate: "-12deg" }],
-  },
-  orb: {
-    alignItems:     "center",
-    justifyContent: "center",
-    borderWidth:    1,
-    borderColor:    "rgba(255,255,255,0.18)",
-    marginBottom:   12,
-  },
-  orbRing: {
-    position:    "absolute",
-    top:         4,
-    left:        4,
-    right:       4,
-    bottom:      4,
-    borderWidth: 1,
-  },
-  logoTile: {
-    overflow:        "hidden",
-    alignItems:      "center",
-    justifyContent:  "center",
-    backgroundColor: theme.colors.surface,
-  },
-  metricNum: {
-    fontFamily:         theme.fonts.black,
-    fontSize:           54,
-    lineHeight:         62,
-    color:              theme.colors.surface,
-    letterSpacing:      -2,
-    includeFontPadding: false,
-    textAlignVertical:  "center",
-  },
-  metricNumCompact: {
-    fontSize:   42,
-    lineHeight: 50,
-  },
+  metricCompact: { fontSize: 38, lineHeight: 46 },
   metricLabel: {
-    color:              "rgba(255,255,255,0.62)",
-    textAlign:          "center",
-    includeFontPadding: false,
-    lineHeight:         16,
-    paddingHorizontal:  20,
+    fontFamily: theme.fonts.bold, fontSize: 13, color: INK_SOFT,
+    textAlign: "center", includeFontPadding: false,
+  },
+
+  copy: { alignItems: "center", gap: 14, width: "100%" },
+  eyebrow: {
+    flexDirection: flexRow(IS_RTL), alignItems: "center", gap: 6,
+    minHeight: 34, paddingHorizontal: 14, borderRadius: theme.radius.pill,
+  },
+  eyebrowText: { fontSize: 11, lineHeight: 18, includeFontPadding: false, textAlignVertical: "center" },
+  title: {
+    fontFamily: theme.fonts.black, fontSize: 30, lineHeight: 40,
+    color: INK, textAlign: "center", letterSpacing: -0.8,
+    includeFontPadding: false, textAlignVertical: "center",
+  },
+  titleCompact: { fontSize: 26, lineHeight: 34 },
+  body: {
+    fontFamily: theme.fonts.regular, fontSize: 15, lineHeight: 24,
+    color: INK_SOFT, textAlign: "center", includeFontPadding: false,
+    paddingHorizontal: 6,
   },
 });
 
-// Satellite chips
-const sat = StyleSheet.create({
-  chip: {
-    position:          "absolute",
-    zIndex:            2,
-    flexDirection:     flexRow(IS_RTL),
-    alignItems:        "center",
-    gap:               8,
-    paddingVertical:   9,
-    paddingHorizontal: 12,
-    borderRadius:      18,
-    backgroundColor:   "rgba(4,16,32,0.66)",
-    borderWidth:       1,
-    borderColor:       "rgba(255,255,255,0.15)",
-    maxWidth:          190,
-    ...theme.shadow.lg,
-  },
-  icon: {
-    width:          26,
-    height:         26,
-    borderRadius:   9,
-    alignItems:     "center",
-    justifyContent: "center",
-  },
-  label: {
-    color:              theme.colors.surface,
-    includeFontPadding: false,
-    lineHeight:         16,
-    flexShrink:         1,
-  },
-});
-
-// Footer (dots + CTA)
 const foot = StyleSheet.create({
   wrap: {
-    position:          "absolute",
-    left:              0,
-    right:             0,
-    bottom:            0,
-    zIndex:            theme.zIndex.overlay,
-    paddingHorizontal: theme.layout.pagePaddingH,
-    gap:               theme.spacing.lg,
+    position: "absolute", left: 0, right: 0, bottom: 0,
+    zIndex: theme.zIndex.overlay, paddingHorizontal: 24, gap: 22,
   },
-  dotsRow: {
-    flexDirection:  flexRow(IS_RTL),
-    alignItems:     "center",
-    justifyContent: "center",
-    gap:            theme.spacing.xs,
-    minHeight:      16,
+  dots: {
+    flexDirection: flexRow(IS_RTL), alignItems: "center", justifyContent: "center",
+    gap: 7, minHeight: 10,
   },
-  dot: {
-    height:       8,
-    borderRadius: 4,
-    borderWidth:  1,
-  },
+  dot: { height: 7, borderRadius: 4 },
   cta: {
-    borderRadius:  22,
-    overflow:      "hidden",
-    ...theme.shadow.teal,
+    borderRadius: 18, overflow: "hidden",
+    shadowColor: "#0B1F33", shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.20, shadowRadius: 18, elevation: 9,
   },
-  ctaGradient: {
-    minHeight:      64,
-    borderRadius:   22,
-    justifyContent: "center",
-  },
-  ctaFace: {
-    flexDirection:     flexRow(IS_RTL),
-    alignItems:        "center",
-    justifyContent:    "center",
-    gap:               theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-  },
-  ctaFaceOverlay: {
-    ...StyleSheet.absoluteFillObject,
+  ctaGrad: {
+    flexDirection: flexRow(IS_RTL), alignItems: "center", justifyContent: "center",
+    gap: 12, height: 58, borderRadius: 18, paddingHorizontal: 20,
   },
   ctaText: {
-    color:              theme.colors.surface,
-    fontFamily:         theme.fonts.black,
-    fontSize:           15,
-    lineHeight:         22,
-    letterSpacing:      -0.2,
-    includeFontPadding: false,
-    textAlignVertical:  "center",
+    color: "#FFFFFF", fontFamily: theme.fonts.black, fontSize: 16,
+    letterSpacing: -0.2, includeFontPadding: false, textAlignVertical: "center",
   },
-  ctaIconChip: {
-    width:           36,
-    height:          36,
-    borderRadius:    18,
-    backgroundColor: "rgba(255,255,255,0.22)",
-    alignItems:      "center",
-    justifyContent:  "center",
+  ctaIcon: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center",
   },
 });

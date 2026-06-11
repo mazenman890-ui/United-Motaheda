@@ -1,48 +1,41 @@
 /**
  * rtlPager — RTL-aware horizontal pager math.
  *
- * Why this exists
- * ───────────────
- * Historically (old/Paper architecture) **Android** inverted the
- * `contentOffset` origin of an RTL horizontal ScrollView: raw offset 0 = the
- * LAST logical page. iOS did not. That mismatch broke any scroll-driven
- * interpolation that assumed `offset / pageWidth === index`.
+ * Confirmed on-device behaviour (Fabric / New Architecture, build 6fe824c which
+ * used identity mapping): **Android RTL inverts the horizontal scroll-offset
+ * origin** — raw offset 0 = the LAST logical page, increasing toward the first.
+ * iOS keeps offset 0 = first page. (The screenshots showed the first slide
+ * rendering with the *last* slide's progress dot + CTA, which is exactly this
+ * inversion surfacing through `offset/width`.)
  *
- * This app runs on the **New Architecture (Fabric)** — `newArchEnabled: true`
- * in app.json. Fabric normalized RTL horizontal scrolling to match iOS:
- * **offset 0 = the FIRST logical page on every platform**, increasing as the
- * user advances. The old Android inversion no longer applies, and re-applying
- * it (as an earlier pass did) double-inverts — which made onboarding open on
- * the last slide and blanked pages because the opacity windows no longer lined
- * up with the visible slide.
- *
- * So under Fabric the helpers are the identity mapping: progress is the raw
- * scroll fraction and a page's offset is simply `index * pageWidth`. The
- * indirection is kept (one source of truth) so if a platform ever diverges
- * again it is a single edit here, not a sweep across every carousel.
+ * So `RTL_ANDROID` is true on Android RTL and the helpers invert there. The
+ * onboarding now drives its active index from `onViewableItemsChanged` (which
+ * is layout-based and immune to this), and only uses `pagerOffset` for
+ * dot-tap navigation via `scrollToOffset` — where the inverted offset is
+ * required to land on the right page.
  */
 
-/**
- * True only where the native RTL scroll-offset origin is inverted.
- * Fabric is consistent with iOS, so this is false everywhere in this app.
- * Call sites gate RTL-specific seeding/correction on this flag, so flipping it
- * here is enough to re-enable the old-arch behaviour if ever needed.
- */
-export const RTL_ANDROID = false;
+import { I18nManager, Platform } from "react-native";
+
+const IS_RTL = I18nManager.isRTL;
+
+/** True where the native RTL horizontal scroll-offset origin is inverted. */
+export const RTL_ANDROID = IS_RTL && Platform.OS === "android";
 
 /**
- * Raw horizontal scroll offset → logical page progress (0 = first page …
- * lastIndex = last). Worklet: callable from Reanimated UI-thread bodies.
+ * Raw horizontal scroll offset → logical page progress (0 = first … lastIndex).
+ * Worklet: callable from Reanimated UI-thread bodies.
  */
-export function pagerProgress(offsetX: number, pageWidth: number, _lastIndex: number): number {
+export function pagerProgress(offsetX: number, pageWidth: number, lastIndex: number): number {
   "worklet";
-  return offsetX / Math.max(pageWidth, 1);
+  const raw = offsetX / Math.max(pageWidth, 1);
+  return RTL_ANDROID ? lastIndex - raw : raw;
 }
 
 /**
  * Logical page index → raw scroll offset for `scrollToOffset({ offset })`.
  * Inverse of {@link pagerProgress}. JS-thread helper (not a worklet).
  */
-export function pagerOffset(index: number, pageWidth: number, _lastIndex: number): number {
-  return index * pageWidth;
+export function pagerOffset(index: number, pageWidth: number, lastIndex: number): number {
+  return (RTL_ANDROID ? lastIndex - index : index) * pageWidth;
 }
