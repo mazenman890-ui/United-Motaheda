@@ -107,35 +107,26 @@ function CartReservationNotifier() {
 export default function RootLayout() {
   // All user-data stores are auth-aware and hydrated inside PharmacyBootstrap
   // (fires on user.id change). Root mount only handles fonts + RTL + splash.
-  const [fontsReady, setFontsReady] = React.useState(false);
-
   useEffect(() => {
-    let active = true;
-    // Called on load, error, or timeout — never propagates a rejection upward.
-    const proceed = () => { if (active) setFontsReady(true); };
-    // Hard cap slightly below Expo's internal 6 000 ms limit so we gracefully
-    // fall back to the system font instead of letting useFonts throw an
-    // Uncaught Promise Rejection that surfaces as a grey screen.
-    const timer = setTimeout(proceed, 5_500);
-
+    // Load brand fonts in the background. The SplashOverlay covers the app for
+    // its whole sequence, so fonts are ready well before any content is shown —
+    // no flash of unstyled content, and no need to gate anything on this.
     Font.loadAsync({
       Cairo_400Regular,
       Cairo_600SemiBold,
       Cairo_700Bold,
       Cairo_800ExtraBold,
       Cairo_900Black,
-    })
-      .then(proceed)
-      .catch(proceed);
+    }).catch(() => {});
 
-    return () => { active = false; clearTimeout(timer); };
+    // The native splash is dismissed by SplashOverlay at its first layout (see
+    // SplashOverlay.start) so the hand-off is atomic with the brand reveal and
+    // never gated on slow font loading. This timer is only a last-resort safety
+    // net: if the overlay ever fails to mount, the native splash is still
+    // guaranteed to come down rather than hang forever.
+    const safety = setTimeout(() => { SplashScreen.hideAsync().catch(() => {}); }, 3_500);
+    return () => clearTimeout(safety);
   }, []);
-
-  useEffect(() => {
-    if (fontsReady) {
-      SplashScreen.hideAsync().catch(() => {});
-    }
-  }, [fontsReady]);
 
   return (
     <ErrorBoundary surface="root">

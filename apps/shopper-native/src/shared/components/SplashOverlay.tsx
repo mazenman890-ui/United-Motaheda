@@ -25,10 +25,11 @@
  * with it on, elements fade in place with no spring, scale, or travel.
  */
 
-import React, { useEffect } from "react";
-import { I18nManager, StyleSheet, View } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { I18nManager, StyleSheet, View, type LayoutChangeEvent } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { setStatusBarHidden } from "expo-status-bar";
+import * as SplashScreen from "expo-splash-screen";
 import { Video, ResizeMode, type AVPlaybackStatus } from "expo-av";
 import Animated, {
   Easing,
@@ -46,8 +47,11 @@ import { theme } from "@/shared/theme";
 import { useSplashSequence } from "./useSplashSequence";
 
 // ─── Timeline (ms) — injected into the state machine ─────────────────────────
-const MIN_BRAND_MS      = 1_100;
-const LOAD_TIMEOUT_MS   = 2_600;
+// MIN_BRAND_MS is measured from the moment the native splash hands off (first
+// layout), so the brand motion is seen in full instead of finishing underneath
+// the native splash.
+const MIN_BRAND_MS      = 1_500;
+const LOAD_TIMEOUT_MS   = 3_000;
 const VIDEO_DURATION_MS = 3_300;
 const SAFETY_EXTRA_MS   = 700;
 const EXIT_MS           = 380;
@@ -94,8 +98,10 @@ function SplashSequenceView({ onExited }: { onExited: () => void }): React.React
   const holdOpacity    = useSharedValue(1);
   const skipOpacity    = useSharedValue(0);
 
-  // Brand mark is present immediately (seamless native handoff); rings + wordmark
-  // choreograph in after a beat.
+  // Brand layers — start hidden; choreograph in only once the native splash has
+  // handed off (first layout), so the motion is seen in full.
+  const logoScale   = useSharedValue(reduced ? 1 : 0.94);
+  const logoOpacity = useSharedValue(0);
   const ringsScale  = useSharedValue(reduced ? 1 : 0.86);
   const ringsOpacity = useSharedValue(0);
   const wordOpacity = useSharedValue(0);
@@ -104,6 +110,10 @@ function SplashSequenceView({ onExited }: { onExited: () => void }): React.React
   const overlayAnim = useAnimatedStyle(() => ({ opacity: overlayOpacity.value }));
   const holdAnim    = useAnimatedStyle(() => ({ opacity: holdOpacity.value }));
   const skipAnim    = useAnimatedStyle(() => ({ opacity: skipOpacity.value }));
+  const logoAnim    = useAnimatedStyle(() => ({
+    opacity:   logoOpacity.value,
+    transform: [{ scale: logoScale.value }],
+  }));
   const ringsAnim   = useAnimatedStyle(() => ({
     opacity:   ringsOpacity.value,
     transform: [{ scale: ringsScale.value }],
@@ -113,23 +123,42 @@ function SplashSequenceView({ onExited }: { onExited: () => void }): React.React
     transform: [{ translateY: wordShift.value }],
   }));
 
-  // ── Status bar: hide during the cinematic, restore on teardown ──
-  useEffect(() => {
-    setStatusBarHidden(true, "fade");
-    return () => setStatusBarHidden(false, "fade");
-  }, []);
+  // ── Native-splash handoff + brand entrance ──
+  // Runs exactly once, the moment our brand layer is laid out (or a short
+  // fallback): hide the native splash, play the entrance, and arm the sequence
+  // so MIN_BRAND_MS is measured from real on-screen time.
+  const startedRef = useRef(false);
+  const start = () => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    SplashScreen.hideAsync().catch(() => {});
 
-  // ── Brand entrance (mount) ──
-  useEffect(() => {
     if (reduced) {
+      logoOpacity.value  = withTiming(1, { duration: 1 });
       ringsOpacity.value = withTiming(1, { duration: 220 });
       wordOpacity.value  = withDelay(120, withTiming(1, { duration: 220 }));
-      return;
+    } else {
+      logoOpacity.value  = withTiming(1, { duration: 320, easing: Easing.out(Easing.cubic) });
+      logoScale.value    = withSpring(1, { damping: 18, stiffness: 140, mass: 1 });
+      ringsOpacity.value = withDelay(80,  withTiming(1, { duration: 440, easing: Easing.out(Easing.cubic) }));
+      ringsScale.value   = withDelay(80,  withSpring(1, { damping: 20, stiffness: 110, mass: 1.4 }));
+      wordOpacity.value  = withDelay(300, withTiming(1, { duration: 380, easing: Easing.out(Easing.cubic) }));
+      wordShift.value    = withDelay(300, withSpring(0, theme.animation.spring.gentle));
     }
-    ringsOpacity.value = withTiming(1, { duration: 360, easing: Easing.out(Easing.cubic) });
-    ringsScale.value   = withSpring(1, { damping: 20, stiffness: 110, mass: 1.4 });
-    wordOpacity.value  = withDelay(220, withTiming(1, { duration: 360, easing: Easing.out(Easing.cubic) }));
-    wordShift.value    = withDelay(220, withSpring(0, theme.animation.spring.gentle));
+
+    seq.begin();
+  };
+
+  const handleLayout = (_e: LayoutChangeEvent) => start();
+
+  // ── Status bar + a fallback start in case onLayout is ever missed ──
+  useEffect(() => {
+    setStatusBarHidden(true, "fade");
+    const fallback = setTimeout(start, 250);
+    return () => {
+      clearTimeout(fallback);
+      setStatusBarHidden(false, "fade");
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -156,7 +185,7 @@ function SplashSequenceView({ onExited }: { onExited: () => void }): React.React
   };
 
   return (
-    <Animated.View style={[styles.root, overlayAnim]} accessibilityViewIsModal>
+    <Animated.View style={[styles.root, overlayAnim]} onLayout={handleLayout} accessibilityViewIsModal>
       {/* Video — under the hold; plays from frame 0 once the machine allows. */}
       <Video
         source={require("../../../assets/splash-video.mp4")}
@@ -185,10 +214,10 @@ function SplashSequenceView({ onExited }: { onExited: () => void }): React.React
           <Animated.View style={[styles.ringInner, ringsAnim]} />
           <Animated.View style={[styles.ringCore,  ringsAnim]} />
 
-          {/* Mark — opaque from frame 0 for a seamless native handoff. */}
-          <View style={styles.logoTile}>
+          {/* Mark — fades + settles in the instant the native splash hands off. */}
+          <Animated.View style={[styles.logoTile, logoAnim]}>
             <AppLogo size="lg" />
-          </View>
+          </Animated.View>
 
           <Animated.View style={[styles.wordmark, wordAnim]}>
             <UIText weight="black" style={styles.brandName}>United Pharmacy</UIText>

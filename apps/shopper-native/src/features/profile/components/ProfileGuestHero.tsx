@@ -1,49 +1,61 @@
 /**
- * ProfileGuestHero — premium hero for unauthenticated users.
+ * ProfileGuestHero — premium sign-up header for unauthenticated users.
  *
- * Previous design used a pill-tab side-by-side layout that rendered as a
- * single merged element in Arabic RTL. Replaced with:
- *   1. Teal-gradient primary "Sign In" button
- *   2. Outlined secondary "Create Account" button
- *   3. Three feature-benefit rows (same colours as OrdersScreen benefits)
+ * Redesign (2026): the previous version was a generic centred stack with a flat
+ * benefits list and an under-emphasised CTA. This version establishes a clear
+ * vertical hierarchy and rhythm:
  *
- * This pattern is standard in Arabic pharmacy / e-commerce apps and reads
- * cleanly in both RTL and LTR without any flexDirection confusion.
+ *   brand badge  →  welcome title + sub  →  PRIMARY "Create account" CTA
+ *                →  secondary "Sign in"  →  benefits card (titled, scannable)
  *
- * Phase 2 refinements:
- *   - Staggered FadeInUp entrance animations on each content section
- *   - Avatar glow ring using a teal ambient halo (matches logged-in avatar)
- *   - Stronger typography scale on title (letterSpacing tightened)
- *   - Consistent spacing rhythm across avatar → text → actions → features
+ * Design intent
+ *   • Conversion-first: "Create account" is the prominent gradient CTA; "Sign
+ *     in" is a quieter glass button beneath it.
+ *   • Trust: a branded app mark (not a generic person glyph) with a soft halo.
+ *   • Scannability: benefits live in a titled glass card, each a coloured icon
+ *     tile + a single readable line — consistent spacing, strong hierarchy.
+ *   • Deliberate spacing rhythm via per-block margins (not one uniform gap).
+ *
+ * RTL: every row uses flexRow + logical start alignment; centred blocks read
+ * identically in both directions. Accessibility: CTAs are PressableScale
+ * (reduced-motion aware, full a11y), entrances respect OS Reduce Motion, and
+ * every touch target clears 48px.
  */
 import React, { memo } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import Animated, { FadeInUp } from "react-native-reanimated";
+import Animated, { FadeInUp, ReduceMotion } from "react-native-reanimated";
 import { Text as UIText } from "@/shared/ui";
+import { AppLogo } from "@/shared/components/AppLogo";
+import { PressableScale } from "@/shared/motion";
 import { theme } from "@/shared/theme";
-import { styles as sharedStyles, HERO_GLASS } from "./profile.styles";
-import { flexRow, isRtl } from "@/utils/layout";
+import { HERO_GLASS } from "./profile.styles";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
+
+const IS_RTL = isRtl();
+const START  = textAlignStart(IS_RTL);
 
 interface ProfileGuestHeroProps {
   insetsTop: number;
 }
 
-// Feature rows — what the user gets by signing in
-const FEATURES: { icon: IoniconsName; labelKey: string; color: string; bg: string }[] = [
-  { icon: "bag-handle-outline",     labelKey: "profile.featureOrders",   color: theme.colors.brand[400],   bg: "rgba(13,184,168,0.18)"  },
-  { icon: "diamond-outline",        labelKey: "profile.featureLoyalty",  color: theme.colors.purple[400],  bg: "rgba(147,51,234,0.18)"  },
-  { icon: "heart-outline",          labelKey: "profile.featureWishlist", color: theme.colors.rose[400],    bg: "rgba(244,63,94,0.18)"   },
+// What the user unlocks by creating an account.
+const BENEFITS: { icon: IoniconsName; labelKey: string; tint: string; bg: string }[] = [
+  { icon: "bag-check-outline", labelKey: "profile.featureOrders",   tint: theme.colors.teal[300],   bg: "rgba(13,184,168,0.16)" },
+  { icon: "diamond-outline",   labelKey: "profile.featureLoyalty",  tint: theme.colors.purple[400], bg: "rgba(147,51,234,0.16)" },
+  { icon: "heart-outline",     labelKey: "profile.featureWishlist", tint: theme.colors.rose[400],   bg: "rgba(244,63,94,0.16)"  },
 ];
 
-export const ProfileGuestHero = memo(function ProfileGuestHero({
-  insetsTop,
-}: ProfileGuestHeroProps) {
+// Staggered entrance helper — respects OS reduce-motion.
+const enter = (delay: number) =>
+  FadeInUp.duration(420).delay(delay).springify().damping(20).stiffness(220).reduceMotion(ReduceMotion.System);
+
+export const ProfileGuestHero = memo(function ProfileGuestHero({ insetsTop }: ProfileGuestHeroProps) {
   const router = useRouter();
   const { t }  = useTranslation();
 
@@ -52,27 +64,22 @@ export const ProfileGuestHero = memo(function ProfileGuestHero({
       colors={theme.gradients.heroPrimary as [string, string, string]}
       start={{ x: 0, y: 0 }}
       end={{ x: 0.7, y: 1 }}
-      style={[sharedStyles.guestHero, { paddingTop: insetsTop + 24 }]}>
+      style={[s.hero, { paddingTop: insetsTop + 28 }]}>
 
-      {/* Decorative elements */}
-      <View style={sharedStyles.heroDecor1} />
-      <View style={sharedStyles.heroDecor2} />
+      {/* Ambient decor */}
+      <View style={s.decorA} pointerEvents="none" />
+      <View style={s.decorB} pointerEvents="none" />
 
-      {/* Avatar with teal ambient glow */}
-      <Animated.View
-        entering={FadeInUp.duration(380).delay(60).springify().damping(22).stiffness(280)}
-        style={s.avatarWrap}>
-        {/* Glow ring — renders behind avatar in z-order */}
-        <View style={s.avatarGlow} />
-        <View style={s.avatarInner}>
-          <Ionicons name="person" size={38} color={HERO_GLASS.w65} />
+      {/* ── Brand badge ── */}
+      <Animated.View entering={enter(40)} style={s.badgeWrap}>
+        <View style={s.badgeGlow} pointerEvents="none" />
+        <View style={s.badge}>
+          <AppLogo size="md" />
         </View>
       </Animated.View>
 
-      {/* Title + description */}
-      <Animated.View
-        entering={FadeInUp.duration(380).delay(130).springify().damping(22).stiffness(280)}
-        style={s.textBlock}>
+      {/* ── Welcome copy ── */}
+      <Animated.View entering={enter(110)} style={s.copy}>
         <UIText variant="sheet-title" color="inverse" align="center" style={s.title}>
           {t("profile.guestTitle")}
         </UIText>
@@ -81,50 +88,54 @@ export const ProfileGuestHero = memo(function ProfileGuestHero({
         </UIText>
       </Animated.View>
 
-      {/* ── Actions ── */}
-      <Animated.View
-        entering={FadeInUp.duration(380).delay(200).springify().damping(22).stiffness(280)}
-        style={s.actions}>
-        {/* Primary — Sign In */}
-        <Pressable
-          onPress={() => router.push("/(auth)/login")}
+      {/* ── CTAs ── */}
+      <Animated.View entering={enter(180)} style={s.ctas}>
+        {/* Primary — Create account */}
+        <PressableScale
+          onPress={() => router.push("/(auth)/register")}
+          scaleTo={0.97}
+          style={s.primary}
           accessibilityRole="button"
-          style={({ pressed }) => [s.loginBtn, pressed && { opacity: 0.90 }]}>
+          accessibilityLabel={t("auth.createAccount")}>
           <LinearGradient
             colors={[theme.colors.teal[400], theme.colors.brand[600]]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            style={s.loginGrad}>
-            <Ionicons name="log-in-outline" size={18} color={theme.colors.surface} />
-            <UIText variant="body-sm" weight="black" style={s.loginText}>
-              {t("auth.login")}
+            style={s.primaryGrad}>
+            <Ionicons name="person-add-outline" size={18} color={theme.colors.surface} />
+            <UIText weight="black" style={s.primaryText}>
+              {t("auth.createAccount")}
             </UIText>
           </LinearGradient>
-        </Pressable>
+        </PressableScale>
 
-        {/* Secondary — Create Account */}
-        <Pressable
-          onPress={() => router.push("/(auth)/register")}
+        {/* Secondary — Sign in */}
+        <PressableScale
+          onPress={() => router.push("/(auth)/login")}
+          scaleTo={0.97}
+          style={s.secondary}
           accessibilityRole="button"
-          style={({ pressed }) => [s.registerBtn, pressed && { opacity: 0.80 }]}>
-          <UIText variant="body-sm" weight="bold" style={s.registerText}>
-            {t("auth.createAccount")}
+          accessibilityLabel={t("auth.login")}>
+          <Ionicons name="log-in-outline" size={17} color={HERO_GLASS.w90} />
+          <UIText weight="bold" style={s.secondaryText}>
+            {t("auth.login")}
           </UIText>
-        </Pressable>
+        </PressableScale>
       </Animated.View>
 
-      {/* ── Feature rows — wrapped in glass card ── */}
-      <Animated.View
-        entering={FadeInUp.duration(380).delay(270).springify().damping(22).stiffness(280)}
-        style={s.featuresWrap}>
-        <View style={s.glassCard}>
-          {FEATURES.map((f) => (
-            <View key={f.labelKey} style={s.featureRow}>
-              <View style={[s.featureIcon, { backgroundColor: f.bg }]}>
-                <Ionicons name={f.icon} size={15} color={f.color} />
+      {/* ── Benefits ── */}
+      <Animated.View entering={enter(250)} style={s.benefits}>
+        <UIText variant="eyebrow" style={s.benefitsTitle}>
+          {t("profile.guestBenefitsTitle")}
+        </UIText>
+        <View style={s.benefitsCard}>
+          {BENEFITS.map((b, i) => (
+            <View key={b.labelKey} style={[s.benefitRow, i > 0 && s.benefitDivider]}>
+              <View style={[s.benefitIcon, { backgroundColor: b.bg }]}>
+                <Ionicons name={b.icon} size={16} color={b.tint} />
               </View>
-              <UIText variant="caption" style={s.featureLabel}>
-                {t(f.labelKey)}
+              <UIText variant="body-sm" weight="semibold" style={s.benefitLabel} numberOfLines={1}>
+                {t(b.labelKey)}
               </UIText>
             </View>
           ))}
@@ -135,115 +146,162 @@ export const ProfileGuestHero = memo(function ProfileGuestHero({
 });
 
 const s = StyleSheet.create({
-  avatarWrap: {
-    marginBottom: theme.spacing.sm,
-    position:     "relative",
-    alignItems:   "center",
+  hero: {
+    paddingHorizontal: theme.layout.pagePaddingH,
+    paddingBottom:     30,
+    alignItems:        "center",
+    overflow:          "hidden",
+  },
+
+  // ── Ambient decor ──
+  decorA: {
+    position:        "absolute",
+    top:             -70,
+    right:           -60,
+    width:           200,
+    height:          200,
+    borderRadius:    100,
+    backgroundColor: "rgba(13,184,168,0.10)",
+  },
+  decorB: {
+    position:        "absolute",
+    bottom:          -60,
+    left:            -50,
+    width:           170,
+    height:          170,
+    borderRadius:    85,
+    backgroundColor: "rgba(255,255,255,0.03)",
+  },
+
+  // ── Brand badge ──
+  badgeWrap: {
+    alignItems:     "center",
     justifyContent: "center",
   },
-  // Soft teal ambient halo behind the avatar — matches the logged-in profile avatar glow
-  avatarGlow: {
+  badgeGlow: {
     position:        "absolute",
-    top:             -10,
-    left:            -10,
-    right:           -10,
-    bottom:          -10,
-    borderRadius:    40,
-    backgroundColor: "rgba(13,184,168,0.18)",
+    width:           104,
+    height:          104,
+    borderRadius:    34,
+    backgroundColor: "rgba(13,184,168,0.22)",
   },
-  avatarInner: {
-    width:           78,
-    height:          78,
+  badge: {
+    width:           80,
+    height:          80,
     borderRadius:    26,
-    backgroundColor: HERO_GLASS.w10,
+    overflow:        "hidden",
     alignItems:      "center",
     justifyContent:  "center",
-    borderWidth:     1.5,
+    backgroundColor: HERO_GLASS.w10,
+    borderWidth:     1,
     borderColor:     HERO_GLASS.w18,
   },
 
-  textBlock: {
+  // ── Copy ──
+  copy: {
     alignItems: "center",
-    gap:        6,
-    width:      "100%",
+    gap:        7,
+    marginTop:  18,
   },
   title: {
-    letterSpacing: -0.6,
+    letterSpacing: -0.5,
+    lineHeight:    28,
   },
   desc: {
-    lineHeight: 20,
-    maxWidth:   300,
+    lineHeight: 21,
+    maxWidth:   320,
+    opacity:    0.92,
   },
 
-  actions: {
-    width: "100%",
-    gap:   10,
+  // ── CTAs ──
+  ctas: {
+    width:     "100%",
+    gap:       10,
+    marginTop: 24,
   },
-  loginBtn: {
+  primary: {
+    width:        "100%",
     borderRadius: 16,
     overflow:     "hidden",
-    width:        "100%",
+    shadowColor:  theme.colors.teal[500],
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.32,
+    shadowRadius:  16,
+    elevation:     8,
   },
-  loginGrad: {
-    flexDirection:   flexRow(isRtl()),
+  primaryGrad: {
+    flexDirection:   flexRow(IS_RTL),
     alignItems:      "center",
     justifyContent:  "center",
     gap:             10,
-    paddingVertical: 16,
+    height:          54,
     borderRadius:    16,
   },
-  loginText: {
-    color:         theme.colors.surface,
-    fontSize:      15,
-    letterSpacing: 0.2,
+  primaryText: {
+    color:              theme.colors.surface,
+    fontSize:           15,
+    letterSpacing:      0.2,
+    includeFontPadding: false,
   },
-  registerBtn: {
-    width:           "100%",
+  secondary: {
+    flexDirection:   flexRow(IS_RTL),
     alignItems:      "center",
     justifyContent:  "center",
-    paddingVertical: 14,
+    gap:             8,
+    width:           "100%",
+    height:          50,
     borderRadius:    16,
-    borderWidth:     1.5,
-    borderColor:     HERO_GLASS.w25,
     backgroundColor: HERO_GLASS.w10,
+    borderWidth:     1,
+    borderColor:     HERO_GLASS.w18,
   },
-  registerText: {
-    color:         HERO_GLASS.w90,
-    fontSize:      14,
-    letterSpacing: 0.1,
+  secondaryText: {
+    color:              HERO_GLASS.w90,
+    fontSize:           14,
+    letterSpacing:      0.1,
+    includeFontPadding: false,
   },
 
-  featuresWrap: {
-    width:      "100%",
-    paddingTop: 4,
+  // ── Benefits ──
+  benefits: {
+    width:     "100%",
+    marginTop: 24,
+    gap:       10,
   },
-  // Glass card wrapping all feature rows — surface with subtle border
-  glassCard: {
+  benefitsTitle: {
+    color:     HERO_GLASS.w55,
+    textAlign: START,
+    marginStart: 4,
+  },
+  benefitsCard: {
     backgroundColor:   HERO_GLASS.w10,
-    borderRadius:      16,
+    borderRadius:      18,
     borderWidth:       1,
-    borderColor:       HERO_GLASS.w18,
-    paddingVertical:   12,
+    borderColor:       HERO_GLASS.w15,
     paddingHorizontal: 14,
-    gap:               12,
   },
-  featureRow: {
-    flexDirection: flexRow(isRtl()),
+  benefitRow: {
+    flexDirection: flexRow(IS_RTL),
     alignItems:    "center",
-    gap:           10,
+    gap:           12,
+    paddingVertical: 13,
   },
-  featureIcon: {
-    width:          30,
-    height:         30,
-    borderRadius:   10,
+  benefitDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: HERO_GLASS.w12,
+  },
+  benefitIcon: {
+    width:          34,
+    height:         34,
+    borderRadius:   11,
     alignItems:     "center",
     justifyContent: "center",
     flexShrink:     0,
   },
-  featureLabel: {
-    flex:       0,
-    color:      HERO_GLASS.w70,
-    fontSize:   12.5,
-    lineHeight: 18,
+  benefitLabel: {
+    flex:               1,
+    color:              HERO_GLASS.w90,
+    textAlign:          START,
+    includeFontPadding: false,
   },
 });

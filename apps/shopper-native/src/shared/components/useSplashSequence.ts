@@ -47,6 +47,13 @@ export interface SplashSequence {
   phase:               SplashPhase;
   /** Bind to the video's `shouldPlay`; true only once the video phase begins. */
   videoShouldPlay:     boolean;
+  /**
+   * Arm the sequence (idempotent). Call at the native-splash handoff — i.e. the
+   * overlay's first layout — so the brand-minimum window is measured from when
+   * the brand is actually visible, not from React mount (which can be a second
+   * or more before the native splash lifts).
+   */
+  begin:               () => void;
   notifyVideoLoaded:   () => void;
   notifyVideoFinished: () => void;
   notifyVideoError:    () => void;
@@ -108,15 +115,20 @@ export function useSplashSequence(opts: UseSplashSequenceOptions): SplashSequenc
   const notifyVideoError    = useCallback(() => beginExit(), [beginExit]);
   const skip                = useCallback(() => beginExit(), [beginExit]);
 
-  // Arm the two entry gates exactly once.
-  useEffect(() => {
+  // Arm the two entry gates exactly once, when the caller signals the brand is
+  // actually on screen (native splash handed off).
+  const begunRef = useRef(false);
+  const begin = useCallback(() => {
+    if (begunRef.current) return;
+    begunRef.current = true;
     schedule(() => { brandDoneRef.current = true; enterVideo(); }, minBrandMs);
     schedule(() => {
       if (phaseRef.current === "brand" && !loadedRef.current) beginExit();
     }, loadTimeoutMs);
-    return clearAll;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [schedule, enterVideo, beginExit, minBrandMs, loadTimeoutMs]);
 
-  return { phase, videoShouldPlay, notifyVideoLoaded, notifyVideoFinished, notifyVideoError, skip };
+  // Tear everything down on unmount (no post-unmount setState).
+  useEffect(() => clearAll, [clearAll]);
+
+  return { phase, videoShouldPlay, begin, notifyVideoLoaded, notifyVideoFinished, notifyVideoError, skip };
 }
