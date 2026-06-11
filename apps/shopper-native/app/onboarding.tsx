@@ -64,10 +64,10 @@ import Animated, {
   useAnimatedReaction,
   useAnimatedScrollHandler,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withDelay,
   withRepeat,
-  withSpring,
   withTiming,
   type SharedValue,
 } from "react-native-reanimated";
@@ -80,6 +80,7 @@ import { Text } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { ONBOARDING_KEY } from "@/lib/onboardingKey";
 import { flexRow, isRtl, textAlignStart, FORWARD_CHEVRON } from "@/utils/layout";
+import { pagerProgress, pagerOffset, RTL_ANDROID, PressableScale } from "@/shared/motion";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -89,6 +90,10 @@ const IS_RTL      = isRtl();
 const START_ALIGN = textAlignStart(IS_RTL);
 /** Sign multiplier for directional translateX outputs (mirrors parallax in RTL). */
 const DIR = IS_RTL ? -1 : 1;
+
+// RTL-aware pager math (pagerProgress / pagerOffset / RTL_ANDROID) is shared
+// from @/shared/motion so every carousel in the app uses one correct source.
+// `pagerProgress(offset, width, LAST_INDEX)` → logical progress (0 = first slide).
 
 // ─── Slide data ───────────────────────────────────────────────────────────────
 
@@ -199,7 +204,6 @@ const LAST_INDEX  = SLIDE_COUNT - 1;
 // Shared loop / entrance configs
 const FLOAT_EASING = Easing.inOut(Easing.sin);
 const ENTER_EASING = Easing.bezier(0.16, 1, 0.3, 1); // theme "emphasize" curve
-const PRESS_SPRING = { ...theme.animation.spring.press, reduceMotion: ReduceMotion.System };
 
 // ─── AuroraOrb — soft radial glow (SVG) ──────────────────────────────────────
 
@@ -240,7 +244,7 @@ const FadeOrb = React.memo(function FadeOrb({
   children: React.ReactNode;
 }) {
   const style = useAnimatedStyle(() => {
-    const p = scrollX.value / Math.max(width, 1);
+    const p = pagerProgress(scrollX.value, width, LAST_INDEX);
     return { opacity: interpolate(p, [index - 1, index, index + 1], [0, 1, 0], Extrapolation.CLAMP) };
   });
   return <Animated.View style={[StyleSheet.absoluteFill, style]}>{children}</Animated.View>;
@@ -251,9 +255,11 @@ const FadeOrb = React.memo(function FadeOrb({
 const AuroraLayer = React.memo(function AuroraLayer({
   scrollX,
   width,
+  reduced,
 }: {
   scrollX: SharedValue<number>;
   width:   number;
+  reduced: boolean;
 }) {
   // Slow ambient drift — decorative, disabled by OS reduced-motion.
   const floatA = useSharedValue(0);
@@ -274,21 +280,21 @@ const AuroraLayer = React.memo(function AuroraLayer({
   }, [floatA, floatB]);
 
   const stackAStyle = useAnimatedStyle(() => {
-    const p = scrollX.value / Math.max(width, 1);
+    const p = pagerProgress(scrollX.value, width, LAST_INDEX);
     return {
       transform: [
         { translateY: interpolate(floatA.value, [0, 1], [-12, 12]) },
-        { translateX: interpolate(p, [0, LAST_INDEX], [0, -46], Extrapolation.CLAMP) * DIR },
+        { translateX: reduced ? 0 : interpolate(p, [0, LAST_INDEX], [0, -46], Extrapolation.CLAMP) * DIR },
       ],
     };
   });
 
   const stackBStyle = useAnimatedStyle(() => {
-    const p = scrollX.value / Math.max(width, 1);
+    const p = pagerProgress(scrollX.value, width, LAST_INDEX);
     return {
       transform: [
         { translateY: interpolate(floatB.value, [0, 1], [10, -10]) },
-        { translateX: interpolate(p, [0, LAST_INDEX], [0, 38], Extrapolation.CLAMP) * DIR },
+        { translateX: reduced ? 0 : interpolate(p, [0, LAST_INDEX], [0, 38], Extrapolation.CLAMP) * DIR },
       ],
     };
   });
@@ -329,6 +335,7 @@ const SatelliteChip = React.memo(function SatelliteChip({
   index,
   scrollX,
   width,
+  reduced,
 }: {
   spec:       SatelliteSpec;
   accent:     string;
@@ -336,6 +343,7 @@ const SatelliteChip = React.memo(function SatelliteChip({
   index:      number;
   scrollX:    SharedValue<number>;
   width:      number;
+  reduced:    boolean;
 }) {
   const { t } = useTranslation();
   const float = useSharedValue(0);
@@ -355,15 +363,16 @@ const SatelliteChip = React.memo(function SatelliteChip({
   }, [float, spec.float.delay, spec.float.dur]);
 
   const chipStyle = useAnimatedStyle(() => {
-    const p = scrollX.value / Math.max(width, 1);
+    const p = pagerProgress(scrollX.value, width, LAST_INDEX);
     return {
       opacity: interpolate(p, [index - 0.7, index, index + 0.7], [0, 1, 0], Extrapolation.CLAMP),
       transform: [
         // Lead-parallax: chips travel faster than the page → foreground depth
         {
-          translateX:
-            interpolate(p, [index - 1, index, index + 1], [56, 0, -56], Extrapolation.CLAMP) *
-            spec.depth * DIR,
+          translateX: reduced
+            ? 0
+            : interpolate(p, [index - 1, index, index + 1], [56, 0, -56], Extrapolation.CLAMP) *
+              spec.depth * DIR,
         },
         { translateY: interpolate(float.value, [0, 1], [-spec.float.amp / 2, spec.float.amp / 2]) },
       ],
@@ -449,6 +458,7 @@ const SlidePage = React.memo(function SlidePage({
   width,
   height,
   compact,
+  reduced,
   topPad,
   bottomPad,
   scrollX,
@@ -458,12 +468,16 @@ const SlidePage = React.memo(function SlidePage({
   width:     number;
   height:    number;
   compact:   boolean;
+  reduced:   boolean;
   topPad:    number;
   bottomPad: number;
   scrollX:   SharedValue<number>;
 }) {
   const { t } = useTranslation();
-  const cardWidth = Math.min(300, width - theme.layout.pagePaddingH * 2 - 36);
+  // Cap the content column so copy never spans an unreadable width on tablets /
+  // large foldables; on phones this resolves to the full available width.
+  const contentMaxWidth = Math.min(width - theme.layout.pagePaddingH * 2, 520);
+  const cardWidth = Math.min(300, contentMaxWidth - 36);
 
   // ── Mount entrance (plays once; off-screen slides finish invisibly) ──
   const eHero    = useSharedValue(0);
@@ -481,8 +495,13 @@ const SlidePage = React.memo(function SlidePage({
 
   // ── Scroll-driven styles (composed with entrance) ──
   const heroStyle = useAnimatedStyle(() => {
-    const p = scrollX.value / Math.max(width, 1);
+    const p = pagerProgress(scrollX.value, width, LAST_INDEX);
     const sOp = interpolate(p, [index - 1, index, index + 1], [0.2, 1, 0.2], Extrapolation.CLAMP);
+    // Reduced motion: keep the opacity crossfade (essential page feedback) but
+    // drop parallax travel, scale, and tilt.
+    if (reduced) {
+      return { opacity: sOp * eHero.value, transform: [{ translateY: (1 - eHero.value) * 26 }] };
+    }
     const tilt = interpolate(p, [index - 1, index, index + 1], [2.6, 0, -2.6], Extrapolation.CLAMP) * DIR;
     return {
       opacity: sOp * eHero.value,
@@ -497,40 +516,40 @@ const SlidePage = React.memo(function SlidePage({
   });
 
   const glowStyle = useAnimatedStyle(() => {
-    const p = scrollX.value / Math.max(width, 1);
+    const p = pagerProgress(scrollX.value, width, LAST_INDEX);
     return {
       opacity: interpolate(p, [index - 0.6, index, index + 0.6], [0, 1, 0], Extrapolation.CLAMP) * eHero.value,
     };
   });
 
   const eyebrowStyle = useAnimatedStyle(() => {
-    const p = scrollX.value / Math.max(width, 1);
+    const p = pagerProgress(scrollX.value, width, LAST_INDEX);
     return {
       opacity: interpolate(p, [index - 0.8, index, index + 0.8], [0, 1, 0], Extrapolation.CLAMP) * eEyebrow.value,
       transform: [
-        { translateX: interpolate(p, [index - 1, index, index + 1], [-14, 0, 14], Extrapolation.CLAMP) * DIR },
+        { translateX: reduced ? 0 : interpolate(p, [index - 1, index, index + 1], [-14, 0, 14], Extrapolation.CLAMP) * DIR },
         { translateY: (1 - eEyebrow.value) * 16 },
       ],
     };
   });
 
   const titleStyle = useAnimatedStyle(() => {
-    const p = scrollX.value / Math.max(width, 1);
+    const p = pagerProgress(scrollX.value, width, LAST_INDEX);
     return {
       opacity: interpolate(p, [index - 0.65, index, index + 0.65], [0, 1, 0], Extrapolation.CLAMP) * eTitle.value,
       transform: [
-        { translateX: interpolate(p, [index - 1, index, index + 1], [-22, 0, 22], Extrapolation.CLAMP) * DIR },
+        { translateX: reduced ? 0 : interpolate(p, [index - 1, index, index + 1], [-22, 0, 22], Extrapolation.CLAMP) * DIR },
         { translateY: (1 - eTitle.value) * 18 },
       ],
     };
   });
 
   const bodyStyle = useAnimatedStyle(() => {
-    const p = scrollX.value / Math.max(width, 1);
+    const p = pagerProgress(scrollX.value, width, LAST_INDEX);
     return {
       opacity: interpolate(p, [index - 0.5, index, index + 0.5], [0, 1, 0], Extrapolation.CLAMP) * eBody.value,
       transform: [
-        { translateX: interpolate(p, [index - 1, index, index + 1], [-30, 0, 30], Extrapolation.CLAMP) * DIR },
+        { translateX: reduced ? 0 : interpolate(p, [index - 1, index, index + 1], [-30, 0, 30], Extrapolation.CLAMP) * DIR },
         { translateY: (1 - eBody.value) * 18 },
       ],
     };
@@ -538,51 +557,55 @@ const SlidePage = React.memo(function SlidePage({
 
   return (
     <View style={[page.root, { width, height, paddingTop: topPad, paddingBottom: bottomPad }]}>
-      {/* ── Hero zone: glow + card + floating satellites ── */}
-      <View style={[page.heroZone, compact && page.heroZoneCompact]}>
-        <Animated.View
-          pointerEvents="none"
-          style={[page.glow, { backgroundColor: slide.accentSoft }, glowStyle]}
-        />
-        <Animated.View style={heroStyle}>
-          <HeroCard slide={slide} compact={compact} cardWidth={cardWidth} />
-        </Animated.View>
-
-        {slide.satellites.map((spec) => (
-          <SatelliteChip
-            key={spec.labelKey}
-            spec={spec}
-            accent={slide.accent}
-            accentSoft={slide.accentSoft}
-            index={index}
-            scrollX={scrollX}
-            width={width}
+      {/* Centered content column — capped width keeps tablets/foldables readable. */}
+      <View style={[page.content, { maxWidth: contentMaxWidth }]}>
+        {/* ── Hero zone: glow + card + floating satellites ── */}
+        <View style={[page.heroZone, compact && page.heroZoneCompact]}>
+          <Animated.View
+            pointerEvents="none"
+            style={[page.glow, { backgroundColor: slide.accentSoft }, glowStyle]}
           />
-        ))}
-      </View>
+          <Animated.View style={heroStyle}>
+            <HeroCard slide={slide} compact={compact} cardWidth={cardWidth} />
+          </Animated.View>
 
-      {/* ── Copy block — staggered fade windows during swipe ── */}
-      <View style={page.copy}>
-        <Animated.View style={eyebrowStyle}>
-          <View style={[page.eyebrowPill, { backgroundColor: slide.accentSoft }]}>
-            <Ionicons name={slide.icon} size={13} color={slide.accent} />
-            <Text variant="caption" weight="black" style={[page.eyebrowText, { color: slide.accent }]}>
-              {t(slide.eyebrowKey)}
+          {slide.satellites.map((spec) => (
+            <SatelliteChip
+              key={spec.labelKey}
+              spec={spec}
+              accent={slide.accent}
+              accentSoft={slide.accentSoft}
+              index={index}
+              scrollX={scrollX}
+              width={width}
+              reduced={reduced}
+            />
+          ))}
+        </View>
+
+        {/* ── Copy block — staggered fade windows during swipe ── */}
+        <View style={page.copy}>
+          <Animated.View style={eyebrowStyle}>
+            <View style={[page.eyebrowPill, { backgroundColor: slide.accentSoft }]}>
+              <Ionicons name={slide.icon} size={13} color={slide.accent} />
+              <Text variant="caption" weight="black" style={[page.eyebrowText, { color: slide.accent }]}>
+                {t(slide.eyebrowKey)}
+              </Text>
+            </View>
+          </Animated.View>
+
+          <Animated.View style={titleStyle}>
+            <Text style={[page.title, compact && page.titleCompact]}>
+              {t(slide.titleKey)}
             </Text>
-          </View>
-        </Animated.View>
+          </Animated.View>
 
-        <Animated.View style={titleStyle}>
-          <Text style={[page.title, compact && page.titleCompact]}>
-            {t(slide.titleKey)}
-          </Text>
-        </Animated.View>
-
-        <Animated.View style={bodyStyle}>
-          <Text variant="body" style={page.body}>
-            {t(slide.bodyKey)}
-          </Text>
-        </Animated.View>
+          <Animated.View style={bodyStyle}>
+            <Text variant="body" style={page.body}>
+              {t(slide.bodyKey)}
+            </Text>
+          </Animated.View>
+        </View>
       </View>
     </View>
   );
@@ -606,7 +629,7 @@ const PageDot = React.memo(function PageDot({
   label:   string;
 }) {
   const dotStyle = useAnimatedStyle(() => {
-    const p = scrollX.value / Math.max(width, 1);
+    const p = pagerProgress(scrollX.value, width, LAST_INDEX);
     // 1 at this index, falling to 0 one slide away — continuous with the finger
     const t = 1 - Math.min(Math.abs(p - index), 1);
     return {
@@ -635,8 +658,8 @@ export default function OnboardingScreen() {
   const [current, setCurrent] = useState(0);
   const finishingRef = useRef(false);
 
-  const scrollX  = useSharedValue(0);
-  const ctaScale = useSharedValue(1);
+  const reduced = useReducedMotion();
+  const scrollX = useSharedValue(0);
 
   const compact   = height < 720;
   const topPad    = insets.top + 74;                                      // clears fixed brand row
@@ -654,7 +677,7 @@ export default function OnboardingScreen() {
 
   useAnimatedReaction(
     () => {
-      const idx = Math.round(scrollX.value / Math.max(width, 1));
+      const idx = Math.round(pagerProgress(scrollX.value, width, LAST_INDEX));
       return Math.min(Math.max(idx, 0), LAST_INDEX);
     },
     (idx, prev) => {
@@ -663,6 +686,17 @@ export default function OnboardingScreen() {
     [width, handleIndexChange],
   );
 
+  // Belt-and-suspenders for the Android-RTL origin: the `contentOffset` prop
+  // covers most devices, but some OEM builds ignore it on first layout, so we
+  // re-assert the first-slide offset once after mount (non-animated → no flash).
+  useEffect(() => {
+    if (!RTL_ANDROID) return;
+    const id = requestAnimationFrame(() => {
+      listRef.current?.scrollToOffset({ offset: pagerOffset(0, width, LAST_INDEX), animated: false });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [width]);
+
   const finish = useCallback(async () => {
     if (finishingRef.current) return;
     finishingRef.current = true;
@@ -670,11 +704,14 @@ export default function OnboardingScreen() {
     router.replace("/(tabs)");
   }, [router]);
 
+  // scrollToOffset (not scrollToIndex) so the Android-RTL offset inversion is
+  // handled explicitly via pagerOffset — tapping a dot lands on the right
+  // slide on every platform.
   const goTo = useCallback((idx: number) => {
     if (idx < 0 || idx >= SLIDE_COUNT) return;
     if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
-    listRef.current?.scrollToIndex({ index: idx, animated: true });
-  }, []);
+    listRef.current?.scrollToOffset({ offset: pagerOffset(idx, width, LAST_INDEX), animated: true });
+  }, [width]);
 
   const goNext = useCallback(() => {
     if (current < LAST_INDEX) {
@@ -687,9 +724,6 @@ export default function OnboardingScreen() {
     void finish();
   }, [current, finish, goTo]);
 
-  const onCtaIn  = useCallback(() => { ctaScale.value = withSpring(0.97, PRESS_SPRING); }, [ctaScale]);
-  const onCtaOut = useCallback(() => { ctaScale.value = withSpring(1,    PRESS_SPRING); }, [ctaScale]);
-
   const renderItem = useCallback(
     ({ item, index }: ListRenderItemInfo<Slide>) => (
       <SlidePage
@@ -698,12 +732,13 @@ export default function OnboardingScreen() {
         width={width}
         height={height}
         compact={compact}
+        reduced={reduced}
         topPad={topPad}
         bottomPad={bottomPad}
         scrollX={scrollX}
       />
     ),
-    [width, height, compact, topPad, bottomPad, scrollX],
+    [width, height, compact, reduced, topPad, bottomPad, scrollX],
   );
 
   const getItemLayout = useCallback(
@@ -713,20 +748,19 @@ export default function OnboardingScreen() {
 
   // ── CTA label crossfade (Next ⇄ Start now) — UI thread ──
   const nextLabelStyle = useAnimatedStyle(() => {
-    const p = scrollX.value / Math.max(width, 1);
+    const p = pagerProgress(scrollX.value, width, LAST_INDEX);
     return {
       opacity: interpolate(p, [LAST_INDEX - 1, LAST_INDEX], [1, 0], Extrapolation.CLAMP),
       transform: [{ translateY: interpolate(p, [LAST_INDEX - 1, LAST_INDEX], [0, -10], Extrapolation.CLAMP) }],
     };
   });
   const startLabelStyle = useAnimatedStyle(() => {
-    const p = scrollX.value / Math.max(width, 1);
+    const p = pagerProgress(scrollX.value, width, LAST_INDEX);
     return {
       opacity: interpolate(p, [LAST_INDEX - 1, LAST_INDEX], [0, 1], Extrapolation.CLAMP),
       transform: [{ translateY: interpolate(p, [LAST_INDEX - 1, LAST_INDEX], [10, 0], Extrapolation.CLAMP) }],
     };
   });
-  const ctaStyle = useAnimatedStyle(() => ({ transform: [{ scale: ctaScale.value }] }));
 
   const isLast = current === LAST_INDEX;
 
@@ -739,7 +773,7 @@ export default function OnboardingScreen() {
         end={{ x: 0.8, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-      <AuroraLayer scrollX={scrollX} width={width} />
+      <AuroraLayer scrollX={scrollX} width={width} reduced={reduced} />
 
       {/* ── Slides (transparent content layer) ── */}
       <Animated.FlatList
@@ -755,9 +789,12 @@ export default function OnboardingScreen() {
         bounces={false}
         showsHorizontalScrollIndicator={false}
         decelerationRate="fast"
-        windowSize={3}
-        maxToRenderPerBatch={3}
-        initialNumToRender={1}
+        windowSize={SLIDE_COUNT}
+        maxToRenderPerBatch={SLIDE_COUNT}
+        initialNumToRender={SLIDE_COUNT}
+        // Android RTL opens at raw offset 0 (= last slide). Seed the initial
+        // offset at the first logical slide; the effect below re-asserts it.
+        contentOffset={RTL_ANDROID ? { x: pagerOffset(0, width, LAST_INDEX), y: 0 } : undefined}
         style={chrome.list}
       />
 
@@ -783,16 +820,17 @@ export default function OnboardingScreen() {
         <Animated.View
           entering={FadeIn.duration(280).delay(260)}
           exiting={FadeOut.duration(180)}
-          style={[chrome.skipBtn, { top: insets.top + 14 }]}>
-          <Pressable
+          style={[chrome.skipWrap, { top: insets.top + 14 }]}>
+          <PressableScale
             onPress={() => void finish()}
             hitSlop={12}
+            style={chrome.skipBtn}
             accessibilityRole="button"
             accessibilityLabel={t("onboarding.skipLabel")}>
             <Text variant="caption" weight="black" style={chrome.skipText}>
               {t("onboarding.skip")}
             </Text>
-          </Pressable>
+          </PressableScale>
         </Animated.View>
       )}
 
@@ -819,42 +857,41 @@ export default function OnboardingScreen() {
           ))}
         </View>
 
-        <Animated.View style={ctaStyle}>
-          <Pressable
-            onPress={goNext}
-            onPressIn={onCtaIn}
-            onPressOut={onCtaOut}
-            accessibilityRole="button"
-            accessibilityLabel={isLast ? t("onboarding.start") : t("onboarding.next")}
-            style={foot.cta}>
-            <LinearGradient
-              colors={[theme.colors.teal[400], theme.colors.brand[600]]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={foot.ctaGradient}>
+        <PressableScale
+          onPress={goNext}
+          scaleTo={0.97}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: false }}
+          accessibilityLabel={isLast ? t("onboarding.start") : t("onboarding.next")}
+          accessibilityHint={isLast ? t("onboarding.skipLabel") : undefined}
+          style={foot.cta}>
+          <LinearGradient
+            colors={[theme.colors.teal[400], theme.colors.brand[600]]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={foot.ctaGradient}>
 
-              {/* "Next" face */}
-              <Animated.View style={[foot.ctaFace, nextLabelStyle]}>
-                <Text variant="body" weight="black" style={foot.ctaText}>
-                  {t("onboarding.next")}
-                </Text>
-                <View style={foot.ctaIconChip}>
-                  <Ionicons name={FORWARD_CHEVRON} size={17} color={theme.colors.surface} />
-                </View>
-              </Animated.View>
+            {/* "Next" face */}
+            <Animated.View style={[foot.ctaFace, nextLabelStyle]}>
+              <Text variant="body" weight="black" style={foot.ctaText}>
+                {t("onboarding.next")}
+              </Text>
+              <View style={foot.ctaIconChip}>
+                <Ionicons name={FORWARD_CHEVRON} size={17} color={theme.colors.surface} />
+              </View>
+            </Animated.View>
 
-              {/* "Start now" face */}
-              <Animated.View style={[foot.ctaFace, foot.ctaFaceOverlay, startLabelStyle]}>
-                <Text variant="body" weight="black" style={foot.ctaText}>
-                  {t("onboarding.start")}
-                </Text>
-                <View style={foot.ctaIconChip}>
-                  <Ionicons name="checkmark" size={17} color={theme.colors.surface} />
-                </View>
-              </Animated.View>
-            </LinearGradient>
-          </Pressable>
-        </Animated.View>
+            {/* "Start now" face */}
+            <Animated.View style={[foot.ctaFace, foot.ctaFaceOverlay, startLabelStyle]}>
+              <Text variant="body" weight="black" style={foot.ctaText}>
+                {t("onboarding.start")}
+              </Text>
+              <View style={foot.ctaIconChip}>
+                <Ionicons name="checkmark" size={17} color={theme.colors.surface} />
+              </View>
+            </Animated.View>
+          </LinearGradient>
+        </PressableScale>
       </Animated.View>
     </View>
   );
@@ -903,11 +940,16 @@ const chrome = StyleSheet.create({
     includeFontPadding: false,
     textAlignVertical:  "center",
   },
+  // Positioning wrapper (absolute placement); carries the enter/exit animation.
+  skipWrap: {
+    position: "absolute",
+    zIndex:   theme.zIndex.toast,
+    end:      theme.layout.pagePaddingH,
+  },
+  // Visual pill — handed to PressableScale so its inner animated view is styled.
   skipBtn: {
-    position:          "absolute",
-    zIndex:            theme.zIndex.toast,
-    end:               theme.layout.pagePaddingH,
     minHeight:         40,
+    minWidth:          64,
     paddingHorizontal: 18,
     paddingVertical:   10,
     borderRadius:      theme.radius.pill,
@@ -917,10 +959,15 @@ const chrome = StyleSheet.create({
     borderWidth:       1,
     borderColor:       "rgba(255,255,255,0.20)",
   },
+  // paddingHorizontal + no letterSpacing → Android never clips the trailing
+  // Arabic glyph of "تخطّي"; lineHeight gives descenders headroom.
   skipText: {
     color:              theme.colors.surface,
+    fontSize:           13,
+    lineHeight:         20,
+    paddingHorizontal:  2,
     includeFontPadding: false,
-    lineHeight:         18,
+    textAlign:          "center",
     textAlignVertical:  "center",
   },
 });
@@ -946,7 +993,12 @@ const page = StyleSheet.create({
   root: {
     paddingHorizontal: theme.layout.pagePaddingH,
     justifyContent:    "center",
-    gap:               theme.spacing["3xl"],
+  },
+  // Centered, width-capped column (full width on phones, capped on tablets).
+  content: {
+    width:      "100%",
+    alignSelf:  "center",
+    gap:        theme.spacing["3xl"],
   },
   heroZone: {
     alignItems:      "center",

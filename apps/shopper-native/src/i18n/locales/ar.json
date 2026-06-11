@@ -618,8 +618,8 @@
                        "featureSecureOrders":  "طلبات آمنة",
                        "featureEasyReorder":  "إعادة الطلب بسهولة",
                        "slideProgress":  "الشريحة {{n}} من {{total}}",
-                       "skip":  "تخطى",
-                       "skipLabel":  "تخطى الإعداد التمهيدي",
+                       "skip":  "تخطّي",
+                       "skipLabel":  "تخطّي الإعداد التمهيدي",
                        "next":  "التالي",
                        "start":  "ابدأ الآن"
                    },
