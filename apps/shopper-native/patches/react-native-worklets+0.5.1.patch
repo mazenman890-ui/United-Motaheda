@@ -1,8 +1,8 @@
 diff --git a/node_modules/react-native-worklets/android/CMakeLists.txt b/node_modules/react-native-worklets/android/CMakeLists.txt
-index 120f2ce..274236b 100644
+index 1d949d6..eecd682 100644
 --- a/node_modules/react-native-worklets/android/CMakeLists.txt
 +++ b/node_modules/react-native-worklets/android/CMakeLists.txt
-@@ -52,9 +52,9 @@ set(BUILD_DIR "${CMAKE_SOURCE_DIR}/build")
+@@ -43,9 +43,9 @@ set(BUILD_DIR "${CMAKE_SOURCE_DIR}/build")
  set(ANDROID_CPP_DIR "${CMAKE_SOURCE_DIR}/src/main/cpp")
  set(COMMON_CPP_DIR "${CMAKE_SOURCE_DIR}/../Common/cpp")
  
@@ -15,10 +15,10 @@ index 120f2ce..274236b 100644
  
  # Consume shared libraries and headers from prefabs
 diff --git a/node_modules/react-native-worklets/android/build.gradle b/node_modules/react-native-worklets/android/build.gradle
-index e189e1c..502f13f 100644
+index 021f5bc..b07915c 100644
 --- a/node_modules/react-native-worklets/android/build.gradle
 +++ b/node_modules/react-native-worklets/android/build.gradle
-@@ -236,7 +236,7 @@ android {
+@@ -206,7 +206,7 @@ android {
      }
      externalNativeBuild {
          cmake {
