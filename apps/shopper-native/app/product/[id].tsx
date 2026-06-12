@@ -8,7 +8,6 @@ import {
   View,
 } from "react-native";
 import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -27,7 +26,6 @@ import Animated, {
   FadeIn,
 } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ProductCard } from "@/components/ProductCard";
@@ -36,7 +34,8 @@ import { useCartStore } from "@/stores/cart";
 import { useWishlistStore } from "@/stores/wishlist";
 import { theme } from "@/shared/theme";
 import { formatPrice } from "@/utils/format";
-import { flexRow, isRtl, FORWARD_CHEVRON } from "@/utils/layout";
+import { flexRow, isRtl, BACK_CHEVRON, FORWARD_CHEVRON } from "@/utils/layout";
+import { kit, Button as KitButton } from "@/shared/kit";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -168,7 +167,7 @@ export default function ProductDetailScreen() {
   }, [product, inWishlist, hrtScale, toggleWishlist]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+    <View style={{ flex: 1, backgroundColor: kit.color.canvas }}>
 
       {/* ── Sticky mini-header — refined hairline divider ── */}
       <Animated.View
@@ -196,7 +195,7 @@ export default function ProductDetailScreen() {
               borderWidth: 1,
               borderColor: theme.colors.border.default,
             }}>
-            <Ionicons name="arrow-forward" size={17} color={theme.colors.slate[700]} />
+            <Ionicons name={BACK_CHEVRON} size={17} color={theme.colors.slate[700]} />
           </Pressable>
           <UIText variant="body-sm" weight="bold" align="right" numberOfLines={1} style={{ flex: 1 }}>
             {product?.nameAr ?? product?.name ?? ""}
@@ -213,7 +212,7 @@ export default function ProductDetailScreen() {
           accessibilityRole="button"
           accessibilityLabel={t("common.back")}
           style={({ pressed }) => [fab.btn, pressed && fab.btnPressed]}>
-          <Ionicons name="arrow-forward" size={18} color="#fff" />
+          <Ionicons name={BACK_CHEVRON} size={18} color="#fff" />
         </Pressable>
 
         {product && (
@@ -243,43 +242,29 @@ export default function ProductDetailScreen() {
         scrollEventThrottle={16}
         contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}>
 
-        {/* ── Hero image (taller, with gradient overlay) ── */}
-        <View style={{ height: 370, backgroundColor: theme.colors.surfaceSunken }}>
+        {/* ── Hero image — light kit stage (no gradients) ── */}
+        <View style={{ height: 370, backgroundColor: kit.color.well }}>
           {isLoading ? (
             <Skeleton height={370} radius={0} />
           ) : product?.imageUrl ? (
-            <>
-              <Image
-                source={{ uri: product.imageUrl }}
-                style={{ width: "100%", height: "100%" }}
-                contentFit="contain"
-                transition={300}
-              />
-              {/* Bottom gradient — blends into white content area */}
-              <LinearGradient
-                colors={["transparent", "rgba(255,255,255,0.30)", "rgba(255,255,255,0.75)", "#ffffff"]}
-                style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 140, pointerEvents: "none" }}
-              />
-            </>
+            <Image
+              source={{ uri: product.imageUrl }}
+              style={{ width: "100%", height: "100%" }}
+              contentFit="contain"
+              transition={300}
+            />
           ) : (
-            <LinearGradient
-              colors={theme.gradients.heroPrimary as any}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 10 }}>
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
               <View style={{
                 width: 110, height: 110, borderRadius: 34,
-                backgroundColor: "rgba(255,255,255,0.7)",
+                backgroundColor: kit.color.surface,
+                borderWidth: 1, borderColor: kit.color.line,
                 alignItems: "center", justifyContent: "center",
-                ...theme.shadow.md,
+                ...kit.shadow.raised,
               }}>
-                <MaterialCommunityIcons name="pill" size={56} color={theme.colors.brand[400]} />
+                <MaterialCommunityIcons name="pill" size={56} color={kit.color.inkFaint} />
               </View>
-              <LinearGradient
-                colors={["transparent", "rgba(255,255,255,0.30)", "rgba(255,255,255,0.75)", "#ffffff"]}
-                style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 140, pointerEvents: "none" }}
-              />
-            </LinearGradient>
+            </View>
           )}
         </View>
 
@@ -362,13 +347,9 @@ export default function ProductDetailScreen() {
                       }}
                       disabled={qty >= maxQty}
                       style={[pdStyles.stepperBtn, qty >= maxQty && { opacity: 0.45 }]}>
-                      <LinearGradient
-                        colors={[theme.colors.teal[500], theme.colors.brand[600]]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={pdStyles.stepperBtnIncGradient}>
-                        <Ionicons name="add" size={20} color="#fff" />
-                      </LinearGradient>
+                      <View style={pdStyles.stepperBtnInc}>
+                        <Ionicons name="add" size={20} color={kit.color.onInk} />
+                      </View>
                     </Pressable>
                     <View style={pdStyles.stepperValueWrap}>
                       <UIText variant="card-title" weight="black" style={pdStyles.stepperValue}>
@@ -406,7 +387,7 @@ export default function ProductDetailScreen() {
                       i < arr.length - 1 && pdStyles.trustCellDivider,
                     ]}>
                     <View style={pdStyles.trustIcon}>
-                      <Ionicons name={b.icon} size={18} color={theme.colors.teal[500]} />
+                      <Ionicons name={b.icon} size={18} color={kit.color.accentDeep} />
                     </View>
                     <UIText
                       align="center"
@@ -426,10 +407,10 @@ export default function ProductDetailScreen() {
               <View style={pdStyles.detailsCard}>
                 <View style={pdStyles.detailsHeader}>
                   <View style={pdStyles.detailsHeaderIcon}>
-                    <Ionicons name="cube-outline" size={16} color={theme.colors.teal[500]} />
+                    <Ionicons name="cube-outline" size={16} color={kit.color.accentDeep} />
                   </View>
                   <View style={{ gap: 2, flex: 1 }}>
-                    <UIText variant="eyebrow" align="right" style={{ color: theme.colors.teal[500] }}>
+                    <UIText variant="eyebrow" align="right" style={{ color: kit.color.accentDeep }}>
                       {t("product.detailsEyebrow")}
                     </UIText>
                     <UIText variant="card-title" align="right" style={pdStyles.detailsTitle}>
@@ -450,7 +431,7 @@ export default function ProductDetailScreen() {
                 <View style={{ gap: 14 }}>
                   <View style={pdStyles.sectionHeader}>
                     <View style={pdStyles.sectionIcon}>
-                      <Ionicons name="grid-outline" size={14} color={theme.colors.teal[500]} />
+                      <Ionicons name="grid-outline" size={14} color={kit.color.accentDeep} />
                     </View>
                     <View>
                       <UIText variant="eyebrow" color="tertiary" align="right">
@@ -459,7 +440,7 @@ export default function ProductDetailScreen() {
                       <UIText variant="card-title" align="right" style={pdStyles.sectionTitle}>
                         {t("product.relatedTitle")}
                       </UIText>
-                      <UIText variant="eyebrow" align="right" style={{ color: theme.colors.teal[500], marginTop: 2 }}>
+                      <UIText variant="eyebrow" align="right" style={{ color: kit.color.accentDeep, marginTop: 2 }}>
                         {relatedProducts.length} منتجات
                       </UIText>
                     </View>
@@ -485,39 +466,35 @@ export default function ProductDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* ── Sticky CTA — premium anchor with metric typography ── */}
+      {/* ── Sticky CTA — kit ink anchor ── */}
       {product && (
         <View style={[pdStyles.ctaOuter, { paddingBottom: insets.bottom + 14 }]}>
-          <LinearGradient
-            colors={["rgba(255,255,255,0)", theme.colors.surface, theme.colors.surface]}
-            style={pdStyles.ctaFade}
-            pointerEvents="none"
-          />
           {inCart && (
             <Pressable
               onPress={() => router.push("/(tabs)/cart")}
               style={pdStyles.viewCartLink}>
-              <Ionicons name="cart-outline" size={14} color={theme.colors.brand[700]} />
-              <UIText variant="caption" weight="bold" color="brand">
+              <Ionicons name="cart-outline" size={14} color={kit.color.accentDeep} />
+              <UIText variant="caption" weight="bold" style={{ color: kit.color.accentDeep }}>
                 {t("product.viewCart")}
               </UIText>
-              <Ionicons name={FORWARD_CHEVRON} size={12} color={theme.colors.brand[700]} />
+              <Ionicons name={FORWARD_CHEVRON} size={12} color={kit.color.accentDeep} />
             </Pressable>
           )}
           <Animated.View style={btnAnim}>
-            <Button
+            <KitButton
+              label={
+                inCart
+                  ? t("product.inCartAddMore")
+                  : product.inStock
+                  ? t("product.addWithPrice", { price: formatPrice(product.price * qty) })
+                  : t("product.unavailable")
+              }
+              onPress={handleAdd}
               variant={inCart ? "secondary" : "primary"}
               size="lg"
-              fullWidth
-              gradient={!inCart}
+              full
               disabled={!product.inStock}
-              onPress={handleAdd}>
-              {inCart
-                ? t("product.inCartAddMore")
-                : product.inStock
-                ? t("product.addWithPrice", { price: formatPrice(product.price * qty) })
-                : t("product.unavailable")}
-            </Button>
+            />
           </Animated.View>
         </View>
       )}
@@ -545,7 +522,7 @@ const fab = StyleSheet.create({
   stack: {
     position: "absolute",
     // top set inline in JSX via [fab.stack, { top: insets.top + 12 }]
-    right:    16,
+    end:      16,
     zIndex:   100,   // was 20 — raised to ensure it's above ScrollView on Android
     gap:      10,
   },
@@ -584,7 +561,7 @@ const pdStyles = StyleSheet.create({
     flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     gap:             8,
-    backgroundColor: theme.colors.teal[50],
+    backgroundColor: kit.color.accentTint,
     borderRadius:    8,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -593,7 +570,7 @@ const pdStyles = StyleSheet.create({
     width:           3,
     height:          16,
     borderRadius:    2,
-    backgroundColor: theme.colors.teal[500],
+    backgroundColor: kit.color.accentDeep,
   },
 
   // ── Name ─────────────────────────────────────────────────────────
@@ -623,7 +600,7 @@ const pdStyles = StyleSheet.create({
     gap:            16,
   },
   priceMetric: {
-    color:         theme.colors.brand[700],
+    color:         kit.color.ink,
     letterSpacing: -0.8,
   },
   stepperWrap: {
@@ -632,7 +609,7 @@ const pdStyles = StyleSheet.create({
     backgroundColor: theme.colors.surfaceSunken,
     borderRadius:    14,
     borderWidth:     1,
-    borderColor:     theme.colors.border.brandSoft,
+    borderColor:     kit.color.line,
     overflow:        "hidden",
   },
   stepperBtn: {
@@ -642,13 +619,11 @@ const pdStyles = StyleSheet.create({
     justifyContent:  "center",
   },
   stepperBtnInc: {
-    backgroundColor: "transparent",
-  },
-  stepperBtnIncGradient: {
-    width:          44,
-    height:         44,
-    alignItems:     "center",
-    justifyContent: "center",
+    width:           44,
+    height:          44,
+    alignItems:      "center",
+    justifyContent:  "center",
+    backgroundColor: kit.color.ink,
   },
   stepperValueWrap: {
     minWidth:        44,
@@ -684,9 +659,9 @@ const pdStyles = StyleSheet.create({
     width:           42,
     height:          42,
     borderRadius:    13,
-    backgroundColor: theme.colors.teal[50],
+    backgroundColor: kit.color.accentTint,
     borderWidth:     1,
-    borderColor:     theme.colors.border.brandSoft,
+    borderColor:     kit.color.line,
     alignItems:      "center",
     justifyContent:  "center",
   },
@@ -716,11 +691,11 @@ const pdStyles = StyleSheet.create({
     width:           32,
     height:          32,
     borderRadius:    10,
-    backgroundColor: theme.colors.teal[50],
+    backgroundColor: kit.color.accentTint,
     alignItems:      "center",
     justifyContent:  "center",
     borderWidth:     1,
-    borderColor:     theme.colors.teal[100],
+    borderColor:     kit.color.line,
   },
   detailsTitle: {
     letterSpacing: -0.2,
@@ -750,9 +725,9 @@ const pdStyles = StyleSheet.create({
     width:           34,
     height:          34,
     borderRadius:    11,
-    backgroundColor: theme.colors.teal[50],
+    backgroundColor: kit.color.accentTint,
     borderWidth:     1,
-    borderColor:     theme.colors.border.brandSoft,
+    borderColor:     kit.color.line,
     alignItems:      "center",
     justifyContent:  "center",
   },
@@ -778,13 +753,6 @@ const pdStyles = StyleSheet.create({
     shadowOpacity:   0.10,
     shadowRadius:    18,
     elevation:       8,
-  },
-  ctaFade: {
-    position:       "absolute",
-    top:            -40,
-    left:           0,
-    right:          0,
-    height:         40,
   },
   viewCartLink: {
     flexDirection: flexRow(isRtl()),
