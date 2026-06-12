@@ -36,6 +36,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { theme } from "@/shared/theme";
 import { flexRow, isRtl, textAlignStart, BACK_CHEVRON } from "@/utils/layout";
+import { fmtN, safeUri } from "@/utils/format";
 import { useScreenTrace } from "@/features/observability";
 import { kit, Button, IconButton } from "@/shared/kit";
 import { useGiftCatalog } from "../hooks/useGiftCatalog";
@@ -52,30 +53,6 @@ const TEXT_START = textAlignStart(IS_RTL);
 
 interface CatalogEntry extends GiftCatalogItem {
   inventory?: GiftInventory;
-}
-
-/**
- * Safe number formatter. `toLocaleString(locale)` can throw on some Hermes
- * builds depending on shipped ICU subsets; a render-path throw would put the
- * whole screen on the ErrorBoundary. Never let number formatting throw.
- */
-function fmtN(n: unknown): string {
-  const num = typeof n === "number" ? n : Number(n ?? 0);
-  if (!Number.isFinite(num)) return "0";
-  try {
-    return num.toLocaleString("ar-EG");
-  } catch {
-    try { return num.toLocaleString(); } catch { return String(num); }
-  }
-}
-
-/** Defensively coerce to a valid URI string; never let a malformed url crash <Image>. */
-function safeUri(u: unknown): string | null {
-  if (typeof u !== "string") return null;
-  const trimmed = u.trim();
-  if (!trimmed) return null;
-  if (!/^https?:\/\//i.test(trimmed)) return null;
-  return trimmed;
 }
 
 export function GiftCatalogScreen() {

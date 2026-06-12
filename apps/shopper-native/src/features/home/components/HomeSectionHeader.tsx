@@ -1,22 +1,24 @@
 /**
- * HomeSectionHeader — elite section title bar.
+ * HomeSectionHeader — 2026 rebuild on the @/shared/kit design language.
  *
- * Design changes (ground-up rewrite):
- *   • Title: 22 px Cairo Black, tight tracking (-0.5) — was ~16-17 px
- *   • Icon tile: 40 px with gradient fill, slightly larger (was 34 px)
- *   • "See All" pill: brand.lighter bg + brandSoft border — not a bare text link
+ * Editorial section title bar: tinted icon tile (derived from the accent),
+ * eyebrow + ink title stack, and a quiet ghost "view all" affordance
+ * (text + chevron — the bordered pill is gone).
  */
 import React, { memo } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { shStyles as base } from "./home.styles";
-import { flexRow, isRtl, FORWARD_CHEVRON } from "@/utils/layout";
+import { flexRow, isRtl, textAlignStart, FORWARD_CHEVRON } from "@/utils/layout";
+import { kit } from "@/shared/kit";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
+
+const IS_RTL = isRtl();
+const TEXT_START = textAlignStart(IS_RTL);
 
 export interface HomeSectionHeaderProps {
   eyebrow?:   string;
@@ -29,7 +31,7 @@ export interface HomeSectionHeaderProps {
 
 export const HomeSectionHeader = memo(function HomeSectionHeader({
   eyebrow, title, icon,
-  accent    = theme.colors.brand[700],
+  accent    = kit.color.accentDeep,
   onMore,
   rightSlot,
 }: HomeSectionHeaderProps) {
@@ -37,33 +39,28 @@ export const HomeSectionHeader = memo(function HomeSectionHeader({
 
   return (
     <View style={base.row}>
-      {/* Left cluster — icon + text (RTL: appears on RIGHT side) */}
+      {/* Leading cluster — icon tile + text stack */}
       <View style={base.left}>
-        <LinearGradient
-          colors={[accent + "30", accent + "14"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[sh.iconTile, { borderColor: accent + "28" }]}>
+        <View style={[sh.iconTile, { backgroundColor: accent + "14" }]}>
           <Ionicons name={icon} size={17} color={accent} />
-        </LinearGradient>
+        </View>
 
         <View style={sh.textStack}>
-          {eyebrow && (
-            <UIText variant="eyebrow" color="tertiary" align="right" style={sh.eyebrow}>
-              {eyebrow}
-            </UIText>
-          )}
-          <UIText align="right" style={sh.title}>
-            {title}
-          </UIText>
+          {eyebrow && <UIText style={sh.eyebrow}>{eyebrow}</UIText>}
+          <UIText style={sh.title}>{title}</UIText>
         </View>
       </View>
 
-      {/* Right slot — "See All" pill (RTL: appears on LEFT side) */}
+      {/* Trailing slot — ghost "view all" */}
       {rightSlot ?? (onMore && (
-        <Pressable onPress={onMore} style={sh.pill} hitSlop={10}>
-          <UIText style={sh.pillText}>{t("home.viewAll")}</UIText>
-          <Ionicons name={FORWARD_CHEVRON} size={12} color={theme.colors.brand[600]} />
+        <Pressable
+          onPress={onMore}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={t("home.viewAll")}
+          style={sh.more}>
+          <UIText style={sh.moreText}>{t("home.viewAll")}</UIText>
+          <Ionicons name={FORWARD_CHEVRON} size={13} color={kit.color.inkSoft} />
         </Pressable>
       ))}
     </View>
@@ -72,41 +69,38 @@ export const HomeSectionHeader = memo(function HomeSectionHeader({
 
 const sh = StyleSheet.create({
   iconTile: {
-    width:          40,
-    height:         40,
+    width:          38,
+    height:         38,
     borderRadius:   12,
     alignItems:     "center",
     justifyContent: "center",
-    borderWidth:    1,
-    overflow:       "hidden",
   },
   textStack: { gap: 1 },
   eyebrow: {
-    fontSize:      10,
-    letterSpacing: 0.4,
+    fontFamily: theme.fonts.bold,
+    fontSize: 10, lineHeight: 15,
+    color: kit.color.inkFaint,
+    textAlign: TEXT_START,
+    includeFontPadding: false,
   },
   title: {
-    fontSize:      22,
-    fontFamily:    theme.fonts.black,
-    color:         theme.colors.text.primary,
-    letterSpacing: -0.5,
-    lineHeight:    28,
+    fontFamily: theme.fonts.black,
+    fontSize: 19, lineHeight: 27,
+    color: kit.color.ink,
+    textAlign: TEXT_START,
+    includeFontPadding: false,
   },
-  // "See All" pill
-  pill: {
-    flexDirection:     flexRow(isRtl()),
-    alignItems:        "center",
-    gap:               3,
-    backgroundColor:   theme.colors.brand.lighter,
-    borderRadius:      999,
-    paddingHorizontal: 12,
-    paddingVertical:   6,
-    borderWidth:       1,
-    borderColor:       theme.colors.border.brandSoft,
+  more: {
+    flexDirection: flexRow(IS_RTL),
+    alignItems:    "center",
+    gap:           4,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
   },
-  pillText: {
+  moreText: {
     fontFamily: theme.fonts.bold,
-    fontSize:   12,
-    color:      theme.colors.brand[700],
+    fontSize: 12, lineHeight: 18,
+    color: kit.color.inkSoft,
+    includeFontPadding: false,
   },
 });

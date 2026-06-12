@@ -28,3 +28,32 @@ export function localeName(nameAr?: string, nameEn?: string, lang: "ar" | "en" =
   if (lang === "ar") return nameAr ?? nameEn ?? "";
   return nameEn ?? nameAr ?? "";
 }
+
+/**
+ * Safe number formatter. `toLocaleString(locale)` can throw on some Hermes
+ * builds depending on which ICU subsets shipped — and a render-path throw
+ * drops the whole screen onto the ErrorBoundary. Never let number
+ * formatting throw.
+ */
+export function fmtN(n: unknown): string {
+  const num = typeof n === "number" ? n : Number(n ?? 0);
+  if (!Number.isFinite(num)) return "0";
+  try {
+    return num.toLocaleString("ar-EG");
+  } catch {
+    try { return num.toLocaleString(); } catch { return String(num); }
+  }
+}
+
+/**
+ * Defensively coerce to a valid http(s) URI string; returns null for
+ * null/empty/malformed values so callers can fall back to a placeholder
+ * instead of letting a bad value reach <Image>.
+ */
+export function safeUri(u: unknown): string | null {
+  if (typeof u !== "string") return null;
+  const trimmed = u.trim();
+  if (!trimmed) return null;
+  if (!/^https?:\/\//i.test(trimmed)) return null;
+  return trimmed;
+}

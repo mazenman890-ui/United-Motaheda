@@ -1,20 +1,16 @@
 /**
- * DeliveryHeader — premium dark-gradient hero for the home screen.
+ * DeliveryHeader — 2026 rebuild on the @/shared/kit design language.
  *
- * Redesign (2026):
- *   — Logo tile: dark glass style (rgba white) instead of teal-tinted light bg;
- *     blends into the navy gradient instead of breaking the dark canvas.
- *   — Decorative geometry: four layered translucent orbs + a diagonal stripe
- *     give the hero real dimensional depth without animation overhead.
- *   — Hero title: 38 px / -1.2 letterSpacing for stronger billboard presence
- *     with textShadow for depth perception.
- *   — Search bar: white interior with teal accent focus ring; elevated with a
- *     heavier shadow for more visual lift. Includes a hairline separator between
- *     the icon wrap and the text placeholder.
- *   — Chip row: square-ish corners (borderRadius 14) — more modern than full
- *     pill; each chip gets a more distinctive accent treatment.
+ * Replaces the dark navy gradient hero with a light editorial header:
+ *   • Top bar: brand tile at the reading start, cart icon-button (badge) at
+ *     the reading end.
+ *   • Greeting row (time-of-day icon + contextual greeting), display title,
+ *     and subtitle — all start-aligned, ink on canvas.
+ *   • Floating white search pill (same family as the Search screen command
+ *     bar) that routes to the search tab.
+ *   • Quick-access chips as quiet tinted pills (deals / featured / all).
  *
- * Performance: zero animations — static render, no withRepeat loops.
+ * Performance contract kept: memo'd, zero animations, stable callbacks.
  */
 
 import React, { memo, useMemo } from "react";
@@ -25,7 +21,6 @@ import {
   StyleSheet,
   View,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -33,7 +28,11 @@ import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { AppLogo } from "@/shared/components/AppLogo";
-import { flexRow, isRtl } from "@/utils/layout";
+import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
+import { kit } from "@/shared/kit";
+
+const IS_RTL = isRtl();
+const TEXT_START = textAlignStart(IS_RTL);
 
 // Returns an Ionicons name matching the current time of day
 function getTimeIcon(): React.ComponentProps<typeof Ionicons>["name"] {
@@ -69,93 +68,61 @@ export const DeliveryHeader = memo(function DeliveryHeader({
     : t("home.greetingGuest");
 
   return (
-    <LinearGradient
-      colors={["#020D1A", "#032840", "#053C5A"]}
-      start={{ x: 0.1, y: 0 }}
-      end={{ x: 0.9, y: 1 }}
-      style={[s.hero, { paddingTop: insets.top + 20 }]}>
+    <View style={[s.header, { paddingTop: insets.top + 14 }]}>
 
-      {/* ── Layered decorative geometry ────────────────────────────────── */}
-      {/* Large diffused orb — top-right corner bloom */}
-      <View style={s.decorOrbMain} />
-      {/* Medium orb — bottom-left ambient */}
-      <View style={s.decorOrbSecondary} />
-      {/* Small bright orb — top-right accent point */}
-      <View style={s.decorOrbAccent} />
-      {/* 4th orb — large faint center orb for additional depth */}
-      <View style={s.decorOrbCenter} />
-      {/* Diagonal stripe — subtle scan line across the gradient */}
-      <View style={s.decorStripe} />
-
-      {/* ── Top bar: logo  ←→  cart ─────────────────────────────────────── */}
+      {/* ── Top bar: brand ←→ cart ── */}
       <View style={s.topBar}>
         <View style={s.logoWrap}>
-          <AppLogo size={44} />
+          <AppLogo size={40} />
         </View>
-        <View style={s.topBarRight}>
-          <Pressable
-            onPress={() => {
-              if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
-              onCartPress();
-            }}
-            accessibilityRole="button"
-            accessibilityLabel={t("tabs.cart")}
-            style={s.headerBtn}>
-            <Ionicons name="bag-outline" size={18} color="rgba(255,255,255,0.90)" />
-            {cartCount > 0 && (
-              <View style={s.cartBadge}>
-                <UIText style={s.cartBadgeText}>{cartCount > 9 ? "9+" : cartCount}</UIText>
-              </View>
-            )}
-          </Pressable>
-        </View>
+        <Pressable
+          onPress={() => {
+            if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
+            onCartPress();
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={t("tabs.cart")}
+          style={s.cartBtn}>
+          <Ionicons name="bag-outline" size={19} color={kit.color.inkSoft} />
+          {cartCount > 0 && (
+            <View style={s.cartBadge}>
+              <UIText style={s.cartBadgeText}>{cartCount > 9 ? "9+" : cartCount}</UIText>
+            </View>
+          )}
+        </Pressable>
       </View>
 
-      {/* ── Headline ──────────────────────────────────────────────────────── */}
+      {/* ── Headline ── */}
       <View style={s.headingStack}>
-        {/* Greeting row — time icon + contextual greeting */}
         <View style={s.greetingRow}>
-          {/* 26×26 icon wrap — brighter teal tint for stronger identity */}
           <View style={s.greetingIconWrap}>
-            <Ionicons name={timeIcon} size={11} color={theme.colors.teal[200]} />
+            <Ionicons name={timeIcon} size={12} color={kit.color.accentDeep} />
           </View>
-          <UIText variant="eyebrow" align="right" style={s.greetingText}>
-            {greeting}
-          </UIText>
+          <UIText style={s.greetingText}>{greeting}</UIText>
         </View>
 
-        {/* Billboard title — textShadow adds perceived depth against the gradient */}
-        <UIText align="right" style={s.heroTitle}>
-          {t("home.heroTaglineTitle")}
-        </UIText>
-
-        <UIText variant="body-sm" align="right" style={s.heroSub}>
-          {t("home.heroTaglineSub")}
-        </UIText>
+        <UIText style={s.heroTitle}>{t("home.heroTaglineTitle")}</UIText>
+        <UIText style={s.heroSub}>{t("home.heroTaglineSub")}</UIText>
       </View>
 
-      {/* ── Search bar — white interior, teal-branded, heavily elevated ──── */}
+      {/* ── Search pill — floating, routes to search ── */}
       <Pressable
         onPress={onSearchPress}
         accessibilityRole="button"
         accessibilityLabel={t("search.placeholder")}
         style={s.searchBar}>
-        {/* Teal icon box — anchors brand identity */}
         <View style={s.searchIconWrap}>
-          <Ionicons name="search" size={15} color={theme.colors.teal[600]} />
+          <Ionicons name="search" size={17} color={kit.color.inkFaint} />
         </View>
-        {/* Hairline separator between icon wrap and text */}
-        <View style={s.searchSeparator} />
-        <UIText variant="body-sm" align="right" style={s.searchPlaceholder}>
+        <UIText style={s.searchPlaceholder} numberOfLines={1}>
           {t("search.placeholder")}
         </UIText>
-        {/* Sparkle badge — signals AI / premium search without cluttering */}
         <View style={s.searchBadge}>
-          <Ionicons name="sparkles" size={12} color={theme.colors.teal[400]} />
+          <Ionicons name="sparkles" size={13} color={kit.color.accentDeep} />
         </View>
       </Pressable>
 
-      {/* ── Quick-access chips — Deals + Featured + All ──────────────────── */}
+      {/* ── Quick-access chips ── */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -164,140 +131,79 @@ export const DeliveryHeader = memo(function DeliveryHeader({
 
         <Pressable
           onPress={() => router.push("/deals")}
-          style={s.dealChip}
+          style={[s.chip, { backgroundColor: kit.color.dangerTint }]}
           accessibilityRole="button">
-          <Ionicons name="flame" size={12} color="#FCA5A5" />
-          <UIText numberOfLines={1} style={s.dealChipText}>{t("home.flashTitle")}</UIText>
+          <Ionicons name="flame" size={13} color={kit.color.danger} />
+          <UIText numberOfLines={1} style={[s.chipText, { color: kit.color.danger }]}>
+            {t("home.flashTitle")}
+          </UIText>
         </Pressable>
 
         <Pressable
           onPress={() => router.push("/featured")}
-          style={s.featChip}
+          style={[s.chip, { backgroundColor: kit.color.warnTint }]}
           accessibilityRole="button">
-          <Ionicons name="star" size={12} color={theme.colors.amber[300]} />
-          <UIText numberOfLines={1} style={s.featChipText}>{t("home.featuredTitle")}</UIText>
+          <Ionicons name="star" size={13} color={kit.color.warn} />
+          <UIText numberOfLines={1} style={[s.chipText, { color: kit.color.warn }]}>
+            {t("home.featuredTitle")}
+          </UIText>
         </Pressable>
 
         <Pressable
           onPress={() => router.push("/(tabs)/products")}
-          style={s.allChip}
+          style={[s.chip, s.chipNeutral]}
           accessibilityRole="button">
-          <Ionicons name="grid-outline" size={12} color="rgba(255,255,255,0.60)" />
-          <UIText numberOfLines={1} style={s.allChipText}>{t("products.allProducts")}</UIText>
+          <Ionicons name="grid-outline" size={13} color={kit.color.inkSoft} />
+          <UIText numberOfLines={1} style={[s.chipText, { color: kit.color.inkSoft }]}>
+            {t("products.allProducts")}
+          </UIText>
         </Pressable>
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 });
 
 const s = StyleSheet.create({
-  hero: {
-    paddingBottom:     40,
+  header: {
+    paddingBottom:     kit.sp(5),
     paddingHorizontal: theme.layout.pagePaddingH,
-    overflow:          "hidden",
+    backgroundColor:   kit.color.canvas,
   },
 
-  // ── Decorative geometry ────────────────────────────────────────────────────
-  // Teal bloom — large, diffused, upper-right
-  decorOrbMain: {
-    position:        "absolute",
-    right:           -70,
-    top:             -60,
-    width:           220,
-    height:          220,
-    borderRadius:    110,
-    backgroundColor: "rgba(13,184,168,0.09)",
-  },
-  // Deep navy ambient — lower-left
-  decorOrbSecondary: {
-    position:        "absolute",
-    left:            -70,
-    bottom:          -40,
-    width:           180,
-    height:          180,
-    borderRadius:    90,
-    backgroundColor: "rgba(255,255,255,0.025)",
-  },
-  // Bright teal accent — small, upper-right quadrant
-  decorOrbAccent: {
-    position:        "absolute",
-    right:           40,
-    top:             50,
-    width:           56,
-    height:          56,
-    borderRadius:    28,
-    backgroundColor: "rgba(13,184,168,0.12)",
-  },
-  // 4th orb — large faint center-right orb for layered depth
-  decorOrbCenter: {
-    position:        "absolute",
-    right:           -80,
-    top:             60,
-    width:           300,
-    height:          300,
-    borderRadius:    150,
-    backgroundColor: "rgba(13,184,168,0.04)",
-  },
-  // Diagonal scan line — 8° tilt across the upper band
-  decorStripe: {
-    position:        "absolute",
-    top:             -30,
-    left:            -100,
-    right:           -100,
-    height:          1.5,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    transform:       [{ rotate: "-8deg" }],
-  },
-
-  // ── Top bar ────────────────────────────────────────────────────────────────
+  // ── Top bar ──
   topBar: {
-    flexDirection:  flexRow(isRtl()),
+    flexDirection:  flexRow(IS_RTL),
     alignItems:     "center",
     justifyContent: "space-between",
-    marginBottom:   30,
+    marginBottom:   kit.sp(5),
   },
-  topBarRight: {
-    flexDirection: flexRow(isRtl()),
-    gap:           10,
-  },
-
-  // Balanced tile size so the mark feels premium without dominating the top bar.
   logoWrap: {
-    width:           60,
-    height:          60,
-    borderRadius:    20,
-    backgroundColor: "rgba(255,255,255,0.12)",
+    width:           48,
+    height:          48,
+    borderRadius:    16,
+    backgroundColor: kit.color.surface,
     borderWidth:     1,
-    borderColor:     "rgba(255,255,255,0.20)",
+    borderColor:     kit.color.line,
     alignItems:      "center",
     justifyContent:  "center",
     overflow:        "hidden",
-    shadowColor:     "#000",
-    shadowOffset:    { width: 0, height: 6 },
-    shadowOpacity:   0.18,
-    shadowRadius:    12,
-    elevation:       6,
+    ...kit.shadow.raised,
   },
-
-  // Slightly larger touch target (44×44) with tighter radius
-  headerBtn: {
-    position:        "relative",
+  cartBtn: {
     width:           44,
     height:          44,
-    borderRadius:    15,
-    backgroundColor: "rgba(255,255,255,0.10)",
+    borderRadius:    22,
+    backgroundColor: kit.color.surface,
+    borderWidth:     1,
+    borderColor:     kit.color.line,
     alignItems:      "center",
     justifyContent:  "center",
-    borderWidth:     1,
-    borderColor:     "rgba(255,255,255,0.16)",
   },
-  // Badge uses `end` instead of `left` so it sits at the logical trailing-top
-  // on both LTR and RTL layouts — always visible at the visual trailing corner.
   cartBadge: {
     position:          "absolute",
-    top:               -5,
-    end:               -5,
-    backgroundColor:   theme.colors.red[500],
+    top:               -4,
+    end:               -4,
+    backgroundColor:   kit.color.accent,
     borderRadius:      9,
     minWidth:          18,
     height:            18,
@@ -305,186 +211,113 @@ const s = StyleSheet.create({
     justifyContent:    "center",
     paddingHorizontal: 4,
     borderWidth:       1.5,
-    borderColor:       "#020D1A",
+    borderColor:       kit.color.canvas,
   },
   cartBadgeText: {
-    color:               "#fff",
-    fontSize:            9,
-    lineHeight:          9,
-    fontFamily:          theme.fonts.black,
-    includeFontPadding:  false,
-    textAlign:           "center",
-    textAlignVertical:   "center",
+    color:              kit.color.onInk,
+    fontSize:           9,
+    lineHeight:         12,
+    fontFamily:         theme.fonts.black,
+    includeFontPadding: false,
+    textAlign:          "center",
   },
 
-  // ── Heading ────────────────────────────────────────────────────────────────
-  // gap: 10 — tighter grouping reads as one cohesive unit
+  // ── Heading ──
   headingStack: {
-    gap:          10,
-    marginBottom: 20,
+    gap:          kit.sp(2),
+    marginBottom: kit.sp(5),
   },
   greetingRow: {
-    flexDirection:  flexRow(isRtl()),
-    alignItems:     "center",
-    justifyContent: "flex-start",
-    gap:            8,
+    flexDirection: flexRow(IS_RTL),
+    alignItems:    "center",
+    gap:           8,
   },
-  // 26×26 — slightly larger, brighter teal background for stronger brand imprint
   greetingIconWrap: {
     width:           26,
     height:          26,
     borderRadius:    9,
     alignItems:      "center",
     justifyContent:  "center",
-    backgroundColor: "rgba(13,184,168,0.22)",
-    borderWidth:     1,
-    borderColor:     "rgba(13,184,168,0.28)",
+    backgroundColor: kit.color.accentTint,
   },
-  // teal[200] — brighter than teal[300] for more contrast on the dark hero
   greetingText: {
-    color:         theme.colors.teal[200],
-    letterSpacing: 0.5,
-  },
-  // Billboard title: 38 px / -1.2 tracking + textShadow for depth
-  heroTitle: {
-    color:              "#FFFFFF",
-    fontFamily:         theme.fonts.black,
-    fontSize:           38,
-    lineHeight:         46,
-    letterSpacing:      -1.2,
+    fontFamily: theme.fonts.bold,
+    fontSize: 12, lineHeight: 18,
+    color: kit.color.inkSoft,
+    textAlign: TEXT_START,
     includeFontPadding: false,
-    textAlignVertical:  "center",
-    textShadowColor:    "rgba(0,0,0,0.2)",
-    textShadowOffset:   { width: 0, height: 2 },
-    textShadowRadius:   6,
   },
-  // Slightly more visible subtitle
+  heroTitle: {
+    fontFamily: theme.fonts.black,
+    fontSize: kit.type.display.fontSize,
+    lineHeight: kit.type.display.lineHeight,
+    color: kit.color.ink,
+    textAlign: TEXT_START,
+    includeFontPadding: false,
+  },
   heroSub: {
-    color:      "rgba(255,255,255,0.56)",
-    lineHeight: 18,
+    fontFamily: theme.fonts.regular,
+    fontSize: 13, lineHeight: 20,
+    color: kit.color.inkSoft,
+    textAlign: TEXT_START,
+    includeFontPadding: false,
   },
 
-  // ── Search bar — elevated premium white interior ──────────────────────────
-  // height: 56, borderRadius: 20, heavier shadow for more visual lift
+  // ── Search pill ──
   searchBar: {
-    flexDirection:     flexRow(isRtl()),
+    flexDirection:     flexRow(IS_RTL),
     alignItems:        "center",
-    gap:               0,
-    backgroundColor:   "rgba(255,255,255,0.97)",
-    borderRadius:      20,
-    borderWidth:       1,
-    borderColor:       "rgba(255,255,255,0.20)",
-    paddingHorizontal: 6,
-    paddingVertical:   4,
+    gap:               4,
     height:            56,
-    shadowColor:       "#021D2E",
-    shadowOffset:      { width: 0, height: 8 },
-    shadowOpacity:     0.20,
-    shadowRadius:      20,
-    elevation:         10,
+    paddingHorizontal: 8,
+    backgroundColor:   kit.color.surface,
+    borderRadius:      kit.radius.pill,
+    borderWidth:       1,
+    borderColor:       kit.color.line,
+    ...kit.shadow.floating,
   },
-  // 44×44 icon box — larger with rounded-rect treatment
   searchIconWrap: {
-    width:           44,
-    height:          44,
-    borderRadius:    14,
-    alignItems:      "center",
-    justifyContent:  "center",
-    backgroundColor: theme.colors.teal[50],
-    borderWidth:     1,
-    borderColor:     theme.colors.border.brandSoft,
+    width: 40, height: 40,
+    alignItems: "center", justifyContent: "center",
   },
-  // Hairline separator between icon box and text input
-  searchSeparator: {
-    width:           StyleSheet.hairlineWidth,
-    height:          24,
-    backgroundColor: theme.colors.border.default,
-    marginHorizontal: 10,
-  },
-  // Slightly larger font with semibold weight for premium feel
   searchPlaceholder: {
     flex:       1,
     fontSize:   14,
-    color:      theme.colors.text.secondary,
+    lineHeight: 20,
     fontFamily: theme.fonts.semibold,
+    color:      kit.color.inkFaint,
+    textAlign:  TEXT_START,
+    includeFontPadding: false,
   },
-  // Sparkle badge — signals AI / premium search without cluttering
   searchBadge: {
-    width:           36,
-    height:          36,
-    borderRadius:    11,
-    alignItems:      "center",
-    justifyContent:  "center",
-    backgroundColor: "rgba(13,184,168,0.10)",
-    borderWidth:     1,
-    borderColor:     "rgba(13,184,168,0.20)",
-    marginRight:     2,
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: "center", justifyContent: "center",
+    backgroundColor: kit.color.accentTint,
   },
 
-  // ── Quick-access chip row ──────────────────────────────────────────────────
-  chipScroll: {
-    marginTop: 14,
-  },
+  // ── Quick-access chips ──
+  chipScroll: { marginTop: kit.sp(3) },
   chipRow: {
-    flexDirection: flexRow(isRtl()),
+    flexDirection: flexRow(IS_RTL),
     alignItems:    "center",
     gap:           8,
   },
-
-  // 🔥 Deals chip — vivid red bloom; square-ish borderRadius 14
-  dealChip: {
-    flexDirection:     flexRow(isRtl()),
+  chip: {
+    flexDirection:     flexRow(IS_RTL),
     alignItems:        "center",
-    justifyContent:    "center",
     gap:               6,
-    backgroundColor:   "rgba(239,68,68,0.16)",
-    borderRadius:      14,
+    height:            38,
+    borderRadius:      kit.radius.pill,
     paddingHorizontal: 14,
-    paddingVertical:   9,
-    borderWidth:       1,
-    borderColor:       "rgba(252,165,165,0.25)",
   },
-  dealChipText: {
+  chipNeutral: {
+    backgroundColor: kit.color.surface,
+    borderWidth:     1,
+    borderColor:     kit.color.line,
+  },
+  chipText: {
     fontFamily: theme.fonts.bold,
-    fontSize:   12,
-    color:      "#FCA5A5",
-  },
-
-  // ⭐ Featured chip — warm amber glow; square-ish corners
-  featChip: {
-    flexDirection:     flexRow(isRtl()),
-    alignItems:        "center",
-    justifyContent:    "center",
-    gap:               6,
-    backgroundColor:   "rgba(245,158,11,0.14)",
-    borderRadius:      14,
-    paddingHorizontal: 14,
-    paddingVertical:   9,
-    borderWidth:       1,
-    borderColor:       "rgba(251,191,36,0.22)",
-  },
-  featChipText: {
-    fontFamily: theme.fonts.bold,
-    fontSize:   12,
-    color:      theme.colors.amber[300],
-  },
-
-  // 🔲 All products chip — pure glass; square-ish corners
-  allChip: {
-    flexDirection:     flexRow(isRtl()),
-    alignItems:        "center",
-    justifyContent:    "center",
-    gap:               6,
-    backgroundColor:   "rgba(255,255,255,0.07)",
-    borderRadius:      14,
-    paddingHorizontal: 14,
-    paddingVertical:   9,
-    borderWidth:       1,
-    borderColor:       "rgba(255,255,255,0.12)",
-  },
-  allChipText: {
-    fontFamily: theme.fonts.bold,
-    fontSize:   12,
-    color:      "rgba(255,255,255,0.62)",
+    fontSize: 12, lineHeight: 18,
+    includeFontPadding: false,
   },
 });

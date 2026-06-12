@@ -17,13 +17,13 @@
 import React, { memo, useCallback } from "react";
 import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { FlashList } from "@shopify/flash-list";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { flexRow, isRtl, FORWARD_CHEVRON } from "@/utils/layout";
+import { kit } from "@/shared/kit";
 import { ProductCard } from "@/components/ProductCard";
 import { HomeSectionHeader } from "./HomeSectionHeader";
 import { flashStyles as fs, cntStyles as cs } from "./home.styles";
@@ -36,13 +36,13 @@ const SALE_DISCOUNTS = [25, 15, 20, 30, 10, 20];
 // ─── CountdownUnit ────────────────────────────────────────────────────────────
 
 const CountdownUnit = memo(function CountdownUnit({
-  value, label, grad,
-}: { value: string; label: string; grad: [string, string] }) {
+  value, label,
+}: { value: string; label: string }) {
   return (
     <View style={cs.unit}>
-      <LinearGradient colors={grad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={cs.cell}>
+      <View style={cs.cell}>
         <UIText style={cs.value}>{value}</UIText>
-      </LinearGradient>
+      </View>
       <UIText variant="eyebrow" color="tertiary" style={cs.unitLabel}>{label}</UIText>
     </View>
   );
@@ -54,11 +54,11 @@ const CountdownDisplay = memo(function CountdownDisplay() {
   const { h, m, s } = useEndOfDayCountdown();
   return (
     <View style={cs.timerRow}>
-      <CountdownUnit value={s} label={t("home.flashSec")} grad={[theme.colors.red[600],   theme.colors.red[500]]}   />
+      <CountdownUnit value={s} label={t("home.flashSec")} />
       <UIText style={cs.colon}>:</UIText>
-      <CountdownUnit value={m} label={t("home.flashMin")} grad={[theme.colors.amber[600], theme.colors.amber[500]]} />
+      <CountdownUnit value={m} label={t("home.flashMin")} />
       <UIText style={cs.colon}>:</UIText>
-      <CountdownUnit value={h} label={t("home.flashHrs")} grad={[theme.colors.brand[600], theme.colors.teal[500]]}  />
+      <CountdownUnit value={h} label={t("home.flashHrs")} />
     </View>
   );
 });
@@ -95,7 +95,7 @@ const va = StyleSheet.create({
     paddingTop:        10,
   },
   btn: {
-    borderRadius: 14,
+    borderRadius: kit.radius.pill,
     overflow:     "hidden",
   },
   btnPressed: {
@@ -106,17 +106,17 @@ const va = StyleSheet.create({
     alignItems:      "center",
     justifyContent:  "center",
     gap:             8,
-    paddingVertical: 13,
-    borderRadius:    14,
-    backgroundColor: theme.colors.surface,
-    borderWidth:     1.5,
-    borderColor:     theme.colors.red[200],
+    height:          46,
+    borderRadius:    kit.radius.pill,
+    backgroundColor: kit.color.surface,
+    borderWidth:     1,
+    borderColor:     kit.color.line,
   },
   text: {
-    fontFamily:    theme.fonts.black,
-    fontSize:      14,
-    color:         theme.colors.red[600],
-    letterSpacing: 0.1,
+    fontFamily: theme.fonts.black,
+    fontSize: 13, lineHeight: 19,
+    color: kit.color.ink,
+    includeFontPadding: false,
   },
 });
 
@@ -159,7 +159,7 @@ export const FlashSaleSection = memo(function FlashSaleSection({
         eyebrow={t("home.flashEnds")}
         title={t("home.flashTitle")}
         icon="flash"
-        accent={theme.colors.red[500]}
+        accent={kit.color.danger}
         rightSlot={<CountdownDisplay />}
       />
 
@@ -171,7 +171,6 @@ export const FlashSaleSection = memo(function FlashSaleSection({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: theme.layout.pagePaddingH }}
         renderItem={renderFlashItem}
-        estimatedItemSize={162}
       />
 
       {/* ── "View All Deals" CTA — outlined, brand-accented, never destructive ── */}
@@ -182,9 +181,9 @@ export const FlashSaleSection = memo(function FlashSaleSection({
             accessibilityRole="button"
             style={({ pressed }) => [va.btn, pressed && va.btnPressed]}>
             <View style={va.btnInner}>
-              <Ionicons name="flame" size={15} color={theme.colors.red[500]} />
+              <Ionicons name="flame" size={15} color={kit.color.danger} />
               <UIText style={va.text}>{t("home.viewAll")}</UIText>
-              <Ionicons name={FORWARD_CHEVRON} size={15} color={theme.colors.red[500]} />
+              <Ionicons name={FORWARD_CHEVRON} size={15} color={kit.color.inkSoft} />
             </View>
           </Pressable>
         </View>

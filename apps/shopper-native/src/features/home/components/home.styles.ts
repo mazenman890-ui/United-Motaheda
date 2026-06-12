@@ -4,7 +4,8 @@
  */
 import { StyleSheet } from "react-native";
 import { theme } from "@/shared/theme";
-import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
+import { flexRow, isRtl } from "@/utils/layout";
+import { kit } from "@/shared/kit";
 
 // ─── Section containers ────────────────────────────────────────────────────────
 export const sectionStyles = StyleSheet.create({
@@ -50,54 +51,11 @@ export const shStyles = StyleSheet.create({
   },
 });
 
-// ─── Quick-action row ──────────────────────────────────────────────────────────
-export const quickStyles = StyleSheet.create({
-  row: {
-    flexDirection:     flexRow(isRtl()),
-    gap:               10,
-    paddingHorizontal: theme.layout.pagePaddingH,
-  },
-  // Outer animated wrapper — shadow/elevation only, no overflow clip
-  shadow: {
-    borderRadius:  20,
-    shadowColor:   "#000",
-    shadowOffset:  { width: 0, height: 4 },
-    shadowOpacity: 0.22,
-    shadowRadius:  10,
-    elevation:     5,
-  },
-  // Inner gradient tile — clips to rounded corners
-  tile: {
-    width:          62,
-    height:         62,
-    borderRadius:   20,
-    alignItems:     "center",
-    justifyContent: "center",
-    overflow:       "hidden",
-  },
-  shine: {
-    position:             "absolute",
-    top:                  0,
-    left:                 0,
-    right:                0,
-    height:               "50%",
-    backgroundColor:      "rgba(255,255,255,0.14)",
-    borderTopLeftRadius:  20,
-    borderTopRightRadius: 20,
-  },
-  label: {
-    color:      theme.colors.slate[700],
-    fontSize:   11,
-    fontFamily: theme.fonts.bold,
-    lineHeight: 14,
-  },
-});
-
-// ─── Countdown timer ───────────────────────────────────────────────────────────
+// ─── Countdown timer (kit: solid ink cells — no gradients) ────────────────────
 export const cntStyles = StyleSheet.create({
   timerRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   colon:    {
-    color:        theme.colors.slate[400],
+    color:        kit.color.inkFaint,
     fontSize:     16,
     fontFamily:   theme.fonts.black,
     marginBottom: 12,
@@ -109,15 +67,16 @@ export const cntStyles = StyleSheet.create({
     paddingVertical:   6,
     minWidth:          36,
     alignItems:        "center",
-    overflow:          "hidden",
+    backgroundColor:   kit.color.ink,
   },
   value: {
-    color:         "#fff",
-    fontSize:      15,
-    fontFamily:    theme.fonts.black,
-    letterSpacing: 0.4,
+    color:              kit.color.onInk,
+    fontSize:           14,
+    lineHeight:         20,
+    fontFamily:         theme.fonts.black,
+    includeFontPadding: false,
   },
-  unitLabel: { color: theme.colors.slate[400], fontSize: 9.5 },
+  unitLabel: { color: kit.color.inkFaint, fontSize: 9.5 },
 });
 
 // ─── Flash sale item wrappers ──────────────────────────────────────────────────
@@ -130,99 +89,4 @@ export const flashStyles = StyleSheet.create({
 // ─── Featured product wrappers ─────────────────────────────────────────────────
 export const featuredStyles = StyleSheet.create({
   itemWrap: { flex: 1 },
-});
-
-// ─── Pharmacist support card ───────────────────────────────────────────────────
-export const supportStyles = StyleSheet.create({
-  wrap: {
-    paddingHorizontal: theme.spacing[4],     // 32 — intentional wider inset for floating card
-    paddingTop:        theme.spacing['3xl'],  // 32  (was 72 — spacing[9])
-  },
-  card: {
-    borderRadius:  24,
-    padding:       20,
-    gap:           18,
-    overflow:      "hidden",
-    shadowColor:   theme.colors.hero,
-    shadowOffset:  { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius:  20,
-    elevation:     10,
-  },
-  glow: {
-    position:        "absolute",
-    right:           -50,
-    top:             -50,
-    width:           140,
-    height:          140,
-    borderRadius:    70,
-    backgroundColor: "rgba(13,184,168,0.12)",
-  },
-  ring: {
-    position:     "absolute",
-    right:        -10,
-    top:          -10,
-    width:        80,
-    height:       80,
-    borderRadius: 40,
-    borderWidth:  1,
-    borderColor:  "rgba(13,184,168,0.20)",
-  },
-  // "row" + RTL = icon on logical right, text fills flex: 1 in middle.
-  // "row-reverse" was causing double-reversal → floating/aimless layout.
-  row: {
-    flexDirection:  "row",
-    alignItems:     "center",
-    justifyContent: "space-between",
-    gap:            14,
-  },
-  iconTile: {
-    width:          52,
-    height:         52,
-    borderRadius:   16,
-    alignItems:     "center",
-    justifyContent: "center",
-    overflow:       "hidden",
-    flexShrink:     0,   // never shrink the icon tile
-  },
-  title: {
-    color:         "#FFFFFF",
-    fontSize:      18,
-    fontFamily:    theme.fonts.black,
-    letterSpacing: -0.3,
-    textAlign:     textAlignStart(isRtl()),
-    marginTop:     theme.spacing[0.5],
-  },
-  sub: {
-    color:      "rgba(255,255,255,0.55)",
-    fontSize:   12,
-    fontFamily: theme.fonts.regular,
-    lineHeight: 18,
-    textAlign:  textAlignStart(isRtl()),
-    marginTop:  theme.spacing[0.5],
-  },
-  // CTA: WhatsApp icon + text on left; chevron pinned to right via space-between
-  cta: {
-    flexDirection:     "row",
-    alignItems:        "center",
-    justifyContent:    "space-between",   // was: center — chevron now pins to edge
-    gap:               10,
-    backgroundColor:   "#fff",
-    borderRadius:      14,
-    paddingHorizontal: 18,
-    paddingVertical:   13,
-    shadowColor:       "#000",
-    shadowOffset:      { width: 0, height: 2 },
-    shadowOpacity:     0.08,
-    shadowRadius:      6,
-    elevation:         3,
-  },
-  ctaText: {
-    flex:       1,                        // text fills available space
-    color:      theme.colors.slate[900],
-    fontSize:   14,
-    fontFamily: theme.fonts.extrabold,
-    textAlign:  "left",
-  },
-  ctaArrow: {},                           // chevron sits at end naturally via space-between
 });

@@ -38,6 +38,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { theme } from "@/shared/theme";
+import { kit } from "@/shared/kit";
 import { useCartStore, selectItemCount } from "@/stores/cart";
 import { useAuth } from "@/features/auth";
 import { useMountTiming } from "@/lib/devTiming";
@@ -154,8 +155,8 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={isRefetching}
             onRefresh={onRefresh}
-            tintColor={theme.colors.brand[500]}
-            colors={[theme.colors.brand[600]]}
+            tintColor={kit.color.accent}
+            colors={[kit.color.accent]}
           />
         }>
 
@@ -205,7 +206,7 @@ export default function HomeScreen() {
             eyebrow={t("home.featuredEyebrow")}
             title={t("home.featuredTitle")}
             icon="star-outline"
-            accent={theme.colors.amber[700]}
+            accent={kit.color.warn}
             onMore={() => router.push({ pathname: "/featured" })}
           />
           {featLoading ? (
@@ -265,7 +266,7 @@ const renderFeaturedSkeleton = () => (
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  root:         { flex: 1, backgroundColor: theme.colors.bg },
+  root:         { flex: 1, backgroundColor: kit.color.canvas },
   hListContent: {
     paddingHorizontal: theme.layout.pagePaddingH,
     gap:               FEAT_GAP,
