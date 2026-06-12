@@ -48,9 +48,10 @@ export default function PaymentScreen() {
     hydratePaymentStore();
   }, []);
 
-  const selectedLabel = usePaymentStore((s) =>
-    s.methods.find((m) => m.type === s.selected)?.label ?? ""
+  const selectedLabelKey = usePaymentStore((s) =>
+    s.methods.find((m) => m.type === s.selected)?.labelKey ?? ""
   );
+  const selectedLabel = selectedLabelKey ? t(selectedLabelKey) : "";
 
   return (
     <View style={styles.screen}>

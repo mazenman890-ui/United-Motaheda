@@ -1,25 +1,25 @@
 /**
- * Search — flagship premium discovery experience.
+ * Search — 2026 rebuild on the @/shared/kit design language.
  *
- * Architectural decisions:
- *   - Dark navy LinearGradient header with glassmorphic command bar.
- *   - Language badge (AR/MIX) inside the search bar for bilingual input.
- *   - Submit button renders as teal LinearGradient when query.length >= 2.
- *   - Filter button scales to 40×40 with teal glow when active.
- *   - Discovery sections use a colored left-border bullet + bold title.
- *   - Recent chips: square-ish borderRadius 14 with teal start-border accent.
- *   - Trending rows: taller (minHeight 60), rank badge at row top-right.
- *   - Category tiles: taller, 52×52 icon, count badge pill below name.
- *   - Suggestion card: borderRadius 24, hairline border, sunken header band.
- *   - GroupChips and filter chips: borderRadius 12, height 36.
- *   - Empty state: 80×80 teal-tinted search icon box + improved chips.
- *   - Translation hint: animated pulsing dot, warm background.
+ * Architecture (completely new — replaces the dark-gradient header layout):
+ *   • Light canvas end to end. Editorial header: eyebrow + display title,
+ *     result-count ink pill when searching.
+ *   • Floating COMMAND BAR: white pill, layered shadow, inline filter toggle.
+ *     Submit via the keyboard search key / suggestion footer — no gradient
+ *     submit square.
+ *   • Discovery: recent chips → TRENDING as an editorial numbered list
+ *     (display numerals, hairline separators — no icon cards) → CATEGORIES
+ *     as a horizontal snap rail of compact tiles.
+ *   • Suggestions: floating white sheet; filter panel: white card with pill
+ *     segments and a kit switch.
  *
- * Search-fix invariant (DO NOT TOUCH):
+ * Search-fix invariant (functional core — DO NOT TOUCH):
  *   - resolvedDebouncedQ → useProductSearch({ query: resolvedDebouncedQ })
  *   - resolvedSubmitted  → useInfiniteProducts({ search: resolvedSubmitted })
  *   - <Hl qAlt={resolvedDebouncedQ} />
  *   - <SuggRow queryResolved={resolvedDebouncedQ} />
+ *   Recents persistence, popular-search RPC, and log_search_event analytics
+ *   are also unchanged.
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -35,7 +35,6 @@ import {
   type StyleProp,
   type TextStyle,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "react-i18next";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -43,18 +42,7 @@ import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import Animated, {
-  FadeIn,
-  FadeInDown,
-  FadeInRight,
-  FadeOut,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withSpring,
-  withTiming,
-} from "react-native-reanimated";
+import Animated, { FadeIn, FadeInDown, FadeOut } from "react-native-reanimated";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useDebounce } from "@/hooks/useDebounce";
 import { fetchCategories } from "@/services/productsApi";
@@ -62,16 +50,17 @@ import { ProductGrid, useInfiniteProducts, useProductSearch } from "@/features/p
 import { resolveSmartQuery, detectSearchLang } from "@/utils/searchUtils";
 import { useScreenTrace } from "@/features/observability";
 import { supabase } from "@/lib/supabase";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { formatPrice } from "@/utils/format";
 import { flexRow, isRtl, textAlignStart, FORWARD_CHEVRON } from "@/utils/layout";
+import { kit } from "@/shared/kit";
 import type { NativeProduct, NativeCategory } from "@/services/productsApi";
 
 const IS_RTL      = isRtl();
-const INPUT_ALIGN = textAlignStart(IS_RTL) as "left" | "right" | "center";
+const TEXT_START  = textAlignStart(IS_RTL);
+const INPUT_ALIGN = TEXT_START as "left" | "right" | "center";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -84,13 +73,13 @@ const SORT_KEYS: Record<SortKey, string> = {
   name_asc:   "search.sortNameAsc",
 };
 
-const TRENDING_META: { termKey: string; icon: IoniconsName; color: string; bg: string }[] = [
-  { termKey: "search.trending0", icon: "medkit",         color: theme.colors.brand[700],   bg: theme.colors.brand.lighter   },
-  { termKey: "search.trending1", icon: "medical",        color: theme.colors.purple[700],  bg: theme.colors.purple[50]      },
-  { termKey: "search.trending2", icon: "sunny-outline",  color: theme.colors.amber[700],   bg: theme.colors.amber[50]       },
-  { termKey: "search.trending3", icon: "fitness",        color: theme.colors.rose[600],    bg: theme.colors.rose[50]        },
-  { termKey: "search.trending4", icon: "thermometer",    color: theme.colors.info.strong,  bg: theme.colors.info.bg         },
-  { termKey: "search.trending5", icon: "water-outline",  color: theme.colors.brand[700],   bg: theme.colors.brand.lighter   },
+const TRENDING_META: { termKey: string; icon: IoniconsName; color: string }[] = [
+  { termKey: "search.trending0", icon: "medkit",        color: kit.color.accentDeep },
+  { termKey: "search.trending1", icon: "medical",       color: kit.color.accentDeep },
+  { termKey: "search.trending2", icon: "sunny-outline", color: kit.color.warn       },
+  { termKey: "search.trending3", icon: "fitness",       color: kit.color.danger     },
+  { termKey: "search.trending4", icon: "thermometer",   color: kit.color.accentDeep },
+  { termKey: "search.trending5", icon: "water-outline", color: kit.color.accentDeep },
 ];
 
 // ─── Category icon mapping — Arabic/English keyword → Ionicons name ─────────
@@ -118,7 +107,7 @@ function getCategoryIcon(name: string): IoniconsName {
   return "grid-outline";
 }
 
-// ─── Highlight match — premium subtle background ───────────────────────────
+// ─── Highlight match ─────────────────────────────────────────────────────────
 
 function Hl({
   text, q, qAlt, style, lines,
@@ -149,7 +138,7 @@ function Hl({
   );
 }
 
-// ─── Suggestion row — elevated, premium ─────────────────────────────────────
+// ─── Suggestion row ──────────────────────────────────────────────────────────
 
 const SuggRow = React.memo(function SuggRow({
   product, query, queryResolved, onPress, index, selected,
@@ -165,72 +154,46 @@ const SuggRow = React.memo(function SuggRow({
   const name = product.nameAr ?? product.name;
   const handlePress = useCallback(() => onPress(product), [onPress, product]);
   return (
-    <Animated.View entering={FadeInRight.delay(index * 25).duration(220)}>
+    <Animated.View entering={FadeInDown.delay(Math.min(index, 8) * 20).duration(180)}>
       <Pressable
         onPress={handlePress}
         style={({ pressed }) => [
           s.suggRow,
-          (pressed || selected) && { backgroundColor: theme.colors.surfaceSunken },
+          (pressed || selected) && { backgroundColor: kit.color.well },
         ]}>
         <View style={s.suggThumb}>
           {product.imageUrl ? (
             <Image source={{ uri: product.imageUrl }} style={{ width: "100%", height: "100%" }} contentFit="contain" transition={80} />
           ) : (
-            <Ionicons name="medkit-outline" size={14} color={theme.colors.slate[400]} />
+            <Ionicons name="medkit-outline" size={14} color={kit.color.inkFaint} />
           )}
         </View>
         <View style={{ flex: 1 }}>
-          {/* Try to highlight with the raw (possibly Arabic) input first.
-              Fall back to the resolved (translated) query when the product
-              only has an English name — e.g. user typed "بنادول" but the
-              product displays "Panadol Extra".                              */}
+          {/* Highlight with the raw (possibly Arabic) input first; fall back to
+              the resolved (translated) query for English-only product names. */}
           <Hl text={name} q={query} qAlt={queryResolved} style={s.suggName} lines={1} />
-          <UIText variant="eyebrow" color="tertiary" align="right" numberOfLines={1} style={s.suggCat}>
-            {product.categoryName}
-          </UIText>
+          <UIText style={s.suggCat} numberOfLines={1}>{product.categoryName}</UIText>
         </View>
-        <UIText variant="caption" weight="black" style={s.suggPrice}>
-          {formatPrice(product.price)}
-        </UIText>
-        {!product.inStock && (
+        {!product.inStock ? (
           <View style={s.suggOos}>
-            <UIText variant="eyebrow" style={{ color: theme.colors.error.strong }}>{t("common.outOfStock")}</UIText>
+            <UIText style={s.suggOosText}>{t("common.outOfStock")}</UIText>
           </View>
+        ) : (
+          <UIText style={s.suggPrice}>{formatPrice(product.price)}</UIText>
         )}
-        <Ionicons name="arrow-back" size={12} color={theme.colors.slate[300]} />
       </Pressable>
     </Animated.View>
   );
 });
 
-// ─── Pulsing dot — live translation indicator ─────────────────────────────
-
-function PulseDot() {
-  const opacity = useSharedValue(1);
-  useEffect(() => {
-    opacity.value = withRepeat(
-      withSequence(
-        withTiming(0.25, { duration: 700 }),
-        withTiming(1,    { duration: 700 }),
-      ),
-      -1,
-      false,
-    );
-  }, [opacity]);
-  const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
-  return (
-    <Animated.View style={[s.pulseDot, animStyle]} />
-  );
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
-// ═══  SCREEN  ═════════════════════════════════════════════════════════════
+// ═══  SCREEN  ═══════════════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════════════════
 
 export default function SearchScreen() {
   useScreenTrace("search");
   const { t, i18n } = useTranslation();
-  const router      = useRouter();
+  const router   = useRouter();
   const insets   = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
 
@@ -249,7 +212,7 @@ export default function SearchScreen() {
 
   const RECENTS_KEY = "um_search_recents_v1";
 
-  // Smart bilingual resolution — used for the lang badge + translation hint
+  // Smart bilingual resolution — drives the translation hint + DB queries.
   const searchResolution = useMemo(
     () => (debouncedQ.length >= 2 ? resolveSmartQuery(debouncedQ) : null),
     [debouncedQ],
@@ -261,23 +224,14 @@ export default function SearchScreen() {
     return raw;
   }, [searchResolution]);
 
-  /**
-   * Resolved debounced query — the term we actually send to Supabase.
-   *
-   * When the user types Arabic (e.g. "بنادول"), resolveSmartQuery maps it to
-   * the English equivalent ("panadol") so the RPC can match product names in
-   * the database. The raw `debouncedQ` is kept for display / highlight only.
-   */
+  /** Resolved debounced query — the term actually sent to Supabase. */
   const resolvedDebouncedQ = useMemo(() => {
     if (debouncedQ.length < 2) return debouncedQ;
     const term = searchResolution?.term;
     return term && term.length > 0 ? term : debouncedQ;
   }, [debouncedQ, searchResolution]);
 
-  /**
-   * Resolved submitted query — same translation applied to the committed
-   * search term that drives the full results grid.
-   */
+  /** Resolved submitted query — same translation for the results grid. */
   const resolvedSubmitted = useMemo(() => {
     if (!submitted || submitted.length < 2) return submitted;
     const { term } = resolveSmartQuery(submitted);
@@ -287,23 +241,7 @@ export default function SearchScreen() {
   const showSugg   = focused && debouncedQ.length >= 2 && debouncedQ !== submitted;
   const hasResults = submitted.length >= 2;
 
-  // Reset suggestion selection when suggestions change
   useEffect(() => { setSelectedIdx(-1); }, [debouncedQ]);
-
-  // ── Animation — refined focus glow ──
-  const barGlow  = useSharedValue(0);
-  const barScale = useSharedValue(1);
-  const barAnim  = useAnimatedStyle(() => ({ transform: [{ scale: barScale.value }] }));
-  const glowAnim = useAnimatedStyle(() => ({ opacity: barGlow.value }));
-
-  // Toggle switch animation
-  const swThumbX = useSharedValue(inStockOnly ? 1 : 0);
-  useEffect(() => {
-    swThumbX.value = withSpring(inStockOnly ? 1 : 0, { damping: 22, stiffness: 420, mass: 0.7 });
-  }, [inStockOnly, swThumbX]);
-  const swThumbAnim = useAnimatedStyle(() => ({
-    transform: [{ translateX: swThumbX.value * 16 }],
-  }));
 
   // ── Data ──
   const { data: categories } = useQuery({
@@ -312,7 +250,7 @@ export default function SearchScreen() {
     staleTime: 10 * 60_000,
   });
 
-  // Popular searches from analytics — falls back to hardcoded TRENDING if unavailable
+  // Popular searches from analytics — falls back to TRENDING_META terms.
   const { data: popularData } = useQuery({
     queryKey: ["popularSearches"],
     queryFn:  async () => {
@@ -327,7 +265,7 @@ export default function SearchScreen() {
     ? (popularData as Array<{ query: string }>).map((r) => r.query).filter(Boolean)
     : [];
 
-  // Load persisted recents on mount
+  // Load persisted recents on mount.
   useEffect(() => {
     AsyncStorage.getItem(RECENTS_KEY)
       .then((raw) => {
@@ -340,8 +278,7 @@ export default function SearchScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // suggestions — use dedicated hook (sorts by relevance, not newest)
-  // Pass the resolved (translated) query so Arabic input finds English product names.
+  // Suggestions — resolved (translated) query so Arabic input finds English names.
   const {
     products:  suggestions,
     isLoading: suggFetching,
@@ -358,8 +295,6 @@ export default function SearchScreen() {
     fetchNextPage,
     refetch: refetchResults,
   } = useInfiniteProducts({
-    // Use the smart-resolved query so "بنادول" → "panadol" reaches the DB correctly.
-    // Filters/sort are unchanged; only the free-text search term is translated.
     search:     resolvedSubmitted || undefined,
     sortBy,
     inStock:    inStockOnly || undefined,
@@ -370,7 +305,7 @@ export default function SearchScreen() {
 
   const isSearching = hasResults && (resultsLoading || (resultsFetching && !results.length));
 
-  // Persist recents + log analytics whenever a search yields results
+  // Persist recents + log analytics whenever a search yields results.
   useEffect(() => {
     if (submitted.length > 1 && results.length > 0) {
       setRecents((prev) => {
@@ -378,7 +313,6 @@ export default function SearchScreen() {
         AsyncStorage.setItem(RECENTS_KEY, JSON.stringify(next)).catch(() => {});
         return next;
       });
-      // Fire-and-forget analytics event; never throws to caller
       void (async () => {
         try {
           const { error } = await supabase.rpc("log_search_event", {
@@ -403,7 +337,6 @@ export default function SearchScreen() {
     setSelectedIdx(-1);
     Keyboard.dismiss();
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    if (__DEV__) console.log("[search] submitted:", q);
   }, [query]);
 
   const tapSugg = useCallback((p: NativeProduct) => {
@@ -453,31 +386,19 @@ export default function SearchScreen() {
     return Array.from(map.entries()).map(([cat, items]) => ({ cat, items }));
   }, [results, t]);
 
+  const trendingTerms = popularSearches.length > 0
+    ? popularSearches
+    : TRENDING_META.map((m) => t(m.termKey));
+
   return (
     <View style={s.screen}>
 
-      {/* ─── Premium dark-gradient header ── */}
-      <LinearGradient
-        colors={theme.gradients.heroPrimary as [string, string, string]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0.8, y: 1 }}
-        style={[s.header, { paddingTop: insets.top + 12 }]}>
-
-        {/* Layered decorative geometry */}
-        <View style={s.headerOrb1} />
-        <View style={s.headerOrb2} />
-        <View style={s.headerOrbAccent} />
-
-        {/* Top row — title + result count badge */}
-        <View style={s.topRow}>
-          <View style={s.topLeft}>
-            <View style={s.headerIcon}>
-              <Ionicons name="search" size={15} color={theme.colors.teal[400]} />
-            </View>
-            <View>
-              <UIText style={s.headerEyebrow}>{t("search.eyebrow")}</UIText>
-              <UIText style={s.headerTitle}>{t("search.title")}</UIText>
-            </View>
+      {/* ─── Editorial header ── */}
+      <View style={[s.header, { paddingTop: insets.top + 12 }]}>
+        <View style={s.headerRow}>
+          <View style={{ flex: 1 }}>
+            <UIText style={s.eyebrow}>{t("search.eyebrow")}</UIText>
+            <UIText style={s.title} accessibilityRole="header">{t("search.title")}</UIText>
           </View>
           {hasResults && totalCount > 0 && !isSearching && (
             <Animated.View entering={FadeIn.duration(200)} style={s.countPill}>
@@ -488,154 +409,105 @@ export default function SearchScreen() {
           )}
         </View>
 
-        {/* ─── Command bar — glassmorphic, taller, more prominent ── */}
-        <View style={s.barContainer}>
-          <Animated.View style={[s.barGlow, glowAnim, { pointerEvents: "none" }]} />
+        {/* ─── Command bar ── */}
+        <View style={[s.bar, focused && s.barFocused]}>
+          <View style={s.barIcon}>
+            {suggFetching || isSearching ? (
+              <ActivityIndicator size="small" color={kit.color.accent} />
+            ) : (
+              <Ionicons name="search" size={18} color={focused ? kit.color.ink : kit.color.inkFaint} />
+            )}
+          </View>
 
-          <Animated.View style={[s.bar, barAnim, focused && s.barFocused]}>
-            {/* Search icon / spinner */}
-            <View style={s.barIconWrap}>
-              {suggFetching || isSearching ? (
-                <ActivityIndicator size="small" color={theme.colors.brand[700]} />
-              ) : (
-                <Ionicons name="search" size={17} color={focused ? theme.colors.brand[700] : theme.colors.slate[400]} />
-              )}
-            </View>
+          <TextInput
+            ref={inputRef}
+            style={s.barInput}
+            placeholder={t("search.placeholder")}
+            placeholderTextColor={kit.color.inkFaint}
+            value={query}
+            onChangeText={(v) => { setQuery(v); setSelectedIdx(-1); }}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setTimeout(() => setFocused(false), 160)}
+            onSubmitEditing={() => {
+              if (selectedIdx >= 0 && suggestions[selectedIdx]) {
+                tapSugg(suggestions[selectedIdx]);
+              } else {
+                submit();
+              }
+            }}
+            onKeyPress={({ nativeEvent }) => {
+              if (!showSugg || suggestions.length === 0) return;
+              if (nativeEvent.key === "ArrowDown") {
+                setSelectedIdx((i) => Math.min(i + 1, suggestions.length - 1));
+              } else if (nativeEvent.key === "ArrowUp") {
+                setSelectedIdx((i) => Math.max(i - 1, -1));
+              } else if (nativeEvent.key === "Escape") {
+                setFocused(false);
+                setSelectedIdx(-1);
+                Keyboard.dismiss();
+              }
+            }}
+            returnKeyType="search"
+            autoCorrect={false}
+            textAlign={INPUT_ALIGN}
+            selectionColor={kit.color.accent}
+            accessibilityLabel={t("search.placeholder")}
+          />
 
-            <View style={s.barInputShell}>
-              <TextInput
-                ref={inputRef}
-                style={s.barInput}
-                placeholder={t("search.placeholder")}
-                placeholderTextColor={theme.colors.text.tertiary}
-                value={query}
-                onChangeText={(v) => { setQuery(v); setSelectedIdx(-1); }}
-                onFocus={() => {
-                  setFocused(true);
-                  barGlow.value  = withTiming(1, { duration: 280 });
-                  barScale.value = withSpring(1.008, { damping: 20, stiffness: 400 });
-                }}
-                onBlur={() => {
-                  setTimeout(() => setFocused(false), 160);
-                  barGlow.value  = withTiming(0, { duration: 240 });
-                  barScale.value = withSpring(1, { damping: 20, stiffness: 400 });
-                }}
-                onSubmitEditing={() => {
-                  if (selectedIdx >= 0 && suggestions[selectedIdx]) {
-                    tapSugg(suggestions[selectedIdx]);
-                  } else {
-                    submit();
-                  }
-                }}
-                onKeyPress={({ nativeEvent }) => {
-                  if (!showSugg || suggestions.length === 0) return;
-                  if (nativeEvent.key === "ArrowDown") {
-                    setSelectedIdx((i) => Math.min(i + 1, suggestions.length - 1));
-                  } else if (nativeEvent.key === "ArrowUp") {
-                    setSelectedIdx((i) => Math.max(i - 1, -1));
-                  } else if (nativeEvent.key === "Escape") {
-                    setFocused(false);
-                    setSelectedIdx(-1);
-                    Keyboard.dismiss();
-                  }
-                }}
-                returnKeyType="search"
-                autoCorrect={false}
-                textAlign={INPUT_ALIGN}
-                selectionColor={theme.colors.brand[600]}
-              />
+          {query.length > 0 && (
+            <Pressable onPress={clear} hitSlop={10} style={s.barClear}
+              accessibilityRole="button" accessibilityLabel={t("common.clear")}>
+              <Ionicons name="close" size={13} color={kit.color.inkSoft} />
+            </Pressable>
+          )}
 
-              {query.length > 0 && (
-                <Pressable onPress={clear} hitSlop={10} style={s.barClear}>
-                  <Ionicons name="close" size={13} color={theme.colors.slate[500]} />
-                </Pressable>
-              )}
-            </View>
+          <View style={s.barDivider} />
 
-            <View style={s.barActions}>
-              {/* Filter button — 40×40, teal glow when active */}
-              <Pressable
-                onPress={() => {
-                  if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
-                  setShowFilters((v) => !v);
-                }}
-                accessibilityRole="button"
-                accessibilityLabel={t("search.filterLabel")}
-                style={[s.barFilterBtn, (showFilters || filterCount > 0) && s.barFilterBtnActive]}>
-                <Ionicons
-                  name="options-outline"
-                  size={15}
-                  color={(showFilters || filterCount > 0) ? theme.colors.surface : theme.colors.slate[500]}
-                />
-                {filterCount > 0 && !showFilters && (
-                  <View style={s.filterBadge}>
-                    <UIText variant="eyebrow" color="inverse">{filterCount}</UIText>
-                  </View>
-                )}
-              </Pressable>
-
-              {/* Submit button — reserved slot so the bar never overflows */}
-              <Pressable
-                onPress={() => submit()}
-                accessibilityRole="button"
-                accessibilityLabel={t("search.searchBtn")}
-                disabled={query.length < 2}
-                style={({ pressed }) => [
-                  s.barSubmitWrap,
-                  query.length < 2 && s.barSubmitWrapDisabled,
-                  pressed && query.length >= 2 && { opacity: 0.85 },
-                ]}>
-                <LinearGradient
-                  colors={query.length >= 2
-                    ? [theme.colors.teal[500], theme.colors.teal[400]]
-                    : [theme.colors.slate[200], theme.colors.slate[200]]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={s.barSubmitGrad}>
-                  <Ionicons
-                    name={FORWARD_CHEVRON}
-                    size={16}
-                    color={query.length >= 2 ? theme.colors.surface : theme.colors.slate[400]}
-                  />
-                </LinearGradient>
-              </Pressable>
-            </View>
-          </Animated.View>
+          <Pressable
+            onPress={() => {
+              if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
+              setShowFilters((v) => !v);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={t("search.filterLabel")}
+            style={[s.barFilter, (showFilters || filterCount > 0) && s.barFilterActive]}>
+            <Ionicons
+              name="options-outline"
+              size={16}
+              color={(showFilters || filterCount > 0) ? kit.color.onInk : kit.color.inkSoft}
+            />
+            {filterCount > 0 && !showFilters && (
+              <View style={s.filterBadge}>
+                <UIText style={s.filterBadgeText}>{filterCount}</UIText>
+              </View>
+            )}
+          </Pressable>
         </View>
 
-        {/* Translation / typo-fix hint strip — animated warm band */}
+        {/* Translation / typo-fix hint */}
         {translationHintText && debouncedQ.length >= 2 && (
           <Animated.View
-            entering={FadeInDown.duration(200)}
-            exiting={FadeOut.duration(140)}
-            style={s.translationHint}>
-            <PulseDot />
-            <Ionicons name="language-outline" size={13} color={theme.colors.brand[600]} />
-            <UIText variant="eyebrow" style={s.translationHintText}>
-              {translationHintText}
-            </UIText>
+            entering={FadeInDown.duration(180)}
+            exiting={FadeOut.duration(120)}
+            style={s.hint}>
+            <Ionicons name="language-outline" size={13} color={kit.color.accentDeep} />
+            <UIText style={s.hintText}>{translationHintText}</UIText>
           </Animated.View>
         )}
+      </View>
 
-        {/* Quiet keyboard hint */}
-        {focused && !hasResults && debouncedQ.length < 2 && (
-          <Animated.View entering={FadeIn.duration(180)} style={s.hint}>
-            <UIText style={s.hintText}>{t("search.hint")}</UIText>
-          </Animated.View>
-        )}
-      </LinearGradient>
+      {/* ─── Body ── */}
+      <View style={s.body}>
 
-      {/* ─── Content area ──────────────────────────────────────────── */}
-      <View style={s.content}>
-
-        {/* Filter panel — refined, square-ish chips */}
+        {/* Filter panel */}
         {showFilters && (
-          <Animated.View entering={FadeInDown.duration(220)} style={s.filterPanel}>
+          <Animated.View entering={FadeInDown.duration(200)} style={s.filterPanel}>
             <View style={s.filterHeader}>
-              <UIText variant="eyebrow" color="tertiary">{t("search.filterTitle")}</UIText>
+              <UIText style={s.filterTitle}>{t("search.filterTitle")}</UIText>
               {filterCount > 0 && (
-                <Pressable onPress={resetFilters} hitSlop={6}>
-                  <UIText variant="caption" weight="bold" color="brand">{t("search.reset")}</UIText>
+                <Pressable onPress={resetFilters} hitSlop={6}
+                  accessibilityRole="button" accessibilityLabel={t("search.reset")}>
+                  <UIText style={s.filterReset}>{t("search.reset")}</UIText>
                 </Pressable>
               )}
             </View>
@@ -647,28 +519,27 @@ export default function SearchScreen() {
                   <Pressable
                     key={key}
                     onPress={() => { setSortBy(key); if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {}); }}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
                     style={[s.chip, on && s.chipOn]}>
-                    <UIText
-                      variant="caption"
-                      weight={on ? "black" : "bold"}
-                      style={{ color: on ? theme.colors.surface : theme.colors.text.secondary }}>
-                      {t(SORT_KEYS[key])}
-                    </UIText>
+                    <UIText style={[s.chipText, on && s.chipTextOn]}>{t(SORT_KEYS[key])}</UIText>
                   </Pressable>
                 );
               })}
             </View>
 
-            {/* In-stock toggle — spring animated */}
+            {/* In-stock toggle */}
             <Pressable
               onPress={() => { setInStockOnly((v) => !v); if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {}); }}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: inStockOnly }}
               style={s.toggleRow}>
               <View style={s.toggleLeft}>
-                <Ionicons name="cube-outline" size={14} color={theme.colors.slate[600]} />
-                <UIText variant="body-sm" weight="bold" color="secondary">{t("search.inStockOnly")}</UIText>
+                <Ionicons name="cube-outline" size={15} color={kit.color.inkSoft} />
+                <UIText style={s.toggleLabel}>{t("search.inStockOnly")}</UIText>
               </View>
               <View style={[s.sw, inStockOnly && s.swOn]}>
-                <Animated.View style={[s.swThumb, swThumbAnim]} />
+                <View style={s.swThumb} />
               </View>
             </Pressable>
 
@@ -676,26 +547,19 @@ export default function SearchScreen() {
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={[s.chipsRow, { paddingBottom: 2, flexWrap: "nowrap" }]}>
-                <Pressable onPress={() => setCatFilter(null)} style={[s.chip, !catFilter && s.chipOn]}>
-                  <UIText
-                    variant="caption"
-                    weight={!catFilter ? "black" : "bold"}
-                    style={{ color: !catFilter ? theme.colors.surface : theme.colors.text.secondary }}>
-                    {t("search.all")}
-                  </UIText>
+                contentContainerStyle={s.chipsRowScroll}>
+                <Pressable onPress={() => setCatFilter(null)}
+                  accessibilityRole="button"
+                  style={[s.chip, !catFilter && s.chipOn]}>
+                  <UIText style={[s.chipText, !catFilter && s.chipTextOn]}>{t("search.all")}</UIText>
                 </Pressable>
                 {categories.slice(0, 12).map((cat: NativeCategory) => {
                   const on = catFilter === cat.id;
                   return (
-                    <Pressable key={cat.id} onPress={() => setCatFilter(on ? null : cat.id)} style={[s.chip, on && s.chipOn]}>
-                      <UIText
-                        variant="caption"
-                        weight={on ? "black" : "bold"}
-                        numberOfLines={1}
-                        style={{ color: on ? theme.colors.surface : theme.colors.text.secondary }}>
-                        {cat.name}
-                      </UIText>
+                    <Pressable key={cat.id} onPress={() => setCatFilter(on ? null : cat.id)}
+                      accessibilityRole="button"
+                      style={[s.chip, on && s.chipOn]}>
+                      <UIText style={[s.chipText, on && s.chipTextOn]} numberOfLines={1}>{cat.name}</UIText>
                     </Pressable>
                   );
                 })}
@@ -704,29 +568,24 @@ export default function SearchScreen() {
           </Animated.View>
         )}
 
-        {/* ─── Body ── */}
         {!hasResults ? (
-          /* ── Discovery (editorial sections) ── */
+          /* ── Discovery ── */
           <ScrollView
             contentContainerStyle={[s.discovery, { paddingBottom: theme.layout.tabBarHeight + 40 }]}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled">
 
-            {/* Recent searches — compact chips with teal start-border */}
+            {/* Recent searches */}
             {recents.length > 0 && (
-              <Animated.View entering={FadeInDown.delay(40).duration(280)} style={s.section}>
+              <Animated.View entering={FadeInDown.delay(30).duration(240)} style={s.section}>
                 <View style={s.sectionHeader}>
-                  <View style={s.sectionTitleRow}>
-                    <View style={s.sectionBullet} />
-                    <UIText style={s.sectionTitle}>{t("search.recentTitle")}</UIText>
-                  </View>
+                  <UIText style={s.sectionTitle}>{t("search.recentTitle")}</UIText>
                   <Pressable onPress={() => {
                     setRecents([]);
                     AsyncStorage.removeItem(RECENTS_KEY).catch(() => {});
-                  }} hitSlop={6}>
-                    <UIText variant="caption" weight="bold" style={{ color: theme.colors.error.base }}>
-                      {t("search.clearRecents")}
-                    </UIText>
+                  }} hitSlop={6}
+                    accessibilityRole="button" accessibilityLabel={t("search.clearRecents")}>
+                    <UIText style={s.sectionAction}>{t("search.clearRecents")}</UIText>
                   </Pressable>
                 </View>
                 <View style={s.recentWrap}>
@@ -734,233 +593,177 @@ export default function SearchScreen() {
                     <Pressable
                       key={term}
                       onPress={() => quickSearch(term)}
-                      style={({ pressed }) => [s.recentChip, pressed && { transform: [{ scale: 0.97 }], opacity: 0.85 }]}>
-                      <Ionicons name="time-outline" size={11} color={theme.colors.slate[500]} />
-                      <UIText variant="caption" weight="bold" color="secondary">{term}</UIText>
-                      <Ionicons name="arrow-back" size={10} color={theme.colors.slate[400]} />
+                      accessibilityRole="button"
+                      style={({ pressed }) => [s.recentChip, pressed && { backgroundColor: kit.color.well }]}>
+                      <Ionicons name="time-outline" size={12} color={kit.color.inkFaint} />
+                      <UIText style={s.recentChipText}>{term}</UIText>
                     </Pressable>
                   ))}
                 </View>
               </Animated.View>
             )}
 
-            {/* Trending — taller rows with top-right rank badge */}
-            <Animated.View entering={FadeInDown.delay(80).duration(280)} style={s.section}>
-              <View style={s.sectionTitleRow}>
-                <View style={s.sectionBullet} />
-                <UIText style={s.sectionTitle}>{t("search.trendingTitle")}</UIText>
-              </View>
-              <View style={s.trendGrid}>
-                {(popularSearches.length > 0 ? popularSearches : TRENDING_META.map((m) => t(m.termKey))).map((term, i) => {
-                  const meta  = TRENDING_META.find((m) => t(m.termKey) === term) ?? TRENDING_META[i % TRENDING_META.length];
-                  const isTop = i < 3;
-                  return (
-                    <Pressable
-                      key={term}
-                      onPress={() => quickSearch(term)}
-                      style={({ pressed }) => [
-                        s.trendItem,
-                        isTop && s.trendItemTop,
-                        pressed && { transform: [{ scale: 0.985 }], opacity: 0.92 },
-                      ]}>
-                      {/* Start-edge accent border — amber for top-3, hairline for rest */}
-                      <View style={[s.trendStartBorder, isTop ? s.trendStartBorderTop : s.trendStartBorderDefault]} />
-                      <View style={[s.trendIcon, { backgroundColor: meta.bg, borderColor: `${meta.color}30` }]}>
-                        <Ionicons name={meta.icon} size={18} color={meta.color} />
-                      </View>
-                      <UIText variant="body-sm" weight="bold" align="right" style={s.trendLabel}>
-                        {term}
-                      </UIText>
-                      {/* Rank badge at top-right corner */}
-                      <View style={[s.trendRankBadge, isTop ? s.trendRankBadgeTop : s.trendRankBadgeDefault]}>
-                        <UIText
-                          variant="eyebrow"
-                          style={isTop ? s.trendRankTextTop : s.trendRankTextDefault}>
-                          #{i + 1}
-                        </UIText>
-                      </View>
-                    </Pressable>
-                  );
-                })}
+            {/* Trending — editorial numbered list */}
+            <Animated.View entering={FadeInDown.delay(60).duration(240)} style={s.section}>
+              <UIText style={s.sectionTitle}>{t("search.trendingTitle")}</UIText>
+              <View style={s.trendCard}>
+                {trendingTerms.map((term, i, arr) => (
+                  <Pressable
+                    key={term}
+                    onPress={() => quickSearch(term)}
+                    accessibilityRole="button"
+                    style={({ pressed }) => [
+                      s.trendRow,
+                      i < arr.length - 1 && s.trendRowDivider,
+                      pressed && { backgroundColor: kit.color.well },
+                    ]}>
+                    <UIText style={[s.trendNum, i < 3 && s.trendNumTop]}>
+                      {`0${i + 1}`}
+                    </UIText>
+                    <UIText style={s.trendTerm} numberOfLines={1}>{term}</UIText>
+                    <Ionicons name={FORWARD_CHEVRON} size={14} color={kit.color.inkFaint} />
+                  </Pressable>
+                ))}
               </View>
             </Animated.View>
 
-            {/* Categories — 2-col grid, taller tiles, count badge pill */}
+            {/* Categories — horizontal rail */}
             {categories && categories.length > 0 && (
-              <Animated.View entering={FadeInDown.delay(120).duration(280)} style={s.section}>
-                <View style={s.sectionTitleRow}>
-                  <View style={s.sectionBullet} />
-                  <UIText style={s.sectionTitle}>{t("search.categoriesTitle")}</UIText>
-                </View>
-                <View style={s.catGrid}>
-                  {categories.slice(0, 6).map((cat, i) => {
-                    const grad = theme.gradients.categories[i % theme.gradients.categories.length] as [string, string];
-                    return (
-                      <Pressable
-                        key={cat.id}
-                        onPress={() => router.push({ pathname: "/category/[id]", params: { id: cat.id } })}
-                        style={({ pressed }) => [s.catTile, pressed && { opacity: 0.87, transform: [{ scale: 0.975 }] }]}>
-                        <LinearGradient
-                          colors={grad}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 1 }}
-                          style={s.catTileGrad}>
-                          <Ionicons name={getCategoryIcon(cat.name)} size={22} color="rgba(255,255,255,0.92)" />
-                        </LinearGradient>
-                        <UIText variant="body-sm" weight="bold" numberOfLines={2} style={s.catTileName}>
-                          {cat.name}
+              <Animated.View entering={FadeInDown.delay(90).duration(240)} style={s.section}>
+                <UIText style={s.sectionTitle}>{t("search.categoriesTitle")}</UIText>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={s.catRail}>
+                  {categories.slice(0, 8).map((cat) => (
+                    <Pressable
+                      key={cat.id}
+                      onPress={() => router.push({ pathname: "/category/[id]", params: { id: cat.id } })}
+                      accessibilityRole="button"
+                      style={({ pressed }) => [s.catTile, pressed && { backgroundColor: kit.color.well }]}>
+                      <View style={s.catTileIcon}>
+                        <Ionicons name={getCategoryIcon(cat.name)} size={22} color={kit.color.accentDeep} />
+                      </View>
+                      <UIText style={s.catTileName} numberOfLines={2}>{cat.name}</UIText>
+                      {cat.count > 0 && (
+                        <UIText style={s.catTileCount}>
+                          {t("category.productCount", { count: `${cat.count}+` })}
                         </UIText>
-                        {cat.count > 0 && (
-                          <View style={s.catCountBadge}>
-                            <UIText style={s.catCountBadgeText}>{t("category.productCount", { count: `${cat.count}+` })}</UIText>
-                          </View>
-                        )}
-                      </Pressable>
-                    );
-                  })}
-                </View>
+                      )}
+                    </Pressable>
+                  ))}
+                </ScrollView>
               </Animated.View>
             )}
           </ScrollView>
         ) : (
-          /* ── Results grid — FlashList v2 via ProductGrid ── */
+          /* ── Results grid ── */
           <View style={{ flex: 1 }}>
-          <ProductGrid
-            products={results}
-            onProductPress={(p) => goProduct(p.id)}
-            onEndReached={hasNextPage && !isFetchingNextPage ? loadMore : undefined}
-            refreshing={resultsRefreshing}
-            onRefresh={refetchResults}
-            contentContainerStyle={{ paddingBottom: theme.layout.tabBarHeight + 24 }}
-            lang={i18n.language === "en" ? "en" : "ar"}
-            ListHeaderComponent={
-              hasResults && grouped.length > 1 ? (
-                <Animated.View entering={FadeInDown.duration(220)} style={s.groupHeader}>
-                  {/* Section title treatment for results filter */}
-                  <View style={s.sectionTitleRow}>
-                    <View style={s.sectionBullet} />
+            <ProductGrid
+              products={results}
+              onProductPress={(p) => goProduct(p.id)}
+              onEndReached={hasNextPage && !isFetchingNextPage ? loadMore : undefined}
+              refreshing={resultsRefreshing}
+              onRefresh={refetchResults}
+              contentContainerStyle={{ paddingBottom: theme.layout.tabBarHeight + 24 }}
+              lang={i18n.language === "en" ? "en" : "ar"}
+              ListHeaderComponent={
+                hasResults && grouped.length > 1 ? (
+                  <Animated.View entering={FadeInDown.duration(200)} style={s.groupHeader}>
                     <UIText style={s.sectionTitleSm}>{t("search.groupFilter")}</UIText>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.groupChipsRow}>
+                      {grouped.map((g) => {
+                        const catObj = categories?.find((c) => c.name === g.cat);
+                        const active = catObj && catFilter === catObj.id;
+                        return (
+                          <Pressable
+                            key={g.cat}
+                            onPress={() => {
+                              if (catObj) setCatFilter(catFilter === catObj.id ? null : catObj.id);
+                            }}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: !!active }}
+                            style={[s.chip, active && s.chipOn]}>
+                            <UIText style={[s.chipText, active && s.chipTextOn]}>{g.cat}</UIText>
+                            <View style={[s.chipCount, active && s.chipCountOn]}>
+                              <UIText style={[s.chipCountText, active && s.chipTextOn]}>
+                                {g.items.length}
+                              </UIText>
+                            </View>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                  </Animated.View>
+                ) : null
+              }
+              ListEmptyComponent={
+                isSearching ? (
+                  <View style={s.skeletonGrid}>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <View key={i} style={s.skeletonCell}>
+                        <ProductCardSkeleton />
+                      </View>
+                    ))}
                   </View>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.groupChipsRow}>
-                    {grouped.map((g) => {
-                      const catObj = categories?.find((c) => c.name === g.cat);
-                      const active = catObj && catFilter === catObj.id;
-                      return (
-                        <Pressable
-                          key={g.cat}
-                          onPress={() => {
-                            if (catObj) setCatFilter(catFilter === catObj.id ? null : catObj.id);
-                          }}
-                          style={[s.groupChip, active && s.groupChipActive]}>
-                          <UIText
-                            variant="caption"
-                            weight={active ? "black" : "bold"}
-                            style={{ color: active ? theme.colors.surface : theme.colors.text.secondary }}>
-                            {g.cat}
-                          </UIText>
-                          <View style={[s.groupChipCount, active && s.groupChipCountActive]}>
-                            <UIText variant="eyebrow" style={{ color: active ? theme.colors.surface : theme.colors.text.tertiary }}>
-                              {g.items.length}
-                            </UIText>
-                          </View>
-                        </Pressable>
-                      );
-                    })}
-                  </ScrollView>
-                </Animated.View>
-              ) : null
-            }
-            ListEmptyComponent={
-              isSearching ? (
-                /* Skeleton grid — shows exact card geometry while data loads */
-                <View style={s.skeletonGrid}>
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <View key={i} style={s.skeletonCell}>
-                      <ProductCardSkeleton />
+                ) : (
+                  <View style={s.emptyWrap}>
+                    <View style={s.emptyIcon}>
+                      <Ionicons name="search-outline" size={32} color={kit.color.inkFaint} />
                     </View>
-                  ))}
-                </View>
-              ) : (
-                <View style={{ paddingTop: 60, paddingHorizontal: theme.spacing[2.5], gap: theme.spacing[2.5] }}>
-                  {/* Large illustrated icon treatment */}
-                  <View style={s.emptyIconBox}>
-                    <Ionicons name="search-outline" size={36} color={theme.colors.teal[500]} />
-                  </View>
-                  <EmptyState
-                    icon="search-outline"
-                    title={t("search.noResults")}
-                    description={
-                      detectSearchLang(submitted) === "arabic"
+                    <UIText style={s.emptyTitle}>{t("search.noResults")}</UIText>
+                    <UIText style={s.emptyBody}>
+                      {detectSearchLang(submitted) === "arabic"
                         ? t("search.noResultsDescAr", { query: submitted })
-                        : t("search.noResultsDescEn", { query: submitted })
-                    }
-                  />
-                  {/* Quick-search suggestions for empty state */}
-                  <View style={s.emptyTrendWrap}>
-                    <UIText variant="eyebrow" color="tertiary" align="right" style={{ marginBottom: 10 }}>
-                      {t("search.tryPopular")}
+                        : t("search.noResultsDescEn", { query: submitted })}
                     </UIText>
-                    <View style={s.emptyTrendChips}>
+                    <UIText style={s.emptyTryLabel}>{t("search.tryPopular")}</UIText>
+                    <View style={s.emptyChips}>
                       {TRENDING_META.slice(0, 4).map((m) => {
                         const term = t(m.termKey);
                         return (
                           <Pressable
                             key={m.termKey}
                             onPress={() => quickSearch(term)}
-                            style={({ pressed }) => [
-                              s.emptyTrendChip,
-                              { borderColor: `${m.color}40` },
-                              pressed && { opacity: 0.8 },
-                            ]}>
-                            <View style={[s.emptyTrendIcon, { backgroundColor: m.bg }]}>
-                              <Ionicons name={m.icon} size={12} color={m.color} />
-                            </View>
-                            <UIText variant="caption" weight="bold" style={{ color: m.color }}>
-                              {term}
-                            </UIText>
+                            accessibilityRole="button"
+                            style={({ pressed }) => [s.recentChip, pressed && { backgroundColor: kit.color.well }]}>
+                            <Ionicons name={m.icon} size={12} color={m.color} />
+                            <UIText style={s.recentChipText}>{term}</UIText>
                           </Pressable>
                         );
                       })}
                     </View>
                   </View>
-                </View>
-              )
-            }
-            ListFooterComponent={
-              isFetchingNextPage ? (
-                <View style={s.footerLoader}>
-                  <ActivityIndicator size="small" color={theme.colors.brand[600]} />
-                </View>
-              ) : null
-            }
-          />
+                )
+              }
+              ListFooterComponent={
+                isFetchingNextPage ? (
+                  <View style={s.footerLoader}>
+                    <ActivityIndicator size="small" color={kit.color.accent} />
+                  </View>
+                ) : null
+              }
+            />
           </View>
         )}
 
-        {/* ─── Suggestions overlay — premium elevated card ──────────── */}
+        {/* ─── Suggestions overlay ── */}
         {showSugg && (
           <Animated.View
             entering={FadeInDown.springify().damping(22).stiffness(300)}
             exiting={FadeOut.duration(120)}
             style={s.suggOverlay}>
             <View style={s.suggCard}>
-              {/* Sunken header band */}
               <View style={s.suggHeader}>
-                <View style={s.suggHeaderLeft}>
-                  <Ionicons name="sparkles" size={12} color={theme.colors.brand[700]} />
-                  <UIText variant="eyebrow" color="tertiary">{t("search.suggestions")}</UIText>
-                </View>
-                {suggFetching && <ActivityIndicator size="small" color={theme.colors.brand[600]} />}
+                <UIText style={s.suggHeaderText}>{t("search.suggestions")}</UIText>
+                {suggFetching && <ActivityIndicator size="small" color={kit.color.accent} />}
               </View>
-              {/* Separator under header */}
-              <View style={s.suggSeparator} />
 
-              {/* Scrollable rows */}
               <ScrollView bounces={false} keyboardShouldPersistTaps="handled" style={{ flexShrink: 1 }}>
                 {!suggFetching && suggestions.length === 0 && (
                   <View style={s.suggEmpty}>
-                    <Ionicons name="search-outline" size={22} color={theme.colors.slate[300]} />
-                    <UIText variant="caption" color="tertiary">
+                    <Ionicons name="search-outline" size={22} color={kit.color.inkFaint} />
+                    <UIText style={s.suggEmptyText}>
                       {t("search.noSuggestions", { query: debouncedQ })}
                     </UIText>
                   </View>
@@ -978,22 +781,15 @@ export default function SearchScreen() {
                 ))}
               </ScrollView>
 
-              {/* Show-all footer — warm LinearGradient */}
               {suggestions.length > 0 && (
                 <Pressable
                   onPress={() => submit()}
-                  style={({ pressed }) => [pressed && { opacity: 0.88 }]}>
-                  <LinearGradient
-                    colors={[theme.colors.brand.lighter, theme.colors.teal[25]]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={s.suggShowAll}>
-                    <Ionicons name="search" size={14} color={theme.colors.brand[700]} />
-                    <UIText variant="caption" weight="bold" color="brand">
-                      {t("search.showAll", { query: debouncedQ })}
-                    </UIText>
-                    <Ionicons name="return-down-back" size={13} color={theme.colors.brand[700]} />
-                  </LinearGradient>
+                  accessibilityRole="button"
+                  style={({ pressed }) => [s.suggShowAll, pressed && { opacity: 0.85 }]}>
+                  <Ionicons name="search" size={14} color={kit.color.accentDeep} />
+                  <UIText style={s.suggShowAllText}>
+                    {t("search.showAll", { query: debouncedQ })}
+                  </UIText>
                 </Pressable>
               )}
             </View>
@@ -1005,695 +801,544 @@ export default function SearchScreen() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ═══  STYLES — flagship premium  ═══════════════════════════════════════════
+// ═══  STYLES — kit light language  ═════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Glass/overlay constants — no theme token for these intentional design values
-const SEARCH_OVERLAY = {
-  teal10:  "rgba(13,184,168,0.10)",
-  teal20:  "rgba(13,184,168,0.20)",
-  white20: "rgba(255,255,255,0.20)",
-} as const;
-
 const s = StyleSheet.create({
-  screen:  { flex: 1, backgroundColor: theme.colors.bg },
-  content: { flex: 1, position: "relative" },
+  screen: { flex: 1, backgroundColor: kit.color.canvas },
 
-  // ── Header — dark gradient
+  // ── Header
   header: {
-    paddingHorizontal: 20,
-    paddingBottom:     18,
-    gap:               14,
-    overflow:          "hidden",
+    paddingHorizontal: kit.sp(5),
+    paddingBottom:     kit.sp(3),
+    gap:               kit.sp(3),
   },
-  headerOrb1: {
-    position:        "absolute",
-    right:           -55,
-    top:             -55,
-    width:           170,
-    height:          170,
-    borderRadius:    85,
-    backgroundColor: "rgba(13,184,168,0.10)",
+  headerRow: {
+    flexDirection: flexRow(IS_RTL),
+    alignItems:    "flex-end",
+    gap:           kit.sp(3),
   },
-  headerOrb2: {
-    position:        "absolute",
-    left:            -50,
-    bottom:          -20,
-    width:           120,
-    height:          120,
-    borderRadius:    60,
-    backgroundColor: "rgba(255,255,255,0.025)",
+  eyebrow: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 11, lineHeight: 16,
+    color: kit.color.inkFaint,
+    textAlign: TEXT_START,
+    includeFontPadding: false,
   },
-  headerOrbAccent: {
-    position:        "absolute",
-    right:           50,
-    top:             55,
-    width:           54,
-    height:          54,
-    borderRadius:    27,
-    backgroundColor: "rgba(13,184,168,0.08)",
-  },
-  topRow: {
-    flexDirection: flexRow(isRtl()),
-    alignItems:     "center",
-    justifyContent: "space-between",
-  },
-  topLeft: {
-    flexDirection: flexRow(isRtl()),
-    alignItems:    "center",
-    gap:           theme.spacing.md,
-  },
-  headerIcon: {
-    width:           40,
-    height:          40,
-    borderRadius:    13,
-    backgroundColor: "rgba(13,184,168,0.18)",
-    borderWidth:     1,
-    borderColor:     "rgba(13,184,168,0.30)",
-    alignItems:      "center",
-    justifyContent:  "center",
-  },
-  headerEyebrow: {
-    fontSize:      10,
-    fontFamily:    theme.fonts.bold,
-    color:         "rgba(255,255,255,0.50)",
-    textAlign:     textAlignStart(isRtl()),
-    letterSpacing: 0.4,
-  },
-  headerTitle: {
-    fontSize:      24,
-    fontFamily:    theme.fonts.black,
-    color:         theme.colors.surface,
-    textAlign:     textAlignStart(isRtl()),
-    letterSpacing: -0.5,
-    marginTop:     2,
+  title: {
+    fontFamily: theme.fonts.black,
+    fontSize: kit.type.display.fontSize - 4,
+    lineHeight: kit.type.display.lineHeight - 6,
+    color: kit.color.ink,
+    textAlign: TEXT_START,
+    includeFontPadding: false,
   },
   countPill: {
-    backgroundColor:   "rgba(255,255,255,0.12)",
-    borderRadius:      999,
+    backgroundColor:   kit.color.ink,
+    borderRadius:      kit.radius.pill,
     paddingHorizontal: 12,
     paddingVertical:   6,
-    borderWidth:       1,
-    borderColor:       "rgba(255,255,255,0.18)",
+    marginBottom:      4,
   },
   countPillText: {
-    fontSize:   11,
     fontFamily: theme.fonts.black,
-    color:      theme.colors.teal[300],
+    fontSize: 11, lineHeight: 16,
+    color: kit.color.onInk,
+    includeFontPadding: false,
   },
 
-  // ── Command bar — taller (58), more prominent (borderRadius 22)
-  barContainer: { position: "relative" },
-  barGlow: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius:    22,
-    opacity:         0,
-    backgroundColor: SEARCH_OVERLAY.teal20,
-    transform:       [{ scale: 1.04 }],
-  },
+  // ── Command bar
   bar: {
     flexDirection:     flexRow(IS_RTL),
     alignItems:        "center",
-    backgroundColor:   "rgba(255,255,255,0.94)",
-    borderRadius:      22,
-    paddingHorizontal: 6,
-    height:            58,
+    gap:               4,
+    height:            56,
+    paddingHorizontal: 8,
+    backgroundColor:   kit.color.surface,
+    borderRadius:      kit.radius.pill,
     borderWidth:       1,
-    borderColor:       "rgba(255,255,255,0.60)",
-    // Subtle inner shadow at the top
-    borderTopColor:    "rgba(0,0,0,0.04)",
-    borderTopWidth:    1,
-    gap:               8,
-    ...theme.shadow.lg,
+    borderColor:       kit.color.line,
+    ...kit.shadow.floating,
   },
   barFocused: {
-    backgroundColor: theme.colors.surface,
-    borderColor:     theme.colors.brand[400],
-    borderTopColor:  "rgba(0,0,0,0.04)",
+    borderColor: kit.color.ink,
   },
-  barIconWrap: {
-    width:           40,
-    height:          40,
-    borderRadius:    13,
-    backgroundColor: theme.colors.surfaceSunken,
-    alignItems:      "center",
-    justifyContent:  "center",
-  },
-  barInputShell: {
-    flex:            1,
-    minWidth:        0,
-    flexDirection:   "row",
-    alignItems:      "center",
+  barIcon: {
+    width: 40, height: 40,
+    alignItems: "center", justifyContent: "center",
   },
   barInput: {
-    flex:              1,
-    minWidth:          0,
-    paddingRight:      6,
-    fontSize:          14.5,
-    fontFamily:        theme.fonts.semibold,
-    color:             theme.colors.text.primary,
-    textAlign:         textAlignStart(IS_RTL),
-    paddingHorizontal: 10,
+    flex:       1,
+    minWidth:   0,
+    fontSize:   14,
+    fontFamily: theme.fonts.semibold,
+    color:      kit.color.ink,
+    textAlign:  INPUT_ALIGN,
+    paddingVertical: 0,
   },
   barClear: {
-    width:           26,
-    height:          26,
-    borderRadius:    8,
-    backgroundColor: theme.colors.surfaceSunken,
-    alignItems:      "center",
-    justifyContent:  "center",
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: kit.color.well,
+    alignItems: "center", justifyContent: "center",
   },
   barDivider: {
     width:            StyleSheet.hairlineWidth,
-    height:           24,
-    backgroundColor:  theme.colors.border.default,
-    marginHorizontal: theme.spacing.xs,
+    height:           22,
+    backgroundColor:  kit.color.lineStrong,
+    marginHorizontal: 4,
   },
-  barActions: {
-    flexDirection: "row",
-    alignItems:    "center",
-    gap:           6,
-    flexShrink:    0,
+  barFilter: {
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: "center", justifyContent: "center",
+    backgroundColor: kit.color.well,
   },
-  // Filter button — 40×40, borderRadius 13, teal glow when active
-  barFilterBtn: {
-    width:           40,
-    height:          40,
-    borderRadius:    13,
-    backgroundColor: theme.colors.surfaceSunken,
-    alignItems:      "center",
-    justifyContent:  "center",
-    position:        "relative",
-  },
-  barFilterBtnActive: {
-    backgroundColor: theme.colors.teal[600],
-    ...theme.shadow.teal,
+  barFilterActive: {
+    backgroundColor: kit.color.ink,
   },
   filterBadge: {
-    position:          "absolute",
-    top:               -3,
-    right:             -3,
-    minWidth:          16,
-    height:            16,
-    borderRadius:      8,
-    backgroundColor:   theme.colors.amber[600],
-    alignItems:        "center",
-    justifyContent:    "center",
+    position: "absolute",
+    top: -2, end: -2,
+    minWidth: 16, height: 16, borderRadius: 8,
+    backgroundColor: kit.color.accent,
+    alignItems: "center", justifyContent: "center",
     paddingHorizontal: 3,
-    borderWidth:       1.5,
-    borderColor:       theme.colors.surface,
+    borderWidth: 1.5, borderColor: kit.color.surface,
   },
-  // Submit button — 40×40 rounded square wrapping a LinearGradient
-  barSubmitWrap: {
-    width:        40,
-    height:       40,
-    borderRadius: 13,
-    overflow:     "hidden",
-    marginStart:  2,
-    ...theme.shadow.teal,
-  },
-  barSubmitWrapDisabled: {
-    shadowOpacity: 0,
-    elevation:     0,
-  },
-  barSubmitGrad: {
-    flex:            1,
-    alignItems:      "center",
-    justifyContent:  "center",
+  filterBadgeText: {
+    fontFamily: theme.fonts.black,
+    fontSize: 9, lineHeight: 12,
+    color: kit.color.onInk,
+    includeFontPadding: false,
   },
 
   hint: {
-    alignItems: "center",
-    paddingTop: 2,
-  },
-  hintText: {
-    fontSize:   11,
-    fontFamily: theme.fonts.semibold,
-    color:      "rgba(255,255,255,0.45)",
-    textAlign:  "center",
-  },
-
-  // ── Highlight match
-  hlMatch: {
-    color:           theme.colors.brand[700],
-    fontFamily:      theme.fonts.black,
-    backgroundColor: theme.colors.brand.lighter,
-  },
-
-  // ── Translation hint strip — warm animated band
-  translationHint: {
-    flexDirection:     flexRow(isRtl()),
+    flexDirection:     flexRow(IS_RTL),
     alignItems:        "center",
+    alignSelf:         "flex-start",
     gap:               6,
-    backgroundColor:   theme.colors.brand.lighter,
-    borderRadius:      10,
+    backgroundColor:   kit.color.accentTint,
+    borderRadius:      kit.radius.pill,
     paddingHorizontal: 12,
     paddingVertical:   6,
   },
-  translationHintText: {
-    color:    theme.colors.brand[700],
-    fontSize: 11,
-    fontFamily: theme.fonts.semibold,
+  hintText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 11, lineHeight: 16,
+    color: kit.color.accentDeep,
+    includeFontPadding: false,
   },
 
-  // ── Pulsing live indicator dot
-  pulseDot: {
-    width:           6,
-    height:          6,
-    borderRadius:    3,
-    backgroundColor: theme.colors.teal[500],
+  hlMatch: {
+    color:           kit.color.accentDeep,
+    fontFamily:      theme.fonts.black,
+    backgroundColor: kit.color.accentTint,
+  },
+
+  // ── Body
+  body: { flex: 1, position: "relative" },
+
+  // ── Filter panel
+  filterPanel: {
+    backgroundColor:   kit.color.surface,
+    marginHorizontal:  kit.sp(5),
+    marginBottom:      kit.sp(2),
+    borderRadius:      kit.radius.card,
+    borderWidth:       1,
+    borderColor:       kit.color.line,
+    padding:           kit.sp(4),
+    gap:               kit.sp(3),
+    ...kit.shadow.raised,
+  },
+  filterHeader: {
+    flexDirection:  flexRow(IS_RTL),
+    alignItems:     "center",
+    justifyContent: "space-between",
+  },
+  filterTitle: {
+    fontFamily: theme.fonts.black,
+    fontSize: 13, lineHeight: 19,
+    color: kit.color.ink,
+    includeFontPadding: false,
+  },
+  filterReset: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 12, lineHeight: 18,
+    color: kit.color.danger,
+    includeFontPadding: false,
+  },
+  chipsRow: {
+    flexDirection: flexRow(IS_RTL),
+    flexWrap:      "wrap",
+    gap:           8,
+  },
+  chipsRowScroll: {
+    flexDirection: flexRow(IS_RTL),
+    gap:           8,
+    paddingBottom: 2,
+  },
+  chip: {
+    flexDirection:     flexRow(IS_RTL),
+    alignItems:        "center",
+    gap:               6,
+    height:            36,
+    paddingHorizontal: 14,
+    borderRadius:      kit.radius.pill,
+    backgroundColor:   kit.color.well,
+  },
+  chipOn: { backgroundColor: kit.color.ink },
+  chipText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 12, lineHeight: 18,
+    color: kit.color.inkSoft,
+    includeFontPadding: false,
+  },
+  chipTextOn: { color: kit.color.onInk },
+  chipCount: {
+    minWidth: 20,
+    borderRadius: kit.radius.pill,
+    backgroundColor: kit.color.surface,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    alignItems: "center",
+  },
+  chipCountOn: { backgroundColor: "rgba(255,255,255,0.18)" },
+  chipCountText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 10, lineHeight: 15,
+    color: kit.color.inkFaint,
+    includeFontPadding: false,
+  },
+
+  toggleRow: {
+    flexDirection:  flexRow(IS_RTL),
+    alignItems:     "center",
+    justifyContent: "space-between",
+    paddingVertical: 4,
+  },
+  toggleLeft: {
+    flexDirection: flexRow(IS_RTL),
+    alignItems:    "center",
+    gap:           8,
+  },
+  toggleLabel: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 13, lineHeight: 19,
+    color: kit.color.inkSoft,
+    includeFontPadding: false,
+  },
+  sw: {
+    width: 42, height: 26, borderRadius: 13,
+    backgroundColor: kit.color.lineStrong,
+    padding: 3,
+    alignItems: "flex-start",
+    justifyContent: "center",
+  },
+  swOn: {
+    backgroundColor: kit.color.accent,
+    alignItems: "flex-end",
+  },
+  swThumb: {
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: kit.color.surface,
+    ...kit.shadow.raised,
+  },
+
+  // ── Discovery
+  discovery: {
+    paddingHorizontal: kit.sp(5),
+    paddingTop:        kit.sp(2),
+    gap:               kit.sp(6),
+  },
+  section: { gap: kit.sp(3) },
+  sectionHeader: {
+    flexDirection:  flexRow(IS_RTL),
+    alignItems:     "center",
+    justifyContent: "space-between",
+  },
+  sectionTitle: {
+    fontFamily: theme.fonts.black,
+    fontSize: kit.type.heading.fontSize,
+    lineHeight: kit.type.heading.lineHeight,
+    color: kit.color.ink,
+    textAlign: TEXT_START,
+    includeFontPadding: false,
+  },
+  sectionTitleSm: {
+    fontFamily: theme.fonts.black,
+    fontSize: 13, lineHeight: 19,
+    color: kit.color.ink,
+    textAlign: TEXT_START,
+    includeFontPadding: false,
+  },
+  sectionAction: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 12, lineHeight: 18,
+    color: kit.color.danger,
+    includeFontPadding: false,
+  },
+
+  recentWrap: {
+    flexDirection: flexRow(IS_RTL),
+    flexWrap:      "wrap",
+    gap:           8,
+  },
+  recentChip: {
+    flexDirection:     flexRow(IS_RTL),
+    alignItems:        "center",
+    gap:               7,
+    paddingHorizontal: 14,
+    height:            38,
+    borderRadius:      kit.radius.pill,
+    backgroundColor:   kit.color.surface,
+    borderWidth:       1,
+    borderColor:       kit.color.line,
+  },
+  recentChipText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 12, lineHeight: 18,
+    color: kit.color.inkSoft,
+    includeFontPadding: false,
+  },
+
+  // Trending — editorial numbered list
+  trendCard: {
+    backgroundColor: kit.color.surface,
+    borderRadius:    kit.radius.card,
+    borderWidth:     1,
+    borderColor:     kit.color.line,
+    overflow:        "hidden",
+    ...kit.shadow.raised,
+  },
+  trendRow: {
+    flexDirection:     flexRow(IS_RTL),
+    alignItems:        "center",
+    gap:               kit.sp(4),
+    paddingHorizontal: kit.sp(4),
+    minHeight:         56,
+  },
+  trendRowDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: kit.color.line,
+  },
+  trendNum: {
+    fontFamily: theme.fonts.black,
+    fontSize: 17, lineHeight: 24,
+    color: kit.color.inkFaint,
+    width: 30,
+    includeFontPadding: false,
+    writingDirection: "ltr",
+    textAlign: "center",
+  },
+  trendNumTop: { color: kit.color.accentDeep },
+  trendTerm: {
+    flex: 1,
+    fontFamily: theme.fonts.bold,
+    fontSize: 14, lineHeight: 21,
+    color: kit.color.ink,
+    textAlign: TEXT_START,
+    includeFontPadding: false,
+  },
+
+  // Categories rail
+  catRail: {
+    flexDirection: flexRow(IS_RTL),
+    gap:           10,
+  },
+  catTile: {
+    width:           104,
+    alignItems:      "center",
+    gap:             8,
+    paddingVertical: kit.sp(4),
+    paddingHorizontal: 8,
+    backgroundColor: kit.color.surface,
+    borderRadius:    kit.radius.card,
+    borderWidth:     1,
+    borderColor:     kit.color.line,
+    ...kit.shadow.raised,
+  },
+  catTileIcon: {
+    width: 48, height: 48, borderRadius: 16,
+    backgroundColor: kit.color.accentTint,
+    alignItems: "center", justifyContent: "center",
+  },
+  catTileName: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 11, lineHeight: 16,
+    color: kit.color.ink,
+    textAlign: "center",
+    includeFontPadding: false,
+  },
+  catTileCount: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 9, lineHeight: 14,
+    color: kit.color.inkFaint,
+    includeFontPadding: false,
+  },
+
+  // ── Results
+  groupHeader: {
+    marginBottom: kit.sp(3),
+    gap:          kit.sp(2),
+  },
+  groupChipsRow: {
+    flexDirection: flexRow(IS_RTL),
+    gap:           8,
+    paddingHorizontal: 2,
+  },
+  footerLoader: {
+    paddingVertical: kit.sp(4),
+    alignItems:      "center",
+  },
+  skeletonGrid: {
+    flexDirection: flexRow(IS_RTL),
+    flexWrap:      "wrap",
+    padding:       kit.sp(3),
+    gap:           10,
+  },
+  skeletonCell: { width: "47%" as const },
+
+  emptyWrap: {
+    alignItems:        "center",
+    paddingTop:        kit.sp(14),
+    paddingHorizontal: kit.sp(6),
+    gap:               kit.sp(3),
+  },
+  emptyIcon: {
+    width: 76, height: 76, borderRadius: 26,
+    backgroundColor: kit.color.well,
+    alignItems: "center", justifyContent: "center",
+  },
+  emptyTitle: {
+    fontFamily: theme.fonts.black,
+    fontSize: 16, lineHeight: 24,
+    color: kit.color.ink,
+    textAlign: "center",
+  },
+  emptyBody: {
+    fontFamily: theme.fonts.regular,
+    fontSize: 13, lineHeight: 20,
+    color: kit.color.inkSoft,
+    textAlign: "center",
+    maxWidth: 300,
+  },
+  emptyTryLabel: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 11, lineHeight: 16,
+    color: kit.color.inkFaint,
+    marginTop: kit.sp(2),
+  },
+  emptyChips: {
+    flexDirection:  flexRow(IS_RTL),
+    flexWrap:       "wrap",
+    justifyContent: "center",
+    gap:            8,
   },
 
   // ── Suggestions overlay
   suggOverlay: {
     position: "absolute",
-    top:      theme.spacing.sm,
-    left:     theme.spacing.md,
-    right:    theme.spacing.md,
+    top:      kit.sp(1),
+    start:    kit.sp(4),
+    end:      kit.sp(4),
     bottom:   theme.layout.tabBarHeight,
     zIndex:   100,
-    overflow: "hidden",
   },
   suggCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius:    24,
+    backgroundColor: kit.color.surface,
+    borderRadius:    kit.radius.sheet - 4,
+    borderWidth:     1,
+    borderColor:     kit.color.line,
     overflow:        "hidden",
     flexShrink:      1,
-    borderWidth:     1,
-    borderColor:     theme.colors.border.hairline,
-    ...theme.shadow.lg,
+    ...kit.shadow.floating,
   },
-  // Sunken header band
   suggHeader: {
-    flexDirection:     flexRow(isRtl()),
+    flexDirection:     flexRow(IS_RTL),
     alignItems:        "center",
     justifyContent:    "space-between",
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical:   theme.spacing.md,
-    backgroundColor:   theme.colors.surfaceSunken,
+    paddingHorizontal: kit.sp(4),
+    paddingVertical:   kit.sp(3),
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: kit.color.line,
   },
-  suggSeparator: {
-    height:          StyleSheet.hairlineWidth,
-    backgroundColor: theme.colors.border.hairline,
-  },
-  suggHeaderLeft: {
-    flexDirection: flexRow(isRtl()),
-    alignItems:    "center",
-    gap:           6,
+  suggHeaderText: {
+    fontFamily: theme.fonts.black,
+    fontSize: 11, lineHeight: 16,
+    color: kit.color.inkFaint,
+    letterSpacing: 0.4,
+    includeFontPadding: false,
   },
   suggRow: {
-    flexDirection:     flexRow(isRtl()),
+    flexDirection:     flexRow(IS_RTL),
     alignItems:        "center",
-    gap:               theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical:   theme.spacing.md,
+    gap:               kit.sp(3),
+    paddingHorizontal: kit.sp(4),
+    paddingVertical:   kit.sp(2.5),
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.border.hairline,
+    borderBottomColor: kit.color.line,
   },
-  // Thumbnail 44×44, borderRadius 14
   suggThumb: {
-    width:           44,
-    height:          44,
-    borderRadius:    14,
-    backgroundColor: theme.colors.surfaceSunken,
-    alignItems:      "center",
-    justifyContent:  "center",
-    overflow:        "hidden",
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: kit.color.well,
+    alignItems: "center", justifyContent: "center",
+    overflow: "hidden",
   },
   suggName: {
-    fontSize:   13,
+    fontSize: 13, lineHeight: 19,
     fontFamily: theme.fonts.bold,
-    color:      theme.colors.text.primary,
-    textAlign:  textAlignStart(isRtl()),
+    color: kit.color.ink,
+    textAlign: TEXT_START,
+    includeFontPadding: false,
   },
-  suggCat:   { marginTop: 2 },
+  suggCat: {
+    fontFamily: theme.fonts.regular,
+    fontSize: 10, lineHeight: 15,
+    color: kit.color.inkFaint,
+    textAlign: TEXT_START,
+    marginTop: 2,
+    includeFontPadding: false,
+  },
   suggPrice: {
-    color:         theme.colors.brand[700],
-    letterSpacing: -0.2,
+    fontFamily: theme.fonts.black,
+    fontSize: 12, lineHeight: 18,
+    color: kit.color.ink,
+    includeFontPadding: false,
   },
   suggOos: {
-    backgroundColor:   theme.colors.error.bg,
-    borderRadius:      999,
-    paddingHorizontal: 7,
+    backgroundColor:   kit.color.dangerTint,
+    borderRadius:      kit.radius.pill,
+    paddingHorizontal: 8,
     paddingVertical:   3,
-    borderWidth:       1,
-    borderColor:       theme.colors.error.light,
+  },
+  suggOosText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 9, lineHeight: 14,
+    color: kit.color.danger,
+    includeFontPadding: false,
   },
   suggEmpty: {
     alignItems:      "center",
-    paddingVertical: theme.spacing[3.5],
-    gap:             theme.spacing.sm,
+    paddingVertical: kit.sp(6),
+    gap:             kit.sp(2),
   },
-  // Show-all — warm LinearGradient strip
+  suggEmptyText: {
+    fontFamily: theme.fonts.regular,
+    fontSize: 12, lineHeight: 18,
+    color: kit.color.inkFaint,
+    textAlign: "center",
+  },
   suggShowAll: {
-    flexDirection:   flexRow(isRtl()),
+    flexDirection:   flexRow(IS_RTL),
     alignItems:      "center",
     justifyContent:  "center",
-    gap:             theme.spacing.sm,
+    gap:             8,
     paddingVertical: 14,
+    backgroundColor: kit.color.accentTint,
   },
-
-  // ── Filter panel
-  filterPanel: {
-    backgroundColor:   theme.colors.surface,
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop:        14,
-    paddingBottom:     14,
-    gap:               theme.spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.border.hairline,
-  },
-  filterHeader: {
-    flexDirection:  flexRow(isRtl()),
-    alignItems:     "center",
-    justifyContent: "space-between",
-  },
-  chipsRow: {
-    flexDirection: flexRow(isRtl()),
-    flexWrap:      "wrap",
-    gap:           7,
-  },
-  // Chips — borderRadius 12, height 36
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical:   9,
-    borderRadius:      12,
-    height:            36,
-    justifyContent:    "center",
-    backgroundColor:   theme.colors.surfaceSunken,
-    borderWidth:       1,
-    borderColor:       theme.colors.border.hairline,
-  },
-  chipOn: {
-    backgroundColor: theme.colors.brand[700],
-    borderColor:     theme.colors.brand[700],
-  },
-
-  toggleRow: {
-    flexDirection:   flexRow(isRtl()),
-    alignItems:      "center",
-    justifyContent:  "space-between",
-    paddingVertical: 6,
-  },
-  toggleLeft: {
-    flexDirection: flexRow(isRtl()),
-    alignItems:    "center",
-    gap:           theme.spacing.sm,
-  },
-  // Spring-animated toggle
-  sw: {
-    width:           40,
-    height:          24,
-    borderRadius:    12,
-    backgroundColor: theme.colors.slate[200],
-    padding:         3,
-    justifyContent:  "center",
-  },
-  swOn: { backgroundColor: theme.colors.brand[600] },
-  swThumb: {
-    width:           18,
-    height:          18,
-    borderRadius:    9,
-    backgroundColor: theme.colors.surface,
-    ...theme.shadow.xs,
-  },
-
-  // ── Discovery sections
-  discovery: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop:        theme.spacing[2.5],
-    gap:               theme.spacing[3.5],
-  },
-  section: { gap: 14 },
-  sectionHeader: {
-    flexDirection:  flexRow(isRtl()),
-    alignItems:     "center",
-    justifyContent: "space-between",
-  },
-  // New: colored left-border bullet + bold title treatment
-  sectionTitleRow: {
-    flexDirection: flexRow(isRtl()),
-    alignItems:    "center",
-    gap:           10,
-  },
-  // 3×20 teal rounded left-border accent
-  sectionBullet: {
-    width:           3,
-    height:          20,
-    borderRadius:    2,
-    backgroundColor: theme.colors.teal[500],
-  },
-  sectionTitle: {
-    fontSize:      20,
-    fontFamily:    theme.fonts.black,
-    color:         theme.colors.text.primary,
-    letterSpacing: -0.4,
-  },
-  // Smaller variant used in results header
-  sectionTitleSm: {
-    fontSize:      16,
-    fontFamily:    theme.fonts.black,
-    color:         theme.colors.text.primary,
-    letterSpacing: -0.3,
-  },
-
-  // Recent chips — borderRadius 14, start-border teal accent
-  recentWrap: {
-    flexDirection: flexRow(isRtl()),
-    flexWrap:      "wrap",
-    gap:           theme.spacing.sm,
-  },
-  recentChip: {
-    flexDirection:      flexRow(isRtl()),
-    alignItems:         "center",
-    gap:                7,
-    paddingHorizontal:  14,
-    paddingVertical:    10,
-    borderRadius:       14,
-    backgroundColor:    theme.colors.surface,
-    borderWidth:        1,
-    borderColor:        theme.colors.border.hairline,
-    // Teal start-edge accent
-    borderStartWidth:   2,
-    borderStartColor:   theme.colors.teal[300],
-    ...theme.shadow.hairline,
-  },
-
-  // Trending rows — taller (minHeight 60), rank badge at top-right
-  trendGrid: { gap: theme.spacing.sm },
-  trendItem: {
-    flexDirection:     flexRow(IS_RTL),
-    alignItems:        "center",
-    gap:               theme.spacing.md,
-    backgroundColor:   theme.colors.surface,
-    borderRadius:      14,
-    paddingHorizontal: 14,
-    paddingVertical:   theme.spacing.md,
-    minHeight:         60,
-    position:          "relative",
-    overflow:          "hidden",
-    ...theme.shadow.card,
-  },
-  // Top-3 items get slightly sunken background
-  trendItemTop: {
-    backgroundColor: theme.colors.surfaceSunken,
-  },
-  // Start-edge accent border — RTL-safe via borderStartWidth
-  trendStartBorder: {
-    position:     "absolute",
-    top:          0,
-    bottom:       0,
-    start:        0,
-    width:        3,
-    borderRadius: 2,
-  },
-  trendStartBorderTop: {
-    backgroundColor: theme.colors.amber[400],
-  },
-  trendStartBorderDefault: {
-    backgroundColor: theme.colors.border.hairline,
-  },
-  // Icon container — 44×44, borderRadius 14
-  trendIcon: {
-    width:          44,
-    height:         44,
-    borderRadius:   14,
-    alignItems:     "center",
-    justifyContent: "center",
-    borderWidth:    1,
-    flexShrink:     0,
-    marginStart:    8,
-  },
-  trendLabel: {
-    flex:      1,
-    textAlign: textAlignStart(isRtl()),
-  },
-  // Rank badge positioned at top-right corner
-  trendRankBadge: {
-    position:          "absolute",
-    top:               6,
-    end:               8,
-    minWidth:          28,
-    height:            20,
-    borderRadius:      6,
-    alignItems:        "center",
-    justifyContent:    "center",
-    paddingHorizontal: 5,
-    borderWidth:       1,
-  },
-  trendRankBadgeTop: {
-    backgroundColor: theme.colors.amber[50],
-    borderColor:     `${theme.colors.amber[400]}38`,
-  },
-  trendRankBadgeDefault: {
-    backgroundColor: theme.colors.surfaceSunken,
-    borderColor:     theme.colors.border.hairline,
-  },
-  trendRankTextTop: {
+  suggShowAllText: {
     fontFamily: theme.fonts.black,
-    fontSize:   10,
-    color:      theme.colors.amber[700],
-  },
-  trendRankTextDefault: {
-    fontFamily: theme.fonts.bold,
-    fontSize:   10,
-    color:      theme.colors.text.tertiary,
-  },
-
-  // Category grid — taller tiles, 52×52 icon
-  catGrid: {
-    flexDirection: flexRow(isRtl()),
-    flexWrap:      "wrap",
-    gap:           10,
-  },
-  catTile: {
-    width:            "48%" as any,
-    backgroundColor:  theme.colors.surface,
-    borderRadius:     20,
-    padding:          14,
-    paddingVertical:  18,
-    alignItems:       "flex-start",
-    gap:              8,
-    ...theme.shadow.card,
-    borderWidth:      1,
-    borderColor:      theme.colors.border.hairline,
-  },
-  // 52×52, borderRadius 16
-  catTileGrad: {
-    width:          52,
-    height:         52,
-    borderRadius:   16,
-    alignItems:     "center",
-    justifyContent: "center",
-  },
-  catTileName: {
-    color:      theme.colors.text.primary,
-    lineHeight: 19,
-  },
-  // Count badge pill chip
-  catCountBadge: {
-    backgroundColor:   theme.colors.teal[50],
-    borderRadius:      999,
-    paddingHorizontal: 8,
-    paddingVertical:   3,
-    borderWidth:       1,
-    borderColor:       theme.colors.border.brandSoft,
-  },
-  catCountBadgeText: {
-    fontSize:   10,
-    fontFamily: theme.fonts.bold,
-    color:      theme.colors.teal[700],
-  },
-
-  // ── Results grid header
-  groupHeader: {
-    marginBottom: 14,
-    gap:          theme.spacing.sm,
-  },
-  groupChipsRow: {
-    gap:               7,
-    paddingHorizontal: 2,
-  },
-  // Group chips — borderRadius 12, height 36
-  groupChip: {
-    flexDirection:     flexRow(isRtl()),
-    alignItems:        "center",
-    gap:               7,
-    backgroundColor:   theme.colors.surface,
-    borderRadius:      12,
-    height:            36,
-    paddingHorizontal: theme.spacing.md,
-    borderWidth:       1,
-    borderColor:       theme.colors.border.hairline,
-  },
-  groupChipActive: {
-    backgroundColor: theme.colors.brand[700],
-    borderColor:     theme.colors.brand[700],
-  },
-  groupChipCount: {
-    minWidth:          20,
-    backgroundColor:   theme.colors.surfaceSunken,
-    borderRadius:      999,
-    paddingHorizontal: 6,
-    paddingVertical:   1,
-    alignItems:        "center",
-  },
-  groupChipCountActive: {
-    backgroundColor: SEARCH_OVERLAY.white20,
-  },
-
-  footerLoader: {
-    paddingVertical: theme.spacing[3],
-    alignItems:      "center",
-  },
-
-  // Skeleton grid
-  skeletonGrid: {
-    flexDirection: flexRow(isRtl()),
-    flexWrap:        "wrap",
-    padding:         theme.spacing.md,
-    gap:             10,
-  },
-  skeletonCell: {
-    width: "47%" as any,
-  },
-
-  // ── Empty state — large illustrated icon
-  emptyIconBox: {
-    width:           80,
-    height:          80,
-    borderRadius:    24,
-    backgroundColor: theme.colors.teal[50],
-    borderWidth:     1,
-    borderColor:     theme.colors.border.brandSoft,
-    alignItems:      "center",
-    justifyContent:  "center",
-    alignSelf:       "center",
-    marginBottom:    4,
-  },
-  emptyTrendWrap:  { paddingHorizontal: theme.spacing.xs },
-  emptyTrendChips: {
-    flexDirection: flexRow(isRtl()),
-    flexWrap:      "wrap",
-    gap:           theme.spacing.sm,
-  },
-  // Empty-state chips — borderRadius 14, more padding
-  emptyTrendChip: {
-    flexDirection:     flexRow(isRtl()),
-    alignItems:        "center",
-    gap:               7,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical:   10,
-    borderRadius:      14,
-    backgroundColor:   theme.colors.surface,
-    borderWidth:       1,
-    ...theme.shadow.hairline,
-  },
-  emptyTrendIcon: {
-    width:          22,
-    height:         22,
-    borderRadius:   7,
-    alignItems:     "center",
-    justifyContent: "center",
+    fontSize: 12, lineHeight: 18,
+    color: kit.color.accentDeep,
+    includeFontPadding: false,
   },
 });

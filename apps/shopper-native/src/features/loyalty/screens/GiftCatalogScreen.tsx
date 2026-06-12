@@ -1,21 +1,25 @@
 /**
- * GiftCatalogScreen — browse and redeem inventory-backed gifts.
+ * GiftCatalogScreen — 2026 rebuild on the @/shared/kit design language.
  *
- * Each row shows: thumbnail (or placeholder), name, points cost, and a
- * redeem button. Inventory state drives an availability badge so users see
- * "low stock" / "out of stock" inline; the server-side reserve_inventory
- * is the source of truth.
+ * Architecture (completely new — replaces the dark navy hero layout):
+ *   • Light boutique page: editorial header (back icon-button, start-aligned
+ *     display title, floating balance pill), a stats band (available gifts /
+ *     starting cost), then a 2-column gift grid.
+ *   • Gift card: sunken image stage with an ink points-chip overlay, stock
+ *     status line with a semantic dot, name, and a kit Button for redeem.
  *
- * Redemption flow:
- *   1. Tap redeem on a gift.
- *   2. Sheet requests full delivery address (saved or new).
- *   3. Request is sent (or queued when offline).
+ * Functional core (kept — crash-hardened, do not regress):
+ *   • fmtN() wraps every number format (Hermes ICU variability can throw).
+ *   • safeUri() validates image URLs before <Image>.
+ *   • gifts.data is Array.isArray-gated; inventory math is NaN-proof.
+ *   • GiftAddressSheet mounts only while visible with an active gift.
+ *   • Redemption flow: balance check → address sheet → online RPC / offline
+ *     queue → success/error sheets via decodeRedeemError.
  */
 
 import React, { useCallback, useState } from "react";
 import {
   Platform,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -25,14 +29,15 @@ import {
 import { Text as UIText } from "@/shared/ui";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { theme } from "@/shared/theme";
-import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
+import { flexRow, isRtl, textAlignStart, BACK_CHEVRON } from "@/utils/layout";
 import { useScreenTrace } from "@/features/observability";
-import { SubScreenHeader } from "../components/SubScreenHeader";
+import { kit, Button, IconButton } from "@/shared/kit";
 import { useGiftCatalog } from "../hooks/useGiftCatalog";
 import { useLoyaltyBalance } from "../hooks/useLoyaltyBalance";
 import { useQueuedRedeemGift } from "../hooks/useQueuedRedeemGift";
@@ -42,15 +47,17 @@ import { showErrorSheet, showSuccessSheet } from "@/shared/store/appSheetStore";
 
 type TFunc = ReturnType<typeof useTranslation>["t"];
 
+const IS_RTL = isRtl();
+const TEXT_START = textAlignStart(IS_RTL);
+
 interface CatalogEntry extends GiftCatalogItem {
   inventory?: GiftInventory;
 }
 
 /**
- * Safe number formatter. `Number.prototype.toLocaleString(locale)` can throw or
- * return garbage in some Hermes builds depending on which Intl ICU subsets
- * shipped. We coerce to a number first, fall back to the default formatter on
- * any error, and never let a number render path throw.
+ * Safe number formatter. `toLocaleString(locale)` can throw on some Hermes
+ * builds depending on shipped ICU subsets; a render-path throw would put the
+ * whole screen on the ErrorBoundary. Never let number formatting throw.
  */
 function fmtN(n: unknown): string {
   const num = typeof n === "number" ? n : Number(n ?? 0);
@@ -73,6 +80,7 @@ function safeUri(u: unknown): string | null {
 
 export function GiftCatalogScreen() {
   useScreenTrace("loyalty-gifts");
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const { width } = useWindowDimensions();
@@ -88,7 +96,7 @@ export function GiftCatalogScreen() {
   const refreshing =
     (balance.isFetching && !balance.isLoading) ||
     (gifts.isFetching && !gifts.isLoading);
-  const cardWidth = Math.max(150, Math.floor((width - 44) / 2));
+  const cardWidth = Math.max(150, Math.floor((width - kit.sp(5) * 2 - 12) / 2));
 
   const onRefresh = useCallback(() => {
     if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
@@ -116,7 +124,7 @@ export function GiftCatalogScreen() {
     [balance.data, t],
   );
 
-  // Clear in-flight flag + show error/success alert on settle.
+  // Clear in-flight flag + show error/success sheet on settle.
   React.useEffect(() => {
     if (!redeem.isPending && redeemingGiftId !== null) {
       setRedeemingGiftId(null);
@@ -156,12 +164,39 @@ export function GiftCatalogScreen() {
     }
   }, [activeGift, redeem, t]);
 
+  // ── Header (shared across load states) ──
+  const header = (
+    <View style={[s.header, { paddingTop: insets.top + 10 }]}>
+      <View style={s.headerRow}>
+        <IconButton
+          icon={BACK_CHEVRON}
+          onPress={() => router.back()}
+          accessibilityLabel={t("common.back")}
+        />
+        {balance.data && (
+          <View
+            style={s.balancePill}
+            accessibilityRole="text"
+            accessibilityLabel={t("loyalty.balanceA11y", { n: balance.data.balance })}>
+            <Ionicons name="star" size={13} color={kit.color.accentDeep} />
+            <UIText style={s.balanceValue}>{fmtN(balance.data.balance)}</UIText>
+            <UIText style={s.balanceUnit}>نقطة</UIText>
+          </View>
+        )}
+      </View>
+      <UIText style={s.title} accessibilityRole="header">
+        {t("loyalty.giftCatalogTitle")}
+      </UIText>
+      <UIText style={s.subtitle}>{t("loyalty.giftCatalogSubtitle")}</UIText>
+    </View>
+  );
+
   if (gifts.isLoading) {
     return (
-      <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-        <SubScreenHeader title={t("loyalty.giftCatalogTitle")} subtitle={t("loyalty.giftCatalogSubtitle")} />
-        <ScrollView contentContainerStyle={{ padding: 16 }}>
-          <ListSkeleton rows={3} />
+      <View style={s.screen}>
+        {header}
+        <ScrollView contentContainerStyle={s.content}>
+          <GridSkeleton cardWidth={cardWidth} />
         </ScrollView>
       </View>
     );
@@ -169,8 +204,8 @@ export function GiftCatalogScreen() {
 
   if (gifts.isError) {
     return (
-      <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-        <SubScreenHeader title={t("loyalty.giftCatalogTitle")} subtitle={t("loyalty.giftCatalogSubtitle")} />
+      <View style={s.screen}>
+        {header}
         <ErrorPanel onRetry={() => void gifts.refetch()} />
       </View>
     );
@@ -189,80 +224,58 @@ export function GiftCatalogScreen() {
   const lowestCostValid = lowestCost !== null && Number.isFinite(lowestCost) ? lowestCost : null;
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
-      <SubScreenHeader title={t("loyalty.giftCatalogTitle")} subtitle={t("loyalty.giftCatalogSubtitle")} />
+    <View style={s.screen}>
+      {header}
       <ScrollView
-        contentContainerStyle={{ paddingBottom: insets.bottom + 32, paddingHorizontal: 16 }}
+        contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 32 }]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={theme.colors.brand[600]}
+            tintColor={kit.color.accent}
             accessibilityLabel={t("loyalty.giftCatalogRefreshA11y")}
           />
         }
         showsVerticalScrollIndicator={false}
       >
-        <LinearGradient
-          colors={["#071C37", "#0A315A", "#115E75"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.heroCard}
-        >
-          <View style={styles.heroOrbLarge} />
-          <View style={styles.heroOrbSmall} />
-          <View style={styles.heroHeader}>
-            <View style={styles.heroText}>
-              <UIText style={styles.heroEyebrow}>هدايا مختارة بعناية</UIText>
-              <UIText style={styles.heroTitle}>{t("loyalty.giftCatalogTitle")}</UIText>
-              <UIText style={styles.heroSub}>{t("loyalty.giftCatalogSubtitle")}</UIText>
-            </View>
-            <View style={styles.heroBadge}>
-              <Ionicons name="gift-outline" size={24} color="#FDE68A" />
-            </View>
+        {/* ── Stats band ── */}
+        <Animated.View entering={FadeInDown.duration(280)} style={s.statsBand}>
+          <View style={s.statBlock}>
+            <UIText style={s.statValue}>{fmtN(availableCount)}</UIText>
+            <UIText style={s.statLabel}>هدايا متاحة</UIText>
           </View>
-
-          {balance.data && (
-            <View style={styles.heroBalanceCard} accessibilityRole="text"
-                  accessibilityLabel={t("loyalty.balanceA11y", { n: balance.data.balance })}>
-              <UIText style={styles.heroBalanceLabel}>رصيد الاستبدال</UIText>
-              <View style={styles.heroBalanceRow}>
-                <UIText style={styles.heroBalanceValue}>
-                  {fmtN(balance.data.balance)}
-                </UIText>
-                <UIText style={styles.heroBalanceUnit}>نقطة</UIText>
-              </View>
-            </View>
-          )}
-
-          <View style={styles.heroStats}>
-            <StatChip icon="sparkles-outline" label="هدايا متاحة" value={fmtN(availableCount)} />
-            <StatChip
-              icon="pricetag-outline"
-              label="تبدأ من"
-              value={lowestCostValid !== null ? `${fmtN(lowestCostValid)} نقطة` : "—"}
-            />
+          <View style={s.statDivider} />
+          <View style={s.statBlock}>
+            <UIText style={s.statValue}>
+              {lowestCostValid !== null ? fmtN(lowestCostValid) : "—"}
+            </UIText>
+            <UIText style={s.statLabel}>أقل تكلفة بالنقاط</UIText>
           </View>
-        </LinearGradient>
+        </Animated.View>
 
         {list.length === 0 ? (
-          <View style={{ paddingTop: 60 }}>
-            <EmptyRow
-              icon="gift-outline"
-              message={t("loyalty.giftCatalogEmpty")}
-            />
+          <View style={s.emptyWrap}>
+            <View style={s.emptyIcon}>
+              <Ionicons name="gift-outline" size={30} color={kit.color.inkFaint} />
+            </View>
+            <UIText style={s.emptyText} maxFontSizeMultiplier={1.5}>
+              {t("loyalty.giftCatalogEmpty")}
+            </UIText>
           </View>
         ) : (
-          <View style={styles.grid}>
-            {list.map((gift) => (
-              <GiftCard
+          <View style={s.grid}>
+            {list.map((gift, i) => (
+              <Animated.View
                 key={gift.id}
-                gift={gift}
-                width={cardWidth}
-                currentBalance={balance.data?.balance ?? 0}
-                isRedeeming={redeemingGiftId === gift.id && redeem.isPending}
-                onRedeem={() => handleRedeem(gift)}
-              />
+                entering={FadeInDown.delay(Math.min(i, 6) * 50).duration(260)}>
+                <GiftCard
+                  gift={gift}
+                  width={cardWidth}
+                  currentBalance={balance.data?.balance ?? 0}
+                  isRedeeming={redeemingGiftId === gift.id && redeem.isPending}
+                  onRedeem={() => handleRedeem(gift)}
+                />
+              </Animated.View>
             ))}
           </View>
         )}
@@ -282,7 +295,7 @@ export function GiftCatalogScreen() {
   );
 }
 
-// ─── Gift row ───────────────────────────────────────────────────────────────
+// ─── Gift card ───────────────────────────────────────────────────────────────
 
 interface GiftCardProps {
   gift:           CatalogEntry;
@@ -300,146 +313,95 @@ function GiftCard({ gift, width, currentBalance, isRedeeming, onRedeem }: GiftCa
     const r = (inv.total_stock ?? 0) - (inv.reserved ?? 0) - (inv.fulfilled ?? 0);
     return Math.max(Number.isFinite(r) ? r : 0, 0);
   })();
-  const soldOut  = available !== null && available <= 0;
-  const lowStock = available !== null && available > 0 && available <= 3;
+  const soldOut   = available !== null && available <= 0;
+  const lowStock  = available !== null && available > 0 && available <= 3;
   const canAfford = currentBalance >= gift.points_cost;
   const disabled  = isRedeeming || soldOut;
-  const statusTone = soldOut
-    ? styles.stockToneSoldOut
-    : lowStock
-    ? styles.stockToneLow
-    : styles.stockToneAvailable;
+
+  const statusColor = soldOut ? kit.color.inkFaint : lowStock ? kit.color.warn : kit.color.success;
   const statusLabel = soldOut
     ? t("loyalty.giftSoldOutPill")
     : lowStock
     ? t("loyalty.giftStockRemaining", { n: available })
     : "متاح الآن";
 
+  const buttonLabel = isRedeeming
+    ? t("loyalty.redeemLoading")
+    : soldOut
+    ? t("loyalty.giftRedeemSoldOut")
+    : !canAfford
+    ? t("loyalty.giftRedeemInsufficient")
+    : t("loyalty.giftRedeem");
+
+  const uri = safeUri(gift.image_url);
+
   return (
-    <View style={[styles.giftCard, { width }]} accessibilityRole="text"
-          accessibilityLabel={t("loyalty.giftA11y", { name: gift.name, points: fmtN(gift.points_cost) })}>
-      <View style={styles.giftThumb}>
-        {(() => {
-          const uri = safeUri(gift.image_url);
-          return uri ? (
-            <Image
-              source={{ uri }}
-              style={{ width: "100%", height: "100%" }}
-              contentFit="contain"
-              transition={180}
-            />
-          ) : (
-            <Ionicons name="gift" size={28} color={theme.colors.brand[400]} />
-          );
-        })()}
-        <View style={[styles.stockPill, statusTone]}>
-          <UIText style={[styles.stockPillText, soldOut && styles.stockPillTextLight]} maxFontSizeMultiplier={1.2}>
-            {statusLabel}
+    <View
+      style={[s.card, { width }]}
+      accessibilityRole="text"
+      accessibilityLabel={t("loyalty.giftA11y", { name: gift.name, points: fmtN(gift.points_cost) })}>
+      {/* Image stage */}
+      <View style={s.cardStage}>
+        {uri ? (
+          <Image
+            source={{ uri }}
+            style={[s.cardImage, soldOut && s.cardImageMuted]}
+            contentFit="contain"
+            transition={150}
+          />
+        ) : (
+          <Ionicons name="gift" size={30} color={kit.color.inkFaint} />
+        )}
+        {/* Points chip */}
+        <View style={s.pointsChip}>
+          <Ionicons name="star" size={9} color={kit.color.onInk} />
+          <UIText style={s.pointsChipText} maxFontSizeMultiplier={1.2}>
+            {fmtN(gift.points_cost)}
           </UIText>
         </View>
-        {soldOut && (
-          <View style={styles.oosOverlay}>
-            <UIText style={styles.oosText} maxFontSizeMultiplier={1.2}>{t("loyalty.giftSoldOutPill")}</UIText>
-          </View>
-        )}
       </View>
 
-      <View style={styles.giftBody}>
-        <UIText style={styles.giftName} numberOfLines={2} maxFontSizeMultiplier={1.3}>
-          {gift.name}
+      {/* Status */}
+      <View style={s.statusRow}>
+        <View style={[s.statusDot, { backgroundColor: statusColor }]} />
+        <UIText style={[s.statusText, { color: statusColor }]} maxFontSizeMultiplier={1.2}>
+          {statusLabel}
         </UIText>
-        {gift.description && (
-          <UIText style={styles.giftDesc} numberOfLines={2} maxFontSizeMultiplier={1.4}>
-            {gift.description}
-          </UIText>
-        )}
-        <View style={styles.giftMeta}>
-          <View style={styles.costWrap}>
-            <Ionicons name="star" size={14} color={theme.colors.amber[600]} />
-            <UIText style={styles.costText} maxFontSizeMultiplier={1.3}>
-              {fmtN(gift.points_cost)}
-            </UIText>
-            <UIText style={styles.costUnit}>نقطة</UIText>
-          </View>
-          {!soldOut && available !== null && (
-            <UIText style={styles.stockInlineText} maxFontSizeMultiplier={1.2}>
-              {fmtN(available)} متاحة
-            </UIText>
-          )}
-        </View>
-        <View style={styles.giftFoot}>
-          <Pressable
-            onPress={onRedeem}
-            disabled={disabled}
-            accessibilityRole="button"
-            accessibilityLabel={t("loyalty.redeemBtnA11y", { name: gift.name, cost: fmtN(gift.points_cost) })}
-            accessibilityState={{ disabled, busy: isRedeeming }}
-            style={({ pressed }) => [
-              styles.redeemBtn,
-              !canAfford && !disabled && styles.redeemBtnInsufficient,
-              disabled && styles.redeemBtnDisabled,
-              pressed && !disabled && { opacity: 0.85 },
-            ]}
-          >
-            <UIText
-              style={[
-                styles.redeemBtnText,
-                !canAfford && !disabled && styles.redeemBtnTextInsufficient,
-                disabled && styles.redeemBtnTextDisabled,
-              ]}
-              maxFontSizeMultiplier={1.2}
-            >
-              {isRedeeming
-                ? t("loyalty.redeemLoading")
-                : soldOut
-                ? t("loyalty.giftRedeemSoldOut")
-                : !canAfford
-                ? t("loyalty.giftRedeemInsufficient")
-                : t("loyalty.giftRedeem")}
-            </UIText>
-          </Pressable>
-        </View>
       </View>
+
+      {/* Name */}
+      <UIText style={s.cardName} numberOfLines={2} maxFontSizeMultiplier={1.3}>
+        {gift.name}
+      </UIText>
+
+      {/* Redeem */}
+      <Button
+        label={buttonLabel}
+        onPress={onRedeem}
+        variant={canAfford && !disabled ? "primary" : "secondary"}
+        size="sm"
+        full
+        disabled={disabled || !canAfford}
+        accessibilityLabel={t("loyalty.redeemBtnA11y", { name: gift.name, cost: fmtN(gift.points_cost) })}
+      />
     </View>
   );
 }
 
-function StatChip({ icon, label, value }: {
-  icon: React.ComponentProps<typeof Ionicons>["name"];
-  label: string;
-  value: string;
-}) {
-  return (
-    <View style={styles.statChip}>
-      <View style={styles.statChipIcon}>
-        <Ionicons name={icon} size={14} color="#D1FAE5" />
-      </View>
-      <View style={{ flex: 1, gap: 2 }}>
-        <UIText style={styles.statChipLabel}>{label}</UIText>
-        <UIText style={styles.statChipValue}>{value}</UIText>
-      </View>
-    </View>
-  );
-}
+// ─── Shared sub-views ─────────────────────────────────────────────────────────
 
-// ─── Shared sub-views ───────────────────────────────────────────────────────
-
-function ListSkeleton({ rows }: { rows: number }) {
+function GridSkeleton({ cardWidth }: { cardWidth: number }) {
   const { t } = useTranslation();
   return (
-    <View>
-      {Array.from({ length: rows }).map((_, i) => (
-        <View key={i} style={[styles.giftCard, styles.skeletonRow]} accessibilityLabel={t("common.loading")} />
+    <View style={s.grid} accessibilityLabel={t("common.loading")}>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <View key={i} style={[s.card, s.skeletonCard, { width: cardWidth }]}>
+          <View style={[s.cardStage, s.skeletonBlock]} />
+          <View style={[s.skeletonLine, { width: "55%" }]} />
+          <View style={[s.skeletonLine, { width: "80%" }]} />
+          <View style={[s.skeletonLine, { height: 34, borderRadius: kit.radius.pill }]} />
+        </View>
       ))}
-    </View>
-  );
-}
-
-function EmptyRow({ icon, message }: { icon: React.ComponentProps<typeof Ionicons>["name"]; message: string }) {
-  return (
-    <View style={styles.emptyRow} accessibilityRole="text" accessibilityLabel={message}>
-      <Ionicons name={icon} size={20} color={theme.colors.slate[400]} />
-      <UIText style={styles.emptyText} maxFontSizeMultiplier={1.5}>{message}</UIText>
     </View>
   );
 }
@@ -447,21 +409,24 @@ function EmptyRow({ icon, message }: { icon: React.ComponentProps<typeof Ionicon
 function ErrorPanel({ onRetry }: { onRetry: () => void }) {
   const { t } = useTranslation();
   return (
-    <View style={styles.errorPanel}>
-      <Ionicons name="cloud-offline-outline" size={36} color={theme.colors.slate[400]} />
-      <UIText style={styles.errorTitle} maxFontSizeMultiplier={1.4}>{t("loyalty.giftCatalogErrorTitle")}</UIText>
-      <UIText style={styles.errorBody} maxFontSizeMultiplier={1.5}>
+    <View style={s.errorPanel}>
+      <View style={s.emptyIcon}>
+        <Ionicons name="cloud-offline-outline" size={30} color={kit.color.inkFaint} />
+      </View>
+      <UIText style={s.errorTitle} maxFontSizeMultiplier={1.4}>
+        {t("loyalty.giftCatalogErrorTitle")}
+      </UIText>
+      <UIText style={s.errorBody} maxFontSizeMultiplier={1.5}>
         {t("loyalty.giftCatalogErrorBody")}
       </UIText>
-      <Pressable
+      <Button
+        label={t("common.retry")}
         onPress={onRetry}
-        accessibilityRole="button"
-        accessibilityLabel={t("common.retry")}
-        style={({ pressed }) => [styles.primaryBtn, pressed && { opacity: 0.9 }]}
-      >
-        <Ionicons name="refresh" size={14} color="#fff" />
-        <UIText style={styles.primaryBtnText}>{t("common.retry")}</UIText>
-      </Pressable>
+        variant="primary"
+        size="md"
+        icon="refresh"
+        style={{ marginTop: kit.sp(2) }}
+      />
     </View>
   );
 }
@@ -476,346 +441,203 @@ function decodeRedeemError(error: Error, t: TFunc): string {
   return t("loyalty.redeemErrorDefault");
 }
 
-// ─── Styles ─────────────────────────────────────────────────────────────────
+// ─── Styles ──────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  screen: {
-    flex:            1,
-    backgroundColor: theme.colors.bg,
+const s = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: kit.color.canvas },
+
+  header: {
+    paddingHorizontal: kit.sp(5),
+    paddingBottom:     kit.sp(4),
+    gap:               kit.sp(2),
   },
-  heroCard: {
-    borderRadius:    24,
-    padding:         18,
-    marginBottom:    18,
-    overflow:        "hidden",
-    gap:             14,
-    ...theme.shadow.lg,
-  },
-  heroOrbLarge: {
-    position:        "absolute",
-    top:             -70,
-    right:           -40,
-    width:           190,
-    height:          190,
-    borderRadius:    95,
-    backgroundColor: "rgba(255,255,255,0.08)",
-  },
-  heroOrbSmall: {
-    position:        "absolute",
-    bottom:          -36,
-    left:            -24,
-    width:           120,
-    height:          120,
-    borderRadius:    60,
-    backgroundColor: "rgba(45,212,191,0.12)",
-  },
-  heroHeader: {
-    flexDirection:  "row-reverse",
-    alignItems:     "flex-start",
+  headerRow: {
+    flexDirection:  flexRow(IS_RTL),
+    alignItems:     "center",
     justifyContent: "space-between",
-    gap:            16,
+    marginBottom:   kit.sp(2),
   },
-  heroText: {
-    flex: 1,
-    gap:  4,
+  balancePill: {
+    flexDirection:     flexRow(IS_RTL),
+    alignItems:        "center",
+    gap:               5,
+    backgroundColor:   kit.color.accentTint,
+    borderRadius:      kit.radius.pill,
+    paddingHorizontal: 14,
+    paddingVertical:   8,
   },
-  heroEyebrow: {
-    fontFamily: theme.fonts.bold,
-    fontSize:   11,
-    color:      "#A7F3D0",
-    textAlign:  textAlignStart(isRtl()),
-    letterSpacing: 0.4,
-  },
-  heroTitle: {
+  balanceValue: {
     fontFamily: theme.fonts.black,
-    fontSize:   24,
-    color:      "#FFFFFF",
-    textAlign:  textAlignStart(isRtl()),
-    letterSpacing: -0.6,
+    fontSize: 14, lineHeight: 20,
+    color: kit.color.accentDeep,
+    includeFontPadding: false,
   },
-  heroSub: {
+  balanceUnit: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 10, lineHeight: 15,
+    color: kit.color.accentDeep,
+    includeFontPadding: false,
+  },
+  title: {
+    fontFamily: theme.fonts.black,
+    fontSize: kit.type.display.fontSize - 4,
+    lineHeight: kit.type.display.lineHeight - 4,
+    color: kit.color.ink,
+    textAlign: TEXT_START,
+    includeFontPadding: false,
+  },
+  subtitle: {
     fontFamily: theme.fonts.regular,
-    fontSize:   13,
-    color:      "rgba(255,255,255,0.72)",
-    lineHeight: 20,
-    textAlign:  textAlignStart(isRtl()),
+    fontSize: kit.type.body.fontSize - 1,
+    lineHeight: kit.type.body.lineHeight - 2,
+    color: kit.color.inkSoft,
+    textAlign: TEXT_START,
+    includeFontPadding: false,
   },
-  heroBadge: {
-    width:           52,
-    height:          52,
-    borderRadius:    16,
+
+  content: {
+    paddingHorizontal: kit.sp(5),
+    gap:               kit.sp(4),
+  },
+
+  statsBand: {
+    flexDirection:   flexRow(IS_RTL),
     alignItems:      "center",
-    justifyContent:  "center",
-    backgroundColor: "rgba(255,255,255,0.10)",
+    backgroundColor: kit.color.surface,
+    borderRadius:    kit.radius.card,
     borderWidth:     1,
-    borderColor:     "rgba(255,255,255,0.14)",
+    borderColor:     kit.color.line,
+    paddingVertical: kit.sp(4),
+    ...kit.shadow.raised,
   },
-  heroBalanceCard: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius:    18,
-    padding:         14,
-    gap:             4,
-    borderWidth:     1,
-    borderColor:     "rgba(255,255,255,0.10)",
-  },
-  heroBalanceLabel: {
-    fontFamily: theme.fonts.bold,
-    fontSize:   11,
-    color:      "rgba(255,255,255,0.62)",
-    textAlign:  textAlignStart(isRtl()),
-  },
-  heroBalanceRow: {
-    flexDirection: "row",
-    alignItems:    "baseline",
-    gap:           6,
-  },
-  heroBalanceValue: {
+  statBlock: { flex: 1, alignItems: "center", gap: 2 },
+  statValue: {
     fontFamily: theme.fonts.black,
-    fontSize:   30,
-    color:      "#FFFFFF",
-    letterSpacing: -1,
+    fontSize: 20, lineHeight: 28,
+    color: kit.color.ink,
+    includeFontPadding: false,
   },
-  heroBalanceUnit: {
+  statLabel: {
     fontFamily: theme.fonts.bold,
-    fontSize:   13,
-    color:      "rgba(255,255,255,0.74)",
+    fontSize: 11, lineHeight: 16,
+    color: kit.color.inkFaint,
+    includeFontPadding: false,
   },
-  heroStats: {
-    flexDirection: "row",
-    gap:           10,
-  },
-  statChip: {
-    flex:            1,
-    flexDirection:   "row-reverse",
-    alignItems:      "center",
-    gap:             10,
-    padding:         12,
-    borderRadius:    16,
-    backgroundColor: "rgba(2,6,23,0.22)",
-    borderWidth:     1,
-    borderColor:     "rgba(255,255,255,0.08)",
-  },
-  statChipIcon: {
-    width:           34,
-    height:          34,
-    borderRadius:    12,
-    alignItems:      "center",
-    justifyContent:  "center",
-    backgroundColor: "rgba(255,255,255,0.08)",
-  },
-  statChipLabel: {
-    fontFamily: theme.fonts.semibold,
-    fontSize:   10,
-    color:      "rgba(255,255,255,0.62)",
-    textAlign:  textAlignStart(isRtl()),
-  },
-  statChipValue: {
-    fontFamily: theme.fonts.black,
-    fontSize:   13,
-    color:      "#FFFFFF",
-    textAlign:  textAlignStart(isRtl()),
+  statDivider: {
+    width:           StyleSheet.hairlineWidth,
+    alignSelf:       "stretch",
+    backgroundColor: kit.color.lineStrong,
   },
 
   grid: {
-    flexDirection:   "row",
-    flexWrap:        "wrap",
-    justifyContent:  "space-between",
-    rowGap:          12,
+    flexDirection:  flexRow(IS_RTL),
+    flexWrap:       "wrap",
+    justifyContent: "space-between",
+    rowGap:         12,
   },
 
-  // Gift card
-  giftCard: {
-    alignItems:      "stretch",
-    gap:             12,
-    backgroundColor: theme.colors.surface,
-    borderRadius:    20,
-    padding:         12,
+  card: {
+    backgroundColor: kit.color.surface,
+    borderRadius:    kit.radius.card,
     borderWidth:     1,
-    borderColor:     theme.colors.border.hairline,
-    ...theme.shadow.card,
+    borderColor:     kit.color.line,
+    padding:         10,
+    gap:             8,
+    ...kit.shadow.raised,
   },
-  giftThumb: {
+  cardStage: {
     width:           "100%",
-    aspectRatio:     1.08,
-    borderRadius:    18,
-    backgroundColor: "#F3F7FB",
+    aspectRatio:     1.05,
+    borderRadius:    kit.radius.control,
+    backgroundColor: kit.color.well,
     alignItems:      "center",
     justifyContent:  "center",
     overflow:        "hidden",
-    position:        "relative",
   },
-  stockPill: {
+  cardImage:      { width: "100%", height: "100%" },
+  cardImageMuted: { opacity: 0.35 },
+  pointsChip: {
     position:          "absolute",
     top:               8,
-    insetInlineStart:  8,
-    paddingHorizontal: 8,
-    paddingVertical:   4,
-    borderRadius:      999,
-  },
-  stockPillText: {
-    fontFamily: theme.fonts.bold,
-    fontSize:   10,
-    color:      theme.colors.amber[700],
-  },
-  stockPillTextLight: {
-    color: "#FFFFFF",
-  },
-  stockToneAvailable: {
-    backgroundColor: "rgba(34,197,94,0.12)",
-    borderWidth:     1,
-    borderColor:     "rgba(34,197,94,0.16)",
-  },
-  stockToneLow: {
-    backgroundColor: theme.colors.amber[50],
-    borderWidth:     1,
-    borderColor:     theme.colors.amber[100],
-  },
-  stockToneSoldOut: {
-    backgroundColor: "rgba(15,23,42,0.68)",
-  },
-  oosOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(15,23,42,0.55)",
-    alignItems:      "center",
-    justifyContent:  "center",
-  },
-  oosText: {
-    fontFamily: theme.fonts.black,
-    fontSize:   11,
-    color:      "#fff",
-    letterSpacing: 0.5,
-  },
-  giftBody: {
-    flex: 1,
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  giftName: {
-    fontFamily: theme.fonts.black,
-    fontSize:   15,
-    color:      theme.colors.text.primary,
-    textAlign:  textAlignStart(isRtl()),
-    lineHeight: 19,
-  },
-  giftDesc: {
-    fontFamily: theme.fonts.regular,
-    fontSize:   11,
-    color:      theme.colors.text.tertiary,
-    textAlign:  textAlignStart(isRtl()),
-    marginTop:  3,
-    lineHeight: 15,
-  },
-  giftMeta: {
-    gap: 4,
-  },
-  giftFoot: {
-    marginTop: 2,
-  },
-  costWrap: {
-    flexDirection: flexRow(isRtl()),
-    alignItems:    "center",
-    gap:           5,
-  },
-  costText: {
-    fontFamily: theme.fonts.black,
-    fontSize:   14,
-    color:      theme.colors.text.primary,
-  },
-  costUnit: {
-    fontFamily: theme.fonts.bold,
-    fontSize:   11,
-    color:      theme.colors.text.tertiary,
-  },
-  stockInlineText: {
-    fontFamily: theme.fonts.semibold,
-    fontSize:   11,
-    color:      theme.colors.text.tertiary,
-    textAlign:  textAlignStart(isRtl()),
-  },
-  redeemBtn: {
+    start:             8,
+    flexDirection:     flexRow(IS_RTL),
     alignItems:        "center",
-    justifyContent:    "center",
-    paddingHorizontal: 14,
-    paddingVertical:   11,
-    borderRadius:      14,
-    backgroundColor:   theme.colors.brand[600],
+    gap:               4,
+    backgroundColor:   kit.color.ink,
+    borderRadius:      kit.radius.pill,
+    paddingHorizontal: 9,
+    paddingVertical:   4,
   },
-  redeemBtnInsufficient: {
-    backgroundColor: theme.colors.surfaceSunken,
-    borderWidth:     1,
-    borderColor:     theme.colors.border.default,
-  },
-  redeemBtnDisabled: {
-    backgroundColor: theme.colors.subtle,
-  },
-  redeemBtnText: {
+  pointsChipText: {
     fontFamily: theme.fonts.black,
-    fontSize:   12,
-    color:      "#fff",
+    fontSize: 10, lineHeight: 14,
+    color: kit.color.onInk,
+    includeFontPadding: false,
   },
-  redeemBtnTextInsufficient: {
-    color: theme.colors.text.secondary,
+  statusRow: {
+    flexDirection: flexRow(IS_RTL),
+    alignItems:    "center",
+    gap:           6,
   },
-  redeemBtnTextDisabled: {
-    color: theme.colors.text.disabled,
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 10, lineHeight: 15,
+    includeFontPadding: false,
+  },
+  cardName: {
+    fontFamily: theme.fonts.black,
+    fontSize: 13, lineHeight: 19,
+    color: kit.color.ink,
+    textAlign: TEXT_START,
+    minHeight: 38,
+    includeFontPadding: false,
   },
 
-  // Empty/error/skeleton
-  skeletonRow: {
-    backgroundColor: theme.colors.surfaceSunken,
-    minHeight:       112,
+  // Skeleton
+  skeletonCard:  {},
+  skeletonBlock: { backgroundColor: kit.color.well },
+  skeletonLine: {
+    height:          12,
+    borderRadius:    6,
+    backgroundColor: kit.color.well,
   },
-  emptyRow: {
-    flexDirection:     flexRow(isRtl()),
-    alignItems:        "center",
-    gap:               10,
-    paddingVertical:   18,
-    paddingHorizontal: 14,
-    backgroundColor:   theme.colors.surfaceSunken,
-    borderRadius:      14,
+
+  // Empty / error
+  emptyWrap: {
+    alignItems:      "center",
+    paddingVertical: kit.sp(14),
+    gap:             kit.sp(3),
+  },
+  emptyIcon: {
+    width: 68, height: 68, borderRadius: 24,
+    alignItems: "center", justifyContent: "center",
+    backgroundColor: kit.color.well,
   },
   emptyText: {
-    fontFamily: theme.fonts.regular,
-    fontSize:   12,
-    color:      theme.colors.text.secondary,
-    flex:       1,
-    textAlign:  textAlignStart(isRtl()),
+    fontFamily: theme.fonts.bold,
+    fontSize: 13, lineHeight: 20,
+    color: kit.color.inkSoft,
+    textAlign: "center",
   },
   errorPanel: {
     flex:              1,
     alignItems:        "center",
     justifyContent:    "center",
-    paddingHorizontal: 32,
-    gap:               10,
+    paddingHorizontal: kit.sp(8),
+    gap:               kit.sp(2),
   },
   errorTitle: {
     fontFamily: theme.fonts.black,
-    fontSize:   16,
-    color:      theme.colors.text.primary,
-    marginTop:  8,
+    fontSize: 16, lineHeight: 24,
+    color: kit.color.ink,
+    textAlign: "center",
   },
   errorBody: {
     fontFamily: theme.fonts.regular,
-    fontSize:   13,
-    color:      theme.colors.text.secondary,
-    textAlign:  "center",
-    lineHeight: 20,
-  },
-  primaryBtn: {
-    flexDirection:     flexRow(isRtl()),
-    alignItems:        "center",
-    gap:               8,
-    backgroundColor:   theme.colors.brand[600],
-    borderRadius:      12,
-    paddingHorizontal: 18,
-    paddingVertical:   11,
-    marginTop:         8,
-    ...theme.shadow.brand,
-  },
-  primaryBtnText: {
-    fontFamily: theme.fonts.black,
-    fontSize:   13,
-    color:      "#fff",
+    fontSize: 13, lineHeight: 20,
+    color: kit.color.inkSoft,
+    textAlign: "center",
   },
 });
 
