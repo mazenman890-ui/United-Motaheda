@@ -67,7 +67,7 @@ import { ProductCardSkeleton } from "@/components/ui/Skeleton";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { formatPrice } from "@/utils/format";
-import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
+import { flexRow, isRtl, textAlignStart, FORWARD_CHEVRON } from "@/utils/layout";
 import type { NativeProduct, NativeCategory } from "@/services/productsApi";
 
 const IS_RTL      = isRtl();
@@ -92,6 +92,31 @@ const TRENDING_META: { termKey: string; icon: IoniconsName; color: string; bg: s
   { termKey: "search.trending4", icon: "thermometer",    color: theme.colors.info.strong,  bg: theme.colors.info.bg         },
   { termKey: "search.trending5", icon: "water-outline",  color: theme.colors.brand[700],   bg: theme.colors.brand.lighter   },
 ];
+
+// ─── Category icon mapping — Arabic/English keyword → Ionicons name ─────────
+
+function getCategoryIcon(name: string): IoniconsName {
+  const n = (name ?? "").toLowerCase();
+  if (/شعر|hair/.test(n))                             return "cut-outline";
+  if (/بشرة|وجه|skin|face/.test(n))                  return "hand-left-outline";
+  if (/تجميل|مكياج|makeup|cosmetic/.test(n))         return "color-palette-outline";
+  if (/فم|أسنان|dental|oral/.test(n))                return "happy-outline";
+  if (/عطر|روائح|perfume|fragrance/.test(n))         return "flower-outline";
+  if (/إسعاف|طوارئ|first.aid|مطهر/.test(n))         return "medkit-outline";
+  if (/فيتامين|vitamin|مكمل|supplement/.test(n))     return "nutrition-outline";
+  if (/طفل|رضيع|baby|infant/.test(n))               return "happy-outline";
+  if (/أم|حمل|maternity|pregnancy/.test(n))          return "heart-outline";
+  if (/جهاز|device|قياس|pressure/.test(n))           return "pulse-outline";
+  if (/مضاد|antibiotic|مناعة|immune/.test(n))        return "shield-checkmark-outline";
+  if (/ألم|pain|مسكن|analgesic/.test(n))             return "bandage-outline";
+  if (/سكر|diabetes|ضغط|blood/.test(n))              return "water-outline";
+  if (/عظ|joint|مفصل|bone/.test(n))                  return "body-outline";
+  if (/عين|eye|نظر|vision/.test(n))                  return "eye-outline";
+  if (/صدر|رئة|lung|chest|respiratory/.test(n))      return "cloudy-outline";
+  if (/قلب|heart|cardio/.test(n))                    return "heart-circle-outline";
+  if (/أدو|دواء|medicine|drug/.test(n))              return "medical-outline";
+  return "grid-outline";
+}
 
 // ─── Highlight match — premium subtle background ───────────────────────────
 
@@ -568,8 +593,8 @@ export default function SearchScreen() {
                   end={{ x: 1, y: 1 }}
                   style={s.barSubmitGrad}>
                   <Ionicons
-                    name="return-down-back"
-                    size={14}
+                    name={FORWARD_CHEVRON}
+                    size={16}
                     color={query.length >= 2 ? theme.colors.surface : theme.colors.slate[400]}
                   />
                 </LinearGradient>
@@ -780,14 +805,14 @@ export default function SearchScreen() {
                           start={{ x: 0, y: 0 }}
                           end={{ x: 1, y: 1 }}
                           style={s.catTileGrad}>
-                          <Ionicons name="grid" size={22} color="rgba(255,255,255,0.92)" />
+                          <Ionicons name={getCategoryIcon(cat.name)} size={22} color="rgba(255,255,255,0.92)" />
                         </LinearGradient>
                         <UIText variant="body-sm" weight="bold" numberOfLines={2} style={s.catTileName}>
                           {cat.name}
                         </UIText>
                         {cat.count > 0 && (
                           <View style={s.catCountBadge}>
-                            <UIText style={s.catCountBadgeText}>{cat.count}+ items</UIText>
+                            <UIText style={s.catCountBadgeText}>{t("category.productCount", { count: `${cat.count}+` })}</UIText>
                           </View>
                         )}
                       </Pressable>
@@ -1457,7 +1482,7 @@ const s = StyleSheet.create({
   // Trending rows — taller (minHeight 60), rank badge at top-right
   trendGrid: { gap: theme.spacing.sm },
   trendItem: {
-    flexDirection:     "row",
+    flexDirection:     flexRow(IS_RTL),
     alignItems:        "center",
     gap:               theme.spacing.md,
     backgroundColor:   theme.colors.surface,
