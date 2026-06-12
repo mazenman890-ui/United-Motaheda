@@ -17,7 +17,6 @@ import {
 import { Text as UIText } from "@/shared/ui";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -41,13 +40,9 @@ import {
 import { showConfirmSheet } from "@/shared/store/appSheetStore";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { theme } from "@/shared/theme";
-import {
-  s,
-  CART_HEADER_GRADIENT,
-  TEAL_GLASS,
-  FREE_GREEN,
-  TRUST_PURPLE,
-} from "./cart.styles";
+import { kit } from "@/shared/kit";
+import { FORWARD_CHEVRON } from "@/utils/layout";
+import { s } from "./cart.styles";
 
 // ─── StepBtn — animated quantity button ──────────────────────────────────────
 
@@ -88,7 +83,7 @@ const StepBtn = memo(function StepBtn({
         <Ionicons
           name={icon}
           size={14}
-          color={disabled ? theme.colors.slate[400] : theme.colors.brand[700]}
+          color={disabled ? kit.color.inkFaint : kit.color.ink}
         />
       </Pressable>
     </Animated.View>
@@ -153,7 +148,7 @@ const CartItemCard = memo(function CartItemCard({
           accessibilityRole="button"
           accessibilityLabel={t("cart.removeItem")}
           style={s.deleteBtn}>
-          <Ionicons name="trash-outline" size={13} color={theme.colors.error.base} />
+          <Ionicons name="trash-outline" size={13} color={kit.color.danger} />
         </Pressable>
       </View>
 
@@ -168,7 +163,7 @@ const CartItemCard = memo(function CartItemCard({
             />
           ) : (
             <View style={s.imgFallback}>
-              <Ionicons name="medkit-outline" size={26} color={theme.colors.slate[300]} />
+              <Ionicons name="medkit-outline" size={26} color={kit.color.inkFaint} />
             </View>
           )}
         </View>
@@ -192,7 +187,7 @@ const CartItemCard = memo(function CartItemCard({
 
       {isAtMax && product.stock > 0 && (
         <Animated.View entering={FadeInDown.duration(160)} style={s.maxHint}>
-          <Ionicons name="alert-circle" size={10} color={theme.colors.amber[700]} />
+          <Ionicons name="alert-circle" size={10} color={kit.color.warn} />
           <UIText style={s.maxHintText}>{t("common.maxQty")}</UIText>
         </Animated.View>
       )}
@@ -214,14 +209,11 @@ const CartHeader = memo(function CartHeader({
   onClearPress: () => void;
 }) {
   return (
-    <LinearGradient
-      colors={CART_HEADER_GRADIENT}
-      style={[s.header, { paddingTop: insetsTop + 14 }]}>
-      <View style={s.headerGlowOrb} />
+    <View style={[s.header, { paddingTop: insetsTop + 14 }]}>
       <View style={s.headerRow}>
         <View style={s.headerLeft}>
           <View style={s.headerIcon}>
-            <Ionicons name="bag-outline" size={18} color={theme.colors.teal[500]} />
+            <Ionicons name="bag-outline" size={18} color={kit.color.accentDeep} />
           </View>
           <View>
             <UIText style={s.headerEyebrow}>{t("cart.eyebrow")}</UIText>
@@ -238,12 +230,12 @@ const CartHeader = memo(function CartHeader({
             accessibilityLabel={t("cart.clearCart")}
             style={s.clearBtn}
             onPress={onClearPress}>
-            <Ionicons name="trash-outline" size={13} color={theme.colors.error.base} />
+            <Ionicons name="trash-outline" size={13} color={kit.color.danger} />
             <UIText style={s.clearText}>{t("common.clear")}</UIText>
           </Pressable>
         </View>
       </View>
-    </LinearGradient>
+    </View>
   );
 });
 
@@ -264,7 +256,7 @@ const CartListHeader = memo(function CartListHeader({
     <>
       {delivery.outOfServiceMessage && (
         <Animated.View entering={FadeInDown.duration(220)} style={s.warnBanner}>
-          <Ionicons name="alert-circle" size={15} color={theme.colors.amber[700]} />
+          <Ionicons name="alert-circle" size={15} color={kit.color.warn} />
           <UIText style={s.warnText}>{delivery.outOfServiceMessage}</UIText>
         </Animated.View>
       )}
@@ -272,7 +264,7 @@ const CartListHeader = memo(function CartListHeader({
       {delivery.branch && delivery.isDeliverable && (
         <Animated.View entering={FadeInDown.duration(240)} style={s.branchPill}>
           <View style={s.branchIconBox}>
-            <Ionicons name="storefront-outline" size={14} color={theme.colors.teal[500]} />
+            <Ionicons name="storefront-outline" size={14} color={kit.color.accentDeep} />
           </View>
           <View style={{ flex: 1 }}>
             <UIText style={s.branchEyebrow}>{t("cart.deliveringFrom")}</UIText>
@@ -282,16 +274,16 @@ const CartListHeader = memo(function CartListHeader({
                 ` · ${delivery.distanceKm.toFixed(1)} ${t("home.kmUnit")}`}
             </UIText>
           </View>
-          <Ionicons name="checkmark-circle" size={18} color={theme.colors.teal[500]} />
+          <Ionicons name="checkmark-circle" size={18} color={kit.color.success} />
         </Animated.View>
       )}
 
       <View style={s.deliveryCard}>
         {delivery.isFree ? (
           <View style={s.freeRow}>
-            <LinearGradient colors={[FREE_GREEN.deep, FREE_GREEN.bright]} style={s.freeIconBox}>
-              <Ionicons name="checkmark-circle-outline" size={18} color={theme.colors.surface} />
-            </LinearGradient>
+            <View style={s.freeIconBox}>
+              <Ionicons name="checkmark-circle-outline" size={18} color={kit.color.onInk} />
+            </View>
             <View style={{ flex: 1 }}>
               <UIText style={s.freeTitle}>{t("cart.freeDelivery")}</UIText>
               <UIText style={s.freeSub}>
@@ -303,7 +295,7 @@ const CartListHeader = memo(function CartListHeader({
           <>
             <View style={s.progressHeader}>
               <View style={s.progressLeft}>
-                <Ionicons name="bicycle-outline" size={15} color={theme.colors.amber[700]} />
+                <Ionicons name="bicycle-outline" size={15} color={kit.color.warn} />
                 <UIText style={s.progressLabel}>
                   {t("cart.addForFreeDelivery", { remaining })}
                 </UIText>
@@ -321,26 +313,29 @@ const CartListHeader = memo(function CartListHeader({
         {(
           [
             {
-              icon: "flash-outline" as const,
+              icon:  "flash-outline" as const,
               label: t("cart.fastDelivery"),
-              g: [theme.colors.amber[600], theme.colors.amber[500]] as [string, string],
+              tint:  kit.color.warnTint,
+              fg:    kit.color.warn,
             },
             {
-              icon: "shield-checkmark-outline" as const,
+              icon:  "shield-checkmark-outline" as const,
               label: t("cart.securePayment"),
-              g: [FREE_GREEN.deep, FREE_GREEN.bright] as [string, string],
+              tint:  kit.color.successTint,
+              fg:    kit.color.success,
             },
             {
-              icon: "refresh-outline" as const,
+              icon:  "refresh-outline" as const,
               label: t("cart.guaranteedReturns"),
-              g: TRUST_PURPLE,
+              tint:  kit.color.accentTint,
+              fg:    kit.color.accentDeep,
             },
           ] as const
         ).map((b, i, arr) => (
           <View key={b.label} style={[s.trustCell, i < arr.length - 1 && s.trustDivider]}>
-            <LinearGradient colors={b.g} style={s.trustIconBox}>
-              <Ionicons name={b.icon} size={13} color={theme.colors.surface} />
-            </LinearGradient>
+            <View style={[s.trustIconBox, { backgroundColor: b.tint }]}>
+              <Ionicons name={b.icon} size={13} color={b.fg} />
+            </View>
             <UIText style={s.trustLabel}>{b.label}</UIText>
           </View>
         ))}
@@ -410,7 +405,7 @@ export default function CartScreen() {
         <View style={[s.header, { paddingTop: 16 }]}>
           <View style={s.headerLeft}>
             <View style={s.headerIcon}>
-              <Ionicons name="bag-outline" size={18} color={theme.colors.teal[500]} />
+              <Ionicons name="bag-outline" size={18} color={kit.color.accentDeep} />
             </View>
             <View>
               <UIText style={s.headerEyebrow}>{t("cart.eyebrow")}</UIText>
@@ -485,27 +480,20 @@ export default function CartScreen() {
           <Pressable
             onPress={handleCheckout}
             disabled={!delivery.isDeliverable}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !delivery.isDeliverable }}
             style={({ pressed }) => [
               s.checkoutOuter,
               pressed && { opacity: 0.92 },
-              !delivery.isDeliverable && { opacity: 0.5 },
             ]}>
-            <LinearGradient
-              colors={
-                delivery.isDeliverable
-                  ? [theme.colors.teal[500], theme.colors.brand[600]]
-                  : [theme.colors.slate[400], theme.colors.slate[400]]
-              }
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={s.checkoutGrad}>
-              <Ionicons name="arrow-forward-outline" size={18} color={theme.colors.surface} />
+            <View style={[s.checkoutInner, !delivery.isDeliverable && s.checkoutInnerDisabled]}>
+              <Ionicons name={FORWARD_CHEVRON} size={17} color={kit.color.onInk} />
               <UIText style={s.checkoutText}>
                 {delivery.isDeliverable
                   ? t("cart.checkoutBtn", { total: total.toFixed(2) })
                   : t("cart.outsideDelivery")}
               </UIText>
-            </LinearGradient>
+            </View>
           </Pressable>
         </View>
       </View>
