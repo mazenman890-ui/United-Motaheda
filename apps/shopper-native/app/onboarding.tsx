@@ -61,7 +61,7 @@ import { Text } from "@/shared/ui";
 import { theme } from "@/shared/theme";
 import { ONBOARDING_KEY } from "@/lib/onboardingKey";
 import { flexRow, isRtl, FORWARD_CHEVRON } from "@/utils/layout";
-import { pagerOffset, PressableScale } from "@/shared/motion";
+import { pagerOffset, PressableScale, RTL_ANDROID } from "@/shared/motion";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -258,8 +258,11 @@ export default function OnboardingScreen() {
   // Active index from viewability — immune to the RTL offset-sign inversion.
   const viewConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
   const onViewRef = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
-    const i = viewableItems[0]?.index;
-    if (i == null) return;
+    const rawI = viewableItems[0]?.index;
+    if (rawI == null) return;
+    // Android Fabric RTL inverts the viewability index: item[0] reports as LAST_INDEX.
+    // Apply the same inversion used in pagerOffset so the active index is data-order.
+    const i = RTL_ANDROID ? LAST_INDEX - rawI : rawI;
     setIndex(i);
     if (i !== prevIndexRef.current) {
       prevIndexRef.current = i;
@@ -423,7 +426,7 @@ const chrome = StyleSheet.create({
 
   skipWrap: { position: "absolute", zIndex: theme.zIndex.toast, end: 16 },
   skipBtn: {
-    minHeight: 40, minWidth: 64,
+    minHeight: 40, minWidth: 84,
     paddingHorizontal: 16, paddingVertical: 9,
     borderRadius: theme.radius.pill,
     alignItems: "center", justifyContent: "center",
@@ -432,7 +435,7 @@ const chrome = StyleSheet.create({
   },
   skipText: {
     color: INK_SOFT, fontSize: 13, lineHeight: 20,
-    paddingHorizontal: 2, includeFontPadding: false, textAlign: "center",
+    paddingHorizontal: 4, includeFontPadding: false, textAlign: "center",
   },
 });
 
@@ -452,7 +455,8 @@ const page = StyleSheet.create({
   metricWrap: { alignItems: "center", gap: 2 },
   metric: {
     fontFamily: theme.fonts.black, fontSize: 46, lineHeight: 54,
-    color: INK, letterSpacing: -1.5, includeFontPadding: false, textAlignVertical: "center",
+    color: INK, letterSpacing: -1, includeFontPadding: false, textAlignVertical: "center",
+    writingDirection: "ltr",
   },
   metricCompact: { fontSize: 38, lineHeight: 46 },
   metricLabel: {
@@ -467,8 +471,8 @@ const page = StyleSheet.create({
   },
   eyebrowText: { fontSize: 11, lineHeight: 18, includeFontPadding: false, textAlignVertical: "center" },
   title: {
-    fontFamily: theme.fonts.black, fontSize: 30, lineHeight: 40,
-    color: INK, textAlign: "center", letterSpacing: -0.8,
+    fontFamily: theme.fonts.black, fontSize: 28, lineHeight: 38,
+    color: INK, textAlign: "center",
     includeFontPadding: false, textAlignVertical: "center",
   },
   titleCompact: { fontSize: 26, lineHeight: 34 },
@@ -496,7 +500,7 @@ const foot = StyleSheet.create({
   },
   ctaGrad: {
     flexDirection: flexRow(IS_RTL), alignItems: "center", justifyContent: "center",
-    gap: 12, height: 58, borderRadius: 18, paddingHorizontal: 20,
+    gap: 12, height: 58, borderRadius: 18, paddingHorizontal: 28,
   },
   ctaText: {
     color: "#FFFFFF", fontFamily: theme.fonts.black, fontSize: 16,
