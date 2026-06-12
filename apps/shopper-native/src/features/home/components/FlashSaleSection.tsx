@@ -98,18 +98,24 @@ const va = StyleSheet.create({
     borderRadius: 14,
     overflow:     "hidden",
   },
-  grad: {
+  btnPressed: {
+    opacity: 0.85,
+  },
+  btnInner: {
     flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     justifyContent:  "center",
     gap:             8,
     paddingVertical: 13,
     borderRadius:    14,
+    backgroundColor: theme.colors.surface,
+    borderWidth:     1.5,
+    borderColor:     theme.colors.red[200],
   },
   text: {
     fontFamily:    theme.fonts.black,
     fontSize:      14,
-    color:         theme.colors.surface,
+    color:         theme.colors.red[600],
     letterSpacing: 0.1,
   },
 });
@@ -168,22 +174,18 @@ export const FlashSaleSection = memo(function FlashSaleSection({
         estimatedItemSize={162}
       />
 
-      {/* ── "View All Deals" CTA — always visible below the rail ── */}
+      {/* ── "View All Deals" CTA — outlined, brand-accented, never destructive ── */}
       {onViewAll && (
         <View style={va.wrap}>
           <Pressable
             onPress={handleViewAll}
             accessibilityRole="button"
-            style={({ pressed }) => [va.btn, pressed && { opacity: 0.85 }]}>
-            <LinearGradient
-              colors={[theme.colors.red[600], theme.colors.red[500]]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={va.grad}>
-              <Ionicons name="flame" size={15} color={theme.colors.surface} />
+            style={({ pressed }) => [va.btn, pressed && va.btnPressed]}>
+            <View style={va.btnInner}>
+              <Ionicons name="flame" size={15} color={theme.colors.red[500]} />
               <UIText style={va.text}>{t("home.viewAll")}</UIText>
-              <Ionicons name={FORWARD_CHEVRON} size={15} color={theme.colors.surface} />
-            </LinearGradient>
+              <Ionicons name={FORWARD_CHEVRON} size={15} color={theme.colors.red[500]} />
+            </View>
           </Pressable>
         </View>
       )}
