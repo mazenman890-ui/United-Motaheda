@@ -4,11 +4,12 @@
  * A dedicated ErrorBoundary with a branded fallback localises any render crash
  * here instead of letting it bubble to the root boundary's bare grey screen.
  * The fallback offers Retry (remounts the screen) and Back, so a transient data
- * issue is recoverable in-place. (Root-cause hardening + the full redesign
- * land in the Gifts rebuild.)
+ * issue is recoverable in-place. In __DEV__ the actual error message + first
+ * stack frames are surfaced inside the fallback so root cause is debuggable
+ * directly on-device.
  */
 import React from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -19,10 +20,14 @@ import { theme } from "@/shared/theme";
 import { flexRow, isRtl } from "@/utils/layout";
 import { GiftCatalogScreen } from "@/features/loyalty";
 
-function GiftsFallback({ reset }: { reset: () => void }) {
+function GiftsFallback({ reset, error }: { reset: () => void; error: Error }) {
   const router = useRouter();
   const { t }  = useTranslation();
   const insets = useSafeAreaInsets();
+
+  const stackLines = __DEV__
+    ? (error.stack ?? "").split("\n").slice(0, 6).join("\n")
+    : "";
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top + 12 }]}>
@@ -36,6 +41,22 @@ function GiftsFallback({ reset }: { reset: () => void }) {
         <UIText style={styles.body} maxFontSizeMultiplier={1.4}>
           {t("loyalty.giftCatalogErrorBody")}
         </UIText>
+
+        {__DEV__ && (
+          <View style={styles.devBox}>
+            <UIText style={styles.devLabel}>DEV — render error</UIText>
+            <ScrollView style={styles.devScroll} nestedScrollEnabled>
+              <UIText style={styles.devMsg} selectable>
+                {error.message || "(no message)"}
+              </UIText>
+              {stackLines.length > 0 && (
+                <UIText style={styles.devStack} selectable>
+                  {stackLines}
+                </UIText>
+              )}
+            </ScrollView>
+          </View>
+        )}
 
         <Pressable
           onPress={reset}
@@ -61,7 +82,9 @@ function GiftsFallback({ reset }: { reset: () => void }) {
 
 export default function GiftsRoute() {
   return (
-    <ErrorBoundary surface="gifts" fallback={(reset) => <GiftsFallback reset={reset} />}>
+    <ErrorBoundary
+      surface="gifts"
+      fallback={(reset, error) => <GiftsFallback reset={reset} error={error} />}>
       <GiftCatalogScreen />
     </ErrorBoundary>
   );
@@ -73,7 +96,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 32,
+    paddingHorizontal: 24,
     gap: 12,
   },
   iconWrap: {
@@ -91,6 +114,35 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.regular, fontSize: 13,
     color: theme.colors.text.secondary, textAlign: "center",
     lineHeight: 20, maxWidth: 300,
+  },
+  devBox: {
+    alignSelf: "stretch",
+    marginTop: 8,
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: "#FEF3C7",
+    borderWidth: 1,
+    borderColor: "#FCD34D",
+    maxHeight: 200,
+  },
+  devScroll: { maxHeight: 170 },
+  devLabel: {
+    fontSize: 10,
+    fontFamily: theme.fonts.black,
+    color: "#92400E",
+    marginBottom: 4,
+    letterSpacing: 0.6,
+  },
+  devMsg: {
+    fontSize: 12,
+    fontFamily: theme.fonts.bold,
+    color: "#7C2D12",
+    marginBottom: 6,
+  },
+  devStack: {
+    fontSize: 10,
+    color: "#92400E",
+    lineHeight: 14,
   },
   primaryBtn: {
     flexDirection: flexRow(isRtl()),

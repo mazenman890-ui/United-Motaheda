@@ -46,6 +46,31 @@ interface CatalogEntry extends GiftCatalogItem {
   inventory?: GiftInventory;
 }
 
+/**
+ * Safe number formatter. `Number.prototype.toLocaleString(locale)` can throw or
+ * return garbage in some Hermes builds depending on which Intl ICU subsets
+ * shipped. We coerce to a number first, fall back to the default formatter on
+ * any error, and never let a number render path throw.
+ */
+function fmtN(n: unknown): string {
+  const num = typeof n === "number" ? n : Number(n ?? 0);
+  if (!Number.isFinite(num)) return "0";
+  try {
+    return num.toLocaleString("ar-EG");
+  } catch {
+    try { return num.toLocaleString(); } catch { return String(num); }
+  }
+}
+
+/** Defensively coerce to a valid URI string; never let a malformed url crash <Image>. */
+function safeUri(u: unknown): string | null {
+  if (typeof u !== "string") return null;
+  const trimmed = u.trim();
+  if (!trimmed) return null;
+  if (!/^https?:\/\//i.test(trimmed)) return null;
+  return trimmed;
+}
+
 export function GiftCatalogScreen() {
   useScreenTrace("loyalty-gifts");
   const insets = useSafeAreaInsets();
@@ -78,9 +103,9 @@ export function GiftCatalogScreen() {
         showErrorSheet(
           t("loyalty.insufficientPointsTitle"),
           t("loyalty.giftInsufficientBody", {
-            cost:    gift.points_cost.toLocaleString("ar-EG"),
+            cost:    fmtN(gift.points_cost),
             name:    gift.name,
-            balance: currentBalance.toLocaleString("ar-EG"),
+            balance: fmtN(currentBalance),
           }),
         );
         return;
@@ -101,7 +126,7 @@ export function GiftCatalogScreen() {
       } else if (redeem.isSuccess && redeem.data) {
         showSuccessSheet(
           t("loyalty.giftRedeemSuccessTitle"),
-          t("loyalty.giftRedeemSuccessBody", { balance: redeem.data.balance.toLocaleString("ar-EG") }),
+          t("loyalty.giftRedeemSuccessBody", { balance: fmtN(redeem.data.balance) }),
         );
         redeem.reset();
         setSheetVisible(false);
@@ -151,13 +176,17 @@ export function GiftCatalogScreen() {
     );
   }
 
-  const list = gifts.data ?? [];
+  const list = Array.isArray(gifts.data) ? gifts.data : [];
   const availableCount = list.filter((gift) => {
-    if (!gift.inventory) return true;
-    const remaining = gift.inventory.total_stock - gift.inventory.reserved - gift.inventory.fulfilled;
+    const inv = gift.inventory;
+    if (!inv) return true;
+    const remaining = (inv.total_stock ?? 0) - (inv.reserved ?? 0) - (inv.fulfilled ?? 0);
     return remaining > 0;
   }).length;
-  const lowestCost = list.length ? Math.min(...list.map((gift) => gift.points_cost)) : null;
+  const lowestCost = list.length
+    ? Math.min(...list.map((gift) => Number(gift.points_cost) || Infinity))
+    : null;
+  const lowestCostValid = lowestCost !== null && Number.isFinite(lowestCost) ? lowestCost : null;
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
@@ -199,7 +228,7 @@ export function GiftCatalogScreen() {
               <UIText style={styles.heroBalanceLabel}>رصيد الاستبدال</UIText>
               <View style={styles.heroBalanceRow}>
                 <UIText style={styles.heroBalanceValue}>
-                  {balance.data.balance.toLocaleString("ar-EG")}
+                  {fmtN(balance.data.balance)}
                 </UIText>
                 <UIText style={styles.heroBalanceUnit}>نقطة</UIText>
               </View>
@@ -207,11 +236,11 @@ export function GiftCatalogScreen() {
           )}
 
           <View style={styles.heroStats}>
-            <StatChip icon="sparkles-outline" label="هدايا متاحة" value={availableCount.toLocaleString("ar-EG")} />
+            <StatChip icon="sparkles-outline" label="هدايا متاحة" value={fmtN(availableCount)} />
             <StatChip
               icon="pricetag-outline"
               label="تبدأ من"
-              value={lowestCost !== null ? `${lowestCost.toLocaleString("ar-EG")} نقطة` : "—"}
+              value={lowestCostValid !== null ? `${fmtN(lowestCostValid)} نقطة` : "—"}
             />
           </View>
         </LinearGradient>
@@ -239,14 +268,16 @@ export function GiftCatalogScreen() {
         )}
       </ScrollView>
 
-      <GiftAddressSheet
-        visible={sheetVisible}
-        giftName={activeGift?.name ?? ""}
-        pointsCost={activeGift?.points_cost ?? 0}
-        submitting={redeem.isPending && redeemingGiftId === activeGift?.id}
-        onConfirm={handleConfirmAddress}
-        onClose={closeSheet}
-      />
+      {sheetVisible && activeGift && (
+        <GiftAddressSheet
+          visible={sheetVisible}
+          giftName={activeGift.name}
+          pointsCost={activeGift.points_cost}
+          submitting={redeem.isPending && redeemingGiftId === activeGift.id}
+          onConfirm={handleConfirmAddress}
+          onClose={closeSheet}
+        />
+      )}
     </View>
   );
 }
@@ -263,10 +294,12 @@ interface GiftCardProps {
 
 function GiftCard({ gift, width, currentBalance, isRedeeming, onRedeem }: GiftCardProps) {
   const { t } = useTranslation();
-  const available =
-    gift.inventory
-      ? Math.max(gift.inventory.total_stock - gift.inventory.reserved - gift.inventory.fulfilled, 0)
-      : null;
+  const available = (() => {
+    const inv = gift.inventory;
+    if (!inv) return null;
+    const r = (inv.total_stock ?? 0) - (inv.reserved ?? 0) - (inv.fulfilled ?? 0);
+    return Math.max(Number.isFinite(r) ? r : 0, 0);
+  })();
   const soldOut  = available !== null && available <= 0;
   const lowStock = available !== null && available > 0 && available <= 3;
   const canAfford = currentBalance >= gift.points_cost;
@@ -284,18 +317,21 @@ function GiftCard({ gift, width, currentBalance, isRedeeming, onRedeem }: GiftCa
 
   return (
     <View style={[styles.giftCard, { width }]} accessibilityRole="text"
-          accessibilityLabel={t("loyalty.giftA11y", { name: gift.name, points: gift.points_cost.toLocaleString("ar-EG") })}>
+          accessibilityLabel={t("loyalty.giftA11y", { name: gift.name, points: fmtN(gift.points_cost) })}>
       <View style={styles.giftThumb}>
-        {gift.image_url ? (
-          <Image
-            source={{ uri: gift.image_url }}
-            style={{ width: "100%", height: "100%" }}
-            contentFit="contain"
-            transition={180}
-          />
-        ) : (
-          <Ionicons name="gift" size={28} color={theme.colors.brand[400]} />
-        )}
+        {(() => {
+          const uri = safeUri(gift.image_url);
+          return uri ? (
+            <Image
+              source={{ uri }}
+              style={{ width: "100%", height: "100%" }}
+              contentFit="contain"
+              transition={180}
+            />
+          ) : (
+            <Ionicons name="gift" size={28} color={theme.colors.brand[400]} />
+          );
+        })()}
         <View style={[styles.stockPill, statusTone]}>
           <UIText style={[styles.stockPillText, soldOut && styles.stockPillTextLight]} maxFontSizeMultiplier={1.2}>
             {statusLabel}
@@ -321,13 +357,13 @@ function GiftCard({ gift, width, currentBalance, isRedeeming, onRedeem }: GiftCa
           <View style={styles.costWrap}>
             <Ionicons name="star" size={14} color={theme.colors.amber[600]} />
             <UIText style={styles.costText} maxFontSizeMultiplier={1.3}>
-              {gift.points_cost.toLocaleString("ar-EG")}
+              {fmtN(gift.points_cost)}
             </UIText>
             <UIText style={styles.costUnit}>نقطة</UIText>
           </View>
           {!soldOut && available !== null && (
             <UIText style={styles.stockInlineText} maxFontSizeMultiplier={1.2}>
-              {available.toLocaleString("ar-EG")} متاحة
+              {fmtN(available)} متاحة
             </UIText>
           )}
         </View>
@@ -336,7 +372,7 @@ function GiftCard({ gift, width, currentBalance, isRedeeming, onRedeem }: GiftCa
             onPress={onRedeem}
             disabled={disabled}
             accessibilityRole="button"
-            accessibilityLabel={t("loyalty.redeemBtnA11y", { name: gift.name, cost: gift.points_cost.toLocaleString("ar-EG") })}
+            accessibilityLabel={t("loyalty.redeemBtnA11y", { name: gift.name, cost: fmtN(gift.points_cost) })}
             accessibilityState={{ disabled, busy: isRedeeming }}
             style={({ pressed }) => [
               styles.redeemBtn,

@@ -124,10 +124,11 @@ export function GiftAddressSheet({
   const insets      = useSafeAreaInsets();
   const { user }    = useAuth();
   const { t }       = useTranslation();
-  const addresses   = useAddressStore((s) => s.addresses);
-  const loading     = useAddressStore((s) => s.loading);
-  const fetch       = useAddressStore((s) => s.fetch);
-  const addAddress  = useAddressStore((s) => s.add);
+  const addressesRaw = useAddressStore((s) => s.addresses);
+  const addresses    = Array.isArray(addressesRaw) ? addressesRaw : [];
+  const loading      = useAddressStore((s) => s.loading);
+  const fetch        = useAddressStore((s) => s.fetch);
+  const addAddress   = useAddressStore((s) => s.add);
 
   const [mode, setMode]               = useState<SheetMode>("picker");
   const [govDropdown, setGovDropdown] = useState(false);
