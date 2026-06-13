@@ -167,6 +167,7 @@ export default function HomeScreen() {
           cartCount={cartCount}
           onCartPress={() => router.push("/(tabs)/cart")}
           onSearchPress={() => router.push("/(tabs)/search")}
+          onNotifPress={() => router.push("/notifications")}
         />
 
         {/* 2 — Premium inline navigation row */}

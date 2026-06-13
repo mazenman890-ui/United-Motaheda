@@ -35,6 +35,7 @@ import {
   type StyleProp,
   type TextStyle,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "react-i18next";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -393,8 +394,12 @@ export default function SearchScreen() {
   return (
     <View style={s.screen}>
 
-      {/* ─── Editorial header ── */}
-      <View style={[s.header, { paddingTop: insets.top + 12 }]}>
+      {/* ─── Editorial header — gradient bg ── */}
+      <LinearGradient
+        colors={["#DCF2EF", "#EBF7F5", "#F4FBF9", kit.color.canvas]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.1, y: 1 }}
+        style={[s.header, { paddingTop: insets.top + 12 }]}>
         <View style={s.headerRow}>
           <View style={{ flex: 1 }}>
             <UIText style={s.eyebrow}>{t("search.eyebrow")}</UIText>
@@ -494,7 +499,7 @@ export default function SearchScreen() {
             <UIText style={s.hintText}>{translationHintText}</UIText>
           </Animated.View>
         )}
-      </View>
+      </LinearGradient>
 
       {/* ─── Body ── */}
       <View style={s.body}>
@@ -617,7 +622,12 @@ export default function SearchScreen() {
                       i < arr.length - 1 && s.trendRowDivider,
                       pressed && { backgroundColor: kit.color.well },
                     ]}>
-                    <UIText style={[s.trendNum, i < 3 && s.trendNumTop]}>
+                    <UIText style={[
+                      s.trendNum,
+                      i === 0 && s.trendNum1,
+                      i === 1 && s.trendNum2,
+                      i === 2 && s.trendNum3,
+                    ]}>
                       {`0${i + 1}`}
                     </UIText>
                     <UIText style={s.trendTerm} numberOfLines={1}>{term}</UIText>
@@ -1130,6 +1140,9 @@ const s = StyleSheet.create({
     textAlign: "center",
   },
   trendNumTop: { color: kit.color.accentDeep },
+  trendNum1:   { color: "#D97706" },
+  trendNum2:   { color: "#64748B" },
+  trendNum3:   { color: kit.color.accentDeep },
   trendTerm: {
     flex: 1,
     fontFamily: theme.fonts.bold,
@@ -1145,33 +1158,35 @@ const s = StyleSheet.create({
     gap:           10,
   },
   catTile: {
-    width:           104,
-    alignItems:      "center",
-    gap:             8,
-    paddingVertical: kit.sp(4),
+    width:             116,
+    alignItems:        "center",
+    gap:               10,
+    paddingVertical:   kit.sp(4),
     paddingHorizontal: 8,
-    backgroundColor: kit.color.surface,
-    borderRadius:    kit.radius.card,
-    borderWidth:     1,
-    borderColor:     kit.color.line,
+    backgroundColor:   kit.color.surface,
+    borderRadius:      kit.radius.card,
+    borderWidth:       1,
+    borderColor:       kit.color.line,
     ...kit.shadow.raised,
   },
   catTileIcon: {
-    width: 48, height: 48, borderRadius: 16,
+    width: 56, height: 56, borderRadius: 20,
     backgroundColor: kit.color.accentTint,
     alignItems: "center", justifyContent: "center",
   },
   catTileName: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 11, lineHeight: 16,
-    color: kit.color.ink,
-    textAlign: "center",
+    fontFamily:         theme.fonts.bold,
+    fontSize:           12,
+    lineHeight:         17,
+    color:              kit.color.ink,
+    textAlign:          "center",
     includeFontPadding: false,
   },
   catTileCount: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 9, lineHeight: 14,
-    color: kit.color.inkFaint,
+    fontFamily:         theme.fonts.bold,
+    fontSize:           9,
+    lineHeight:         14,
+    color:              kit.color.inkFaint,
     includeFontPadding: false,
   },
 

@@ -200,7 +200,10 @@
                  "needAdvice":            "تحتاج استشارة؟",
                  "pharmacistReply":       "فريقنا الصيدلاني يردّ على واتساب خلال دقائق",
                  "chatWhatsapp":          "تواصل عبر واتساب",
-                 "recentlyViewed":  "شوهد مؤخراً"
+                 "recentlyViewed":  "شوهد مؤخراً",
+                 "metricOriginal":  "أدوية أصلية",
+                 "metricFast":      "توصيل سريع",
+                 "metricSupport":   "دعم ٢٤/٧"
              },
     "products":  {
                      "title":  "الأقسام",

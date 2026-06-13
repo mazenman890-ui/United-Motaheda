@@ -1,17 +1,17 @@
 /**
- * QuickActions — 2026 rebuild on the @/shared/kit design language.
+ * QuickActions — Elite 2026 redesign.
  *
- * Three quiet white cards below DeliveryHeader (Rx / Offers / Loyalty):
- * tinted icon tile + label, hairline border, raised shadow. Replaces the
- * gradient-tile + glow-halo cards. Press feedback via PressableScale
- * (reduced-motion aware) instead of hand-rolled shared values.
+ * Three gradient-tile cards below DeliveryHeader (Rx / Offers / Loyalty):
+ * LinearGradient icon tile with shimmer shine, label, raised shadow.
+ * PressableScale (reduced-motion aware) for press feedback.
  *
- * Layout: flexRow(isRtl) keeps logical leading-to-trailing order in both
+ * RTL: flexRow(isRtl) keeps logical leading-to-trailing order in both
  * Arabic and English (forceRTL active: "row" flows RTL automatically).
  */
 
 import React, { memo, useCallback } from "react";
 import { Platform, StyleSheet, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
@@ -23,13 +23,12 @@ import { kit } from "@/shared/kit";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
-// ─── Action card definitions (module-level — zero re-allocation per render) ───
+// ─── Action card definitions ──────────────────────────────────────────────────
 
 type ActionCardDef = {
   icon:     IoniconsName;
   labelKey: string;
-  tint:     string;
-  fg:       string;
+  grad:     readonly [string, string];
   route:    string;
 };
 
@@ -37,22 +36,19 @@ const ACTION_CARDS: ActionCardDef[] = [
   {
     icon:     "medical-outline",
     labelKey: "home.qaRx",
-    tint:     kit.color.accentTint,
-    fg:       kit.color.accentDeep,
+    grad:     [kit.color.accent, kit.color.accentDeep],
     route:    "/prescriptions",
   },
   {
     icon:     "pricetag-outline",
     labelKey: "home.qaOffers",
-    tint:     kit.color.warnTint,
-    fg:       kit.color.warn,
+    grad:     ["#D97706", "#B45309"],
     route:    "/deals",
   },
   {
     icon:     "diamond-outline",
     labelKey: "home.qaLoyalty",
-    tint:     kit.color.well,
-    fg:       kit.color.ink,
+    grad:     ["#7C3AED", "#6D28D9"],
     route:    "/loyalty",
   },
 ];
@@ -100,8 +96,17 @@ const ActionCard = memo(function ActionCard({
       accessibilityRole="button"
       accessibilityLabel={label}
       style={cs.card}>
-      <View style={[cs.iconTile, { backgroundColor: def.tint }]}>
-        <Ionicons name={def.icon} size={22} color={def.fg} />
+      {/* Gradient icon tile with shine */}
+      <View style={cs.iconShadow}>
+        <LinearGradient
+          colors={def.grad}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={cs.iconTile}>
+          {/* Shine overlay */}
+          <View style={cs.shine} />
+          <Ionicons name={def.icon} size={22} color={kit.color.onInk} />
+        </LinearGradient>
       </View>
       <UIText numberOfLines={2} style={cs.label}>{label}</UIText>
     </PressableScale>
@@ -129,19 +134,40 @@ const cs = StyleSheet.create({
     borderColor:     kit.color.line,
     ...kit.shadow.raised,
   },
+  // Shadow wrapper outside the overflow:hidden tile
+  iconShadow: {
+    borderRadius:  20,
+    shadowColor:   "#000",
+    shadowOffset:  { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius:  10,
+    elevation:     5,
+  },
   iconTile: {
-    width:          52,
-    height:         52,
-    borderRadius:   16,
+    width:          56,
+    height:         56,
+    borderRadius:   20,
     alignItems:     "center",
     justifyContent: "center",
+    overflow:       "hidden",
+  },
+  shine: {
+    position:             "absolute",
+    top:                  0,
+    left:                 0,
+    right:                0,
+    height:               "45%",
+    backgroundColor:      "rgba(255,255,255,0.18)",
+    borderTopLeftRadius:  20,
+    borderTopRightRadius: 20,
   },
   label: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 11, lineHeight: 16,
-    color: kit.color.inkSoft,
-    textAlign: "center",
-    paddingHorizontal: 4,
+    fontFamily:         theme.fonts.bold,
+    fontSize:           11,
+    lineHeight:         16,
+    color:              kit.color.inkSoft,
+    textAlign:          "center",
+    paddingHorizontal:  4,
     includeFontPadding: false,
   },
 });

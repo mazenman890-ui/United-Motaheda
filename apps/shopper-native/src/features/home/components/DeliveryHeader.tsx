@@ -1,16 +1,12 @@
 /**
- * DeliveryHeader — 2026 rebuild on the @/shared/kit design language.
+ * DeliveryHeader — Elite 2026 redesign.
  *
- * Replaces the dark navy gradient hero with a light editorial header:
- *   • Top bar: brand tile at the reading start, cart icon-button (badge) at
- *     the reading end.
- *   • Greeting row (time-of-day icon + contextual greeting), display title,
- *     and subtitle — all start-aligned, ink on canvas.
- *   • Floating white search pill (same family as the Search screen command
- *     bar) that routes to the search tab.
- *   • Quick-access chips as quiet tinted pills (deals / featured / all).
+ * Soft teal→canvas gradient hero: gives the home screen depth without
+ * going back to the dark navy era. Highlights strip below the greeting
+ * (three semantic metric pills) creates a "smart dashboard" impression.
+ * Notification bell slot added (optional prop — skipped when unset).
  *
- * Performance contract kept: memo'd, zero animations, stable callbacks.
+ * Performance contract kept: memo'd, no entrance animations, stable callbacks.
  */
 
 import React, { memo, useMemo } from "react";
@@ -21,6 +17,7 @@ import {
   StyleSheet,
   View,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
@@ -31,10 +28,10 @@ import { AppLogo } from "@/shared/components/AppLogo";
 import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import { kit } from "@/shared/kit";
 
-const IS_RTL = isRtl();
+const IS_RTL     = isRtl();
 const TEXT_START = textAlignStart(IS_RTL);
 
-// Returns an Ionicons name matching the current time of day
+// Time-of-day icon
 function getTimeIcon(): React.ComponentProps<typeof Ionicons>["name"] {
   const h = new Date().getHours();
   if (h >= 5  && h < 12) return "sunny-outline";
@@ -42,12 +39,20 @@ function getTimeIcon(): React.ComponentProps<typeof Ionicons>["name"] {
   return "moon-outline";
 }
 
+// Module-level metric pills — no re-allocation per render
+const METRIC_PILLS = [
+  { icon: "shield-checkmark" as const, labelKey: "home.metricOriginal", tint: kit.color.accentTint, color: kit.color.accentDeep },
+  { icon: "flash"            as const, labelKey: "home.metricFast",     tint: kit.color.warnTint,   color: kit.color.warn       },
+  { icon: "medical"          as const, labelKey: "home.metricSupport",  tint: kit.color.successTint, color: kit.color.success   },
+] as const;
+
 interface DeliveryHeaderProps {
-  insets:        { top: number };
-  user:          { name?: string | null } | null;
-  cartCount:     number;
-  onCartPress:   () => void;
-  onSearchPress: () => void;
+  insets:          { top: number };
+  user:            { name?: string | null } | null;
+  cartCount:       number;
+  onCartPress:     () => void;
+  onSearchPress:   () => void;
+  onNotifPress?:   () => void;
 }
 
 export const DeliveryHeader = memo(function DeliveryHeader({
@@ -56,11 +61,11 @@ export const DeliveryHeader = memo(function DeliveryHeader({
   cartCount,
   onCartPress,
   onSearchPress,
+  onNotifPress,
 }: DeliveryHeaderProps) {
   const { t }  = useTranslation();
   const router = useRouter();
 
-  // Stable — computed once on mount, never re-evaluated
   const timeIcon = useMemo(() => getTimeIcon(), []);
 
   const greeting = user?.name
@@ -68,31 +73,49 @@ export const DeliveryHeader = memo(function DeliveryHeader({
     : t("home.greetingGuest");
 
   return (
-    <View style={[s.header, { paddingTop: insets.top + 14 }]}>
+    <LinearGradient
+      colors={["#DCF2EF", "#EBF7F5", "#F4FBF9", kit.color.canvas]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0.1, y: 1 }}
+      style={[s.header, { paddingTop: insets.top + 14 }]}>
 
-      {/* ── Top bar: brand ←→ cart ── */}
+      {/* ── Top bar: brand ←→ (notifications + cart) ── */}
       <View style={s.topBar}>
         <View style={s.logoWrap}>
           <AppLogo size={40} />
         </View>
-        <Pressable
-          onPress={() => {
-            if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
-            onCartPress();
-          }}
-          accessibilityRole="button"
-          accessibilityLabel={t("tabs.cart")}
-          style={s.cartBtn}>
-          <Ionicons name="bag-outline" size={19} color={kit.color.inkSoft} />
-          {cartCount > 0 && (
-            <View style={s.cartBadge}>
-              <UIText style={s.cartBadgeText}>{cartCount > 9 ? "9+" : cartCount}</UIText>
-            </View>
+        <View style={s.topActions}>
+          {onNotifPress && (
+            <Pressable
+              onPress={() => {
+                if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
+                onNotifPress();
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={t("profile.notifications")}
+              style={s.actionBtn}>
+              <Ionicons name="notifications-outline" size={19} color={kit.color.inkSoft} />
+            </Pressable>
           )}
-        </Pressable>
+          <Pressable
+            onPress={() => {
+              if (Platform.OS !== "web") Haptics.selectionAsync().catch(() => {});
+              onCartPress();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={t("tabs.cart")}
+            style={s.cartBtn}>
+            <Ionicons name="bag-outline" size={19} color={kit.color.inkSoft} />
+            {cartCount > 0 && (
+              <View style={s.cartBadge}>
+                <UIText style={s.cartBadgeText}>{cartCount > 9 ? "9+" : cartCount}</UIText>
+              </View>
+            )}
+          </Pressable>
+        </View>
       </View>
 
-      {/* ── Headline ── */}
+      {/* ── Headline + highlights strip ── */}
       <View style={s.headingStack}>
         <View style={s.greetingRow}>
           <View style={s.greetingIconWrap}>
@@ -103,9 +126,21 @@ export const DeliveryHeader = memo(function DeliveryHeader({
 
         <UIText style={s.heroTitle}>{t("home.heroTaglineTitle")}</UIText>
         <UIText style={s.heroSub}>{t("home.heroTaglineSub")}</UIText>
+
+        {/* Smart-dashboard metric strip */}
+        <View style={s.metricRow}>
+          {METRIC_PILLS.map((pill) => (
+            <View key={pill.labelKey} style={[s.metricPill, { backgroundColor: pill.tint }]}>
+              <Ionicons name={pill.icon} size={11} color={pill.color} />
+              <UIText style={[s.metricText, { color: pill.color }]}>
+                {t(pill.labelKey)}
+              </UIText>
+            </View>
+          ))}
+        </View>
       </View>
 
-      {/* ── Search pill — floating, routes to search ── */}
+      {/* ── Search pill — floating, routes to search tab ── */}
       <Pressable
         onPress={onSearchPress}
         accessibilityRole="button"
@@ -117,9 +152,13 @@ export const DeliveryHeader = memo(function DeliveryHeader({
         <UIText style={s.searchPlaceholder} numberOfLines={1}>
           {t("search.placeholder")}
         </UIText>
-        <View style={s.searchBadge}>
-          <Ionicons name="sparkles" size={13} color={kit.color.accentDeep} />
-        </View>
+        <LinearGradient
+          colors={[kit.color.accent, kit.color.accentDeep]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={s.searchBadge}>
+          <Ionicons name="sparkles" size={13} color={kit.color.onInk} />
+        </LinearGradient>
       </Pressable>
 
       {/* ── Quick-access chips ── */}
@@ -150,6 +189,16 @@ export const DeliveryHeader = memo(function DeliveryHeader({
         </Pressable>
 
         <Pressable
+          onPress={() => router.push("/prescriptions")}
+          style={[s.chip, { backgroundColor: kit.color.accentTint }]}
+          accessibilityRole="button">
+          <Ionicons name="medical-outline" size={13} color={kit.color.accentDeep} />
+          <UIText numberOfLines={1} style={[s.chipText, { color: kit.color.accentDeep }]}>
+            {t("home.qaRx")}
+          </UIText>
+        </Pressable>
+
+        <Pressable
           onPress={() => router.push("/(tabs)/products")}
           style={[s.chip, s.chipNeutral]}
           accessibilityRole="button">
@@ -159,7 +208,7 @@ export const DeliveryHeader = memo(function DeliveryHeader({
           </UIText>
         </Pressable>
       </ScrollView>
-    </View>
+    </LinearGradient>
   );
 });
 
@@ -167,7 +216,6 @@ const s = StyleSheet.create({
   header: {
     paddingBottom:     kit.sp(5),
     paddingHorizontal: theme.layout.pagePaddingH,
-    backgroundColor:   kit.color.canvas,
   },
 
   // ── Top bar ──
@@ -188,6 +236,21 @@ const s = StyleSheet.create({
     justifyContent:  "center",
     overflow:        "hidden",
     ...kit.shadow.raised,
+  },
+  topActions: {
+    flexDirection: flexRow(IS_RTL),
+    alignItems:    "center",
+    gap:           8,
+  },
+  actionBtn: {
+    width:           44,
+    height:          44,
+    borderRadius:    22,
+    backgroundColor: kit.color.surface,
+    borderWidth:     1,
+    borderColor:     kit.color.line,
+    alignItems:      "center",
+    justifyContent:  "center",
   },
   cartBtn: {
     width:           44,
@@ -222,7 +285,7 @@ const s = StyleSheet.create({
     textAlign:          "center",
   },
 
-  // ── Heading ──
+  // ── Heading + highlights strip ──
   headingStack: {
     gap:          kit.sp(2),
     marginBottom: kit.sp(5),
@@ -241,25 +304,47 @@ const s = StyleSheet.create({
     backgroundColor: kit.color.accentTint,
   },
   greetingText: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 12, lineHeight: 18,
-    color: kit.color.inkSoft,
-    textAlign: TEXT_START,
+    fontFamily:         theme.fonts.bold,
+    fontSize:           12,
+    lineHeight:         18,
+    color:              kit.color.inkSoft,
+    textAlign:          TEXT_START,
     includeFontPadding: false,
   },
   heroTitle: {
-    fontFamily: theme.fonts.black,
-    fontSize: kit.type.display.fontSize,
-    lineHeight: kit.type.display.lineHeight,
-    color: kit.color.ink,
-    textAlign: TEXT_START,
+    fontFamily:         theme.fonts.black,
+    fontSize:           kit.type.display.fontSize,
+    lineHeight:         kit.type.display.lineHeight,
+    color:              kit.color.ink,
+    textAlign:          TEXT_START,
     includeFontPadding: false,
   },
   heroSub: {
-    fontFamily: theme.fonts.regular,
-    fontSize: 13, lineHeight: 20,
-    color: kit.color.inkSoft,
-    textAlign: TEXT_START,
+    fontFamily:         theme.fonts.regular,
+    fontSize:           13,
+    lineHeight:         20,
+    color:              kit.color.inkSoft,
+    textAlign:          TEXT_START,
+    includeFontPadding: false,
+  },
+  metricRow: {
+    flexDirection: flexRow(IS_RTL),
+    flexWrap:      "wrap",
+    gap:           8,
+    marginTop:     kit.sp(1),
+  },
+  metricPill: {
+    flexDirection:     flexRow(IS_RTL),
+    alignItems:        "center",
+    gap:               5,
+    paddingHorizontal: 10,
+    paddingVertical:   5,
+    borderRadius:      kit.radius.pill,
+  },
+  metricText: {
+    fontFamily:         theme.fonts.bold,
+    fontSize:           10,
+    lineHeight:         15,
     includeFontPadding: false,
   },
 
@@ -268,7 +353,7 @@ const s = StyleSheet.create({
     flexDirection:     flexRow(IS_RTL),
     alignItems:        "center",
     gap:               4,
-    height:            56,
+    height:            60,
     paddingHorizontal: 8,
     backgroundColor:   kit.color.surface,
     borderRadius:      kit.radius.pill,
@@ -277,22 +362,26 @@ const s = StyleSheet.create({
     ...kit.shadow.floating,
   },
   searchIconWrap: {
-    width: 40, height: 40,
-    alignItems: "center", justifyContent: "center",
+    width:  40,
+    height: 40,
+    alignItems:      "center",
+    justifyContent:  "center",
   },
   searchPlaceholder: {
-    flex:       1,
-    fontSize:   14,
-    lineHeight: 20,
-    fontFamily: theme.fonts.semibold,
-    color:      kit.color.inkFaint,
-    textAlign:  TEXT_START,
+    flex:               1,
+    fontSize:           14,
+    lineHeight:         20,
+    fontFamily:         theme.fonts.semibold,
+    color:              kit.color.inkFaint,
+    textAlign:          TEXT_START,
     includeFontPadding: false,
   },
   searchBadge: {
-    width: 40, height: 40, borderRadius: 20,
-    alignItems: "center", justifyContent: "center",
-    backgroundColor: kit.color.accentTint,
+    width:          44,
+    height:         44,
+    borderRadius:   22,
+    alignItems:     "center",
+    justifyContent: "center",
   },
 
   // ── Quick-access chips ──
@@ -306,7 +395,7 @@ const s = StyleSheet.create({
     flexDirection:     flexRow(IS_RTL),
     alignItems:        "center",
     gap:               6,
-    height:            38,
+    height:            40,
     borderRadius:      kit.radius.pill,
     paddingHorizontal: 14,
   },
@@ -316,8 +405,9 @@ const s = StyleSheet.create({
     borderColor:     kit.color.line,
   },
   chipText: {
-    fontFamily: theme.fonts.bold,
-    fontSize: 12, lineHeight: 18,
+    fontFamily:         theme.fonts.bold,
+    fontSize:           12,
+    lineHeight:         18,
     includeFontPadding: false,
   },
 });

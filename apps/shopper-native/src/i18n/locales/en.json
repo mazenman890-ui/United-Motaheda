@@ -426,7 +426,10 @@
         "needAdvice":          "Need Advice?",
         "pharmacistReply":     "Our pharmacy team replies on WhatsApp within minutes",
         "chatWhatsapp":        "Chat on WhatsApp",
-        "recentlyViewed": "Recently Viewed"
+        "recentlyViewed": "Recently Viewed",
+        "metricOriginal":  "Genuine Medicines",
+        "metricFast":      "Fast Delivery",
+        "metricSupport":   "24/7 Support"
     },
     "interaction": {
         "confirm": "Confirm",
