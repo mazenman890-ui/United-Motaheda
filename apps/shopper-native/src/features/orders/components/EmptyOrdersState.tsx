@@ -1,10 +1,10 @@
 import React, { useEffect } from "react";
 import { Platform, Pressable, ScrollView, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withRepeat,
   withSequence,
@@ -16,46 +16,48 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { Text as UIText } from "@/shared/ui";
 import { AppHeader } from "@/shared/components";
-import { theme } from "@/shared/theme";
-import { emptyS, EMPTY_GRAD } from "./orders.styles";
+import { kit, Button } from "@/shared/kit";
+import { emptyS } from "./orders.styles";
 
-// Category chip palette — intentional category-specific bg/accent colours
+// Category chips — kit semantic tints
 const CAT_CHIPS = [
-  { icon: "leaf-outline"     as const, labelKey: "home.qaVitamins", color: "#059669", bg: "#D1FAE5" },
-  { icon: "sparkles-outline" as const, labelKey: "home.qaMomBaby",  color: "#7C3AED", bg: "#EDE9FE" },
-  { icon: "medkit-outline"   as const, labelKey: "home.qaRx",       color: theme.colors.brand[600], bg: "#E0F2FE" },
+  { icon: "leaf-outline"     as const, labelKey: "home.qaVitamins", color: kit.color.success,    bg: kit.color.successTint },
+  { icon: "sparkles-outline" as const, labelKey: "home.qaMomBaby",  color: kit.color.warn,       bg: kit.color.warnTint    },
+  { icon: "medkit-outline"   as const, labelKey: "home.qaRx",       color: kit.color.accentDeep, bg: kit.color.accentTint  },
 ] as const;
 
 export function EmptyOrdersState({ showBack }: { showBack: boolean }): React.ReactElement {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const { t }  = useTranslation();
+  const router  = useRouter();
+  const insets  = useSafeAreaInsets();
+  const { t }   = useTranslation();
+  const reduced = useReducedMotion();
 
   const floatY = useSharedValue(0);
   useEffect(() => {
+    if (reduced) return;
     floatY.value = withRepeat(
       withSequence(withTiming(-9, { duration: 2000 }), withTiming(0, { duration: 2000 })),
       -1, false,
     );
-  }, [floatY]);
+  }, [floatY, reduced]);
   const floatAnim = useAnimatedStyle(() => ({ transform: [{ translateY: floatY.value }] }));
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+    <View style={{ flex: 1, backgroundColor: kit.color.canvas }}>
       <AppHeader title={t("orders.title")} showBack={showBack} />
       <ScrollView
         contentContainerStyle={[emptyS.container, { paddingBottom: insets.bottom + 40 }]}
         showsVerticalScrollIndicator={false}>
 
         <Animated.View style={[emptyS.illusWrap, floatAnim]}>
-          <LinearGradient colors={EMPTY_GRAD} style={emptyS.illusBg}>
+          <View style={emptyS.illusBg}>
             <View style={emptyS.illusRing}>
-              <Ionicons name="bag-handle-outline" size={64} color={theme.colors.teal[500]} />
+              <Ionicons name="bag-handle-outline" size={64} color={kit.color.accentDeep} />
             </View>
             <View style={emptyS.illusBadge}>
-              <Ionicons name="add" size={14} color={theme.colors.surface} />
+              <Ionicons name="add" size={14} color={kit.color.onInk} />
             </View>
-          </LinearGradient>
+          </View>
         </Animated.View>
 
         <Animated.View entering={FadeInDown.duration(420).delay(80)} style={emptyS.textBlock}>
@@ -68,22 +70,17 @@ export function EmptyOrdersState({ showBack }: { showBack: boolean }): React.Rea
         </Animated.View>
 
         <Animated.View entering={FadeInDown.duration(400).delay(160)}>
-          <Pressable
+          <Button
+            label={t("common.shopNow")}
+            icon="storefront-outline"
+            size="lg"
             onPress={() => {
               if (Platform.OS !== "web")
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
               router.push("/(tabs)/products");
             }}
-            style={emptyS.ctaWrap}>
-            <LinearGradient
-              colors={[theme.colors.teal[500], theme.colors.brand[600]]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={emptyS.ctaGrad}>
-              <Ionicons name="storefront-outline" size={18} color={theme.colors.surface} />
-              <UIText style={emptyS.ctaText}>{t("common.shopNow")}</UIText>
-            </LinearGradient>
-          </Pressable>
+            style={{ alignSelf: "center" }}
+          />
         </Animated.View>
 
         <Animated.View entering={FadeInDown.duration(400).delay(240)} style={emptyS.catsSection}>

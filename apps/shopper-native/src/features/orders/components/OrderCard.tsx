@@ -29,9 +29,10 @@ import { useAppLanguage } from "@/i18n/LanguageProvider";
 import { Badge } from "@/components/ui/Badge";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
+import { kit } from "@/shared/kit";
 import { formatPrice } from "@/utils/format";
 import type { Order, OrderStatus } from "@/stores/orders";
-import { listS, INDIGO_DOT, EMERALD_DOT } from "./orders.styles";
+import { listS } from "./orders.styles";
 
 // ─── Status metadata (unchanged — used by Badge and dot colors) ───────────────
 
@@ -44,12 +45,12 @@ export const STATUS_META: Record<
     dot:      string;
   }
 > = {
-  pending:         { labelKey: "orders.pending",        variant: "warning", icon: "time-outline",             dot: theme.colors.amber[500] },
-  pending_payment: { labelKey: "orders.pendingPayment", variant: "warning", icon: "card-outline",             dot: theme.colors.amber[500] },
-  processing:      { labelKey: "orders.processing",     variant: "brand",   icon: "refresh-outline",          dot: theme.colors.teal[500]  },
-  shipped:         { labelKey: "orders.shipped",        variant: "brand",   icon: "car-outline",              dot: INDIGO_DOT              },
-  delivered:       { labelKey: "orders.delivered",      variant: "success", icon: "checkmark-circle-outline", dot: EMERALD_DOT             },
-  cancelled:       { labelKey: "orders.cancelled",      variant: "error",   icon: "close-circle-outline",     dot: theme.colors.red[500]   },
+  pending:         { labelKey: "orders.pending",        variant: "warning", icon: "time-outline",             dot: kit.color.warn          },
+  pending_payment: { labelKey: "orders.pendingPayment", variant: "warning", icon: "card-outline",             dot: kit.color.warn          },
+  processing:      { labelKey: "orders.processing",     variant: "brand",   icon: "refresh-outline",          dot: kit.color.accent        },
+  shipped:         { labelKey: "orders.shipped",        variant: "brand",   icon: "car-outline",              dot: kit.color.accent        },
+  delivered:       { labelKey: "orders.delivered",      variant: "success", icon: "checkmark-circle-outline", dot: kit.color.success       },
+  cancelled:       { labelKey: "orders.cancelled",      variant: "error",   icon: "close-circle-outline",     dot: kit.color.danger        },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -66,10 +67,10 @@ export function formatDate(iso: string, language: string): string {
 
 export function paymentDot(status: string): string | null {
   switch (status) {
-    case "pending_verification": return theme.colors.amber[500];
+    case "pending_verification": return kit.color.warn;
     case "verified":
-    case "paid":                 return EMERALD_DOT;
-    case "failed":               return theme.colors.red[500];
+    case "paid":                 return kit.color.success;
+    case "failed":               return kit.color.danger;
     default:                     return null;
   }
 }
@@ -91,7 +92,7 @@ const TIMELINE_STEPS: StepDef[] = [
   { status: "delivered",  icon: "checkmark-circle-outline", match: ["delivered"]                  },
 ];
 
-const EMERALD = "#10B981";
+const EMERALD = kit.color.success;
 
 const TrackingTimeline = memo(function TrackingTimeline({
   status,
@@ -126,7 +127,7 @@ const TrackingTimeline = memo(function TrackingTimeline({
                 <Ionicons
                   name={step.icon}
                   size={isCurrent ? 13 : 11}
-                  color={isDone || isCurrent ? theme.colors.surface : theme.colors.slate[400]}
+                  color={isDone || isCurrent ? kit.color.onInk : kit.color.inkFaint}
                 />
               </View>
 
@@ -250,7 +251,7 @@ export const OrderCard = memo(function OrderCard({
               />
             ) : (
               <View style={oc.thumbFallback}>
-                <Ionicons name="medkit-outline" size={20} color={theme.colors.slate[300]} />
+                <Ionicons name="medkit-outline" size={20} color={kit.color.inkFaint} />
               </View>
             )}
           </View>
@@ -268,7 +269,7 @@ export const OrderCard = memo(function OrderCard({
               </UIText>
             )}
           </View>
-          <Ionicons name={FORWARD_CHEVRON} size={14} color={theme.colors.slate[300]} />
+          <Ionicons name={FORWARD_CHEVRON} size={14} color={kit.color.inkFaint} />
         </View>
 
         {/* ── FOOTER: Total price ────────────────────────── */}
@@ -306,7 +307,7 @@ const oc = StyleSheet.create({
   orderRef: {
     fontFamily:         theme.fonts.black,
     fontSize:           14,
-    color:              theme.colors.text.primary,
+    color:              kit.color.ink,
     textAlign:          textAlignStart(isRtl()),
     letterSpacing:      -0.2,
     includeFontPadding: false,
@@ -315,7 +316,7 @@ const oc = StyleSheet.create({
   orderDate: {
     fontFamily:         theme.fonts.regular,
     fontSize:           11,
-    color:              theme.colors.text.tertiary,
+    color:              kit.color.inkFaint,
     textAlign:          textAlignStart(isRtl()),
     includeFontPadding: false,
     lineHeight:         16,
@@ -325,7 +326,7 @@ const oc = StyleSheet.create({
     flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     gap:             12,
-    backgroundColor: theme.colors.surfaceSunken,
+    backgroundColor: kit.color.well,
     borderRadius:    14,
     padding:         12,
   },
@@ -334,14 +335,14 @@ const oc = StyleSheet.create({
     height:          60,
     borderRadius:    12,
     overflow:        "hidden",
-    backgroundColor: theme.colors.surface,
+    backgroundColor: kit.color.surface,
     flexShrink:      0,
   },
   thumbFallback: {
     flex:            1,
     alignItems:      "center",
     justifyContent:  "center",
-    backgroundColor: theme.colors.slate[50],
+    backgroundColor: kit.color.well,
   },
   // Footer — total label + price
   footer: {
@@ -350,12 +351,12 @@ const oc = StyleSheet.create({
     justifyContent: "space-between",
     paddingTop:     12,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(15,23,42,0.06)",
+    borderTopColor: kit.color.line,
   },
   totalText: {
     fontFamily:         theme.fonts.black,
     fontSize:           17,
-    color:              theme.colors.brand[700],
+    color:              kit.color.ink,
     letterSpacing:      -0.4,
     textAlign:          textAlignStart(isRtl()),
     includeFontPadding: false,
@@ -393,7 +394,7 @@ const tl = StyleSheet.create({
     width:          28,
     height:         28,
     borderRadius:   14,
-    backgroundColor: theme.colors.teal[500],
+    backgroundColor: kit.color.accent,
     shadowColor:     EMERALD,
     shadowOffset:    { width: 0, height: 0 },
     shadowOpacity:   0.55,
@@ -404,7 +405,7 @@ const tl = StyleSheet.create({
   dotFuture: {
     backgroundColor: "transparent",
     borderWidth:     1.5,
-    borderColor:     theme.colors.slate[300],
+    borderColor:     kit.color.lineStrong,
   },
 
   // ── Connecting line ────────────────────────────────────────────────────────
@@ -414,7 +415,7 @@ const tl = StyleSheet.create({
     borderRadius: 1,
   },
   lineActive: { backgroundColor: EMERALD },
-  lineGray:   { backgroundColor: theme.colors.slate[200] },
+  lineGray:   { backgroundColor: kit.color.lineStrong },
 
   // (cancelled state returns null — no banner needed, status badge handles it)
 });
