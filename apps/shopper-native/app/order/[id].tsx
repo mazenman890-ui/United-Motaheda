@@ -35,6 +35,7 @@ import { useOrderDetail } from "@/features/orders/hooks/useOrders";
 import { Text as UIText } from "@/shared/ui";
 import { Badge } from "@/components/ui/Badge";
 import { theme } from "@/shared/theme";
+import { kit } from "@/shared/kit";
 import { formatPrice } from "@/utils/format";
 import { FORWARD_CHEVRON } from "@/utils/layout";
 import { useAppLanguage } from "@/i18n/LanguageProvider";
@@ -86,7 +87,7 @@ export default function OrderDetailScreen(): React.ReactElement {
         <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
           <HeaderBackButton onPress={() => router.back()} />
         </View>
-        <ActivityIndicator size="large" color={theme.colors.brand[600]} style={{ marginTop: 80 }} />
+        <ActivityIndicator size="large" color={kit.color.accent} style={{ marginTop: 80 }} />
       </View>
     );
   }
@@ -99,7 +100,7 @@ export default function OrderDetailScreen(): React.ReactElement {
           <HeaderBackButton onPress={() => router.back()} />
         </View>
         <View style={styles.errorState}>
-          <Ionicons name="alert-circle-outline" size={48} color={theme.colors.slate[300]} />
+          <Ionicons name="alert-circle-outline" size={48} color={kit.color.inkFaint} />
           <UIText variant="sheet-title" color="secondary" align="center" style={{ marginTop: theme.spacing.lg }}>
             {t("orders.loadError")}
           </UIText>
@@ -107,7 +108,7 @@ export default function OrderDetailScreen(): React.ReactElement {
             {t("orders.loadErrorDesc")}
           </UIText>
           <Pressable onPress={handleRefresh} style={styles.retryBtn}>
-            <UIText variant="body-sm" weight="bold" style={{ color: theme.colors.brand[700] }}>
+            <UIText variant="body-sm" weight="bold" style={{ color: kit.color.accentDeep }}>
               {t("common.retry")}
             </UIText>
           </Pressable>
@@ -154,24 +155,24 @@ export default function OrderDetailScreen(): React.ReactElement {
           <RefreshControl
             refreshing={isRefetching}
             onRefresh={handleRefresh}
-            tintColor={theme.colors.brand[600]}
-            colors={[theme.colors.brand[600]]}
+            tintColor={kit.color.accent}
+            colors={[kit.color.accent]}
           />
         }>
 
         {/* ── Meta chip row ──────────────────────────────────────────────── */}
         <Animated.View entering={FadeInDown.delay(30).duration(320)} style={styles.metaRow}>
           <View style={styles.metaChip}>
-            <Ionicons name="calendar-outline" size={12} color={theme.colors.slate[500]} />
+            <Ionicons name="calendar-outline" size={12} color={kit.color.inkFaint} />
             <UIText variant="eyebrow" color="tertiary">{formatDate(order.createdAt, language)}</UIText>
           </View>
           <View style={styles.metaChip}>
-            <Ionicons name="time-outline" size={12} color={theme.colors.slate[500]} />
+            <Ionicons name="time-outline" size={12} color={kit.color.inkFaint} />
             <UIText variant="eyebrow" color="tertiary">{formatTime(order.createdAt, language)}</UIText>
           </View>
           {order.items.length > 0 && (
             <View style={styles.metaChip}>
-              <Ionicons name="cube-outline" size={12} color={theme.colors.slate[500]} />
+              <Ionicons name="cube-outline" size={12} color={kit.color.inkFaint} />
               <UIText variant="eyebrow" color="tertiary">{t("orders.items", { count: order.items.length })}</UIText>
             </View>
           )}
@@ -183,7 +184,7 @@ export default function OrderDetailScreen(): React.ReactElement {
             <View key={step.key} style={styles.timelineRow}>
               <View style={styles.timelineLeft}>
                 <View style={[styles.timelineDot, step.done ? styles.timelineDotDone : styles.timelineDotPending]}>
-                  <Ionicons name={step.icon} size={13} color={step.done ? theme.colors.surface : theme.colors.slate[400]} />
+                  <Ionicons name={step.icon} size={13} color={step.done ? kit.color.onInk : kit.color.inkFaint} />
                 </View>
                 {i < timeline.length - 1 && (
                   <View style={[styles.timelineLine, step.done && styles.timelineLineDone]} />
@@ -194,7 +195,7 @@ export default function OrderDetailScreen(): React.ReactElement {
                 weight={step.done ? "bold" : "regular"}
                 style={[
                   styles.timelineText,
-                  { color: step.done ? theme.colors.text.primary : theme.colors.slate[400] },
+                  { color: step.done ? kit.color.ink : kit.color.inkFaint },
                 ]}>
                 {t(step.labelKey)}
               </UIText>
@@ -216,7 +217,7 @@ export default function OrderDetailScreen(): React.ReactElement {
                   <SafeImage source={{ uri: item.imageUrl }} style={styles.itemImage} contentFit="contain" />
                 ) : (
                   <View style={[styles.itemImage, styles.itemImagePlaceholder]}>
-                    <Ionicons name="medkit-outline" size={22} color={theme.colors.slate[300]} />
+                    <Ionicons name="medkit-outline" size={22} color={kit.color.inkFaint} />
                   </View>
                 )}
                 <View style={{ flex: 1 }}>
@@ -225,12 +226,12 @@ export default function OrderDetailScreen(): React.ReactElement {
                   </UIText>
                   <View style={styles.itemMeta}>
                     <UIText variant="caption" color="secondary">{t("orders.qty", { count: item.quantity })}</UIText>
-                    <UIText variant="caption" weight="bold" style={{ color: theme.colors.brand[700] }}>
+                    <UIText variant="caption" weight="bold" style={{ color: kit.color.accentDeep }}>
                       {formatPrice(item.price)}
                     </UIText>
                   </View>
                 </View>
-                <Ionicons name={FORWARD_CHEVRON} size={14} color={theme.colors.slate[300]} />
+                <Ionicons name={FORWARD_CHEVRON} size={14} color={kit.color.inkFaint} />
               </Pressable>
             ))}
           </DetailSection>
@@ -240,15 +241,15 @@ export default function OrderDetailScreen(): React.ReactElement {
         <DetailSection title={t("orders.addressSection")} icon="location-outline" delay={180}>
           <View style={styles.addressCard}>
             <View style={styles.addressRow}>
-              <Ionicons name="person-outline" size={14} color={theme.colors.brand[700]} />
+              <Ionicons name="person-outline" size={14} color={kit.color.accentDeep} />
               <UIText variant="body-sm" weight="bold" style={styles.addressText}>{address.name}</UIText>
             </View>
             <View style={styles.addressRow}>
-              <Ionicons name="call-outline" size={14} color={theme.colors.brand[700]} />
+              <Ionicons name="call-outline" size={14} color={kit.color.accentDeep} />
               <UIText variant="body-sm" style={styles.addressText}>{address.phone}</UIText>
             </View>
             <View style={[styles.addressRow, { alignItems: "flex-start" }]}>
-              <Ionicons name="map-outline" size={14} color={theme.colors.brand[700]} style={{ marginTop: theme.spacing.xs }} />
+              <Ionicons name="map-outline" size={14} color={kit.color.accentDeep} style={{ marginTop: theme.spacing.xs }} />
               <UIText variant="body-sm" style={[styles.addressText, { flex: 1 }]} numberOfLines={3}>
                 {formattedAddress}
               </UIText>
@@ -259,7 +260,7 @@ export default function OrderDetailScreen(): React.ReactElement {
         {/* ── Payment ────────────────────────────────────────────────────────── */}
         <DetailSection title={t("checkout.paymentSection")} icon="card-outline" delay={240}>
           <View style={[styles.paymentCard, { backgroundColor: pmMeta.bg }]}>
-            <View style={[styles.paymentIconBox, { backgroundColor: theme.colors.surface }]}>
+            <View style={styles.paymentIconBox}>
               <Ionicons name={pmMeta.icon} size={20} color={pmMeta.color} />
             </View>
             <View style={{ flex: 1 }}>
@@ -299,19 +300,19 @@ export default function OrderDetailScreen(): React.ReactElement {
           <InfoRow
             label={t("checkout.deliveryRow")}
             value={order.delivery === 0 ? t("common.free") : formatPrice(order.delivery)}
-            valueColor={order.delivery === 0 ? theme.colors.green[600] : undefined}
+            valueColor={order.delivery === 0 ? kit.color.success : undefined}
           />
           {(order.discountTotal ?? 0) > 0 && (
             <InfoRow
               label={t("checkout.discountRow")}
               value={`−${formatPrice(order.discountTotal ?? 0)}`}
-              valueColor={theme.colors.green[600]}
+              valueColor={kit.color.success}
             />
           )}
           <View style={styles.priceDividerSpaced} />
           <View style={styles.totalRow}>
             <UIText variant="body" weight="extrabold" color="primary">{t("orders.total")}</UIText>
-            <UIText variant="card-title" weight="black" style={{ color: theme.colors.brand[700], letterSpacing: -0.4 }}>
+            <UIText variant="card-title" weight="black" style={{ color: kit.color.ink, letterSpacing: -0.4 }}>
               {formatPrice(order.total)}
             </UIText>
           </View>

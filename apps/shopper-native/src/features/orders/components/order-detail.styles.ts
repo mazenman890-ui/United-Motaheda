@@ -1,19 +1,16 @@
-/**
- * Styles for the Order Detail screen.
- * All spacing uses theme.spacing tokens; all colours use theme.colors.
- */
 import { StyleSheet } from "react-native";
 import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import { theme } from "@/shared/theme";
+import { kit } from "@/shared/kit";
 
 export const styles = StyleSheet.create({
   screen: {
     flex:            1,
-    backgroundColor: theme.colors.bg,
+    backgroundColor: kit.color.canvas,
   },
   centerScreen: {
     flex:            1,
-    backgroundColor: theme.colors.bg,
+    backgroundColor: kit.color.canvas,
   },
   header: {
     flexDirection:     flexRow(isRtl()),
@@ -22,14 +19,10 @@ export const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     paddingBottom:     14,
     paddingTop:        10,
-    backgroundColor:   theme.colors.surface,
+    backgroundColor:   kit.color.surface,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.border.hairline,
-    shadowColor:       theme.colors.hero,
-    shadowOffset:      { width: 0, height: 2 },
-    shadowOpacity:     0.04,
-    shadowRadius:      6,
-    elevation:         2,
+    borderBottomColor: kit.color.line,
+    ...kit.shadow.raised,
   },
   headerOrderId: {
     letterSpacing: -0.3,
@@ -37,10 +30,12 @@ export const styles = StyleSheet.create({
   backBtn: {
     width:           40,
     height:          40,
-    borderRadius:    12,
-    backgroundColor: theme.colors.subtle,
+    borderRadius:    20,
+    backgroundColor: kit.color.surface,
     alignItems:      "center",
     justifyContent:  "center",
+    borderWidth:     1,
+    borderColor:     kit.color.line,
   },
   scrollContent: {
     padding: theme.layout.pagePaddingH,
@@ -58,19 +53,21 @@ export const styles = StyleSheet.create({
     flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               5,
-    backgroundColor:   theme.colors.slate[50],
+    backgroundColor:   kit.color.well,
     paddingHorizontal: 10,
     paddingVertical:   6,
     borderRadius:      999,
     borderWidth:       1,
-    borderColor:       theme.colors.border.hairline,
+    borderColor:       kit.color.line,
   },
 
   // Section card
   section: {
-    backgroundColor: theme.colors.surface,
-    borderRadius:    18,
-    ...theme.shadow.card,
+    backgroundColor: kit.color.surface,
+    borderRadius:    kit.radius.card,
+    borderWidth:     1,
+    borderColor:     kit.color.line,
+    ...kit.shadow.raised,
   },
   sectionHeader: {
     flexDirection:     flexRow(isRtl()),
@@ -84,9 +81,7 @@ export const styles = StyleSheet.create({
     width:           30,
     height:          30,
     borderRadius:    10,
-    backgroundColor: theme.colors.brand.lighter,
-    borderWidth:     1,
-    borderColor:     theme.colors.border.brandSoft,
+    backgroundColor: kit.color.accentTint,
     alignItems:      "center",
     justifyContent:  "center",
   },
@@ -107,9 +102,9 @@ export const styles = StyleSheet.create({
     marginBottom:  theme.spacing.xs,
   },
   timelineLeft: {
-    alignItems: "center",
-    width:      36,
-    marginLeft: theme.spacing.xs,
+    alignItems:  "center",
+    width:       36,
+    marginStart: theme.spacing.xs,
   },
   timelineDot: {
     width:          32,
@@ -119,27 +114,27 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
   },
   timelineDotDone: {
-    backgroundColor: theme.colors.brand[600],
+    backgroundColor: kit.color.accent,
   },
   timelineDotPending: {
-    backgroundColor: theme.colors.slate[100],
+    backgroundColor: kit.color.well,
     borderWidth:     1,
-    borderColor:     theme.colors.slate[200],
+    borderColor:     kit.color.lineStrong,
   },
   timelineLine: {
     width:           2,
     height:          20,
     marginTop:       3,
-    backgroundColor: theme.colors.slate[200],
+    backgroundColor: kit.color.lineStrong,
     borderRadius:    1,
   },
   timelineLineDone: {
-    backgroundColor: theme.colors.brand[300],
+    backgroundColor: kit.color.accent,
   },
   timelineText: {
-    textAlign:   textAlignStart(isRtl()),
-    flex:        1,
-    marginRight: theme.spacing.md,
+    textAlign:    textAlignStart(isRtl()),
+    flex:         1,
+    marginEnd:    theme.spacing.md,
   },
 
   // Item cards
@@ -147,7 +142,7 @@ export const styles = StyleSheet.create({
     flexDirection:   flexRow(isRtl()),
     alignItems:      "center",
     gap:             theme.spacing.md,
-    backgroundColor: theme.colors.surfaceSunken,
+    backgroundColor: kit.color.well,
     borderRadius:    14,
     padding:         theme.spacing.md,
   },
@@ -158,7 +153,7 @@ export const styles = StyleSheet.create({
     overflow:     "hidden",
   },
   itemImagePlaceholder: {
-    backgroundColor: theme.colors.slate[100],
+    backgroundColor: kit.color.well,
     alignItems:      "center",
     justifyContent:  "center",
   },
@@ -170,12 +165,12 @@ export const styles = StyleSheet.create({
 
   // Address
   addressCard: {
-    backgroundColor: theme.colors.slate[50],
+    backgroundColor: kit.color.well,
     borderRadius:    14,
     padding:         14,
     gap:             10,
     borderWidth:     1,
-    borderColor:     theme.colors.border.hairline,
+    borderColor:     kit.color.line,
   },
   addressRow: {
     flexDirection: flexRow(isRtl()),
@@ -201,7 +196,8 @@ export const styles = StyleSheet.create({
     borderRadius:    14,
     alignItems:      "center",
     justifyContent:  "center",
-    ...theme.shadow.card,
+    backgroundColor: kit.color.surface,
+    ...kit.shadow.raised,
   },
   paymentStatusRow: {
     flexDirection: flexRow(isRtl()),
@@ -216,9 +212,9 @@ export const styles = StyleSheet.create({
     paddingVertical:   10,
     paddingHorizontal: theme.spacing.md,
     borderRadius:      10,
-    backgroundColor:   theme.colors.slate[50],
+    backgroundColor:   kit.color.well,
     borderWidth:       1,
-    borderColor:       theme.colors.border.hairline,
+    borderColor:       kit.color.line,
   },
   proofContainer: {
     marginTop: theme.spacing.xs,
@@ -228,24 +224,24 @@ export const styles = StyleSheet.create({
     height:          220,
     borderRadius:    14,
     overflow:        "hidden",
-    backgroundColor: theme.colors.slate[100],
+    backgroundColor: kit.color.well,
   },
 
   // Price
   infoRow: {
-    flexDirection:  flexRow(isRtl()),
-    justifyContent: "space-between",
-    alignItems:     "center",
+    flexDirection:   flexRow(isRtl()),
+    justifyContent:  "space-between",
+    alignItems:      "center",
     paddingVertical: 3,
   },
   priceDivider: {
     height:          StyleSheet.hairlineWidth,
-    backgroundColor: theme.colors.border.hairline,
+    backgroundColor: kit.color.line,
     marginVertical:  6,
   },
   priceDividerSpaced: {
     height:          StyleSheet.hairlineWidth,
-    backgroundColor: theme.colors.border.hairline,
+    backgroundColor: kit.color.line,
     marginVertical:  theme.spacing.md,
   },
   totalRow: {
@@ -267,8 +263,8 @@ export const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing[3],
     paddingVertical:   theme.spacing.md,
     borderRadius:      12,
-    backgroundColor:   theme.colors.brand.lighter,
+    backgroundColor:   kit.color.accentTint,
     borderWidth:       1,
-    borderColor:       theme.colors.border.brandSoft,
+    borderColor:       kit.color.line,
   },
 });

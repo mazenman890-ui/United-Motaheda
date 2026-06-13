@@ -8,6 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
+import { kit } from "@/shared/kit";
 import { BACK_CHEVRON } from "@/utils/layout";
 import type { Order, OrderStatus } from "@/stores/orders";
 import { styles } from "./order-detail.styles";
@@ -41,10 +42,10 @@ export const PAYMENT_METHOD_META: Record<
   string,
   { labelKey: string; icon: React.ComponentProps<typeof Ionicons>["name"]; color: string; bg: string }
 > = {
-  cod:          { labelKey: "checkout.methodCodTitle",      icon: "cash-outline",   color: theme.colors.green[700],  bg: theme.colors.green[50]  },
-  vodafone:     { labelKey: "checkout.methodVodafoneTitle", icon: "wallet-outline", color: theme.colors.red[600],    bg: theme.colors.red[50]    },
-  vodafone_cash:{ labelKey: "checkout.methodVodafoneTitle", icon: "wallet-outline", color: theme.colors.red[600],    bg: theme.colors.red[50]    },
-  instapay:     { labelKey: "checkout.methodInstapayTitle", icon: "flash-outline",  color: theme.colors.purple[600], bg: theme.colors.purple[50] },
+  cod:          { labelKey: "checkout.methodCodTitle",      icon: "cash-outline",   color: kit.color.success,    bg: kit.color.successTint },
+  vodafone:     { labelKey: "checkout.methodVodafoneTitle", icon: "wallet-outline", color: kit.color.danger,      bg: kit.color.dangerTint  },
+  vodafone_cash:{ labelKey: "checkout.methodVodafoneTitle", icon: "wallet-outline", color: kit.color.danger,      bg: kit.color.dangerTint  },
+  instapay:     { labelKey: "checkout.methodInstapayTitle", icon: "flash-outline",  color: kit.color.accent,      bg: kit.color.accentTint  },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -59,15 +60,15 @@ export function getPaymentStatusDisplay(
 ): { labelKey: string; color: string; icon: React.ComponentProps<typeof Ionicons>["name"] } {
   switch (status) {
     case "pending_verification":
-      return { labelKey: "orders.paymentStatusPendingVerification", color: theme.colors.amber[700],  icon: "hourglass-outline"    };
+      return { labelKey: "orders.paymentStatusPendingVerification", color: kit.color.warn,    icon: "hourglass-outline"    };
     case "verified":
     case "paid":
-      return { labelKey: "orders.paymentStatusVerified",            color: theme.colors.green[700],  icon: "checkmark-circle"     };
+      return { labelKey: "orders.paymentStatusVerified",            color: kit.color.success, icon: "checkmark-circle"     };
     case "failed":
-      return { labelKey: "orders.paymentStatusFailed",              color: theme.colors.red[600],    icon: "close-circle-outline" };
+      return { labelKey: "orders.paymentStatusFailed",              color: kit.color.danger,  icon: "close-circle-outline" };
     case "pending":
     default:
-      return { labelKey: "orders.paymentStatusPending",             color: theme.colors.slate[500],  icon: "time-outline"         };
+      return { labelKey: "orders.paymentStatusPending",             color: kit.color.inkFaint, icon: "time-outline"        };
   }
 }
 
@@ -137,7 +138,7 @@ export function DetailSection({
     <Animated.View entering={FadeInDown.delay(delay).duration(360)} style={styles.section}>
       <View style={styles.sectionHeader}>
         <View style={styles.sectionIconBox}>
-          <Ionicons name={icon} size={14} color={theme.colors.brand[700]} />
+          <Ionicons name={icon} size={14} color={kit.color.accentDeep} />
         </View>
         <UIText variant="card-title" align="right" style={styles.sectionTitle}>
           {title}
@@ -161,7 +162,7 @@ export function InfoRow({
       <UIText
         variant="body-sm"
         weight="bold"
-        style={{ color: valueColor ?? theme.colors.text.primary, textAlign: "left" }}>
+        style={{ color: valueColor ?? kit.color.ink, textAlign: "left" }}>
         {value}
       </UIText>
     </View>
@@ -171,7 +172,7 @@ export function InfoRow({
 export function HeaderBackButton({ onPress }: { onPress: () => void }): React.ReactElement {
   return (
     <Pressable onPress={onPress} style={styles.backBtn} hitSlop={8} accessibilityRole="button">
-      <Ionicons name={BACK_CHEVRON} size={18} color={theme.colors.slate[700]} />
+      <Ionicons name={BACK_CHEVRON} size={18} color={kit.color.inkSoft} />
     </Pressable>
   );
 }
