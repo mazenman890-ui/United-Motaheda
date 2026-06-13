@@ -3,10 +3,8 @@ import { StyleSheet, View } from "react-native";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/Button";
 import { Text as UIText } from "@/shared/ui";
-import { theme } from "@/shared/theme";
-import { ctaStyles } from "./checkout.styles";
+import { kit, Button } from "@/shared/kit";
 
 interface EmptyCartScreenProps {
   onBrowse: () => void;
@@ -24,7 +22,7 @@ export const EmptyCartScreen = React.memo(function EmptyCartScreen({
       <Animated.View
         entering={FadeInDown.duration(420).springify().damping(18)}
         style={s.iconBox}>
-        <Ionicons name="cart-outline" size={36} color={theme.colors.brand[600]} />
+        <Ionicons name="cart-outline" size={36} color={kit.color.accent} />
       </Animated.View>
 
       <Animated.View entering={FadeInDown.duration(380).delay(80)} style={s.textStack}>
@@ -39,12 +37,13 @@ export const EmptyCartScreen = React.memo(function EmptyCartScreen({
       <Animated.View
         entering={FadeInUp.duration(380).delay(180)}
         style={s.btnWrap}>
-        <Button variant="primary" size="lg" fullWidth gradient onPress={onBrowse}>
-          <View style={ctaStyles.btnInner}>
-            <UIText style={ctaStyles.btnText}>{t("checkout.browseBtn")}</UIText>
-            <Ionicons name="arrow-back" size={16} color="#fff" />
-          </View>
-        </Button>
+        <Button
+          label={t("checkout.browseBtn")}
+          icon="storefront-outline"
+          size="lg"
+          full
+          onPress={onBrowse}
+        />
       </Animated.View>
     </View>
   );
@@ -53,7 +52,7 @@ export const EmptyCartScreen = React.memo(function EmptyCartScreen({
 const s = StyleSheet.create({
   screen: {
     flex:              1,
-    backgroundColor:   theme.colors.bg,
+    backgroundColor:   kit.color.canvas,
     alignItems:        "center",
     paddingHorizontal: 32,
   },
@@ -61,9 +60,9 @@ const s = StyleSheet.create({
     width:           96,
     height:          96,
     borderRadius:    28,
-    backgroundColor: theme.colors.brand.lighter,
+    backgroundColor: kit.color.accentTint,
     borderWidth:     1,
-    borderColor:     theme.colors.border.brandSoft,
+    borderColor:     kit.color.line,
     alignItems:      "center",
     justifyContent:  "center",
     marginBottom:    20,

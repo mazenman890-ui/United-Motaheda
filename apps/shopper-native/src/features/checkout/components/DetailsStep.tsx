@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+﻿import React, { useCallback } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
@@ -6,9 +6,9 @@ import { useTranslation } from "react-i18next";
 import { Controller, type Control, type FieldErrors } from "react-hook-form";
 
 import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
+import { kit, Button } from "@/shared/kit";
 import {
   BranchSelector,
   SUPPORTED_GOVERNORATE,
@@ -63,7 +63,7 @@ export const DetailsStep = React.memo(function DetailsStep({
 }: DetailsStepProps) {
   const { t, i18n } = useTranslation();
   const hasSavedAccount = Boolean(user?.name || savedProfilePhone);
-  const sep = i18n.language.startsWith("en") ? ", " : "، ";
+  const sep = i18n.language.startsWith("en") ? ", " : "ØŒ ";
 
   const addressSummary = defaultAddress
     ? [
@@ -93,10 +93,10 @@ export const DetailsStep = React.memo(function DetailsStep({
       {!user?.id && (
         <Animated.View entering={FadeInDown.duration(280)} style={s.signInBanner}>
           <View style={s.signInIcon}>
-            <Ionicons name="person-circle-outline" size={22} color={theme.colors.brand[700]} />
+            <Ionicons name="person-circle-outline" size={22} color={kit.color.accentDeep} />
           </View>
           <View style={{ flex: 1, gap: 2 }}>
-            <UIText variant="body-sm" weight="extrabold" align="right" style={{ color: theme.colors.brand[800] }}>
+            <UIText variant="body-sm" weight="extrabold" align="right" style={{ color: kit.color.ink }}>
               {t("checkout.signInRequired")}
             </UIText>
             <UIText variant="caption" color="secondary" align="right">
@@ -121,7 +121,7 @@ export const DetailsStep = React.memo(function DetailsStep({
         />
         {outOfServiceMessage && (
           <Animated.View entering={FadeIn.duration(200)} style={s.warning}>
-            <Ionicons name="alert-circle-outline" size={14} color={theme.colors.amber[700]} />
+            <Ionicons name="alert-circle-outline" size={14} color={kit.color.warn} />
             <UIText style={s.warningText}>{outOfServiceMessage}</UIText>
           </Animated.View>
         )}
@@ -135,28 +135,32 @@ export const DetailsStep = React.memo(function DetailsStep({
           delay={50}>
           <UIText style={s.hint}>{t("checkout.profileHint")}</UIText>
           <View style={s.toggleRow}>
-            <Button
-              variant={useAccountProfile ? "success" : "outline"}
-              size="sm"
-              onPress={() => onToggleAccountProfile(true)}
-              style={{ flex: 1 }}>
-              {t("checkout.useAccountData")}
-            </Button>
-            <Button
-              variant={!useAccountProfile ? "secondary" : "ghost"}
-              size="sm"
-              onPress={() => onToggleAccountProfile(false)}
-              style={{ flex: 1 }}>
-              {t("checkout.enterNewData")}
-            </Button>
+            <View style={{ flex: 1 }}>
+              <Button
+                label={t("checkout.useAccountData")}
+                variant={useAccountProfile ? "secondary" : "ghost"}
+                size="sm"
+                full
+                onPress={() => onToggleAccountProfile(true)}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button
+                label={t("checkout.enterNewData")}
+                variant={!useAccountProfile ? "secondary" : "ghost"}
+                size="sm"
+                full
+                onPress={() => onToggleAccountProfile(false)}
+              />
+            </View>
           </View>
           <View style={s.metaRow}>
             <UIText style={s.metaLabel}>{t("auth.name")}</UIText>
-            <UIText style={s.metaValue}>{user?.name ?? "—"}</UIText>
+            <UIText style={s.metaValue}>{user?.name ?? "â€”"}</UIText>
           </View>
           <View style={s.metaRow}>
             <UIText style={s.metaLabel}>{t("auth.phone")}</UIText>
-            <UIText style={s.metaValue}>{savedProfilePhone ?? "—"}</UIText>
+            <UIText style={s.metaValue}>{savedProfilePhone ?? "â€”"}</UIText>
           </View>
           <UIText style={s.savedHelp}>
             {useAccountProfile
@@ -210,20 +214,24 @@ export const DetailsStep = React.memo(function DetailsStep({
             <UIText style={s.savedAddressHint}>{t("checkout.defaultAddrHint")}</UIText>
             <UIText style={s.savedAddressSummary}>{addressSummary}</UIText>
             <View style={s.toggleRow}>
-              <Button
-                variant={useSavedAddress ? "success" : "outline"}
-                size="sm"
-                onPress={() => onToggleSavedAddress(true)}
-                style={{ flex: 1 }}>
-                {t("checkout.useSavedAddress")}
-              </Button>
-              <Button
-                variant={!useSavedAddress ? "secondary" : "ghost"}
-                size="sm"
-                onPress={() => onToggleSavedAddress(false)}
-                style={{ flex: 1 }}>
-                {t("checkout.enterNewAddress")}
-              </Button>
+              <View style={{ flex: 1 }}>
+                <Button
+                  label={t("checkout.useSavedAddress")}
+                  variant={useSavedAddress ? "secondary" : "ghost"}
+                  size="sm"
+                  full
+                  onPress={() => onToggleSavedAddress(true)}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Button
+                  label={t("checkout.enterNewAddress")}
+                  variant={!useSavedAddress ? "secondary" : "ghost"}
+                  size="sm"
+                  full
+                  onPress={() => onToggleSavedAddress(false)}
+                />
+              </View>
             </View>
           </View>
         ) : (
@@ -234,7 +242,7 @@ export const DetailsStep = React.memo(function DetailsStep({
         <View style={s.cityCard}>
           <View style={s.cityHead}>
             <View style={s.cityIcon}>
-              <Ionicons name="business-outline" size={14} color={theme.colors.brand[600]} />
+              <Ionicons name="business-outline" size={14} color={kit.color.accent} />
             </View>
             <View style={{ flex: 1 }}>
               <UIText style={s.cityLabel}>{t("checkout.cityLabel")}</UIText>
@@ -347,28 +355,27 @@ const s = StyleSheet.create({
     flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               12,
-    backgroundColor:   theme.colors.brand[50],
+    backgroundColor:   kit.color.accentTint,
     borderRadius:      16,
     paddingHorizontal: theme.spacing[4] - 2,
     paddingVertical:   14,
     marginBottom:      16,
     borderWidth:       1.5,
-    borderColor:       theme.colors.border.brandSoft,
-    ...theme.shadow.brandGlow,
-    shadowOpacity:     0.08,
+    borderColor:       kit.color.line,
+    ...kit.shadow.raised,
   },
   signInIcon: {
     width:           40,
     height:          40,
     borderRadius:    13,
-    backgroundColor: theme.colors.brand.lighter,
+    backgroundColor: kit.color.accentTint,
     borderWidth:     1,
-    borderColor:     theme.colors.border.brandSoft,
+    borderColor:     kit.color.line,
     alignItems:      "center",
     justifyContent:  "center",
   },
   signInBtn: {
-    backgroundColor:   theme.colors.brand[600],
+    backgroundColor:   kit.color.accent,
     borderRadius:      10,
     paddingHorizontal: 12,
     paddingVertical:   8,
@@ -378,7 +385,7 @@ const s = StyleSheet.create({
   hint: {
     fontSize:     11,
     fontFamily:   theme.fonts.regular,
-    color:        theme.colors.slate[500],
+    color:        kit.color.inkFaint,
     textAlign:    textAlignStart(isRtl()),
     marginBottom: 4,
   },
@@ -388,16 +395,16 @@ const s = StyleSheet.create({
     gap:               8,
     padding:           10,
     borderRadius:      12,
-    backgroundColor:   theme.colors.amber[50],
+    backgroundColor:   kit.color.warnTint,
     borderWidth:       1,
-    borderColor:       theme.colors.amber[100],
+    borderColor:       kit.color.warnTint,
     marginTop:         6,
   },
   warningText: {
     flex:       1,
     fontSize:   11,
     fontFamily: theme.fonts.semibold,
-    color:      theme.colors.amber[800],
+    color:      kit.color.warn,
     textAlign:  textAlignStart(isRtl()),
     lineHeight: 16,
   },
@@ -416,18 +423,18 @@ const s = StyleSheet.create({
     gap:               10,
     paddingVertical:   6,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.slate[100],
+    borderBottomColor: kit.color.lineStrong,
   },
   metaLabel: {
     fontSize:   11,
     fontFamily: theme.fonts.semibold,
-    color:      theme.colors.slate[500],
+    color:      kit.color.inkFaint,
     textAlign:  textAlignStart(isRtl()),
   },
   metaValue: {
     fontSize:   12,
     fontFamily: theme.fonts.black,
-    color:      theme.colors.text.primary,
+    color:      kit.color.ink,
     textAlign:  textAlignStart(isRtl()),
     flex:       1,
   },
@@ -435,7 +442,7 @@ const s = StyleSheet.create({
     marginTop:  8,
     fontSize:   11,
     fontFamily: theme.fonts.regular,
-    color:      theme.colors.slate[500],
+    color:      kit.color.inkFaint,
     textAlign:  textAlignStart(isRtl()),
     lineHeight: 18,
   },
@@ -444,22 +451,22 @@ const s = StyleSheet.create({
   savedAddressBanner: {
     padding:         14,
     borderRadius:    16,
-    backgroundColor: theme.colors.slate[50],
+    backgroundColor: kit.color.well,
     borderWidth:     1,
-    borderColor:     theme.colors.border.default,
+    borderColor:     kit.color.line,
     marginBottom:    16,
   },
   savedAddressTitle: {
     fontSize:     12,
     fontFamily:   theme.fonts.bold,
-    color:        theme.colors.text.primary,
+    color:        kit.color.ink,
     textAlign:    textAlignStart(isRtl()),
     marginBottom: 4,
   },
   savedAddressHint: {
     fontSize:     11,
     fontFamily:   theme.fonts.regular,
-    color:        theme.colors.slate[500],
+    color:        kit.color.inkFaint,
     textAlign:    textAlignStart(isRtl()),
     lineHeight:   18,
     marginBottom: 10,
@@ -467,18 +474,18 @@ const s = StyleSheet.create({
   savedAddressSummary: {
     fontSize:     12,
     fontFamily:   theme.fonts.semibold,
-    color:        theme.colors.text.primary,
+    color:        kit.color.ink,
     textAlign:    textAlignStart(isRtl()),
     marginBottom: 12,
   },
 
   // City card
   cityCard: {
-    backgroundColor: theme.colors.brand[50],
+    backgroundColor: kit.color.accentTint,
     borderRadius:    12,
     padding:         12,
     borderWidth:     1,
-    borderColor:     theme.colors.brand[100],
+    borderColor:     kit.color.accentTint,
   },
   cityHead:   { flexDirection: flexRow(isRtl()), alignItems: "center", gap: 10 },
   cityIcon: {
@@ -492,17 +499,17 @@ const s = StyleSheet.create({
   cityLabel: {
     fontSize:   10,
     fontFamily: theme.fonts.semibold,
-    color:      theme.colors.slate[500],
+    color:      kit.color.inkFaint,
     textAlign:  textAlignStart(isRtl()),
   },
   cityValue: {
     fontSize:   13,
     fontFamily: theme.fonts.black,
-    color:      theme.colors.text.primary,
+    color:      kit.color.ink,
     textAlign:  textAlignStart(isRtl()),
   },
   cityBadge: {
-    backgroundColor:   theme.colors.amber[100],
+    backgroundColor:   kit.color.warnTint,
     paddingHorizontal: 8,
     paddingVertical:   3,
     borderRadius:      999,
@@ -510,7 +517,7 @@ const s = StyleSheet.create({
   cityBadgeText: {
     fontSize:   9,
     fontFamily: theme.fonts.bold,
-    color:      theme.colors.amber[800],
+    color:      kit.color.warn,
   },
 
   row3: { flexDirection: flexRow(isRtl()), gap: 8 },

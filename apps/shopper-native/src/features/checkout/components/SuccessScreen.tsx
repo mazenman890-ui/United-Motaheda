@@ -3,11 +3,10 @@ import { StyleSheet, View } from "react-native";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/Button";
 import { Text as UIText } from "@/shared/ui";
 import { theme } from "@/shared/theme";
+import { kit, Button } from "@/shared/kit";
 import { formatPrice } from "@/utils/format";
-import { ctaStyles } from "./checkout.styles";
 import { flexRow, isRtl } from "@/utils/layout";
 
 interface SuccessScreenProps {
@@ -33,7 +32,7 @@ export const SuccessScreen = React.memo(function SuccessScreen({
         entering={FadeInDown.duration(460).springify().damping(18)}
         style={s.iconWrap}>
         <View style={s.icon}>
-          <Ionicons name="checkmark" size={34} color={theme.colors.brand[700]} />
+          <Ionicons name="checkmark" size={34} color={kit.color.accentDeep} />
         </View>
       </Animated.View>
 
@@ -52,7 +51,7 @@ export const SuccessScreen = React.memo(function SuccessScreen({
         <UIText variant="eyebrow" color="tertiary" align="center">
           {t("checkout.orderTotalLabel")}
         </UIText>
-        <UIText variant="metric" align="center" style={{ color: theme.colors.brand[700], letterSpacing: -0.8 }}>
+        <UIText variant="metric" align="center" style={{ color: kit.color.ink, letterSpacing: -0.8 }}>
           {formatPrice(total)}
         </UIText>
       </Animated.View>
@@ -68,8 +67,8 @@ export const SuccessScreen = React.memo(function SuccessScreen({
         <View style={s.cardRow}>
           <UIText variant="body-sm" color="secondary">{t("checkout.estimatedDelivery")}</UIText>
           <View style={s.etaPill}>
-            <Ionicons name="time-outline" size={12} color={theme.colors.brand[700]} />
-            <UIText variant="eyebrow" style={{ color: theme.colors.brand[700] }}>
+            <Ionicons name="time-outline" size={12} color={kit.color.accentDeep} />
+            <UIText variant="eyebrow" style={{ color: kit.color.accentDeep }}>
               30–60 {t("delivery.minUnit")}
             </UIText>
           </View>
@@ -79,7 +78,7 @@ export const SuccessScreen = React.memo(function SuccessScreen({
           <UIText variant="body-sm" color="secondary">{t("checkout.orderStatusLabel")}</UIText>
           <View style={s.statusPill}>
             <View style={s.statusDot} />
-            <UIText variant="eyebrow" style={{ color: theme.colors.success.strong }}>
+            <UIText variant="eyebrow" style={{ color: kit.color.success }}>
               {t("checkout.preparingStatus")}
             </UIText>
           </View>
@@ -87,7 +86,7 @@ export const SuccessScreen = React.memo(function SuccessScreen({
       </Animated.View>
 
       <Animated.View entering={FadeInDown.delay(340).duration(360)} style={s.trustRow}>
-        <Ionicons name="shield-checkmark" size={12} color={theme.colors.text.tertiary} />
+        <Ionicons name="shield-checkmark" size={12} color={kit.color.inkFaint} />
         <UIText variant="eyebrow" color="tertiary">
           {t("checkout.trustSeal")}
         </UIText>
@@ -96,15 +95,21 @@ export const SuccessScreen = React.memo(function SuccessScreen({
       <Animated.View
         entering={FadeInUp.delay(380).duration(420)}
         style={[s.actions, { paddingBottom: insets.bottom + 16 }]}>
-        <Button variant="primary" size="lg" fullWidth gradient onPress={onViewOrders}>
-          <View style={ctaStyles.btnInner}>
-            <UIText style={ctaStyles.btnText}>{t("checkout.trackOrderBtn")}</UIText>
-            <Ionicons name="receipt-outline" size={15} color="#fff" />
-          </View>
-        </Button>
-        <Button variant="subtle" size="md" fullWidth onPress={onContinue}>
-          {t("checkout.continueShoppingBtn")}
-        </Button>
+        <Button
+          label={t("checkout.trackOrderBtn")}
+          icon="receipt-outline"
+          iconEnd
+          size="lg"
+          full
+          onPress={onViewOrders}
+        />
+        <Button
+          label={t("checkout.continueShoppingBtn")}
+          variant="ghost"
+          size="md"
+          full
+          onPress={onContinue}
+        />
       </Animated.View>
     </View>
   );
@@ -113,7 +118,7 @@ export const SuccessScreen = React.memo(function SuccessScreen({
 const s = StyleSheet.create({
   screen: {
     flex:              1,
-    backgroundColor:   theme.colors.bg,
+    backgroundColor:   kit.color.canvas,
     alignItems:        "center",
     paddingHorizontal: 24,
   },
@@ -122,9 +127,9 @@ const s = StyleSheet.create({
     width:           80,
     height:          80,
     borderRadius:    26,
-    backgroundColor: theme.colors.brand.lighter,
+    backgroundColor: kit.color.accentTint,
     borderWidth:     1,
-    borderColor:     theme.colors.border.brandSoft,
+    borderColor:     kit.color.line,
     alignItems:      "center",
     justifyContent:  "center",
     ...theme.shadow.brandGlow,
@@ -132,7 +137,7 @@ const s = StyleSheet.create({
   headingStack: { alignItems: "center", gap: 8, maxWidth: 340 },
   totalStack:   { alignItems: "center", marginTop: 28, gap: 4 },
   card: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: kit.color.surface,
     borderRadius:    18,
     padding:         18,
     marginTop:       28,
@@ -146,16 +151,16 @@ const s = StyleSheet.create({
   },
   divider: {
     height:          StyleSheet.hairlineWidth,
-    backgroundColor: theme.colors.border.hairline,
+    backgroundColor: kit.color.line,
     marginVertical:  12,
   },
   etaPill: {
     flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               6,
-    backgroundColor:   theme.colors.brand.lighter,
+    backgroundColor:   kit.color.accentTint,
     borderWidth:       1,
-    borderColor:       theme.colors.border.brandSoft,
+    borderColor:       kit.color.line,
     paddingHorizontal: 10,
     paddingVertical:   5,
     borderRadius:      999,
@@ -164,9 +169,9 @@ const s = StyleSheet.create({
     flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               6,
-    backgroundColor:   theme.colors.success.bg,
+    backgroundColor:   kit.color.successTint,
     borderWidth:       1,
-    borderColor:       theme.colors.success.light,
+    borderColor:       kit.color.line,
     paddingHorizontal: 10,
     paddingVertical:   5,
     borderRadius:      999,
@@ -175,7 +180,7 @@ const s = StyleSheet.create({
     width:           6,
     height:          6,
     borderRadius:    3,
-    backgroundColor: theme.colors.success.base,
+    backgroundColor: kit.color.success,
   },
   trustRow: {
     flexDirection: flexRow(isRtl()),

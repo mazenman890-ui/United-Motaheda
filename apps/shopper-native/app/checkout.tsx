@@ -24,8 +24,8 @@ import { useTranslation } from "react-i18next";
 
 import { ErrorBoundary } from "@/shared/components";
 import { Text as UIText } from "@/shared/ui";
-import { Button } from "@/components/ui/Button";
 import { theme } from "@/shared/theme";
+import { kit, Button as KitButton } from "@/shared/kit";
 import { isManualWalletPayment } from "@/features/checkout";
 import { BACK_CHEVRON } from "@/utils/layout";
 import { PhoneVerifyModal } from "@/features/auth";
@@ -104,7 +104,7 @@ function CheckoutScreen() {
   // ── Main screen ───────────────────────────────────────────────────────
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.colors.bg }}
+      style={{ flex: 1, backgroundColor: kit.color.canvas }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}>
 
       {/* Auth gate — intercepts unauthenticated order attempts */}
@@ -123,7 +123,7 @@ function CheckoutScreen() {
           <Ionicons
             name={BACK_CHEVRON}
             size={18}
-            color={theme.colors.slate[700]}
+            color={kit.color.inkSoft}
             onPress={() => router.back()}
           />
         </View>
@@ -138,8 +138,8 @@ function CheckoutScreen() {
           </UIText>
         </View>
         <View style={hs.badge}>
-          <Ionicons name="shield-checkmark" size={12} color={theme.colors.green[700]} />
-          <UIText variant="eyebrow" style={{ color: theme.colors.green[700] }}>
+          <Ionicons name="shield-checkmark" size={12} color={kit.color.success} />
+          <UIText variant="eyebrow" style={{ color: kit.color.success }}>
             {t("checkout.secure")}
           </UIText>
         </View>
@@ -174,10 +174,10 @@ function CheckoutScreen() {
           <Animated.View entering={FadeInDown.duration(320)} style={fb.root}>
             <View style={fb.head}>
               <View style={fb.iconBox}>
-                <Ionicons name="gift-outline" size={14} color={theme.colors.amber[700]} />
+                <Ionicons name="gift-outline" size={14} color={kit.color.warn} />
               </View>
               <View style={{ flex: 1 }}>
-                <UIText variant="eyebrow" style={{ color: theme.colors.amber[800] }}>
+                <UIText variant="eyebrow" style={{ color: kit.color.warn }}>
                   {t("cart.freeDelivery")}
                 </UIText>
                 <UIText variant="body-sm" align="right" style={fb.title}>
@@ -261,18 +261,19 @@ function CheckoutScreen() {
             </UIText>
           </View>
           <View style={cs.countBadge}>
-            <Ionicons name="bag-handle" size={12} color={theme.colors.brand[700]} />
-            <UIText variant="eyebrow" style={{ color: theme.colors.brand[700] }}>
+            <Ionicons name="bag-handle" size={12} color={kit.color.accentDeep} />
+            <UIText variant="eyebrow" style={{ color: kit.color.accentDeep }}>
               {t("checkout.itemsCount", { count: flow.itemCount })}
             </UIText>
           </View>
         </View>
 
-        <Button
-          variant="primary"
+        <KitButton
+          label={flow.step === "details" ? t("checkout.continueBtn") : t("checkout.confirmBtn")}
+          icon={flow.step === "details" ? "arrow-back" : "checkmark"}
+          iconEnd
           size="lg"
-          fullWidth
-          gradient
+          full
           loading={flow.submitting || flow.uploadingReceipt}
           disabled={
             flow.pricing.subtotal === 0 ||
@@ -285,20 +286,8 @@ function CheckoutScreen() {
             flow.step === "details"
               ? handleGoToReview
               : flow.form.handleSubmit(flow.onSubmit)
-          }>
-          <View style={cs.btnInner}>
-            <UIText style={cs.btnText}>
-              {flow.step === "details"
-                ? t("checkout.continueBtn")
-                : t("checkout.confirmBtn")}
-            </UIText>
-            <Ionicons
-              name={flow.step === "details" ? "arrow-back" : "checkmark"}
-              size={16}
-              color="#fff"
-            />
-          </View>
-        </Button>
+          }
+        />
       </View>
 
       {/* Phone verification modal */}

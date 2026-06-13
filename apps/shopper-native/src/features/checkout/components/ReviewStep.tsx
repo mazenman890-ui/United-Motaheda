@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Text as UIText } from "@/shared/ui";
 import Animated, { FadeIn } from "react-native-reanimated";
@@ -8,6 +8,7 @@ import { Controller, type Control } from "react-hook-form";
 
 import { Input } from "@/components/ui/Input";
 import { theme } from "@/shared/theme";
+import { kit } from "@/shared/kit";
 import { ManualPaymentPanel } from "@/features/payment";
 import { BranchCard, type useDeliveryContext } from "@/features/delivery";
 import { isManualWalletPayment } from "@/features/checkout";
@@ -67,7 +68,7 @@ export const ReviewStep = React.memo(function ReviewStep({
   control,
 }: ReviewStepProps) {
   const { t, i18n } = useTranslation();
-  const sep = i18n.language.startsWith("en") ? ", " : "، ";
+  const sep = i18n.language.startsWith("en") ? ", " : "ØŒ ";
 
   const methods = PAYMENT_METHOD_CONFIGS.map((cfg) => ({
     ...cfg,
@@ -90,7 +91,7 @@ export const ReviewStep = React.memo(function ReviewStep({
             compact
           />
           <View style={s.etaPillInline}>
-            <Ionicons name="time-outline" size={12} color={theme.colors.brand[600]} />
+            <Ionicons name="time-outline" size={12} color={kit.color.accent} />
             <UIText style={s.etaPillText}>
               {t("checkout.etaText", {
                 min: deliveryQuote.eta.min,
@@ -187,11 +188,11 @@ export const ReviewStep = React.memo(function ReviewStep({
 
         {/* Coming-soon placeholder */}
         <View style={s.comingSoon}>
-          <View style={[s.payIcon, { backgroundColor: theme.colors.slate[100] }]}>
-            <Ionicons name="link-outline" size={16} color={theme.colors.slate[400]} />
+          <View style={[s.payIcon, { backgroundColor: kit.color.well }]}>
+            <Ionicons name="link-outline" size={16} color={kit.color.inkFaint} />
           </View>
           <View style={{ flex: 1 }}>
-            <UIText style={[s.payTitle, { color: theme.colors.slate[400] }]}>
+            <UIText style={[s.payTitle, { color: kit.color.inkFaint }]}>
               {t("checkout.paymentLink")}
             </UIText>
             <UIText style={s.paySub}>{t("checkout.methodComingSoon")}</UIText>
@@ -230,7 +231,7 @@ export const ReviewStep = React.memo(function ReviewStep({
         />
         {promoApplied && (
           <View style={s.promoSuccess}>
-            <Ionicons name="gift" size={13} color={theme.colors.green[600]} />
+            <Ionicons name="gift" size={13} color={kit.color.success} />
             <UIText style={s.promoSuccessText}>{t("checkout.promoSuccess")}</UIText>
           </View>
         )}
@@ -249,13 +250,13 @@ export const ReviewStep = React.memo(function ReviewStep({
               ? t("common.free")
               : formatPrice(deliveryQuote.cost)
           }
-          valueColor={deliveryQuote.isFree ? theme.colors.green[600] : undefined}
+          valueColor={deliveryQuote.isFree ? kit.color.success : undefined}
         />
         {pricing.discount > 0 && (
           <SummaryRow
             label={t("checkout.discountRow")}
-            value={`−${formatPrice(pricing.discount)}`}
-            valueColor={theme.colors.green[600]}
+            value={`âˆ’${formatPrice(pricing.discount)}`}
+            valueColor={kit.color.success}
           />
         )}
         <View style={summaryStyles.divider} />
@@ -264,7 +265,7 @@ export const ReviewStep = React.memo(function ReviewStep({
           <UIText style={summaryStyles.totalValue}>{formatPrice(pricing.total)}</UIText>
         </View>
         <View style={summaryStyles.etaPill}>
-          <Ionicons name="time-outline" size={12} color={theme.colors.brand[600]} />
+          <Ionicons name="time-outline" size={12} color={kit.color.accent} />
           <UIText style={summaryStyles.etaText}>
             {t("checkout.etaText", {
               min: deliveryQuote.eta.min,
@@ -276,7 +277,7 @@ export const ReviewStep = React.memo(function ReviewStep({
 
       {submitError && (
         <Animated.View entering={FadeIn.duration(200)} style={errorStyles.box}>
-          <Ionicons name="alert-circle" size={16} color={theme.colors.red[600]} />
+          <Ionicons name="alert-circle" size={16} color={kit.color.danger} />
           <UIText style={errorStyles.text}>{submitError}</UIText>
         </Animated.View>
       )}
@@ -289,19 +290,19 @@ const s = StyleSheet.create({
   reviewLine: {
     fontSize:   13,
     fontFamily: theme.fonts.bold,
-    color:      theme.colors.slate[800],
+    color:      kit.color.ink,
     textAlign:  textAlignStart(isRtl()),
     lineHeight: 20,
   },
   reviewSub: {
     fontSize:   11,
     fontFamily: theme.fonts.regular,
-    color:      theme.colors.slate[500],
+    color:      kit.color.inkFaint,
     textAlign:  textAlignStart(isRtl()),
   },
   reviewDivider: {
     height:          StyleSheet.hairlineWidth,
-    backgroundColor: theme.colors.slate[100],
+    backgroundColor: kit.color.well,
     marginVertical:  6,
   },
 
@@ -311,7 +312,7 @@ const s = StyleSheet.create({
     alignItems:        "center",
     alignSelf:         "flex-end",
     gap:               5,
-    backgroundColor:   theme.colors.brand[50],
+    backgroundColor:   kit.color.accentTint,
     paddingHorizontal: 10,
     paddingVertical:   5,
     borderRadius:      999,
@@ -320,7 +321,7 @@ const s = StyleSheet.create({
   etaPillText: {
     fontSize:   10,
     fontFamily: theme.fonts.bold,
-    color:      theme.colors.brand[700],
+    color:      kit.color.accentDeep,
   },
 
   // Payment options (compact radio list)
@@ -332,14 +333,14 @@ const s = StyleSheet.create({
     borderRadius:   14,
     backgroundColor: "#fff",
     borderWidth:    1.5,
-    borderColor:    theme.colors.border.default,
+    borderColor:    kit.color.line,
   },
   payRadio: {
     width:          18,
     height:         18,
     borderRadius:   9,
     borderWidth:    2,
-    borderColor:    theme.colors.slate[300],
+    borderColor:    kit.color.inkFaint,
     alignItems:     "center",
     justifyContent: "center",
   },
@@ -354,13 +355,13 @@ const s = StyleSheet.create({
   payTitle: {
     fontSize:   12,
     fontFamily: theme.fonts.bold,
-    color:      theme.colors.text.primary,
+    color:      kit.color.ink,
     textAlign:  textAlignStart(isRtl()),
   },
   paySub: {
     fontSize:   10,
     fontFamily: theme.fonts.regular,
-    color:      theme.colors.slate[400],
+    color:      kit.color.inkFaint,
     textAlign:  textAlignStart(isRtl()),
   },
 
@@ -372,32 +373,32 @@ const s = StyleSheet.create({
     padding:        12,
     marginTop:      4,
     borderRadius:   12,
-    backgroundColor: theme.colors.slate[50],
+    backgroundColor: kit.color.well,
     borderWidth:    1,
-    borderColor:    theme.colors.border.default,
+    borderColor:    kit.color.line,
   },
   posToggleActive: {
-    backgroundColor: theme.colors.brand[50],
-    borderColor:     theme.colors.brand[200],
+    backgroundColor: kit.color.accentTint,
+    borderColor:     kit.color.accentTint,
   },
   posCheck: {
     width:          18,
     height:         18,
     borderRadius:   5,
     borderWidth:    1.5,
-    borderColor:    theme.colors.slate[300],
+    borderColor:    kit.color.inkFaint,
     alignItems:     "center",
     justifyContent: "center",
   },
   posCheckActive: {
-    backgroundColor: theme.colors.brand[600],
-    borderColor:     theme.colors.brand[600],
+    backgroundColor: kit.color.accent,
+    borderColor:     kit.color.accent,
   },
   posLabel: {
     flex:       1,
     fontSize:   12,
     fontFamily: theme.fonts.bold,
-    color:      theme.colors.slate[700],
+    color:      kit.color.inkSoft,
     textAlign:  textAlignStart(isRtl()),
   },
 
@@ -410,7 +411,7 @@ const s = StyleSheet.create({
     borderRadius:   14,
     borderWidth:    1.5,
     borderStyle:    "dashed",
-    borderColor:    theme.colors.slate[200],
+    borderColor:    kit.color.lineStrong,
     opacity:        0.5,
   },
 
@@ -424,19 +425,19 @@ const s = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical:   11,
     borderRadius:      12,
-    backgroundColor:   theme.colors.brand[600],
+    backgroundColor:   kit.color.accent,
     minWidth:          80,
     alignItems:        "center",
     justifyContent:    "center",
   },
-  promoBtnApplied: { backgroundColor: theme.colors.slate[200] },
+  promoBtnApplied: { backgroundColor: kit.color.lineStrong },
   promoBtnText:    { fontSize: 12, fontFamily: theme.fonts.black, color: "#fff" },
-  promoBtnTextApplied: { color: theme.colors.slate[500] },
+  promoBtnTextApplied: { color: kit.color.inkFaint },
   promoSuccess: {
     flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               6,
-    backgroundColor:   theme.colors.green[50],
+    backgroundColor:   kit.color.successTint,
     paddingHorizontal: 10,
     paddingVertical:   7,
     borderRadius:      8,
@@ -444,6 +445,6 @@ const s = StyleSheet.create({
   promoSuccessText: {
     fontSize:   11,
     fontFamily: theme.fonts.bold,
-    color:      theme.colors.green[700],
+    color:      kit.color.success,
   },
 });

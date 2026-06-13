@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { Text as UIText } from "@/shared/ui";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "@/shared/theme";
+import { kit } from "@/shared/kit";
 import { stepBarStyles as s } from "./checkout.styles";
 
 interface StepPillProps {
@@ -19,15 +20,15 @@ export const StepPill = React.memo(function StepPill({
   done,
 }: StepPillProps) {
   const bg = done
-    ? theme.colors.success.bg
+    ? kit.color.successTint
     : active
-    ? theme.colors.brand.lighter
-    : theme.colors.slate[50];
+    ? kit.color.accentTint
+    : kit.color.well;
   const fg = done
-    ? theme.colors.success.strong
+    ? kit.color.success
     : active
-    ? theme.colors.brand[700]
-    : theme.colors.slate[500];
+    ? kit.color.accentDeep
+    : kit.color.inkFaint;
 
   return (
     <View style={[s.pill, { backgroundColor: bg }, active && s.pillActive]}>
@@ -46,7 +47,7 @@ export const StepPill = React.memo(function StepPill({
 export const StepLine = React.memo(function StepLine({ done }: { done: boolean }) {
   return (
     <View
-      style={[s.line, done && { backgroundColor: theme.colors.success.base }]}
+      style={[s.line, done && { backgroundColor: kit.color.success }]}
     />
   );
 });

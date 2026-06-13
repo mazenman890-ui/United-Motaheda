@@ -3,7 +3,7 @@ import { View, Pressable } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { Text as UIText } from "@/shared/ui";
-import { theme } from "@/shared/theme";
+import { kit } from "@/shared/kit";
 import { sectionStyles as s } from "./checkout.styles";
 import { FORWARD_CHEVRON } from "@/utils/layout";
 import type { IoniconsName } from "../constants";
@@ -28,7 +28,7 @@ export const SectionCard = React.memo(function SectionCard({
       <View style={s.head}>
         <View style={s.titleWrap}>
           <View style={s.icon}>
-            <Ionicons name={icon} size={14} color={theme.colors.brand[700]} />
+            <Ionicons name={icon} size={14} color={kit.color.accentDeep} />
           </View>
           <UIText variant="card-title" align="right">
             {title}
@@ -39,7 +39,7 @@ export const SectionCard = React.memo(function SectionCard({
             <UIText variant="caption" color="brand" weight="bold">
               {action.label}
             </UIText>
-            <Ionicons name={FORWARD_CHEVRON} size={12} color={theme.colors.brand[700]} />
+            <Ionicons name={FORWARD_CHEVRON} size={12} color={kit.color.accentDeep} />
           </Pressable>
         )}
       </View>

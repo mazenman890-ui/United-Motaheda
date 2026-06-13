@@ -1,10 +1,7 @@
-/**
- * Shared StyleSheet tokens for the checkout screen family.
- * Each component imports only the slices it needs — no global "styles" blob.
- */
 import { StyleSheet } from "react-native";
 import { theme } from "@/shared/theme";
 import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
+import { kit } from "@/shared/kit";
 
 // ─── Header ──────────────────────────────────────────────────────────────────
 export const headerStyles = StyleSheet.create({
@@ -14,17 +11,19 @@ export const headerStyles = StyleSheet.create({
     gap:               12,
     paddingHorizontal: theme.spacing[4],
     paddingBottom:     14,
-    backgroundColor:   theme.colors.surface,
+    backgroundColor:   kit.color.surface,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.border.hairline,
+    borderBottomColor: kit.color.line,
   },
   backBtn: {
     width:           40,
     height:          40,
-    borderRadius:    12,
-    backgroundColor: theme.colors.subtle,
+    borderRadius:    20,
+    backgroundColor: kit.color.well,
     alignItems:      "center",
     justifyContent:  "center",
+    borderWidth:     1,
+    borderColor:     kit.color.line,
   },
   badge: {
     flexDirection:     flexRow(isRtl()),
@@ -33,9 +32,9 @@ export const headerStyles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical:   6,
     borderRadius:      999,
-    backgroundColor:   theme.colors.success.bg,
+    backgroundColor:   kit.color.successTint,
     borderWidth:       1,
-    borderColor:       theme.colors.success.light,
+    borderColor:       kit.color.line,
   },
 });
 
@@ -47,9 +46,9 @@ export const stepBarStyles = StyleSheet.create({
     gap:               10,
     paddingHorizontal: theme.spacing[4],
     paddingVertical:   14,
-    backgroundColor:   theme.colors.surface,
+    backgroundColor:   kit.color.surface,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.border.hairline,
+    borderBottomColor: kit.color.line,
   },
   pill: {
     flexDirection:     flexRow(isRtl()),
@@ -60,8 +59,7 @@ export const stepBarStyles = StyleSheet.create({
     borderRadius:      999,
   },
   pillActive: {
-    ...theme.shadow.brandGlow,
-    shadowOpacity: 0.14,
+    ...kit.shadow.raised,
   },
   num: {
     width:           20,
@@ -70,12 +68,12 @@ export const stepBarStyles = StyleSheet.create({
     alignItems:      "center",
     justifyContent:  "center",
   },
-  numText:  { fontSize: 11, fontFamily: theme.fonts.black, color: "#fff" },
+  numText:  { fontSize: 11, fontFamily: theme.fonts.black, color: kit.color.onInk },
   label:    { fontSize: 12, fontFamily: theme.fonts.bold,  letterSpacing: 0.2 },
   line: {
     flex:            1,
     height:          2,
-    backgroundColor: theme.colors.slate[200],
+    backgroundColor: kit.color.lineStrong,
     borderRadius:    1,
   },
 });
@@ -83,10 +81,12 @@ export const stepBarStyles = StyleSheet.create({
 // ─── Section card ─────────────────────────────────────────────────────────────
 export const sectionStyles = StyleSheet.create({
   card: {
-    backgroundColor: theme.colors.surface,
-    borderRadius:    18,
+    backgroundColor: kit.color.surface,
+    borderRadius:    kit.radius.card,
     marginBottom:    14,
-    ...theme.shadow.card,
+    borderWidth:     1,
+    borderColor:     kit.color.line,
+    ...kit.shadow.raised,
   },
   head: {
     flexDirection:     flexRow(isRtl()),
@@ -105,9 +105,7 @@ export const sectionStyles = StyleSheet.create({
     width:           30,
     height:          30,
     borderRadius:    10,
-    backgroundColor: theme.colors.brand.lighter,
-    borderWidth:     1,
-    borderColor:     theme.colors.border.brandSoft,
+    backgroundColor: kit.color.accentTint,
     alignItems:      "center",
     justifyContent:  "center",
   },
@@ -131,17 +129,13 @@ export const ctaStyles = StyleSheet.create({
     bottom:            0,
     left:              0,
     right:             0,
-    backgroundColor:   theme.colors.surface,
+    backgroundColor:   kit.color.surface,
     borderTopWidth:    StyleSheet.hairlineWidth,
-    borderTopColor:    theme.colors.border.hairline,
+    borderTopColor:    kit.color.line,
     paddingHorizontal: theme.spacing[4],
     paddingTop:        14,
     gap:               12,
-    shadowColor:       "#0C2240",
-    shadowOffset:      { width: 0, height: -4 },
-    shadowOpacity:     0.06,
-    shadowRadius:      12,
-    elevation:         8,
+    ...kit.shadow.floating,
   },
   totals: {
     flexDirection:  flexRow(isRtl()),
@@ -152,17 +146,17 @@ export const ctaStyles = StyleSheet.create({
     flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               6,
-    backgroundColor:   theme.colors.brand.lighter,
+    backgroundColor:   kit.color.accentTint,
     borderWidth:       1,
-    borderColor:       theme.colors.border.brandSoft,
+    borderColor:       kit.color.line,
     paddingHorizontal: 12,
     paddingVertical:   7,
     borderRadius:      999,
   },
   btnInner: { flexDirection: flexRow(isRtl()), alignItems: "center", gap: 6 },
-  btnText:  { fontSize: 15, fontFamily: theme.fonts.black, color: "#fff", letterSpacing: -0.2 },
+  btnText:  { fontSize: 15, fontFamily: theme.fonts.black, color: kit.color.onInk, letterSpacing: -0.2 },
   totalValue: {
-    color:         theme.colors.brand[700],
+    color:         kit.color.ink,
     letterSpacing: -0.6,
     marginTop:     2,
   },
@@ -171,13 +165,13 @@ export const ctaStyles = StyleSheet.create({
 // ─── Summary row ─────────────────────────────────────────────────────────────
 export const summaryStyles = StyleSheet.create({
   row: {
-    flexDirection:  flexRow(isRtl()),
-    justifyContent: "space-between",
+    flexDirection:   flexRow(isRtl()),
+    justifyContent:  "space-between",
     paddingVertical: 5,
   },
   divider: {
     height:          StyleSheet.hairlineWidth,
-    backgroundColor: theme.colors.border.hairline,
+    backgroundColor: kit.color.line,
     marginVertical:  10,
   },
   totalRow: {
@@ -188,13 +182,13 @@ export const summaryStyles = StyleSheet.create({
   totalLabel: {
     fontSize:      14,
     fontFamily:    theme.fonts.extrabold,
-    color:         theme.colors.text.primary,
+    color:         kit.color.ink,
     letterSpacing: -0.2,
   },
   totalValue: {
     fontSize:      22,
     fontFamily:    theme.fonts.black,
-    color:         theme.colors.brand[700],
+    color:         kit.color.ink,
     letterSpacing: -0.5,
   },
   etaPill: {
@@ -202,13 +196,13 @@ export const summaryStyles = StyleSheet.create({
     flexDirection:     flexRow(isRtl()),
     alignItems:        "center",
     gap:               5,
-    backgroundColor:   theme.colors.brand[50],
+    backgroundColor:   kit.color.accentTint,
     paddingHorizontal: 10,
     paddingVertical:   5,
     borderRadius:      999,
     marginTop:         6,
   },
-  etaText: { fontSize: 10, fontFamily: theme.fonts.bold, color: theme.colors.brand[700] },
+  etaText: { fontSize: 10, fontFamily: theme.fonts.bold, color: kit.color.accentDeep },
 });
 
 // ─── Free-delivery banner ─────────────────────────────────────────────────────
@@ -218,9 +212,9 @@ export const freeBannerStyles = StyleSheet.create({
     padding:         14,
     gap:             10,
     marginBottom:    14,
-    backgroundColor: theme.colors.amber[50],
+    backgroundColor: kit.color.warnTint,
     borderWidth:     1,
-    borderColor:     "rgba(245,158,11,0.18)",
+    borderColor:     kit.color.line,
   },
   head: {
     flexDirection: flexRow(isRtl()),
@@ -231,24 +225,24 @@ export const freeBannerStyles = StyleSheet.create({
     width:           30,
     height:          30,
     borderRadius:    10,
-    backgroundColor: theme.colors.amber[100],
+    backgroundColor: kit.color.warnTint,
     alignItems:      "center",
     justifyContent:  "center",
   },
   title: {
-    color:      theme.colors.amber[900],
+    color:      kit.color.warn,
     fontFamily: theme.fonts.semibold,
     marginTop:  2,
   },
   barTrack: {
     height:          4,
     borderRadius:    2,
-    backgroundColor: "rgba(245,158,11,0.18)",
+    backgroundColor: kit.color.lineStrong,
     overflow:        "hidden",
   },
   barFill: {
     height:          "100%",
-    backgroundColor: theme.colors.amber[500],
+    backgroundColor: kit.color.warn,
     borderRadius:    2,
   },
 });
@@ -261,15 +255,15 @@ export const errorStyles = StyleSheet.create({
     gap:               8,
     padding:           12,
     borderRadius:      14,
-    backgroundColor:   theme.colors.red[50],
+    backgroundColor:   kit.color.dangerTint,
     borderWidth:       1,
-    borderColor:       theme.colors.red[100],
+    borderColor:       kit.color.line,
   },
   text: {
     flex:       1,
     fontSize:   11,
     fontFamily: theme.fonts.semibold,
-    color:      theme.colors.red[700],
+    color:      kit.color.danger,
     textAlign:  textAlignStart(isRtl()),
     lineHeight: 18,
   },

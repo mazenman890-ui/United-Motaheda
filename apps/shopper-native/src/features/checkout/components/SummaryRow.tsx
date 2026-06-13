@@ -1,7 +1,7 @@
 import React from "react";
 import { View } from "react-native";
 import { Text as UIText } from "@/shared/ui";
-import { theme } from "@/shared/theme";
+import { kit } from "@/shared/kit";
 import { summaryStyles as s } from "./checkout.styles";
 
 interface SummaryRowProps {
@@ -23,7 +23,7 @@ export const SummaryRow = React.memo(function SummaryRow({
       <UIText
         variant="body-sm"
         weight="bold"
-        style={{ color: valueColor ?? theme.colors.text.primary }}>
+        style={{ color: valueColor ?? kit.color.ink }}>
         {value}
       </UIText>
     </View>

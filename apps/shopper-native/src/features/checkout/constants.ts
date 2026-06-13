@@ -1,6 +1,6 @@
 import React from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { theme } from "@/shared/theme";
+import { kit } from "@/shared/kit";
 import type { CheckoutPaymentMethod } from "./types";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
@@ -21,24 +21,24 @@ export const PAYMENT_METHOD_CONFIGS: ReadonlyArray<{
     titleKey: "checkout.methodCodTitle",
     descKey:  "checkout.methodCodDesc",
     icon:     "cash-outline",
-    color:    theme.colors.green[600],
-    bg:       theme.colors.green[50],
+    color:    kit.color.success,
+    bg:       kit.color.successTint,
   },
   {
     id:       "instapay",
     titleKey: "checkout.methodInstapayTitle",
     descKey:  "checkout.methodInstapayDesc",
     icon:     "flash-outline",
-    color:    theme.colors.purple[600],
-    bg:       theme.colors.purple[50],
+    color:    kit.color.accent,
+    bg:       kit.color.accentTint,
   },
   {
     id:       "vodafone",
     titleKey: "checkout.methodVodafoneTitle",
     descKey:  "checkout.methodVodafoneDesc",
     icon:     "wallet-outline",
-    color:    theme.colors.red[500],
-    bg:       theme.colors.red[50],
+    color:    kit.color.danger,
+    bg:       kit.color.dangerTint,
   },
 ];
 

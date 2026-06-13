@@ -5,6 +5,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { theme } from "@/shared/theme";
+import { kit } from "@/shared/kit";
 import { flexRow, isRtl, textAlignStart } from "@/utils/layout";
 import { PAYMENT_METHOD_CONFIGS } from "../constants";
 import type { CheckoutPaymentMethod } from "../constants";
@@ -89,7 +90,7 @@ const s = StyleSheet.create({
   card: {
     borderRadius:    16,
     borderWidth:     1.5,
-    borderColor:     theme.colors.border.default,
+    borderColor:     kit.color.line,
     backgroundColor: "#fff",
     overflow:        "hidden",
   },
@@ -123,14 +124,14 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   textBlock: { flex: 1, gap: 2 },
-  title: { fontSize: 13, fontFamily: theme.fonts.bold,    color: theme.colors.text.primary,    textAlign: textAlignStart(isRtl()) },
-  sub:   { fontSize: 11, fontFamily: theme.fonts.regular, color: theme.colors.slate[400], textAlign: textAlignStart(isRtl()) },
+  title: { fontSize: 13, fontFamily: theme.fonts.bold,    color: kit.color.ink,     textAlign: textAlignStart(isRtl()) },
+  sub:   { fontSize: 11, fontFamily: theme.fonts.regular, color: kit.color.inkFaint, textAlign: textAlignStart(isRtl()) },
   check: {
     width:           22,
     height:          22,
     borderRadius:    11,
     borderWidth:     2,
-    borderColor:     "#CBD5E1",
+    borderColor:     kit.color.lineStrong,
     alignItems:      "center",
     justifyContent:  "center",
   },
